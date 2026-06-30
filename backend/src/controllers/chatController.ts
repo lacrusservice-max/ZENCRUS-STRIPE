@@ -1,6 +1,6 @@
 import { Request, Response } from 'express'
 import { z } from 'zod'
-import { DeepSeekClient } from '../../../ai-integration/deepseek-client'
+import { DeepSeekClient } from '../../ai-integration/deepseek-client'
 import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
 import { supabase } from '../config/supabase'
