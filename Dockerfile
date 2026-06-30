@@ -8,6 +8,7 @@ RUN npm ci --legacy-peer-deps
 
 COPY backend/tsconfig.json ./
 COPY backend/src ./src
+COPY ai-integration ./ai-integration
 RUN npm run build
 
 # ── Production stage ──────────────────────────────────────────
@@ -21,6 +22,7 @@ COPY backend/package*.json ./
 RUN npm ci --omit=dev --legacy-peer-deps
 
 COPY --from=builder /app/dist ./dist
+COPY ai-integration ./ai-integration
 
 RUN mkdir -p logs && chown -R nutriai:nutriai /app
 
