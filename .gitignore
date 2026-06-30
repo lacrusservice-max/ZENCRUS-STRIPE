@@ -1,0 +1,60 @@
+# Dependencias
+node_modules/
+.pnp
+.pnp.js
+
+# Builds
+dist/
+build/
+*.tsbuildinfo
+
+# Variables de entorno (NUNCA commitear)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+.env.staging
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# Editor
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# Expo/React Native
+.expo/
+.expo-shared/
+ios/
+android/
+web-build/
+
+# Tests
+coverage/
+.nyc_output/
+
+# SSL
+ssl/
+*.pem
+*.key
+*.crt
+*.cert
+
+# Secrets (nunca en git)
+*.pfx
+*.p12
+*.keystore
+google-services.json
+GoogleService-Info.plist
+firebase-adminsdk*.json
+
+# Misc
+*.backup
+*.bak

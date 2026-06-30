@@ -1,0 +1,85 @@
+-- ============================================================
+-- Seed: Ejercicios base verificados
+-- ============================================================
+
+INSERT INTO exercises (name, description, muscle_group, equipment, difficulty, instructions, safety_tips, is_verified) VALUES
+
+('Sentadilla con barra', 'El rey de los ejercicios de pierna. Trabaja todo el tren inferior y core.',
+ 'Cuádriceps, Glúteos, Isquiotibiales',
+ '["barbell", "squat_rack"]',
+ 'beginner',
+ '[{"step":1,"description":"Coloca la barra sobre los trapecios, no en el cuello"},{"step":2,"description":"Pies al ancho de hombros o ligeramente más abiertos"},{"step":3,"description":"Baja hasta que los muslos queden paralelos al suelo"},{"step":4,"description":"Mantén el pecho erguido y las rodillas en línea con los pies"},{"step":5,"description":"Empuja desde los talones para subir"}]',
+ 'Nunca dejes que las rodillas colapsen hacia adentro. Usa zapatos planos o de levantamiento.',
+ TRUE),
+
+('Press de banca', 'Ejercicio fundamental para desarrollo del pectoral.',
+ 'Pectoral, Hombro anterior, Tríceps',
+ '["barbell", "bench"]',
+ 'beginner',
+ '[{"step":1,"description":"Acuéstate con los ojos bajo la barra"},{"step":2,"description":"Agarre ligeramente más ancho que los hombros"},{"step":3,"description":"Arco lumbar natural, escápulas retraídas y deprimidas"},{"step":4,"description":"Baja la barra al pecho inferior"},{"step":5,"description":"Empuja explosivamente hacia arriba"}]',
+ 'Siempre usa un spotter con pesos altos. Nunca hagas rebote con la barra en el pecho.',
+ TRUE),
+
+('Peso muerto', 'Ejercicio compuesto que trabaja casi todos los músculos del cuerpo.',
+ 'Espalda baja, Glúteos, Isquiotibiales, Trapecio',
+ '["barbell"]',
+ 'intermediate',
+ '[{"step":1,"description":"Pies bajo la barra, al ancho de caderas"},{"step":2,"description":"Agarre doble pronación o mixto al ancho de hombros"},{"step":3,"description":"Cadera atrás, pecho erguido, espalda neutra"},{"step":4,"description":"Empuja el suelo y extiende caderas y rodillas simultáneamente"},{"step":5,"description":"Baja con control manteniendo la espalda neutra"}]',
+ 'Es el ejercicio que más daño puede causar con mala técnica. Empieza con poco peso y aprende la técnica perfecta primero.',
+ TRUE),
+
+('Dominadas', 'El mejor ejercicio de peso corporal para la espalda.',
+ 'Dorsal ancho, Bíceps, Romboides',
+ '["pull_up_bar"]',
+ 'intermediate',
+ '[{"step":1,"description":"Agarre en pronación ligeramente más ancho que hombros"},{"step":2,"description":"Cuelga completamente para activar el dorsal"},{"step":3,"description":"Retrae y deprime las escápulas antes de subir"},{"step":4,"description":"Jala llevando los codos hacia las caderas"},{"step":5,"description":"Controla la bajada durante 2-3 segundos"}]',
+ 'Evita el movimiento de caterpillar (kipping) si buscas fuerza real. Progresa con bandas de asistencia si no puedes hacer una.',
+ TRUE),
+
+('Press militar con barra', 'Ejercicio fundamental para hombros.',
+ 'Deltoides anterior y medio, Tríceps',
+ '["barbell"]',
+ 'intermediate',
+ '[{"step":1,"description":"Barra a la altura de la clavícula, agarre al ancho de hombros"},{"step":2,"description":"Core activado, glúteos apretados"},{"step":3,"description":"Empuja la barra verticalmente sobre la cabeza"},{"step":4,"description":"Al pasar la cabeza, empuja la cabeza hacia adelante"}]',
+ 'No uses momentum de piernas si haces press estricto. Activa el core para proteger la zona lumbar.',
+ TRUE),
+
+('Curl con barra', 'Ejercicio clásico para bíceps.',
+ 'Bíceps braquial, Braquial',
+ '["barbell"]',
+ 'beginner',
+ '[{"step":1,"description":"Agarre supino al ancho de hombros"},{"step":2,"description":"Codos pegados al cuerpo durante todo el movimiento"},{"step":3,"description":"Sube la barra controlando el movimiento"},{"step":4,"description":"Aprieta el bíceps en la contracción máxima"},{"step":5,"description":"Baja en 3 segundos (fase excéntrica)"}]',
+ 'No uses el cuerpo para generar impulso. Si lo haces, el peso es demasiado alto.',
+ TRUE),
+
+('Extensión de tríceps en polea', 'Ejercicio de aislamiento para tríceps.',
+ 'Tríceps',
+ '["cable_machine"]',
+ 'beginner',
+ '[{"step":1,"description":"Agarra la cuerda o barra recta en polea alta"},{"step":2,"description":"Codos pegados al cuerpo, paralelos al suelo"},{"step":3,"description":"Extiende los brazos completamente"},{"step":4,"description":"Controla la vuelta a la posición inicial"}]',
+ 'Mantén los codos fijos. Si se mueven, el peso es demasiado alto.',
+ TRUE),
+
+('Plancha abdominal', 'Ejercicio fundamental para el core.',
+ 'Core, Abdominales, Espalda baja',
+ '["bodyweight"]',
+ 'beginner',
+ '[{"step":1,"description":"Apóyate en codos y pies"},{"step":2,"description":"Cuerpo recto de cabeza a talones"},{"step":3,"description":"Activa el core jalando el ombligo hacia la columna"},{"step":4,"description":"No dejes caer la cadera ni subirla"}]',
+ 'Respira normalmente durante la plancha. Empieza con 20-30 segundos y progresa.',
+ TRUE),
+
+('Sentadilla Goblet', 'Variante de sentadilla ideal para principiantes.',
+ 'Cuádriceps, Glúteos, Core',
+ '["dumbbell", "kettlebell"]',
+ 'beginner',
+ '[{"step":1,"description":"Sostén una mancuerna o kettlebell frente al pecho"},{"step":2,"description":"Pies al ancho de hombros, puntas ligeramente hacia afuera"},{"step":3,"description":"Baja manteniendo el torso erguido"},{"step":4,"description":"Los codos toquen las rodillas en la bajada"},{"step":5,"description":"Empuja desde los talones para subir"}]',
+ 'Excelente para aprender la sentadilla antes de usar barra.',
+ TRUE),
+
+('Remo con mancuerna', 'Ejercicio unilateral para espalda.',
+ 'Dorsal ancho, Romboides, Bíceps',
+ '["dumbbell", "bench"]',
+ 'beginner',
+ '[{"step":1,"description":"Apoya rodilla y mano en el banco"},{"step":2,"description":"Espalda paralela al suelo, neutra"},{"step":3,"description":"Jala la mancuerna hacia la cadera, no hacia el hombro"},{"step":4,"description":"Squeeze en la contracción máxima"}]',
+ 'Mantén la espalda neutra. No rotes el torso para agarrar más peso.',
+ TRUE);

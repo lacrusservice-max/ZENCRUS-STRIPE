@@ -1,0 +1,1208 @@
+<!DOCTYPE html>
+<html lang="es" x-data="app()" x-init="init()">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>ZENCRUS Admin</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="/admin/js/chart.min.js"></script>
+<script src="/admin/js/app.js"></script>
+<script src="/admin/js/alpine.min.js" defer></script>
+<style>
+/* ── DESIGN SYSTEM ─────────────────────────────────────────────────────────── */
+:root{
+  --bg:     #07070f;
+  --bg2:    #0d0d1a;
+  --bg3:    #131326;
+  --pur:    #5b4fff;
+  --pur-dim:rgba(91,79,255,.12);
+  --pur-brd:rgba(91,79,255,.22);
+  --brd:    rgba(255,255,255,.07);
+  --brd2:   rgba(255,255,255,.12);
+  --txt:    #e2e8f0;
+  --muted:  #64748b;
+  --dim:    #2d2d4e;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--txt);font-family:-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;font-size:14px;line-height:1.5}
+[x-cloak]{display:none!important}
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:rgba(255,255,255,.1);border-radius:4px}
+::-webkit-scrollbar-thumb:hover{background:var(--pur)}
+
+/* ── GLASS ────────────────────────────────────────────────────────────────── */
+.glass{background:rgba(255,255,255,.03);border:1px solid var(--brd);backdrop-filter:blur(12px)}
+.glass-pur{background:var(--pur-dim);border:1px solid var(--pur-brd)}
+
+/* ── LAYOUT ───────────────────────────────────────────────────────────────── */
+.app-wrap{display:flex;height:100vh;overflow:hidden}
+
+/* ── SIDEBAR ──────────────────────────────────────────────────────────────── */
+.sidebar{
+  width:230px;flex-shrink:0;
+  background:linear-gradient(180deg,rgba(91,79,255,.08) 0%,transparent 60%);
+  border-right:1px solid var(--brd);
+  display:flex;flex-direction:column;
+  padding:0 0 16px;
+  overflow-y:auto;
+}
+.sidebar-logo{
+  padding:22px 18px 20px;
+  border-bottom:1px solid var(--brd);
+  margin-bottom:8px;
+  background:#fff;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+}
+.sidebar-logo img{
+  height:56px;width:auto;object-fit:contain;
+}
+.nav-item{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;margin:1px 8px;
+  border-radius:10px;cursor:pointer;
+  font-size:13px;font-weight:500;color:var(--muted);
+  transition:all .15s;border:1px solid transparent;
+}
+.nav-item:hover{background:rgba(255,255,255,.05);color:var(--txt)}
+.nav-item.active{
+  background:var(--pur-dim);color:#a5b4fc;
+  border-color:var(--pur-brd);
+}
+.nav-item svg{width:16px;height:16px;flex-shrink:0;opacity:.7}
+.nav-item.active svg{opacity:1;color:#818cf8}
+.sidebar-bottom{margin-top:auto;padding:8px}
+.live-pill{
+  display:flex;align-items:center;gap:7px;
+  padding:7px 14px;border-radius:10px;
+  font-size:12px;color:var(--muted);
+}
+.live-dot{width:7px;height:7px;border-radius:50%;background:#22c55e;animation:blink 1.5s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.25}}
+.logout-btn{
+  display:flex;align-items:center;gap:10px;
+  padding:9px 14px;margin:1px 8px;border-radius:10px;cursor:pointer;
+  font-size:13px;font-weight:500;color:#f87171;
+  transition:all .15s;
+}
+.logout-btn:hover{background:rgba(239,68,68,.1)}
+.logout-btn svg{width:16px;height:16px;opacity:.8}
+
+/* ── MAIN CONTENT ─────────────────────────────────────────────────────────── */
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.topbar{
+  position:sticky;top:0;z-index:20;
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 28px;
+  background:rgba(7,7,15,.85);
+  border-bottom:1px solid var(--brd);
+  backdrop-filter:blur(16px);
+}
+.topbar-title{font-size:16px;font-weight:700;color:#e2e8f0}
+.topbar-right{display:flex;align-items:center;gap:12px}
+.admin-chip{
+  display:flex;align-items:center;gap:6px;
+  background:var(--bg3);border:1px solid var(--brd);
+  padding:4px 12px 4px 8px;border-radius:999px;
+  font-size:12px;color:var(--muted);
+}
+.admin-chip-dot{width:6px;height:6px;border-radius:50%;background:var(--pur)}
+.events-pill{
+  background:rgba(34,197,94,.1);border:1px solid rgba(34,197,94,.2);
+  color:#4ade80;font-size:12px;font-weight:600;
+  padding:4px 10px;border-radius:999px;
+}
+.content-area{flex:1;padding:28px}
+
+/* ── STAT CARDS ───────────────────────────────────────────────────────────── */
+.stat-card{
+  background:var(--bg3);border:1px solid var(--brd);
+  border-radius:16px;padding:20px;
+  position:relative;overflow:hidden;
+}
+.stat-card::before{
+  content:'';position:absolute;top:0;right:0;
+  width:80px;height:80px;border-radius:50%;
+  background:var(--pur-dim);filter:blur(30px);
+  pointer-events:none;
+}
+.stat-card-label{font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px}
+.stat-card-value{font-size:28px;font-weight:800;letter-spacing:-.5px}
+.stat-card-sub{font-size:12px;color:var(--muted);margin-top:5px}
+
+/* ── BADGES ───────────────────────────────────────────────────────────────── */
+.bdg{display:inline-flex;align-items:center;padding:2px 9px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.6}
+.bdg-slate{background:rgba(100,116,139,.15);color:#94a3b8;border:1px solid rgba(100,116,139,.2)}
+.bdg-blue{background:rgba(37,99,235,.15);color:#60a5fa;border:1px solid rgba(37,99,235,.25)}
+.bdg-purple{background:rgba(91,79,255,.15);color:#a78bfa;border:1px solid rgba(91,79,255,.3)}
+.bdg-amber{background:rgba(245,158,11,.12);color:#fbbf24;border:1px solid rgba(245,158,11,.2)}
+.bdg-green{background:rgba(16,185,129,.12);color:#34d399;border:1px solid rgba(16,185,129,.2)}
+.bdg-red{background:rgba(239,68,68,.12);color:#f87171;border:1px solid rgba(239,68,68,.2)}
+
+/* ── BUTTONS ──────────────────────────────────────────────────────────────── */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;padding:7px 14px;border-radius:9px;font-size:13px;font-weight:600;cursor:pointer;transition:all .15s;border:none;line-height:1}
+.btn-primary{background:var(--pur);color:#fff}.btn-primary:hover{background:#4a3fe0}
+.btn-danger{background:#dc2626;color:#fff}.btn-danger:hover{background:#b91c1c}
+.btn-ghost{background:rgba(255,255,255,.06);color:#cbd5e1;border:1px solid var(--brd)}.btn-ghost:hover{background:rgba(255,255,255,.1)}
+.btn-sm{padding:4px 11px;font-size:12px}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* ── TABLE ────────────────────────────────────────────────────────────────── */
+.tbl-wrap{background:var(--bg3);border:1px solid var(--brd);border-radius:16px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{padding:11px 16px;text-align:left;font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;border-bottom:1px solid var(--brd);background:rgba(255,255,255,.02)}
+td{padding:12px 16px;font-size:13px;border-bottom:1px solid rgba(255,255,255,.04);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(255,255,255,.02)}
+.tbl-footer{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-top:1px solid var(--brd);background:rgba(255,255,255,.01)}
+
+/* ── FORM INPUTS ─────────────────────────────────────────────────────────── */
+input,select{
+  background:var(--bg3);border:1px solid var(--brd);color:var(--txt);
+  border-radius:9px;padding:8px 12px;font-size:13px;outline:none;
+  transition:border-color .15s;
+}
+input:focus,select:focus{border-color:var(--pur)}
+input::placeholder{color:var(--muted)}
+
+/* ── USER AVATAR ─────────────────────────────────────────────────────────── */
+.avatar{
+  width:36px;height:36px;border-radius:10px;
+  object-fit:cover;background:var(--dim);
+  border:1px solid var(--brd2);flex-shrink:0;
+}
+.avatar-lg{
+  width:72px;height:72px;border-radius:16px;
+  object-fit:cover;background:var(--dim);
+  border:2px solid var(--pur-brd);flex-shrink:0;
+}
+
+/* ── USER PROFILE PANEL (right slide-over) ───────────────────────────────── */
+.panel-wrap{
+  position:fixed;inset:0;z-index:100;
+  pointer-events:none;visibility:hidden;
+  transition:visibility 0s linear .2s;
+}
+.panel-wrap.open{
+  pointer-events:all;visibility:visible;
+  transition-delay:0s;
+}
+.panel-backdrop{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,.65);
+  opacity:0;transition:opacity .2s ease;
+}
+.panel-wrap.open .panel-backdrop{opacity:1}
+.panel{
+  position:absolute;right:0;top:0;bottom:0;
+  width:480px;
+  background:var(--bg2);
+  border-left:1px solid var(--brd);
+  display:flex;flex-direction:column;
+  transform:translateX(100%);
+  transition:transform .22s cubic-bezier(.16,1,.3,1);
+  overflow-y:auto;
+}
+.panel-wrap.open .panel{transform:translateX(0)}
+.panel-header{
+  padding:24px;border-bottom:1px solid var(--brd);
+  background:linear-gradient(135deg,rgba(91,79,255,.08) 0%,transparent 100%);
+  flex-shrink:0;
+}
+.panel-profile-row{display:flex;align-items:flex-start;gap:16px;margin-bottom:16px}
+.panel-profile-info h2{font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:3px}
+.panel-profile-info p{font-size:12px;color:var(--muted);margin-bottom:8px}
+.panel-stats-row{
+  display:grid;grid-template-columns:repeat(4,1fr);
+  gap:1px;background:var(--brd);
+  border:1px solid var(--brd);border-radius:12px;overflow:hidden;
+}
+.panel-stat{
+  background:var(--bg3);
+  padding:12px 8px;text-align:center;
+}
+.panel-stat-num{font-size:18px;font-weight:800;color:#e2e8f0;display:block}
+.panel-stat-lbl{font-size:10px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+.panel-tabs{
+  display:flex;gap:2px;padding:12px 16px;
+  border-bottom:1px solid var(--brd);
+  flex-shrink:0;
+}
+.panel-tab{
+  flex:1;padding:7px;border-radius:8px;font-size:12px;font-weight:600;
+  color:var(--muted);cursor:pointer;border:none;background:transparent;
+  transition:all .15s;text-align:center;
+}
+.panel-tab.active{background:var(--pur-dim);color:#a5b4fc;border:1px solid var(--pur-brd)}
+.panel-tab:hover:not(.active){background:rgba(255,255,255,.05);color:var(--txt)}
+.panel-body{flex:1;padding:20px;overflow-y:auto}
+.panel-footer{
+  padding:16px 20px;border-top:1px solid var(--brd);
+  display:flex;gap:8px;flex-shrink:0;
+  background:var(--bg2);
+}
+.info-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.info-cell{background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:12px}
+.info-cell-label{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin-bottom:4px}
+.info-cell-value{font-size:13px;font-weight:600;color:#e2e8f0;word-break:break-all}
+.post-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.post-thumb{
+  aspect-ratio:1;border-radius:10px;
+  background:var(--dim);overflow:hidden;
+  position:relative;cursor:pointer;
+  border:1px solid var(--brd);
+}
+.post-thumb img{width:100%;height:100%;object-fit:cover}
+.post-thumb-overlay{
+  position:absolute;inset:0;
+  background:rgba(0,0,0,.5);
+  opacity:0;transition:opacity .15s;
+  display:flex;align-items:center;justify-content:center;
+  gap:10px;color:#fff;font-size:12px;font-weight:700;
+}
+.post-thumb:hover .post-thumb-overlay{opacity:1}
+.log-row{display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.05)}
+.log-row:last-child{border-bottom:none}
+
+/* ── DELETE MODAL ─────────────────────────────────────────────────────────── */
+.modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:flex;align-items:center;justify-content:center;padding:20px}
+.modal{background:var(--bg2);border:1px solid var(--brd);border-radius:18px;padding:32px;max-width:400px;width:100%}
+
+/* ── TOAST ────────────────────────────────────────────────────────────────── */
+.toast{
+  position:fixed;bottom:24px;right:24px;z-index:300;
+  padding:12px 20px;border-radius:12px;font-size:13px;font-weight:600;
+  box-shadow:0 8px 32px rgba(0,0,0,.4);
+  transform:translateY(0);animation:toast-in .25s ease;
+}
+@keyframes toast-in{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast-success{background:#059669;color:#fff;border:1px solid rgba(255,255,255,.15)}
+.toast-error{background:#dc2626;color:#fff;border:1px solid rgba(255,255,255,.15)}
+
+/* ── LIVE EVENTS BANNER ───────────────────────────────────────────────────── */
+.live-banner{
+  background:rgba(34,197,94,.05);border:1px solid rgba(34,197,94,.15);
+  border-radius:12px;padding:12px 16px;margin-bottom:20px;
+}
+
+/* ── SECTION HEADING ─────────────────────────────────────────────────────── */
+.sec-head{font-size:13px;font-weight:700;color:#94a3b8;text-transform:uppercase;letter-spacing:.06em;margin-bottom:12px}
+
+/* ── POST CARD (social view) ──────────────────────────────────────────────── */
+.post-card{
+  background:var(--bg3);border:1px solid var(--brd);border-radius:14px;
+  padding:16px;display:flex;gap:14px;
+  transition:border-color .15s;
+}
+.post-card:hover{border-color:var(--brd2)}
+.post-media{
+  width:80px;height:80px;border-radius:10px;flex-shrink:0;
+  background:var(--dim);overflow:hidden;border:1px solid var(--brd);
+}
+.post-media img{width:100%;height:100%;object-fit:cover}
+.post-no-media{
+  display:flex;align-items:center;justify-content:center;
+  color:var(--muted);font-size:22px;
+}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════════════════════════════════════════════ LOGIN SCREEN ═══ -->
+<div x-show="!token" x-cloak class="min-h-screen flex items-center justify-center px-4">
+  <div class="w-full max-w-sm">
+    <!-- Logo -->
+    <div class="flex justify-center mb-8">
+      <img src="/admin/img/logo-icon.png" alt="ZENCRUS" style="height:48px;filter:drop-shadow(0 0 20px rgba(91,79,255,.5))" />
+    </div>
+    <!-- Card -->
+    <div class="glass rounded-2xl p-8">
+      <div class="text-center mb-6">
+        <div class="text-xs text-slate-500 tracking-widest uppercase">Panel de Administración</div>
+      </div>
+      <form @submit.prevent="login()">
+        <div class="mb-4">
+          <label class="block text-xs text-slate-400 mb-2 font-semibold uppercase tracking-wider">Correo electrónico</label>
+          <input type="email" x-model="loginForm.email" placeholder="admin@zencrus.com" class="w-full" autocomplete="email" />
+        </div>
+        <div class="mb-6">
+          <label class="block text-xs text-slate-400 mb-2 font-semibold uppercase tracking-wider">Contraseña</label>
+          <input type="password" x-model="loginForm.password" placeholder="••••••••" class="w-full" autocomplete="current-password" />
+        </div>
+        <button type="submit" class="btn btn-primary w-full py-2.5" :disabled="loginLoading">
+          <span x-text="loginLoading ? 'Verificando...' : 'Acceder al panel'"></span>
+        </button>
+        <p x-show="loginError" x-text="loginError" class="text-red-400 text-xs mt-3 text-center leading-relaxed"></p>
+      </form>
+    </div>
+    <p class="text-center text-xs text-slate-600 mt-6">ZENCRUS Admin &mdash; Acceso restringido</p>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════ MAIN APP ════════ -->
+<div x-show="token" x-cloak class="app-wrap">
+
+  <!-- ═══ SIDEBAR ════════════════════════════════════════════════════════════ -->
+  <aside class="sidebar">
+    <!-- Logo -->
+    <div class="sidebar-logo">
+      <img src="/admin/img/logo-icon.png" alt="ZENCRUS" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"/>
+      <div style="display:none;font-size:16px;font-weight:800;color:#a5b4fc">ZENCRUS</div>
+    </div>
+
+    <!-- Nav -->
+    <nav style="flex:1;padding:4px 0">
+      <!-- Dashboard -->
+      <div class="nav-item" :class="page==='dashboard'?'active':''" @click="loadPage('dashboard')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/>
+          <rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/>
+        </svg>
+        <span>Dashboard</span>
+      </div>
+      <!-- Usuarios -->
+      <div class="nav-item" :class="page==='users'?'active':''" @click="loadPage('users')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="8" cy="8" r="3.5"/><path d="M2 20c0-4 2.7-7 6-7h1c3.3 0 6 3 6 7"/>
+          <circle cx="17" cy="8" r="3"/><path d="M22 20c0-3.5-2-6-4.5-6.5"/>
+        </svg>
+        <span>Usuarios</span>
+      </div>
+      <!-- Red Social -->
+      <div class="nav-item" :class="page==='social'?'active':''" @click="loadPage('social')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/>
+          <line x1="8.59" y1="13.51" x2="15.42" y2="17.49"/><line x1="15.41" y1="6.51" x2="8.59" y2="10.49"/>
+        </svg>
+        <span>Red Social</span>
+      </div>
+      <!-- Contenido -->
+      <div class="nav-item" :class="page==='content'?'active':''" @click="loadPage('content')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/>
+        </svg>
+        <span>Contenido</span>
+      </div>
+      <!-- Registros -->
+      <div class="nav-item" :class="page==='logs'?'active':''" @click="loadPage('logs')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M9 5H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7a2 2 0 0 0-2-2h-2"/>
+          <rect x="9" y="3" width="6" height="4" rx="1"/>
+          <line x1="9" y1="12" x2="15" y2="12"/><line x1="9" y1="16" x2="13" y2="16"/>
+        </svg>
+        <span>Registros</span>
+      </div>
+      <!-- Suscripciones -->
+      <div class="nav-item" :class="page==='subs'?'active':''" @click="loadPage('subs')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <rect x="2" y="5" width="20" height="14" rx="2"/>
+          <line x1="2" y1="10" x2="22" y2="10"/>
+        </svg>
+        <span>Suscripciones</span>
+      </div>
+      <!-- Planes -->
+      <div class="nav-item" :class="page==='plans'?'active':''" @click="loadPage('plans')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+        <span>Planes dieta</span>
+      </div>
+
+      <!-- Divider -->
+      <div style="height:1px;background:var(--brd);margin:10px 14px"></div>
+    </nav>
+
+    <!-- Bottom -->
+    <div class="sidebar-bottom">
+      <div class="live-pill">
+        <div class="live-dot" x-show="sseConnected"></div>
+        <div style="width:7px;height:7px;border-radius:50%;background:var(--muted)" x-show="!sseConnected"></div>
+        <span x-text="sseConnected ? 'En vivo' : 'Sin conexión live'"></span>
+      </div>
+      <div class="logout-btn" @click="logout()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/>
+          <polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+        </svg>
+        <span>Cerrar sesión</span>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══ MAIN ════════════════════════════════════════════════════════════════ -->
+  <main class="main">
+
+    <!-- Top Bar -->
+    <header class="topbar">
+      <div class="topbar-title" x-text="nav.find(n=>n.id===page)?.label ?? 'Dashboard'"></div>
+      <div class="topbar-right">
+        <!-- Live events -->
+        <template x-if="liveEvents.length > 0">
+          <span class="events-pill" x-text="`${liveEvents.length} evento${liveEvents.length>1?'s':''} nuevo${liveEvents.length>1?'s':''}`"></span>
+        </template>
+        <!-- Admin chip -->
+        <div class="admin-chip">
+          <div class="admin-chip-dot"></div>
+          <span x-text="adminEmail"></span>
+        </div>
+      </div>
+    </header>
+
+    <!-- Live Events Banner -->
+    <template x-if="liveEvents.length > 0">
+      <div class="live-banner mx-7 mt-5">
+        <div class="flex items-center justify-between mb-2">
+          <span style="font-size:11px;font-weight:700;color:#4ade80;text-transform:uppercase;letter-spacing:.06em">Eventos en tiempo real</span>
+          <button @click="liveEvents=[]" style="font-size:11px;color:var(--muted)" class="hover:text-white">Limpiar</button>
+        </div>
+        <div class="space-y-1 max-h-24 overflow-y-auto">
+          <template x-for="ev in liveEvents" :key="ev.ts">
+            <div class="flex items-center gap-2" style="font-size:12px;color:#94a3b8">
+              <span style="color:#4ade80;font-weight:700" x-text="ev.type.replace(/_/g,' ').toUpperCase()"></span>
+              <span style="color:var(--muted)" x-text="new Date(ev.ts).toLocaleTimeString('es-MX')"></span>
+            </div>
+          </template>
+        </div>
+      </div>
+    </template>
+
+    <!-- ═══ DASHBOARD ════════════════════════════════════════════════════════ -->
+    <div x-show="page==='dashboard'" x-cloak class="content-area">
+      <template x-if="loading">
+        <div style="color:var(--muted);font-size:13px;padding:20px 0">Cargando estadísticas...</div>
+      </template>
+      <template x-if="!loading && dash">
+        <div>
+          <!-- Stat cards row 1 -->
+          <div class="grid grid-cols-4 gap-4 mb-4">
+            <div class="stat-card">
+              <div class="stat-card-label">Usuarios totales</div>
+              <div class="stat-card-value text-white" x-text="dash.users.total.toLocaleString()"></div>
+              <div class="stat-card-sub" x-text="`+${dash.users.new7d} esta semana`"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Activos</div>
+              <div class="stat-card-value" style="color:#60a5fa" x-text="dash.users.active.toLocaleString()"></div>
+              <div class="stat-card-sub" x-text="`+${dash.users.new30d} este mes`"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Suscripciones activas</div>
+              <div class="stat-card-value" style="color:#a78bfa" x-text="dash.subscriptions.active.toLocaleString()"></div>
+              <div class="stat-card-sub" x-text="`de ${dash.subscriptions.total} totales`"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">MRR estimado</div>
+              <div class="stat-card-value" style="color:#34d399" x-text="`$${dash.subscriptions.monthlyRevenue.toLocaleString()}`"></div>
+              <div class="stat-card-sub">MXN mensual</div>
+            </div>
+          </div>
+          <!-- Row 2 -->
+          <div class="grid grid-cols-3 gap-4 mb-6">
+            <div class="stat-card">
+              <div class="stat-card-label">Mensajes de chat</div>
+              <div class="stat-card-value text-white" x-text="dash.content.messages.toLocaleString()"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Planes de dieta</div>
+              <div class="stat-card-value text-white" x-text="dash.content.dietPlans.toLocaleString()"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Rutinas creadas</div>
+              <div class="stat-card-value text-white" x-text="dash.content.workouts.toLocaleString()"></div>
+            </div>
+          </div>
+          <!-- Chart + Recent users -->
+          <div class="grid grid-cols-2 gap-5 mb-5">
+            <div class="glass-pur rounded-2xl p-5">
+              <div class="sec-head">Suscripciones por plan</div>
+              <canvas id="tierChart" height="180"></canvas>
+            </div>
+            <div class="glass rounded-2xl p-5">
+              <div class="sec-head">Usuarios recientes</div>
+              <div class="space-y-3">
+                <template x-for="u in dash.recentUsers" :key="u.id">
+                  <div class="flex items-center gap-3">
+                    <img :src="avatar(u.profile_picture)" class="avatar" :alt="u.full_name" onerror="this.src='/admin/img/avatar.svg'"/>
+                    <div class="flex-1 min-w-0">
+                      <div style="font-size:13px;font-weight:600;color:#e2e8f0" x-text="u.full_name || 'Sin nombre'"></div>
+                      <div style="font-size:11px;color:var(--muted)" x-text="u.email"></div>
+                    </div>
+                    <span class="bdg" :class="tierBadge(u.subscription_tier)" x-text="u.subscription_tier"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+          </div>
+          <!-- Recent logs -->
+          <div class="tbl-wrap">
+            <div style="padding:14px 16px;border-bottom:1px solid var(--brd)">
+              <span class="sec-head">Últimas acciones de seguridad</span>
+            </div>
+            <table>
+              <thead><tr>
+                <th>Acción</th><th>Usuario</th><th>IP</th><th>Hace</th>
+              </tr></thead>
+              <tbody>
+                <template x-for="log in dash.recentLogs" :key="log.id ?? Math.random()">
+                  <tr>
+                    <td><span class="bdg" :class="actionBadge(log.action)" x-text="log.action"></span></td>
+                    <td style="color:#94a3b8;font-size:12px" x-text="log.users?.email ?? 'anónimo'"></td>
+                    <td style="color:var(--muted);font-size:11px;font-family:monospace" x-text="log.ip_address ?? '-'"></td>
+                    <td style="color:var(--muted);font-size:12px" x-text="fmtRel(log.created_at)"></td>
+                  </tr>
+                </template>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ═══ USUARIOS ═════════════════════════════════════════════════════════ -->
+    <div x-show="page==='users'" x-cloak class="content-area">
+      <!-- Filters -->
+      <div class="flex items-center gap-3 mb-5 flex-wrap">
+        <input x-model="usersFilter.search" @input.debounce.400ms="loadUsers()" placeholder="Buscar nombre o correo..." style="max-width:260px"/>
+        <select x-model="usersFilter.role"   @change="loadUsers()" style="max-width:140px">
+          <option value="">Todos los roles</option>
+          <option value="user">Usuario</option>
+          <option value="admin">Admin</option>
+          <option value="nutritionist">Nutricionista</option>
+        </select>
+        <select x-model="usersFilter.tier"   @change="loadUsers()" style="max-width:140px">
+          <option value="">Todos los planes</option>
+          <option value="free">Free</option>
+          <option value="basic">Basic</option>
+          <option value="premium">Premium</option>
+          <option value="corporate">Corporate</option>
+        </select>
+        <select x-model="usersFilter.status" @change="loadUsers()" style="max-width:140px">
+          <option value="">Todos</option>
+          <option value="active">Activos</option>
+          <option value="inactive">Inactivos</option>
+          <option value="locked">Bloqueados</option>
+        </select>
+      </div>
+      <!-- Table -->
+      <div class="tbl-wrap">
+        <template x-if="loading"><div style="padding:20px;color:var(--muted);font-size:13px">Cargando usuarios...</div></template>
+        <table x-show="!loading">
+          <thead><tr>
+            <th>Usuario</th><th>Rol</th><th>Plan</th><th>Estado</th><th>Verificado</th><th>Registro</th><th>Acciones</th>
+          </tr></thead>
+          <tbody>
+            <template x-for="u in users" :key="u.id">
+              <tr>
+                <td>
+                  <div class="flex items-center gap-3">
+                    <img :src="avatar(u.profile_picture)" class="avatar" :alt="u.full_name" onerror="this.src='/admin/img/avatar.svg'"/>
+                    <div>
+                      <div style="font-weight:600;color:#e2e8f0" x-text="u.full_name || 'Sin nombre'"></div>
+                      <div style="font-size:11px;color:var(--muted)" x-text="u.email"></div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="bdg" :class="roleBadge(u.role)" x-text="u.role"></span></td>
+                <td><span class="bdg" :class="tierBadge(u.subscription_tier)" x-text="u.subscription_tier"></span></td>
+                <td>
+                  <span class="bdg" :class="u.is_active ? 'bdg-green' : 'bdg-red'" x-text="u.is_active ? 'Activo' : 'Inactivo'"></span>
+                </td>
+                <td>
+                  <span :class="u.email_verified ? 'text-emerald-400' : 'text-red-400'" style="font-weight:700;font-size:16px" x-text="u.email_verified ? '✓' : '✗'"></span>
+                </td>
+                <td style="color:var(--muted);font-size:12px" x-text="fmt(u.created_at)"></td>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <button @click="openUserPanel(u)" class="btn btn-ghost btn-sm">Ver perfil</button>
+                    <button @click="toggleUser(u)" class="btn btn-sm" :class="u.is_active?'btn-danger':'btn-primary'" x-text="u.is_active?'Desactivar':'Activar'"></button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div class="tbl-footer">
+          <span style="font-size:12px;color:var(--muted)" x-text="`${pagination.total} usuarios`"></span>
+          <div class="flex items-center gap-2">
+            <button @click="prevPage('users')" :disabled="pagination.page<=1" class="btn btn-ghost btn-sm">← Ant.</button>
+            <span style="font-size:12px;color:#94a3b8" x-text="`${pagination.page} / ${pagination.totalPages}`"></span>
+            <button @click="nextPage('users')" :disabled="pagination.page>=pagination.totalPages" class="btn btn-ghost btn-sm">Sig. →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ RED SOCIAL ═══════════════════════════════════════════════════════ -->
+    <div x-show="page==='social'" x-cloak class="content-area">
+      <!-- Filters -->
+      <div class="flex items-center gap-3 mb-5">
+        <select x-model="socialFilter.type" @change="loadSocialPosts()" style="max-width:140px">
+          <option value="">Posts y stories</option>
+          <option value="post">Solo posts</option>
+          <option value="story">Solo stories</option>
+        </select>
+        <label class="flex items-center gap-2 cursor-pointer" style="font-size:13px;color:#94a3b8">
+          <input type="checkbox" x-model="socialFilter.flagged" @change="loadSocialPosts()" style="width:auto;accent-color:var(--pur)"/>
+          Solo reportados
+        </label>
+      </div>
+
+      <template x-if="loading">
+        <div style="color:var(--muted);padding:20px 0;font-size:13px">Cargando posts...</div>
+      </template>
+
+      <!-- Empty state -->
+      <template x-if="!loading && socialPosts.length === 0">
+        <div class="glass rounded-2xl p-12 text-center">
+          <div style="font-size:40px;margin-bottom:12px">📱</div>
+          <div style="font-size:15px;font-weight:700;color:#e2e8f0;margin-bottom:6px">No hay posts aún</div>
+          <div style="font-size:13px;color:var(--muted)">Los posts de los usuarios aparecerán aquí cuando empiecen a publicar.</div>
+        </div>
+      </template>
+
+      <!-- Posts grid -->
+      <template x-if="!loading && socialPosts.length > 0">
+        <div>
+          <div class="space-y-3">
+            <template x-for="post in socialPosts" :key="post.id">
+              <div class="post-card">
+                <!-- Media thumbnail -->
+                <div class="post-media">
+                  <template x-if="post.media_url">
+                    <img :src="post.media_url" :alt="post.caption ?? 'Post'" onerror="this.style.display='none'"/>
+                  </template>
+                  <template x-if="!post.media_url">
+                    <div class="post-no-media" style="height:100%">💬</div>
+                  </template>
+                </div>
+                <!-- Info -->
+                <div class="flex-1 min-w-0">
+                  <div class="flex items-start justify-between gap-3 mb-2">
+                    <div class="flex items-center gap-2">
+                      <img :src="avatar(post.users?.profile_picture)" class="avatar" style="width:28px;height:28px;border-radius:8px" onerror="this.src='/admin/img/avatar.svg'"/>
+                      <div>
+                        <div style="font-size:13px;font-weight:600;color:#e2e8f0" x-text="post.users?.full_name || 'N/A'"></div>
+                        <div style="font-size:11px;color:var(--muted)" x-text="post.users?.email"></div>
+                      </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                      <span class="bdg" :class="post.type==='story'?'bdg-amber':'bdg-blue'" x-text="post.type"></span>
+                      <template x-if="post.is_flagged">
+                        <span class="bdg bdg-red">Reportado</span>
+                      </template>
+                    </div>
+                  </div>
+                  <p x-text="post.caption || '—'" style="font-size:13px;color:#94a3b8;margin-bottom:10px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden"></p>
+                  <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-4" style="font-size:12px;color:var(--muted)">
+                      <span>❤ <span x-text="post.likes_count"></span></span>
+                      <span>💬 <span x-text="post.comments_count"></span></span>
+                      <span x-text="fmtRel(post.created_at)"></span>
+                    </div>
+                    <button @click="deleteSocialPost(post.id)" class="btn btn-danger btn-sm">Eliminar</button>
+                  </div>
+                </div>
+              </div>
+            </template>
+          </div>
+          <!-- Pagination -->
+          <div class="flex items-center justify-between mt-4">
+            <span style="font-size:12px;color:var(--muted)" x-text="`${pagination.total} posts`"></span>
+            <div class="flex items-center gap-2">
+              <button @click="prevPage('social')" :disabled="pagination.page<=1" class="btn btn-ghost btn-sm">← Ant.</button>
+              <span style="font-size:12px;color:#94a3b8" x-text="`${pagination.page} / ${pagination.totalPages}`"></span>
+              <button @click="nextPage('social')" :disabled="pagination.page>=pagination.totalPages" class="btn btn-ghost btn-sm">Sig. →</button>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ═══ CONTENIDO ════════════════════════════════════════════════════════ -->
+    <div x-show="page==='content'" x-cloak class="content-area">
+      <div class="flex items-center gap-3 mb-5">
+        <label class="flex items-center gap-2 cursor-pointer" style="font-size:13px;color:#94a3b8">
+          <input type="checkbox" x-model="contentFilter.hasAttachment" @change="loadContent()" style="width:auto;accent-color:var(--pur)"/>
+          Solo con fotos/archivos
+        </label>
+        <input x-model="contentFilter.search" @input.debounce.400ms="loadContent()" placeholder="Buscar en mensajes..." style="max-width:260px"/>
+      </div>
+      <div class="tbl-wrap">
+        <template x-if="loading"><div style="padding:20px;color:var(--muted);font-size:13px">Cargando mensajes...</div></template>
+        <table x-show="!loading">
+          <thead><tr>
+            <th>Usuario</th><th>Tipo</th><th>Mensaje</th><th>Adjuntos</th><th>Fecha</th><th>Acción</th>
+          </tr></thead>
+          <tbody>
+            <template x-for="m in messages" :key="m.id">
+              <tr>
+                <td>
+                  <div class="flex items-center gap-2">
+                    <img :src="avatar(m.chat_sessions?.users?.profile_picture)" class="avatar" style="width:28px;height:28px;border-radius:8px" onerror="this.src='/admin/img/avatar.svg'"/>
+                    <div>
+                      <div style="font-size:13px;font-weight:600;color:#e2e8f0" x-text="m.chat_sessions?.users?.full_name ?? 'N/A'"></div>
+                      <div style="font-size:11px;color:var(--muted)" x-text="m.chat_sessions?.users?.email ?? ''"></div>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="bdg bdg-blue" x-text="m.sender_type"></span></td>
+                <td style="max-width:280px">
+                  <div style="font-size:13px;color:#94a3b8;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" x-text="m.content"></div>
+                </td>
+                <td>
+                  <template x-if="m.attachments?.length > 0">
+                    <div class="flex gap-2">
+                      <template x-for="att in m.attachments.slice(0,2)" :key="att.url ?? att">
+                        <a :href="att.url ?? att" target="_blank" style="font-size:12px;color:#60a5fa" x-text="att.type==='image'?'📷 Foto':'📎 Archivo'"></a>
+                      </template>
+                    </div>
+                  </template>
+                  <template x-if="!m.attachments?.length">
+                    <span style="color:var(--muted)">—</span>
+                  </template>
+                </td>
+                <td style="font-size:12px;color:var(--muted)" x-text="fmt(m.created_at)"></td>
+                <td><button @click="deleteMsg(m.id)" class="btn btn-danger btn-sm">Eliminar</button></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div class="tbl-footer">
+          <span style="font-size:12px;color:var(--muted)" x-text="`${pagination.total} mensajes`"></span>
+          <div class="flex items-center gap-2">
+            <button @click="prevPage('content')" :disabled="pagination.page<=1" class="btn btn-ghost btn-sm">← Ant.</button>
+            <span style="font-size:12px;color:#94a3b8" x-text="`${pagination.page} / ${pagination.totalPages}`"></span>
+            <button @click="nextPage('content')" :disabled="pagination.page>=pagination.totalPages" class="btn btn-ghost btn-sm">Sig. →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ REGISTROS ════════════════════════════════════════════════════════ -->
+    <div x-show="page==='logs'" x-cloak class="content-area">
+      <div class="flex gap-3 mb-5">
+        <button @click="logsTab='audit';loadLogs()" class="btn" :class="logsTab==='audit'?'btn-primary':'btn-ghost'">Autenticación</button>
+        <button @click="logsTab='activity';loadActivity()" class="btn" :class="logsTab==='activity'?'btn-primary':'btn-ghost'">Actividad general</button>
+      </div>
+      <!-- Audit -->
+      <div x-show="logsTab==='audit'" class="tbl-wrap">
+        <template x-if="loading"><div style="padding:20px;color:var(--muted);font-size:13px">Cargando...</div></template>
+        <table x-show="!loading">
+          <thead><tr><th>Acción</th><th>Usuario</th><th>Rol</th><th>IP</th><th>Metadata</th><th>Fecha</th></tr></thead>
+          <tbody>
+            <template x-for="log in auditLogs" :key="log.id">
+              <tr>
+                <td><span class="bdg" :class="actionBadge(log.action)" x-text="log.action"></span></td>
+                <td>
+                  <div style="font-size:13px;color:#e2e8f0" x-text="log.users?.full_name ?? 'Anónimo'"></div>
+                  <div style="font-size:11px;color:var(--muted)" x-text="log.users?.email ?? ''"></div>
+                </td>
+                <td><span x-show="log.users?.role" class="bdg" :class="roleBadge(log.users?.role)" x-text="log.users?.role"></span></td>
+                <td style="font-family:monospace;font-size:11px;color:#94a3b8" x-text="log.ip_address ?? '-'"></td>
+                <td style="font-size:11px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis" x-text="JSON.stringify(log.metadata ?? {})"></td>
+                <td style="font-size:12px;color:var(--muted)" x-text="fmt(log.created_at)"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div class="tbl-footer">
+          <span style="font-size:12px;color:var(--muted)" x-text="`${pagination.total} registros`"></span>
+          <div class="flex items-center gap-2">
+            <button @click="prevPage('logs')" :disabled="pagination.page<=1" class="btn btn-ghost btn-sm">← Ant.</button>
+            <span style="font-size:12px;color:#94a3b8" x-text="`${pagination.page} / ${pagination.totalPages}`"></span>
+            <button @click="nextPage('logs')" :disabled="pagination.page>=pagination.totalPages" class="btn btn-ghost btn-sm">Sig. →</button>
+          </div>
+        </div>
+      </div>
+      <!-- Activity -->
+      <div x-show="logsTab==='activity'" class="tbl-wrap">
+        <template x-if="loading"><div style="padding:20px;color:var(--muted);font-size:13px">Cargando...</div></template>
+        <table x-show="!loading">
+          <thead><tr><th>Acción</th><th>Usuario</th><th>Recurso</th><th>IP</th><th>Fecha</th></tr></thead>
+          <tbody>
+            <template x-for="log in activityLogs" :key="log.id">
+              <tr>
+                <td style="font-size:12px;font-weight:600;color:#e2e8f0" x-text="log.action"></td>
+                <td>
+                  <div style="font-size:13px;color:#e2e8f0" x-text="log.users?.full_name ?? 'Anónimo'"></div>
+                  <div style="font-size:11px;color:var(--muted)" x-text="log.users?.email ?? ''"></div>
+                </td>
+                <td style="font-size:12px;color:var(--muted)" x-text="log.resource_type ?? '-'"></td>
+                <td style="font-family:monospace;font-size:11px;color:#94a3b8" x-text="log.ip_address ?? '-'"></td>
+                <td style="font-size:12px;color:var(--muted)" x-text="fmt(log.created_at)"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div class="tbl-footer">
+          <span style="font-size:12px;color:var(--muted)" x-text="`${pagination.total} registros`"></span>
+          <div class="flex items-center gap-2">
+            <button @click="prevPage('logs')" :disabled="pagination.page<=1" class="btn btn-ghost btn-sm">← Ant.</button>
+            <span style="font-size:12px;color:#94a3b8" x-text="`${pagination.page} / ${pagination.totalPages}`"></span>
+            <button @click="nextPage('logs')" :disabled="pagination.page>=pagination.totalPages" class="btn btn-ghost btn-sm">Sig. →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ SUSCRIPCIONES ════════════════════════════════════════════════════ -->
+    <div x-show="page==='subs'" x-cloak class="content-area">
+      <template x-if="revenue">
+        <div class="grid grid-cols-4 gap-4 mb-5">
+          <div class="stat-card">
+            <div class="stat-card-label">MRR</div>
+            <div class="stat-card-value" style="color:#34d399" x-text="`$${(revenue.mrr ?? 0).toLocaleString()}`"></div>
+            <div class="stat-card-sub">MXN / mes</div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Ingresos 30d</div>
+            <div class="stat-card-value" style="color:#60a5fa" x-text="`$${(revenue.newRevenue30d ?? 0).toLocaleString()}`"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Cancelados 30d</div>
+            <div class="stat-card-value" style="color:#f87171" x-text="revenue.cancelled30d ?? 0"></div>
+          </div>
+          <div class="stat-card">
+            <div class="stat-card-label">Por plan</div>
+            <div class="space-y-1 mt-2">
+              <template x-for="[tier,count] in Object.entries(revenue.byTier ?? {})" :key="tier">
+                <div class="flex justify-between items-center">
+                  <span class="bdg" :class="tierBadge(tier)" x-text="tier"></span>
+                  <span style="font-weight:700;font-size:14px;color:#e2e8f0" x-text="count"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+      <div class="flex items-center gap-3 mb-5">
+        <select x-model="subsFilter.status"   @change="loadSubs()" style="max-width:140px">
+          <option value="">Todos los estados</option>
+          <option value="active">Activo</option>
+          <option value="expired">Expirado</option>
+          <option value="cancelled">Cancelado</option>
+          <option value="pending">Pendiente</option>
+        </select>
+        <select x-model="subsFilter.tier"     @change="loadSubs()" style="max-width:140px">
+          <option value="">Todos los planes</option>
+          <option value="free">Free</option>
+          <option value="basic">Basic</option>
+          <option value="premium">Premium</option>
+          <option value="corporate">Corporate</option>
+        </select>
+        <select x-model="subsFilter.provider" @change="loadSubs()" style="max-width:160px">
+          <option value="">Todos los proveedores</option>
+          <option value="stripe">Stripe</option>
+          <option value="mercadopago">MercadoPago</option>
+          <option value="none">Sin proveedor</option>
+        </select>
+      </div>
+      <div class="tbl-wrap">
+        <template x-if="loading"><div style="padding:20px;color:var(--muted);font-size:13px">Cargando...</div></template>
+        <table x-show="!loading">
+          <thead><tr><th>Usuario</th><th>Plan</th><th>Estado</th><th>Proveedor</th><th>Payment ID</th><th>Inicio</th><th>Fin</th></tr></thead>
+          <tbody>
+            <template x-for="s in subscriptions" :key="s.id">
+              <tr>
+                <td>
+                  <div style="font-weight:600;color:#e2e8f0" x-text="s.users?.full_name ?? 'N/A'"></div>
+                  <div style="font-size:11px;color:var(--muted)" x-text="s.users?.email ?? ''"></div>
+                </td>
+                <td><span class="bdg" :class="tierBadge(s.tier)" x-text="s.tier"></span></td>
+                <td><span class="bdg" :class="statusBadge(s.status)" x-text="s.status"></span></td>
+                <td style="font-size:12px;color:#94a3b8" x-text="s.payment_provider"></td>
+                <td style="font-family:monospace;font-size:11px;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis" x-text="s.payment_id ?? '-'"></td>
+                <td style="font-size:12px;color:var(--muted)" x-text="fmtDate(s.start_date)"></td>
+                <td style="font-size:12px;color:var(--muted)" x-text="fmtDate(s.end_date)"></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div class="tbl-footer">
+          <span style="font-size:12px;color:var(--muted)" x-text="`${pagination.total} suscripciones`"></span>
+          <div class="flex items-center gap-2">
+            <button @click="prevPage('subs')" :disabled="pagination.page<=1" class="btn btn-ghost btn-sm">← Ant.</button>
+            <span style="font-size:12px;color:#94a3b8" x-text="`${pagination.page} / ${pagination.totalPages}`"></span>
+            <button @click="nextPage('subs')" :disabled="pagination.page>=pagination.totalPages" class="btn btn-ghost btn-sm">Sig. →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ PLANES ═══════════════════════════════════════════════════════════ -->
+    <div x-show="page==='plans'" x-cloak class="content-area">
+      <div class="tbl-wrap">
+        <div style="padding:14px 16px;border-bottom:1px solid var(--brd)">
+          <span class="sec-head">Planes de dieta generados</span>
+        </div>
+        <template x-if="loading"><div style="padding:20px;color:var(--muted);font-size:13px">Cargando...</div></template>
+        <table x-show="!loading">
+          <thead><tr><th>Nombre</th><th>Usuario</th><th>Calorías</th><th>Generado por</th><th>Validado</th><th>Estado</th><th>Fecha</th><th>Acción</th></tr></thead>
+          <tbody>
+            <template x-for="p in dietPlans" :key="p.id">
+              <tr>
+                <td style="font-weight:600;color:#e2e8f0" x-text="p.name"></td>
+                <td>
+                  <div style="font-size:13px;color:#e2e8f0" x-text="p.users?.full_name ?? 'N/A'"></div>
+                  <div style="font-size:11px;color:var(--muted)" x-text="p.users?.email ?? ''"></div>
+                </td>
+                <td style="color:#94a3b8" x-text="`${p.total_calories} kcal`"></td>
+                <td><span class="bdg bdg-purple" x-text="p.generated_by"></span></td>
+                <td>
+                  <span :class="p.validated_by ? 'text-emerald-400' : 'text-amber-400'" style="font-weight:700;font-size:12px" x-text="p.validated_by ? '✓ Sí' : '✗ No'"></span>
+                </td>
+                <td><span class="bdg" :class="p.is_active?'bdg-green':'bdg-slate'" x-text="p.is_active?'Activo':'Inactivo'"></span></td>
+                <td style="font-size:12px;color:var(--muted)" x-text="fmtDate(p.created_at)"></td>
+                <td><button @click="deletePlan(p.id)" class="btn btn-danger btn-sm">Eliminar</button></td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div class="tbl-footer">
+          <span style="font-size:12px;color:var(--muted)" x-text="`${pagination.total} planes`"></span>
+          <div class="flex items-center gap-2">
+            <button @click="prevPage('plans')" :disabled="pagination.page<=1" class="btn btn-ghost btn-sm">← Ant.</button>
+            <span style="font-size:12px;color:#94a3b8" x-text="`${pagination.page} / ${pagination.totalPages}`"></span>
+            <button @click="nextPage('plans')" :disabled="pagination.page>=pagination.totalPages" class="btn btn-ghost btn-sm">Sig. →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- ═══════════════════════════════════ USER PROFILE PANEL (slide-over) ════ -->
+<div class="panel-wrap" :class="userPanel && !userPanel.loading ? 'open' : ''">
+  <div class="panel-backdrop" @click="userPanel=null"></div>
+  <div class="panel">
+    <template x-if="userPanel && !userPanel.loading">
+      <div style="display:flex;flex-direction:column;min-height:100%">
+
+        <!-- Header: photo + name + stats -->
+        <div class="panel-header">
+          <div class="panel-profile-row">
+            <img :src="avatar(userPanel.user?.profile_picture)" class="avatar-lg" :alt="userPanel.user?.full_name" onerror="this.src='/admin/img/avatar.svg'"/>
+            <div class="panel-profile-info flex-1 min-w-0">
+              <h2 x-text="userPanel.user?.full_name || 'Sin nombre'"></h2>
+              <p x-text="userPanel.user?.email"></p>
+              <div class="flex items-center gap-2 flex-wrap">
+                <span class="bdg" :class="roleBadge(userPanel.user?.role)" x-text="userPanel.user?.role"></span>
+                <span class="bdg" :class="tierBadge(userPanel.user?.subscription_tier)" x-text="userPanel.user?.subscription_tier"></span>
+                <span class="bdg" :class="userPanel.user?.is_active ? 'bdg-green' : 'bdg-red'" x-text="userPanel.user?.is_active ? 'Activo' : 'Inactivo'"></span>
+              </div>
+            </div>
+            <button @click="userPanel=null" style="color:var(--muted);font-size:20px;cursor:pointer;padding:4px;background:none;border:none;line-height:1" class="hover:text-white">✕</button>
+          </div>
+          <!-- Social stats -->
+          <div class="panel-stats-row">
+            <div class="panel-stat">
+              <span class="panel-stat-num" x-text="userPanel.socialStats?.followers ?? 0"></span>
+              <span class="panel-stat-lbl">Seguidores</span>
+            </div>
+            <div class="panel-stat">
+              <span class="panel-stat-num" x-text="userPanel.socialStats?.following ?? 0"></span>
+              <span class="panel-stat-lbl">Siguiendo</span>
+            </div>
+            <div class="panel-stat">
+              <span class="panel-stat-num" x-text="userPanel.socialStats?.postsTotal ?? 0"></span>
+              <span class="panel-stat-lbl">Posts</span>
+            </div>
+            <div class="panel-stat">
+              <span class="panel-stat-num" x-text="userPanel.chatCount ?? 0"></span>
+              <span class="panel-stat-lbl">Chats</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- Tabs -->
+        <div class="panel-tabs">
+          <button class="panel-tab" :class="userPanelTab==='info'?'active':''"    @click="userPanelTab='info'">Información</button>
+          <button class="panel-tab" :class="userPanelTab==='posts'?'active':''"   @click="userPanelTab='posts'">Posts</button>
+          <button class="panel-tab" :class="userPanelTab==='logs'?'active':''"    @click="userPanelTab='logs'">Actividad</button>
+          <button class="panel-tab" :class="userPanelTab==='control'?'active':''" @click="userPanelTab='control'">Control</button>
+        </div>
+
+        <!-- Tab bodies -->
+        <div class="panel-body">
+
+          <!-- INFO TAB -->
+          <div x-show="userPanelTab==='info'">
+            <div class="info-grid">
+              <div class="info-cell">
+                <div class="info-cell-label">ID</div>
+                <div class="info-cell-value" style="font-family:monospace;font-size:11px" x-text="userPanel.user?.id?.slice(0,18)+'...'"></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Rol</div>
+                <div class="info-cell-value"><span class="bdg" :class="roleBadge(userPanel.user?.role)" x-text="userPanel.user?.role"></span></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Plan</div>
+                <div class="info-cell-value"><span class="bdg" :class="tierBadge(userPanel.user?.subscription_tier)" x-text="userPanel.user?.subscription_tier"></span></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Verificado</div>
+                <div class="info-cell-value" :style="userPanel.user?.email_verified ? 'color:#34d399' : 'color:#f87171'" x-text="userPanel.user?.email_verified ? 'Sí' : 'No'"></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Último login</div>
+                <div class="info-cell-value" x-text="fmt(userPanel.user?.last_login)"></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Registro</div>
+                <div class="info-cell-value" x-text="fmtDate(userPanel.user?.created_at)"></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Intentos fallidos</div>
+                <div class="info-cell-value" :style="(userPanel.user?.failed_login_attempts ?? 0) > 0 ? 'color:#fbbf24' : ''" x-text="userPanel.user?.failed_login_attempts ?? 0"></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Perfil completado</div>
+                <div class="info-cell-value" :style="userPanel.user?.profile_completed ? 'color:#34d399' : 'color:#f87171'" x-text="userPanel.user?.profile_completed ? 'Sí' : 'No'"></div>
+              </div>
+            </div>
+            <!-- Bio -->
+            <template x-if="userPanel.user?.bio">
+              <div style="margin-top:16px">
+                <div class="sec-head">Biografía</div>
+                <div style="background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:12px;font-size:13px;color:#94a3b8;line-height:1.6" x-text="userPanel.user?.bio"></div>
+              </div>
+            </template>
+            <!-- Diet plans -->
+            <template x-if="userPanel.dietPlans?.length > 0">
+              <div style="margin-top:16px">
+                <div class="sec-head">Planes de dieta recientes</div>
+                <div class="space-y-2">
+                  <template x-for="p in userPanel.dietPlans" :key="p.id">
+                    <div style="background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
+                      <div>
+                        <div style="font-size:13px;font-weight:600;color:#e2e8f0" x-text="p.name"></div>
+                        <div style="font-size:11px;color:var(--muted)" x-text="`${p.total_calories} kcal · ${fmtDate(p.created_at)}`"></div>
+                      </div>
+                      <span class="bdg" :class="p.is_active?'bdg-green':'bdg-slate'" x-text="p.is_active?'Activo':'—'"></span>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- POSTS TAB -->
+          <div x-show="userPanelTab==='posts'">
+            <template x-if="userPanel.socialStats?.recentPosts?.length === 0">
+              <div style="text-align:center;padding:40px 20px;color:var(--muted)">
+                <div style="font-size:32px;margin-bottom:8px">📸</div>
+                <div style="font-size:13px">Este usuario aún no ha publicado nada.</div>
+              </div>
+            </template>
+            <template x-if="userPanel.socialStats?.recentPosts?.length > 0">
+              <div>
+                <div class="sec-head" x-text="`${userPanel.socialStats?.postsTotal ?? 0} publicaciones totales`"></div>
+                <div class="post-grid">
+                  <template x-for="post in userPanel.socialStats?.recentPosts" :key="post.id">
+                    <div class="post-thumb">
+                      <template x-if="post.media_url">
+                        <img :src="post.media_url" :alt="post.caption ?? 'Post'" onerror="this.style.display='none'"/>
+                      </template>
+                      <template x-if="!post.media_url">
+                        <div style="height:100%;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:28px">💬</div>
+                      </template>
+                      <div class="post-thumb-overlay">
+                        <span>❤ <span x-text="post.likes_count"></span></span>
+                        <span>💬 <span x-text="post.comments_count"></span></span>
+                      </div>
+                    </div>
+                  </template>
+                </div>
+              </div>
+            </template>
+          </div>
+
+          <!-- ACTIVITY TAB -->
+          <div x-show="userPanelTab==='logs'">
+            <div class="sec-head">Últimas acciones</div>
+            <template x-if="!userPanel.auditLogs?.length">
+              <div style="color:var(--muted);font-size:13px;padding:20px 0">Sin registros de actividad.</div>
+            </template>
+            <div>
+              <template x-for="log in userPanel.auditLogs?.slice(0,15)" :key="log.id">
+                <div class="log-row">
+                  <span class="bdg" :class="actionBadge(log.action)" x-text="log.action"></span>
+                  <span style="font-size:12px;color:var(--muted)" x-text="fmtRel(log.created_at)"></span>
+                </div>
+              </template>
+            </div>
+          </div>
+
+          <!-- CONTROL TAB -->
+          <div x-show="userPanelTab==='control'">
+            <!-- Change role -->
+            <div style="margin-bottom:20px">
+              <div class="sec-head">Cambiar rol</div>
+              <div class="flex gap-2">
+                <select x-model="newRole" style="flex:1">
+                  <option value="user">usuario</option>
+                  <option value="admin">administrador</option>
+                  <option value="nutritionist">nutricionista</option>
+                </select>
+                <button @click="changeRole(userPanel.user.id)" class="btn btn-primary">Confirmar</button>
+              </div>
+            </div>
+            <!-- Danger zone -->
+            <div style="background:rgba(239,68,68,.06);border:1px solid rgba(239,68,68,.15);border-radius:12px;padding:16px">
+              <div style="font-size:12px;font-weight:700;color:#f87171;text-transform:uppercase;letter-spacing:.06em;margin-bottom:14px">Zona de control</div>
+              <div class="flex flex-col gap-2">
+                <button @click="toggleUser(userPanel.user);userPanel=null" class="btn" :class="userPanel.user.is_active ? 'btn-danger' : 'btn-primary'" x-text="userPanel.user.is_active ? 'Desactivar cuenta' : 'Activar cuenta'"></button>
+                <button @click="unlockUserAction(userPanel.user.id)" class="btn btn-ghost">Desbloquear cuenta</button>
+                <button @click="confirmDelete(userPanel.user)" class="btn btn-danger">Eliminar permanentemente</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Footer spacer -->
+        <div style="height:24px;flex-shrink:0"></div>
+      </div>
+    </template>
+
+    <!-- Loading state inside panel -->
+    <template x-if="userPanel?.loading">
+      <div style="display:flex;align-items:center;justify-content:center;height:100%;color:var(--muted);font-size:13px;flex-direction:column;gap:12px">
+        <div style="width:32px;height:32px;border:2px solid var(--pur-brd);border-top-color:var(--pur);border-radius:50%;animation:spin .7s linear infinite"></div>
+        Cargando perfil...
+      </div>
+    </template>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════ CONFIRM DELETE MODAL ══ -->
+<div x-show="deleteConfirm" x-cloak class="modal-bg" @click.self="deleteConfirm=null">
+  <div class="modal" x-show="deleteConfirm">
+    <div style="text-align:center">
+      <div style="font-size:44px;margin-bottom:16px">⚠️</div>
+      <h2 style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:8px">¿Eliminar usuario?</h2>
+      <p style="font-size:13px;color:#94a3b8;margin-bottom:6px">Esta acción es <strong style="color:#f87171">permanente</strong> e irreversible.</p>
+      <p style="font-size:14px;font-weight:600;color:#e2e8f0;margin-bottom:24px" x-text="deleteConfirm?.email"></p>
+      <div class="flex gap-3">
+        <button @click="deleteConfirm=null" class="btn btn-ghost flex-1">Cancelar</button>
+        <button @click="executeDelete()" class="btn btn-danger flex-1">Sí, eliminar</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ TOAST ═══════ -->
+<div x-show="toast" x-cloak>
+  <div class="toast" :class="toastType==='success'?'toast-success':'toast-error'" x-text="toast"></div>
+</div>
+
+<!-- Spinner keyframes -->
+<style>@keyframes spin{to{transform:rotate(360deg)}}</style>
+
+</body>
+</html>
