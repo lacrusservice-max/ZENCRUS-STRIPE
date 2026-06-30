@@ -108,6 +108,10 @@ export function suspiciousActivityLogger(
 
 // ── Forzar HTTPS en producción ────────────────────────────────────────────────
 export function enforceHTTPS(req: Request, res: Response, next: NextFunction): void {
+  if (req.path === '/api/health') {
+    next()
+    return
+  }
   if (env.NODE_ENV === 'production' && req.headers['x-forwarded-proto'] !== 'https') {
     res.redirect(301, `https://${req.hostname}${req.originalUrl}`)
     return
