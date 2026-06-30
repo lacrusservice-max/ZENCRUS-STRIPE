@@ -90,7 +90,7 @@ export async function findOneBy<T>(
 export async function insertRow<T>(table: string, row: Partial<T>): Promise<T> {
   const { data, error } = await supabase
     .from(table)
-    .insert(row)
+    .insert(row as never)
     .select()
     .single()
 
