@@ -12,15 +12,12 @@ const logger = winston.createLogger({
   ),
   defaultMeta: { service: 'nutriai-fit-api' },
   transports: [
-    new winston.transports.File({ filename: 'logs/error.log', level: 'error' }),
-    new winston.transports.File({ filename: 'logs/combined.log' }),
+    new winston.transports.Console({
+      format: env.NODE_ENV === 'production'
+        ? combine(errors({ stack: true }), timestamp(), json())
+        : combine(colorize(), simple()),
+    }),
   ],
 })
-
-if (env.NODE_ENV !== 'production') {
-  logger.add(new winston.transports.Console({
-    format: combine(colorize(), simple()),
-  }))
-}
 
 export { logger }
