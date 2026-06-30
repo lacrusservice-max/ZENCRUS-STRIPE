@@ -79,7 +79,10 @@ app.use(errorHandler)
 async function startServer(): Promise<void> {
   try {
     initializeFirebase()
-    await testConnection()
+    await Promise.race([
+      testConnection(),
+      new Promise((resolve) => setTimeout(resolve, 5000)),
+    ])
 
     const server = app.listen(env.PORT, () => {
       logger.info(`🚀 NutriAI Fit API corriendo en puerto ${env.PORT}`)
