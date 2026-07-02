@@ -15,7 +15,7 @@ function getLanIp() {
 const LAN_IP = getLanIp()
 
 // URL de producción en Railway — siempre disponible desde cualquier red
-const RAILWAY_URL = 'https://zencrus-backend-production.up.railway.app/api'
+const RAILWAY_URL = 'https://web-production-1d2e22.up.railway.app/api'
 
 /** @type {import('@expo/config').ConfigContext} */
 module.exports = ({ config }) => ({

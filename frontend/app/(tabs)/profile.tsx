@@ -9,7 +9,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '@/store/authStore'
-import { usePremiumStore, PRICING } from '@/store/premiumStore'
+import { usePremiumStore } from '@/store/premiumStore'
 import { useAchievementStore } from '@/store/achievementStore'
 import { useRecipesStore } from '@/store/recipesStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
@@ -523,13 +523,14 @@ export default function ProfileScreen() {
 
             {/* Premium section */}
             {isPremium() ? (
-              <View style={pm.activeBadge}>
-                <Text style={pm.activeEmoji}>⭐</Text>
+              <TouchableOpacity style={pm.activeBadge} onPress={() => router.push('/subscription')} activeOpacity={0.8}>
+                <Ionicons name="checkmark-circle" size={28} color={Colors.accent.green} />
                 <View style={{ flex: 1 }}>
-                  <Text style={pm.activeTitle}>ZENCRUS Premium</Text>
-                  <Text style={pm.activeSub}>Plan {plan === 'yearly' ? 'anual' : 'mensual'} · Todas las funciones activas</Text>
+                  <Text style={pm.activeTitle}>ZENCRUS Premium activo</Text>
+                  <Text style={pm.activeSub}>Toca para gestionar tu suscripción</Text>
                 </View>
-              </View>
+                <Ionicons name="chevron-forward" size={18} color={Colors.dark.textTertiary} />
+              </TouchableOpacity>
             ) : (
               <View style={pm.wrap}>
                 <Text style={pm.upgradeTitle}>Desbloquea ZENCRUS Premium</Text>
@@ -553,51 +554,14 @@ export default function ProfileScreen() {
                   </View>
                 </View>
 
-                {/* Plan cards */}
-                <View style={pm.planRow}>
-                  <TouchableOpacity
-                    style={[pm.planCard, pm.planCardBest]}
-                    onPress={() => Alert.alert('Premium Anual', `$${PRICING.yearly.price} MXN/año\n${PRICING.yearly.savings}\n\nPróximamente: pago con MercadoPago`)}
-                  >
-                    <View style={pm.bestBadge}><Text style={pm.bestBadgeTxt}>MEJOR VALOR</Text></View>
-                    <Text style={pm.planPrice}>${PRICING.yearly.price}</Text>
-                    <Text style={pm.planCurrency}>MXN / año</Text>
-                    <Text style={pm.planSavings}>{PRICING.yearly.savings}</Text>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={pm.planCard}
-                    onPress={() => Alert.alert('Premium Mensual', `$${PRICING.monthly.price} MXN/mes\n\nPróximamente: pago con MercadoPago`)}
-                  >
-                    <Text style={pm.planPrice}>${PRICING.monthly.price}</Text>
-                    <Text style={pm.planCurrency}>MXN / mes</Text>
-                    <Text style={[pm.planSavings, { color: 'rgba(255,255,255,0.38)' }]}>Cancela cuando quieras</Text>
-                  </TouchableOpacity>
-                </View>
-
                 <TouchableOpacity
                   style={pm.upgradeBtn}
-                  onPress={() => Alert.alert('Próximamente', 'Los pagos con MercadoPago se activarán muy pronto. ¡Gracias por tu interés!')}
+                  onPress={() => router.push('/subscription')}
                 >
-                  <Text style={pm.upgradeBtnTxt}>⭐ Actualizar a Premium</Text>
+                  <Ionicons name="flash" size={16} color="#fff" />
+                  <Text style={pm.upgradeBtnTxt}>Ver planes y suscribirme</Text>
                 </TouchableOpacity>
 
-                {/* Feature comparison */}
-                <View style={pm.featureList}>
-                  {[
-                    { label: 'Coach IA', free: '5 msgs/día', premium: 'Ilimitado' },
-                    { label: 'Escáner', free: '5 scans/día', premium: 'Ilimitado' },
-                    { label: 'Desafíos', free: '4 básicos', premium: 'Todos (8+)' },
-                    { label: 'Fotos progreso', free: '3 fotos', premium: 'Ilimitado' },
-                    { label: 'Reportes', free: 'Básico', premium: 'PDF + historial' },
-                  ].map(f => (
-                    <View key={f.label} style={pm.featureRow}>
-                      <Text style={pm.featureLabel}>{f.label}</Text>
-                      <Text style={pm.featureFree}>{f.free}</Text>
-                      <Text style={pm.featurePremium}>⭐ {f.premium}</Text>
-                    </View>
-                  ))}
-                </View>
               </View>
             )}
 
