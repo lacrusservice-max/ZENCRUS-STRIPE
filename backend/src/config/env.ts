@@ -47,7 +47,7 @@ const envSchema = z.object({
   ENCRYPTION_KEY: z.string().length(64),
   SALT_ROUNDS: z.coerce.number().default(12),
 
-  FRONTEND_URL: z.string().url().default('http://localhost:3000'),
+  FRONTEND_URL: z.string().default('http://localhost:3000'),
   BACKEND_URL: z.string().url().default('http://localhost:5000'),
   ALLOWED_ORIGINS: z.string().default('http://localhost:3000,http://localhost:8081'),
 
