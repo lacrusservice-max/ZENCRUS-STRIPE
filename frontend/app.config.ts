@@ -1,14 +1,10 @@
 import { ExpoConfig, ConfigContext } from 'expo/config'
 
-// API URL priority:
-// 1. EXPO_PUBLIC_API_URL (set at start time for tunnel/remote dev)
-// 2. Local LAN (auto-detected Mac IP for home dev)
-// 3. Production URL (when deployed)
+const RAILWAY_URL = 'https://web-production-1d2e22.up.railway.app/api'
+
 const getApiUrl = () => {
   if (process.env.EXPO_PUBLIC_API_URL) return process.env.EXPO_PUBLIC_API_URL
-  if (process.env.APP_ENV === 'production') return 'https://zencrus-api.railway.app/api'
-  if (process.env.APP_ENV === 'preview') return 'https://zencrus-api-staging.railway.app/api'
-  return `http://192.168.100.19:5000/api`
+  return RAILWAY_URL
 }
 
 export default ({ config }: ConfigContext): ExpoConfig => ({

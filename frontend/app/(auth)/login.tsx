@@ -42,7 +42,8 @@ export default function LoginScreen() {
       await login(email.trim().toLowerCase(), password)
       router.replace('/(tabs)')
     } catch (err: any) {
-      const msg = err?.response?.data?.message || 'Error al iniciar sesión'
+      console.error('[LOGIN_ERROR]', JSON.stringify({ status: err?.response?.status, data: err?.response?.data, msg: err?.message, isCircuit: err?.isCircuitOpen, isOffline: err?.isOffline }))
+      const msg = err?.response?.data?.message || err?.message || 'Error al iniciar sesión'
       if (err?.response?.data?.data?.requiresVerification) {
         Alert.alert('Verifica tu correo', msg, [
           { text: 'Verificar ahora', onPress: () => router.push({ pathname: '/(auth)/verify-email', params: { email: email.trim() } }) },
