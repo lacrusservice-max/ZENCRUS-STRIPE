@@ -132,8 +132,10 @@ api.interceptors.response.use(
       circuitBreaker.onFailure()
     }
 
-    // Auto-refresh en 401
-    if (status === 401 && !originalRequest._retry) {
+    // Auto-refresh en 401 (nunca en endpoints de auth)
+    const url = originalRequest.url ?? ''
+    const isAuthEndpoint = url.includes('/auth/login') || url.includes('/auth/register') || url.includes('/auth/refresh')
+    if (status === 401 && !originalRequest._retry && !isAuthEndpoint) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject })
