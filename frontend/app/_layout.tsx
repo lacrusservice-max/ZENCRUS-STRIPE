@@ -4,6 +4,8 @@ import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
+import { StripeProvider } from '@stripe/stripe-react-native'
+import Constants from 'expo-constants'
 import { useAuthStore } from '@/store/authStore'
 import { useChallengeStore } from '@/store/challengeStore'
 import { usePremiumStore } from '@/store/premiumStore'
@@ -18,6 +20,8 @@ import { useMenstrualStore } from '@/store/menstrualStore'
 import { useMacroCyclingStore } from '@/store/macroCyclingStore'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { NetworkBanner } from '@/components/NetworkBanner'
+
+const STRIPE_PK = Constants.expoConfig?.extra?.stripePublishableKey as string ?? ''
 
 export default function RootLayout() {
   const initialize = useAuthStore(s => s.initialize)
@@ -50,6 +54,7 @@ export default function RootLayout() {
 
   return (
     <ErrorBoundary>
+      <StripeProvider publishableKey={STRIPE_PK} merchantIdentifier="merchant.com.lacruss.zencrus">
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
           <View style={{ flex: 1 }}>
@@ -65,6 +70,7 @@ export default function RootLayout() {
           </View>
         </SafeAreaProvider>
       </GestureHandlerRootView>
+      </StripeProvider>
     </ErrorBoundary>
   )
 }

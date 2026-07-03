@@ -8,7 +8,7 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '@/store/authStore'
 import { usePremiumStore } from '@/store/premiumStore'
-import { startStripeCheckout, cancelSubscription, STRIPE_PLANS, CheckoutTier } from '@/services/stripeService'
+import { startStripePaymentSheet, cancelSubscription, STRIPE_PLANS, CheckoutTier } from '@/services/stripeService'
 import { Colors, Typography, Spacing, BorderRadius, Glass } from '@/constants/theme'
 
 const FEATURES = [
@@ -38,7 +38,9 @@ export default function SubscriptionScreen() {
 
     setLoading(true)
     try {
-      await startStripeCheckout(selected)
+      await startStripePaymentSheet(selected)
+      // Si llega aquí sin error, el pago fue exitoso
+      router.replace('/checkout/success')
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? err?.message ?? 'No se pudo iniciar el pago. Intenta de nuevo.'
       Alert.alert('Error', msg)

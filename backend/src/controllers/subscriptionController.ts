@@ -77,33 +77,67 @@ export async function createCheckoutSession(req: Request, res: Response): Promis
       return
     }
 
-    const lineItems: Stripe.Checkout.SessionCreateParams.LineItem[] = [
-      { price: plan.priceId, quantity: 1 },
-    ]
-    if (extraMembers > 0 && EXTRA_MEMBER_PRICE_ID) {
-      lineItems.push({ price: EXTRA_MEMBER_PRICE_ID, quantity: extraMembers })
-    }
-
     try {
-      const session = await stripe.checkout.sessions.create({
-        mode: 'subscription',
-        customer_email: userEmail,
-        line_items: lineItems,
-        success_url: `${env.FRONTEND_URL}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${env.FRONTEND_URL}/checkout/cancelled`,
+      // Obtener o crear Customer de Stripe para este usuario
+      const { data: sub } = await supabase
+        .from('subscriptions')
+        .select('stripe_customer_id')
+        .eq('user_id', userId)
+        .not('stripe_customer_id', 'is', null)
+        .limit(1)
+        .maybeSingle()
+
+      let customerId = sub?.stripe_customer_id as string | undefined
+
+      if (!customerId) {
+        const customer = await stripe.customers.create({
+          email: userEmail,
+          metadata: { userId },
+        })
+        customerId = customer.id
+      }
+
+      // Ephemeral key para el Payment Sheet nativo
+      const ephemeralKey = await stripe.ephemeralKeys.create(
+        { customer: customerId },
+        { apiVersion: '2024-06-20' }
+      )
+
+      // Construir items de suscripción
+      const items: Stripe.SubscriptionCreateParams.Item[] = [{ price: plan.priceId }]
+      if (extraMembers > 0 && EXTRA_MEMBER_PRICE_ID) {
+        items.push({ price: EXTRA_MEMBER_PRICE_ID, quantity: extraMembers })
+      }
+
+      // Crear suscripción con pago pendiente para obtener el PaymentIntent
+      const subscription = await stripe.subscriptions.create({
+        customer: customerId,
+        items,
+        payment_behavior: 'default_incomplete',
+        payment_settings: { save_default_payment_method: 'on_subscription' },
+        expand: ['latest_invoice.payment_intent'],
         metadata: { userId, tier, extraMembers: String(extraMembers) },
-        subscription_data: {
-          metadata: { userId, tier, extraMembers: String(extraMembers) },
-        },
       })
 
-      logger.info(`Checkout Stripe creado: ${userId} → ${tier}`)
+      const invoice = subscription.latest_invoice as Stripe.Invoice & { payment_intent: Stripe.PaymentIntent }
+      const paymentIntent = invoice.payment_intent
+
+      logger.info(`PaymentSheet Stripe creado: ${userId} → ${tier}`)
       res.status(200).json({
         success: true,
-        data: { provider: 'stripe', checkoutUrl: session.url, tier, price: plan.price, currency: 'MXN' },
+        data: {
+          provider: 'stripe',
+          paymentIntent: paymentIntent.client_secret,
+          ephemeralKey: ephemeralKey.secret,
+          customerId,
+          subscriptionId: subscription.id,
+          tier,
+          price: plan.price,
+          currency: 'MXN',
+        },
       } satisfies ApiResponse)
     } catch (error) {
-      logger.error('Error creando sesión de Stripe Checkout', error)
+      logger.error('Error creando PaymentSheet de Stripe', error)
       res.status(502).json({ success: false, message: 'No se pudo iniciar el pago' } satisfies ApiResponse)
     }
     return
@@ -141,19 +175,20 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
   }
 
   switch (event.type) {
-    case 'checkout.session.completed': {
-      const session = event.data.object as Stripe.Checkout.Session
-      const userId = session.metadata?.userId
-      const tier = session.metadata?.tier as SubscriptionTier | undefined
-      const extraMembers = Number(session.metadata?.extraMembers ?? 0)
+    case 'customer.subscription.updated': {
+      const subscription = event.data.object as Stripe.Subscription
+      if (subscription.status !== 'active') break
+
+      const userId = subscription.metadata?.userId
+      const tier = subscription.metadata?.tier as SubscriptionTier | undefined
+      const extraMembers = Number(subscription.metadata?.extraMembers ?? 0)
 
       if (!userId || !tier) {
-        logger.error('checkout.session.completed sin metadata.userId/tier', session.id)
+        logger.error('customer.subscription.updated sin metadata.userId/tier', subscription.id)
         break
       }
 
-      const subscriptionId = typeof session.subscription === 'string' ? session.subscription : session.subscription?.id
-      const customerId = typeof session.customer === 'string' ? session.customer : session.customer?.id
+      const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id
       const plan = SUBSCRIPTION_PLANS[tier as Exclude<SubscriptionTier, 'free'>]
 
       const now = new Date()
@@ -161,23 +196,35 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
       if (plan?.recurring === 'year') endDate.setFullYear(endDate.getFullYear() + 1)
       else endDate.setMonth(endDate.getMonth() + 1)
 
-      await supabase.from('subscriptions').insert({
-        user_id: userId,
-        tier,
-        status: 'active',
-        payment_provider: 'stripe',
-        stripe_customer_id: customerId,
-        stripe_subscription_id: subscriptionId,
-        stripe_price_id: plan?.priceId,
-        extra_members: extraMembers,
-        start_date: now.toISOString(),
-        end_date: endDate.toISOString(),
-        auto_renew: true,
-      })
+      // Upsert: actualizar si ya existe, insertar si no
+      const { data: existing } = await supabase
+        .from('subscriptions')
+        .select('id')
+        .eq('stripe_subscription_id', subscription.id)
+        .maybeSingle()
+
+      if (existing) {
+        await supabase.from('subscriptions')
+          .update({ status: 'active', stripe_customer_id: customerId, end_date: endDate.toISOString() })
+          .eq('stripe_subscription_id', subscription.id)
+      } else {
+        await supabase.from('subscriptions').insert({
+          user_id: userId,
+          tier,
+          status: 'active',
+          payment_provider: 'stripe',
+          stripe_customer_id: customerId,
+          stripe_subscription_id: subscription.id,
+          stripe_price_id: plan?.priceId,
+          extra_members: extraMembers,
+          start_date: now.toISOString(),
+          end_date: endDate.toISOString(),
+          auto_renew: true,
+        })
+      }
 
       await supabase.from('users').update({ subscription_tier: tier }).eq('id', userId)
-
-      logger.info(`Suscripción activada vía Stripe: ${userId} → ${tier}`)
+      logger.info(`Suscripción activada/actualizada vía Stripe: ${userId} → ${tier}`)
       break
     }
     case 'customer.subscription.deleted': {
