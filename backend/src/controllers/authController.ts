@@ -140,11 +140,12 @@ export async function register(req: Request, res: Response): Promise<void> {
   }
   if (username) insertData.username = username.toLowerCase()
   if (profileData) {
-    insertData.onboarding_data = profileData
-    if (profileData.peso) insertData.weight = profileData.peso
-    if (profileData.talla) insertData.height = profileData.talla
-    if (profileData.sexo) insertData.gender = profileData.sexo
+    if (profileData.peso)           insertData.weight = profileData.peso
+    if (profileData.talla)          insertData.height = profileData.talla
+    if (profileData.edad)           insertData.age = profileData.edad
+    if (profileData.sexo)           insertData.gender = profileData.sexo
     if (profileData.nivelActividad) insertData.activity_level = profileData.nivelActividad
+    if (profileData.objetivo)       insertData.goals = { main_goal: profileData.objetivo, target_weight: profileData.pesoObjetivo }
     if (profileData.peso && profileData.talla && profileData.sexo && profileData.nivelActividad) {
       insertData.profile_completed = true
     }
