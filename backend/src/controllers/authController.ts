@@ -1,5 +1,5 @@
 import { Request, Response } from 'express'
-import argon2 from 'argon2'
+import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
@@ -75,12 +75,7 @@ export const resetPasswordSchema = z.object({
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-const ARGON2_OPTIONS = {
-  type: argon2.argon2id,
-  memoryCost: 4096, // 4 MB — optimizado para Railway free tier (CPU/RAM limitado)
-  timeCost: 3,
-  parallelism: 1,
-}
+const BCRYPT_ROUNDS = 10 // ~100ms en Railway — seguro y rápido
 
 function cookieOptions() {
   return {
@@ -127,7 +122,7 @@ export async function register(req: Request, res: Response): Promise<void> {
     }
   }
 
-  const passwordHash = await argon2.hash(password, ARGON2_OPTIONS)
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS)
   const verificationCode = generateVerificationCode()
   const codeExpires = new Date(Date.now() + 10 * 60 * 1000)
 
@@ -252,7 +247,7 @@ export async function login(req: Request, res: Response): Promise<void> {
     return
   }
 
-  const passwordValid = await argon2.verify(user.password_hash, password)
+  const passwordValid = await bcrypt.compare(password, user.password_hash)
 
   if (!passwordValid) {
     const newAttempts = (user.failed_login_attempts || 0) + 1
@@ -409,7 +404,7 @@ export async function resetPassword(req: Request, res: Response): Promise<void> 
     return
   }
 
-  const passwordHash = await argon2.hash(password, ARGON2_OPTIONS)
+  const passwordHash = await bcrypt.hash(password, BCRYPT_ROUNDS)
   await supabase.from('users').update({
     password_hash: passwordHash,
     password_reset_token: null,
