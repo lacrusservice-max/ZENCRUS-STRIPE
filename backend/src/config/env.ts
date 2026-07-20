@@ -22,11 +22,12 @@ const envSchema = z.object({
   DEEPSEEK_API_URL: z.string().url().default('https://api.deepseek.com/v1'),
   DEEPSEEK_MODEL: z.string().default('deepseek-chat'),
 
-  SMTP_HOST: z.string(),
+  RESEND_API_KEY: z.string().optional(),
+  SMTP_HOST: z.string().optional().default('smtp.gmail.com'),
   SMTP_PORT: z.coerce.number().default(587),
-  SMTP_USER: z.string(),
+  SMTP_USER: z.string().optional().default(''),
   SMTP_PASS: z.string().optional(),
-  EMAIL_FROM: z.string().default('NutriAI Fit <noreply@nutriaifit.com>'),
+  EMAIL_FROM: z.string().default('ZENCRUS <noreply@zencrus.com>'),
 
   STRIPE_SECRET_KEY: z.string().optional(),
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
