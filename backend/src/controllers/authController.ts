@@ -153,7 +153,10 @@ export async function register(req: Request, res: Response): Promise<void> {
     return
   }
 
-  await sendVerificationEmail(email, fullName, verificationCode)
+  // Fire-and-forget — no bloquear la respuesta esperando el email
+  sendVerificationEmail(email, fullName, verificationCode).catch(err =>
+    logger.error('Error enviando email de verificación:', err)
+  )
   logger.info(`Nuevo usuario registrado: ${email}`)
 
   res.status(201).json({
@@ -199,7 +202,7 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
     refresh_token_family: tokenFamily,
   }).eq('id', user.id)
 
-  await sendWelcomeEmail(email, user.full_name)
+  sendWelcomeEmail(email, user.full_name).catch(()=>{})
 
   const accessToken = signAccessToken({
     userId: user.id,
@@ -267,7 +270,7 @@ export async function login(req: Request, res: Response): Promise<void> {
       email_verification_code: verificationCode,
       email_verification_expires: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
     }).eq('id', user.id)
-    await sendVerificationEmail(email, user.full_name, verificationCode)
+    sendVerificationEmail(email, user.full_name, verificationCode).catch(()=>{})
     res.status(403).json({
       success: false,
       message: 'Por favor verifica tu correo electrónico. Te enviamos un nuevo código.',
@@ -379,7 +382,7 @@ export async function forgotPassword(req: Request, res: Response): Promise<void>
     password_reset_expires: new Date(Date.now() + 60 * 60 * 1000).toISOString(),
   }).eq('id', user.id)
 
-  await sendPasswordResetEmail(email, user.full_name, resetToken)
+  sendPasswordResetEmail(email, user.full_name, resetToken).catch(()=>{})
 
   res.status(200).json({
     success: true,
@@ -443,7 +446,7 @@ export async function resendVerification(req: Request, res: Response): Promise<v
     email_verification_expires: new Date(Date.now() + 10 * 60 * 1000).toISOString(),
   }).eq('id', user.id)
 
-  await sendVerificationEmail(email, user.full_name, verificationCode)
+  sendVerificationEmail(email, user.full_name, verificationCode).catch(() => {})
 
   res.status(200).json({
     success: true,
