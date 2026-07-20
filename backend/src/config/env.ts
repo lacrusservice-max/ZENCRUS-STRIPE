@@ -16,7 +16,7 @@ const envSchema = z.object({
 
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1),
-  SUPABASE_SERVICE_ROLE_KEY: z.string().min(1),
+  SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 
   DEEPSEEK_API_KEY: z.string().optional(),
   DEEPSEEK_API_URL: z.string().url().default('https://api.deepseek.com/v1'),
@@ -25,7 +25,7 @@ const envSchema = z.object({
   SMTP_HOST: z.string(),
   SMTP_PORT: z.coerce.number().default(587),
   SMTP_USER: z.string(),
-  SMTP_PASS: z.string(),
+  SMTP_PASS: z.string().optional(),
   EMAIL_FROM: z.string().default('NutriAI Fit <noreply@nutriaifit.com>'),
 
   STRIPE_SECRET_KEY: z.string().optional(),
