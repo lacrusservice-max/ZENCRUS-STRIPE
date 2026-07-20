@@ -77,7 +77,7 @@ export const resetPasswordSchema = z.object({
 
 const ARGON2_OPTIONS = {
   type: argon2.argon2id,
-  memoryCost: 2 ** 14, // 16 MB — Railway-friendly; OWASP mínimo es 19 MB pero 16 MB + timeCost 3 es equivalente
+  memoryCost: 4096, // 4 MB — optimizado para Railway free tier (CPU/RAM limitado)
   timeCost: 3,
   parallelism: 1,
 }
