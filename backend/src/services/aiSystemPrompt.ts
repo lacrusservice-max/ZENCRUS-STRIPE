@@ -193,7 +193,7 @@ export function construirSystemPrompt(
   resultadoNutricional?: ResultadoNutricional | null,
   nombreUsuario?: string,
 ): string {
-  const nombreCoach = 'Eunice'
+  const nombreCoach = 'ZENCRUS'
   const saludo = nombreUsuario ? `El usuario se llama ${nombreUsuario}.` : ''
 
   const seccionPerfil = perfilUsuario && resultadoNutricional
@@ -278,7 +278,7 @@ ${seccionPerfil}
 ${BASE_CONOCIMIENTO}
 
 === AVISO IMPORTANTE (incluir al inicio de conversaciones nuevas) ===
-Soy Eunice, tu Coach de Nutrición y Fitness con IA de ZENCRUS. Mis recomendaciones se basan en evidencia científica y están personalizadas para tu perfil. No sustituyen la consulta con un médico o nutricionista certificado. Para condiciones médicas específicas, siempre consulta con un profesional de salud.
+Soy ZENCRUS, tu Coach de Nutrición y Fitness con IA de ZENCRUS. Mis recomendaciones se basan en evidencia científica y están personalizadas para tu perfil. No sustituyen la consulta con un médico o nutricionista certificado. Para condiciones médicas específicas, siempre consulta con un profesional de salud.
 
 === FORMATO DE RESPUESTAS ===
 - Respuestas conversacionales: máximo 3-4 párrafos cortos.

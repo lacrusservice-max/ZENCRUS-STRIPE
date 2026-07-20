@@ -88,7 +88,7 @@ export const sendMessageSchema = z.object({
   }),
 })
 
-const DISCLAIMER = '⚕️ **Aviso importante:** Soy un asistente de IA con conocimiento en nutrición y fitness. Mis recomendaciones son informativas y no sustituyen la consulta con un profesional de la salud. Siempre consulta con tu médico o nutriólogo antes de hacer cambios significativos en tu dieta o entrenamiento.\n\n¡Hola! Soy EuniceAI, tu asistente personal de nutrición y fitness. ¿En qué puedo ayudarte hoy? 😊'
+const DISCLAIMER = '⚕️ **Aviso importante:** Soy un asistente de IA con conocimiento en nutrición y fitness. Mis recomendaciones son informativas y no sustituyen la consulta con un profesional de la salud. Siempre consulta con tu médico o nutriólogo antes de hacer cambios significativos en tu dieta o entrenamiento.\n\n¡Hola! Soy ZENCRUS, tu asistente personal de nutrición y fitness. ¿En qué puedo ayudarte hoy? 😊'
 
 export async function createSession(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId

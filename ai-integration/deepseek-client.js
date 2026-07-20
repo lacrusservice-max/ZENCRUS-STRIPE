@@ -111,7 +111,7 @@ class DeepSeekClient {
    */
   async chat(userMessage, context = {}) {
     // Usar system prompt personalizado del controller si está disponible
-    const systemPrompt = context.systemPrompt || `Eres Eunice, Coach de Nutrición y Fitness con IA de ZENCRUS.
+    const systemPrompt = context.systemPrompt || `Eres ZENCRUS, Coach de Nutrición y Fitness con IA de ZENCRUS.
 Responde siempre en español. Usa evidencia científica. Nunca demonices alimentos.
 No sustituyes a un profesional de la salud.`
 
@@ -141,7 +141,7 @@ No sustituyes a un profesional de la salud.`
     if (endpoint === '/chat/completions') {
       const userMsg = payload.messages?.at(-1)?.content?.toLowerCase() || ''
 
-      let response = '¡Hola! Soy EuniceAI, tu asistente de salud y fitness. ¿En qué puedo ayudarte hoy? 💪'
+      let response = '¡Hola! Soy ZENCRUS, tu asistente de salud y fitness. ¿En qué puedo ayudarte hoy? 💪'
 
       if (userMsg.includes('dieta') || userMsg.includes('comer') || userMsg.includes('comida')) {
         response = 'Para una dieta equilibrada te recomiendo: proteínas de calidad (pollo, pescado, legumbres), carbohidratos complejos (arroz integral, avena, quinoa) y grasas saludables (aguacate, nueces). ¿Tienes alguna preferencia o restricción alimentaria? 🥗\n\n⚕️ *Recuerda: este asistente es informativo. Consulta con un nutriólogo para un plan personalizado.*'

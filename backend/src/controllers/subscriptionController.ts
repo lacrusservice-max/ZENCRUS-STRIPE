@@ -328,7 +328,7 @@ export async function getPlans(_req: Request, res: Response): Promise<void> {
         price: 200,
         period: 'mes',
         currency: 'MXN',
-        features: ['Planes de dieta ilimitados', 'Rutinas ilimitadas', 'Chat IA ilimitado', 'Validación por Eunice (nutrióloga)', 'Reportes de progreso avanzados'],
+        features: ['Planes de dieta ilimitados', 'Rutinas ilimitadas', 'Chat IA ilimitado', 'Validación por ZENCRUS (nutrióloga)', 'Reportes de progreso avanzados'],
       },
       {
         id: 'annual_individual',

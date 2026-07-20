@@ -47,7 +47,7 @@ export default function ChatScreen({ sessionId }: { sessionId?: string }): JSX.E
       setMessages([{
         id: 'init',
         senderType: 'ai',
-        content: '⚕️ **Aviso:** Soy un asistente de IA. No sustituyo a un profesional de la salud.\n\n¡Hola! Soy EuniceAI 🌿 ¿En qué puedo ayudarte?',
+        content: '⚕️ **Aviso:** Soy un asistente de IA. No sustituyo a un profesional de la salud.\n\n¡Hola! Soy ZENCRUS 🌿 ¿En qué puedo ayudarte?',
         createdAt: new Date(),
       }])
     }
@@ -139,7 +139,7 @@ export default function ChatScreen({ sessionId }: { sessionId?: string }): JSX.E
 
         <View style={[styles.messageBubble, isUser ? styles.bubbleUser : styles.bubbleAI]}>
           {!isUser ? (
-            <Text style={styles.senderName}>EuniceAI</Text>
+            <Text style={styles.senderName}>ZENCRUS</Text>
           ) : null}
           <Text style={[styles.messageText, isUser ? styles.messageTextUser : styles.messageTextAI]}>
             {item.content}
@@ -171,7 +171,7 @@ export default function ChatScreen({ sessionId }: { sessionId?: string }): JSX.E
             <Text style={styles.avatar}>🌿</Text>
             <View style={styles.typingBubble}>
               <ActivityIndicator size="small" color={Colors.primary[500]} />
-              <Text style={styles.typingText}>EuniceAI está escribiendo...</Text>
+              <Text style={styles.typingText}>ZENCRUS está escribiendo...</Text>
             </View>
           </View>
         ) : null}

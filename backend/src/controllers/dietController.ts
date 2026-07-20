@@ -91,7 +91,7 @@ export async function generateDietPlan(req: Request, res: Response): Promise<voi
 
   res.status(201).json({
     success: true,
-    message: requestValidation ? 'Plan generado. Eunice lo revisará pronto.' : 'Plan de dieta generado exitosamente',
+    message: requestValidation ? 'Plan generado. ZENCRUS lo revisará pronto.' : 'Plan de dieta generado exitosamente',
     data: dietPlan,
   } satisfies ApiResponse)
 }
