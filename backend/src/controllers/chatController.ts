@@ -4,8 +4,77 @@ import { DeepSeekClient } from '../../ai-integration/deepseek-client'
 import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
 import { supabase } from '../config/supabase'
+import { construirSystemPrompt } from '../services/aiSystemPrompt'
+import { calcularNutricion, PerfilUsuario } from '../services/nutritionCalculator'
 
 const aiClient = new DeepSeekClient(process.env.DEEPSEEK_API_KEY || '')
+
+async function obtenerPerfilParaIA(userId: string): Promise<{
+  perfil: PerfilUsuario | null
+  nombre: string | null
+}> {
+  try {
+    const { data: user } = await supabase
+      .from('users')
+      .select('full_name, weight, height, birth_date, gender, activity_level, goals, health_conditions, onboarding_data')
+      .eq('id', userId)
+      .maybeSingle()
+
+    if (!user) return { perfil: null, nombre: null }
+
+    const ob = user.onboarding_data ?? {}
+    const edad = user.birth_date
+      ? Math.floor((Date.now() - new Date(user.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+      : ob.edad ?? 25
+
+    if (!user.weight || !user.height) return { perfil: null, nombre: user.full_name }
+
+    const perfil: PerfilUsuario = {
+      peso: user.weight,
+      talla: user.height,
+      edad,
+      sexo: user.gender === 'female' ? 'female' : 'male',
+      objetivo: mapearObjetivo(user.goals?.primary ?? ob.objetivo),
+      nivelActividad: mapearActividad(user.activity_level ?? ob.nivelActividad),
+      sesionesEntrenamiento: ob.sesionesEntrenamiento ?? 3,
+      minutosEntrenamiento: ob.minutosEntrenamiento ?? 45,
+      tipoEntrenamiento: ob.tipoEntrenamiento ?? 'mixto',
+      nivelEstrés: ob.nivelEstres ?? 5,
+      horasSueno: ob.horasSueno ?? 7,
+      calidadSueno: ob.calidadSueno ?? 'regular',
+      porcentajeGrasa: ob.porcentajeGrasa,
+      diaInicioCiclo: ob.diaInicioCiclo ? new Date(ob.diaInicioCiclo) : undefined,
+      usaAnticonceptivos: ob.usaAnticonceptivos,
+      presupuestoSemanal: ob.presupuestoSemanal,
+    }
+
+    return { perfil, nombre: user.full_name }
+  } catch {
+    return { perfil: null, nombre: null }
+  }
+}
+
+function mapearObjetivo(raw: string | undefined): PerfilUsuario['objetivo'] {
+  const map: Record<string, PerfilUsuario['objetivo']> = {
+    weight_loss: 'perdida_grasa',
+    muscle_gain: 'ganancia_muscular',
+    maintenance: 'mantenimiento',
+    performance: 'rendimiento',
+    recomposicion: 'recomposicion',
+  }
+  return map[raw ?? ''] ?? 'mantenimiento'
+}
+
+function mapearActividad(raw: string | undefined): PerfilUsuario['nivelActividad'] {
+  const map: Record<string, PerfilUsuario['nivelActividad']> = {
+    sedentary: 'sedentario',
+    light: 'ligero',
+    moderate: 'moderado',
+    active: 'activo',
+    very_active: 'muy_activo',
+  }
+  return map[raw ?? ''] ?? 'moderado'
+}
 
 export const createSessionSchema = z.object({
   body: z.object({
@@ -132,10 +201,16 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
     .order('created_at', { ascending: false })
     .limit(10)
 
+  // Obtener perfil del usuario y construir system prompt personalizado
+  const { perfil, nombre } = await obtenerPerfilParaIA(userId)
+  const resultadoNutricional = perfil ? calcularNutricion(perfil) : null
+  const systemPrompt = construirSystemPrompt(perfil, resultadoNutricional, nombre ?? undefined)
+
   const context = {
     userId,
+    systemPrompt,
     messageHistory: (previousMessages || []).reverse().map((m: any) => ({
-      role: m.sender_type,
+      role: m.sender_type === 'ai' ? 'assistant' : 'user',
       content: m.content,
     })),
   }

@@ -2,6 +2,7 @@ import { Router } from 'express'
 import {
   getProfile, updateProfile, deleteAccount,
   exportData, updateFcmToken, updateProfileSchema,
+  getNutritionPlan, saveOnboardingData,
 } from '../controllers/userController'
 import { authenticate } from '../middleware/auth'
 import { validate } from '../middleware/validate'
@@ -23,5 +24,9 @@ router.get('/me/export', exportData)
 router.patch('/me/fcm-token', validate(z.object({
   body: z.object({ fcmToken: z.string().min(1) }),
 })), updateFcmToken)
+
+// Nutrición y onboarding
+router.get('/me/nutrition', getNutritionPlan)
+router.post('/me/onboarding', saveOnboardingData)
 
 export default router

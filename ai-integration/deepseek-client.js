@@ -110,34 +110,28 @@ class DeepSeekClient {
    * Chat conversacional con el asistente
    */
   async chat(userMessage, context = {}) {
-    const systemPrompt = `Eres EuniceAI, asistente personal de nutrición y fitness de NutriAI Fit.
-
-Características:
-- Conocimiento profundo en nutrición, dietética y fitness
-- Respuestas en español mexicano, amigables y motivadoras
-- Basas tus respuestas en evidencia científica
-- SIEMPRE incluyes el disclaimer: este asistente no sustituye al profesional de la salud
-- Si el usuario comparte síntomas médicos graves, derivas urgentemente al médico
-
-Contexto del usuario: ${JSON.stringify(context.userProfile || {})}
-`
+    // Usar system prompt personalizado del controller si está disponible
+    const systemPrompt = context.systemPrompt || `Eres Eunice, Coach de Nutrición y Fitness con IA de ZENCRUS.
+Responde siempre en español. Usa evidencia científica. Nunca demonices alimentos.
+No sustituyes a un profesional de la salud.`
 
     const messages = [
       { role: 'system', content: systemPrompt },
-      ...(context.messageHistory || []).map(m => ({
-        role: m.role === 'ai' ? 'assistant' : 'user',
-        content: m.content,
-      })),
+      ...(context.messageHistory || []),
       { role: 'user', content: userMessage },
     ]
 
     const result = await this._call('/chat/completions', {
       messages,
       temperature: 0.8,
-      max_tokens: 1024,
+      max_tokens: 1500,
     })
 
-    return result
+    // Normalizar respuesta — DeepSeek devuelve choices[0].message.content
+    if (result?.choices?.[0]?.message?.content) {
+      return { response: result.choices[0].message.content, raw: result }
+    }
+    return { response: result?.response || 'Lo siento, no pude procesar tu mensaje. Intenta de nuevo.', raw: result }
   }
 
   /**
