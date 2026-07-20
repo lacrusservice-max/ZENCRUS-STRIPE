@@ -100,7 +100,7 @@ function AddMealModal({ visible, day, slot, onClose }: {
     : QUICK_MEALS
 
   const filteredRecipes = search
-    ? recipes.filter(r => r.name.toLowerCase().includes(search.toLowerCase()))
+    ? recipes.filter(r => r.title.toLowerCase().includes(search.toLowerCase()))
     : recipes
 
   return (
@@ -151,17 +151,17 @@ function AddMealModal({ visible, day, slot, onClose }: {
             {tab === 'recipes' && filteredRecipes.map(recipe => (
               <TouchableOpacity key={recipe.id} style={am.mealRow} onPress={() => addMeal({
                 id: recipe.id,
-                name: recipe.name,
+                name: recipe.title,
                 emoji: recipe.emoji,
-                calories: recipe.macros.calories,
-                protein: recipe.macros.protein,
-                carbs: recipe.macros.carbs,
-                fat: recipe.macros.fat,
+                calories: recipe.nutrition.calories,
+                protein: recipe.nutrition.protein,
+                carbs: recipe.nutrition.carbs,
+                fat: recipe.nutrition.fat,
               })}>
                 <Text style={am.mealEmoji}>{recipe.emoji}</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={am.mealName}>{recipe.name}</Text>
-                  <Text style={am.mealMacros}>{recipe.macros.calories} kcal · {recipe.macros.protein}P · {recipe.macros.carbs}C · {recipe.macros.fat}G</Text>
+                  <Text style={am.mealName}>{recipe.title}</Text>
+                  <Text style={am.mealMacros}>{recipe.nutrition.calories} kcal · {recipe.nutrition.protein}P · {recipe.nutrition.carbs}C · {recipe.nutrition.fat}G</Text>
                 </View>
                 <Text style={am.mealAdd}>+</Text>
               </TouchableOpacity>

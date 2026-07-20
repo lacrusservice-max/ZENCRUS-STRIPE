@@ -43,14 +43,16 @@ export async function resetSession(): Promise<void> {
 
 export async function sendMessage(
   message: string,
-  _history: CoachMessage[],
-  _context: CoachContext
+  history: CoachMessage[],
+  context: CoachContext
 ): Promise<string> {
   const sessionId = await getOrCreateSession()
 
   try {
     const { data } = await api.post(`/chat/sessions/${sessionId}/messages`, {
       content: message,
+      context,
+      history: history.slice(-10),
     })
     const aiMessage = data?.data?.aiMessage
     return aiMessage?.content ?? 'No pude generar una respuesta. Intenta de nuevo.'

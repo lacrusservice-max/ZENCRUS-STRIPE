@@ -54,7 +54,7 @@ export async function startStripePaymentSheet(tier: CheckoutTier, extraMembers =
     allowsDelayedPaymentMethods: false,
     appearance: {
       colors: {
-        primary: '#7C3AED',
+        primary: '#5B4FFF',
         background: '#0F0F14',
         componentBackground: '#1A1A2E',
         componentBorder: 'rgba(255,255,255,0.12)',

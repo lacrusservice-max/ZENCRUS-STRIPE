@@ -352,14 +352,6 @@ const fp = StyleSheet.create({
 
 // ── Add Food Modal ─────────────────────────────────────────────────────────────
 
-interface AddFoodModalProps {
-  visible: boolean
-  mealId: string
-  mealLabel: string
-  onClose: () => void
-  onAdd: (mealId: string, entry: FoodEntry) => void
-}
-
 function AddFoodModal({ visible, mealId, mealLabel, onClose, onAdd }: AddFoodModalProps) {
   const [tab, setTab] = useState<'search' | 'scanner' | 'foto' | 'manual'>('search')
   const [query, setQuery] = useState('')

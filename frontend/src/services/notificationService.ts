@@ -49,10 +49,13 @@ export async function requestPermissions(): Promise<boolean> {
   return status === 'granted'
 }
 
+const MORNING_CHECKIN_ID = 'zencrus_morning_checkin'
+
 export async function scheduleMorningCheckIn(hour: number, minute: number): Promise<string | null> {
   try {
-    await Notifications.cancelAllScheduledNotificationsAsync()
+    await Notifications.cancelScheduledNotificationAsync(MORNING_CHECKIN_ID).catch(() => {})
     const id = await Notifications.scheduleNotificationAsync({
+      identifier: MORNING_CHECKIN_ID,
       content: {
         title: '☀️ Buenos días, atleta',
         body: 'Tu check-in matutino te espera. 2 minutos para activar tu día al 100%.',

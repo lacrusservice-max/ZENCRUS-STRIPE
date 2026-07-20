@@ -11,13 +11,11 @@ import { Ionicons } from '@expo/vector-icons'
 import { useSocialStore, SocialPost, SocialComment } from '@/store/socialStore'
 import { useStreakStore } from '@/store/streakStore'
 import { useHealthStore } from '@/store/healthStore'
+import { useAuthStore } from '@/store/authStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import { GlassCard, SectionLabel } from '@/components/ui/Glass'
 
 const { width: SW } = Dimensions.get('window')
-const MY_USER_ID    = 'me'
-const MY_USER_NAME  = 'Tú'
-const MY_USER_HANDLE = '@zencrus_user'
 
 function timeAgo(iso: string): string {
   const d = (Date.now() - new Date(iso).getTime()) / 1000
@@ -40,7 +38,7 @@ async function pickImage(): Promise<string | null> {
   const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
   if (!perm.granted) return null
   const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: 'images',
+    mediaTypes: ImagePicker.MediaTypeOptions.Images,
     allowsEditing: true,
     quality: 0.85,
   })
@@ -192,8 +190,11 @@ const sv = StyleSheet.create({
 // ── Post Card ──────────────────────────────────────────────────────────────────
 
 function PostCard({ post, onLike, onComment }: { post: SocialPost; onLike: () => void; onComment: () => void }) {
-  const liked = post.likes.includes(MY_USER_ID)
-  const isMe  = post.userId === MY_USER_ID
+  const { user } = useAuthStore()
+  const myId   = user?.id ?? 'me'
+  const myName = user?.full_name ?? 'Tú'
+  const liked = post.likes.includes(myId)
+  const isMe  = post.userId === myId
   const [showComments, setShowComments] = useState(false)
   const [commentInput, setCommentInput] = useState('')
   const { addComment, friends, followUser, unfollowUser } = useSocialStore()
@@ -201,7 +202,7 @@ function PostCard({ post, onLike, onComment }: { post: SocialPost; onLike: () =>
 
   const handleComment = () => {
     if (!commentInput.trim()) return
-    addComment(post.id, { userId: MY_USER_ID, userName: MY_USER_NAME, content: commentInput.trim() })
+    addComment(post.id, { userId: myId, userName: myName, content: commentInput.trim() })
     setCommentInput('')
   }
 
@@ -412,6 +413,10 @@ function CreatePostModal({ visible, onClose }: { visible: boolean; onClose: () =
   const [mediaUri, setMediaUri] = useState<string | null>(null)
   const [picking, setPicking]   = useState(false)
 
+  const { user } = useAuthStore()
+  const myId     = user?.id ?? 'me'
+  const myName   = user?.full_name ?? 'Tú'
+  const myHandle = user?.email ? `@${user.email.split('@')[0]}` : '@zencrus_user'
   const { addPost, addStory } = useSocialStore()
   const { currentStreak }     = useStreakStore()
   const { scoreHistory }      = useHealthStore()
@@ -431,9 +436,9 @@ function CreatePostModal({ visible, onClose }: { visible: boolean; onClose: () =
     if (!content.trim()) return
     const tagList = tags.split(/[\s,]+/).filter(t => t.startsWith('#'))
     const base = {
-      userId:      MY_USER_ID,
-      userName:    MY_USER_NAME,
-      userHandle:  MY_USER_HANDLE,
+      userId:      myId,
+      userName:    myName,
+      userHandle:  myHandle,
       userLevel:   1,
       type,
       content:     content.trim(),
@@ -622,6 +627,9 @@ const cm = StyleSheet.create({
 
 export default function SocialScreen() {
   const { getFeed, getActiveStories, likePost, unlikePost, pruneExpiredStories, viewedStories } = useSocialStore()
+  const { user } = useAuthStore()
+  const MY_USER_ID   = user?.id ?? 'me'
+  const MY_USER_NAME = user?.full_name ?? 'Tú'
   const [refreshing, setRefreshing] = useState(false)
   const [showCreate, setShowCreate] = useState(false)
   const [storyViewer, setStoryViewer] = useState<{ stories: SocialPost[]; index: number } | null>(null)

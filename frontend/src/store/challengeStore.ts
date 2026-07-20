@@ -191,7 +191,7 @@ export const useChallengeStore = create<ChallengeState>((set, get) => ({
       if (alreadyToday) return u
       const newHistory = [...u.progressHistory, day]
       const newProgress = newHistory.length
-      const completed = newProgress >= challenge.goalPerDay || newHistory.length >= challenge.durationDays
+      const completed = newHistory.length >= challenge.durationDays
       return { ...u, progress: newProgress, progressHistory: newHistory, completed }
     })
     set({ userChallenges: updated })

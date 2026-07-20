@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { useLocalSearchParams, router } from 'expo-router'
 import { useWorkoutStore, Routine, Exercise } from '@/store/workoutStore'
 import { useStreakStore } from '@/store/streakStore'
+import { useAchievementStore } from '@/store/achievementStore'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 // ── Rest Timer ────────────────────────────────────────────────────────────────
@@ -192,6 +193,7 @@ export default function ActiveWorkout() {
   const { routineId } = useLocalSearchParams<{ routineId: string }>()
   const { routines, addLog } = useWorkoutStore()
   const { markActivity } = useStreakStore()
+  const { addXP } = useAchievementStore()
 
   const routine = routines.find(r => r.id === routineId)
 
@@ -232,6 +234,7 @@ export default function ActiveWorkout() {
         completedAt: Date.now(),
       })
       await markActivity(today, { loggedWorkout: true })
+      await addXP(25)
       setFinished(true)
     }
   }, [currentIdx, routine, startTime, addLog, markActivity])

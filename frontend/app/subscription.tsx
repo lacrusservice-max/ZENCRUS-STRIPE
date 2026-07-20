@@ -25,7 +25,7 @@ const PLAN_ORDER: CheckoutTier[] = ['monthly', 'annual_individual', 'annual_duo'
 
 export default function SubscriptionScreen() {
   const { user } = useAuthStore()
-  const { isPremium, plan, expiresAt, setFree } = usePremiumStore()
+  const { isPremium, plan, expiresAt, setFree, setPremium } = usePremiumStore()
   const [selected, setSelected] = useState<CheckoutTier>('annual_individual')
   const [loading, setLoading] = useState(false)
   const [cancelling, setCancelling] = useState(false)
@@ -39,7 +39,11 @@ export default function SubscriptionScreen() {
     setLoading(true)
     try {
       await startStripePaymentSheet(selected)
-      // Si llega aquí sin error, el pago fue exitoso
+      // Pago exitoso — activar premium localmente
+      const isAnnual = selected !== 'monthly'
+      const expiryDate = new Date()
+      expiryDate.setMonth(expiryDate.getMonth() + (isAnnual ? 12 : 1))
+      await setPremium(selected as any, expiryDate.toISOString().slice(0, 10))
       router.replace('/checkout/success')
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? err?.message ?? 'No se pudo iniciar el pago. Intenta de nuevo.'

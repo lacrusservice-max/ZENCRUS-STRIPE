@@ -131,7 +131,7 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
 
   save: async () => {
     const { date, meals, waterGlasses, streak } = get()
-    const newStreak = streak + (get().totalCalories > 0 ? 0 : 0) // increment on day complete
+    const newStreak = get().totalCalories > 0 ? 1 : 0
     await AsyncStorage.setItem(`nutrition_${date}`, JSON.stringify({ meals, waterGlasses, streak: newStreak }))
   },
 }))

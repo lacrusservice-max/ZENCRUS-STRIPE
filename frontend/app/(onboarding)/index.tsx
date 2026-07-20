@@ -276,9 +276,9 @@ function StepBody({ data, setData }: any) {
     <View style={s.step}>
       <Text style={s.stepTitle}>Tu cuerpo</Text>
       <Text style={s.stepSub}>Base del cálculo metabólico personalizado</Text>
-      <NumField label="Peso actual (kg)" value={data.currentWeight} onChange={v => setData((d: any) => ({ ...d, currentWeight: v }))} placeholder="75" />
-      <NumField label="Peso objetivo (kg)" value={data.targetWeight} onChange={v => setData((d: any) => ({ ...d, targetWeight: v }))} placeholder="68" />
-      <NumField label="Altura (cm)" value={data.height} onChange={v => setData((d: any) => ({ ...d, height: v }))} placeholder="175" />
+      <NumField label="Peso actual (kg)" value={data.currentWeight} onChange={(v: number) => setData((d: any) => ({ ...d, currentWeight: v }))} placeholder="75" />
+      <NumField label="Peso objetivo (kg)" value={data.targetWeight} onChange={(v: number) => setData((d: any) => ({ ...d, targetWeight: v }))} placeholder="68" />
+      <NumField label="Altura (cm)" value={data.height} onChange={(v: number) => setData((d: any) => ({ ...d, height: v }))} placeholder="175" />
     </View>
   )
 }
@@ -290,7 +290,7 @@ function StepPersonal({ data, setData }: any) {
     <View style={s.step}>
       <Text style={s.stepTitle}>Datos personales</Text>
       <Text style={s.stepSub}>Para el cálculo exacto de tu metabolismo basal</Text>
-      <NumField label="Edad" value={data.age} onChange={v => setData((d: any) => ({ ...d, age: v }))} placeholder="28" decimal={false} />
+      <NumField label="Edad" value={data.age} onChange={(v: number) => setData((d: any) => ({ ...d, age: v }))} placeholder="28" decimal={false} />
       <Text style={s.fieldLabel}>Sexo biológico</Text>
       <View style={s.row}>
         {(['male', 'female'] as Gender[]).map(g => (
@@ -404,17 +404,17 @@ function StepAdjust({ data, setData, baseResult, toggle, calories, setCalories, 
         <MacroAdjustRow label="Proteína" value={protein} color={Colors.primary[500]}
           onDec={() => setProtein(Math.max(50, protein - 5))}
           onInc={() => setProtein(protein + 5)}
-          onChange={v => { const n = parseInt(v); if (!isNaN(n)) setProtein(n) }}
+          onChange={(v: string) => { const n = parseInt(v); if (!isNaN(n)) setProtein(n) }}
           kcal={protein * 4} />
         <MacroAdjustRow label="Carbohidratos" value={carbs} color={Colors.secondary[500]}
           onDec={() => setCarbs(Math.max(20, carbs - 5))}
           onInc={() => setCarbs(carbs + 5)}
-          onChange={v => { const n = parseInt(v); if (!isNaN(n)) setCarbs(n) }}
+          onChange={(v: string) => { const n = parseInt(v); if (!isNaN(n)) setCarbs(n) }}
           kcal={carbs * 4} />
         <MacroAdjustRow label="Grasas" value={fat} color={Colors.accent.orange}
           onDec={() => setFat(Math.max(20, fat - 5))}
           onInc={() => setFat(fat + 5)}
-          onChange={v => { const n = parseInt(v); if (!isNaN(n)) setFat(n) }}
+          onChange={(v: string) => { const n = parseInt(v); if (!isNaN(n)) setFat(n) }}
           kcal={fat * 9} />
 
         {baseResult && (

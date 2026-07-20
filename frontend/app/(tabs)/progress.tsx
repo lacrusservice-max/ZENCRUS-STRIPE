@@ -252,7 +252,7 @@ const mm = StyleSheet.create({
 // ── Achievement Card ──────────────────────────────────────────────────────────
 
 function AchievementCard({ emoji, title, description, xp, unlockedAt }: {
-  emoji: string; title: string; description: string; xp: number; unlockedAt: number
+  emoji: string; title: string; description: string; xp: number; unlockedAt: string
 }) {
   const date = new Date(unlockedAt).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })
   return (
@@ -310,12 +310,18 @@ const nc = StyleSheet.create({
 function HealthTab({ onGoToTracker }: { onGoToTracker: () => void }) {
   const { getTodaySummary, getWeeklySummary, stepGoal, sleepGoal } = useHealthTrackerStore()
   const today = getTodaySummary()
-  const weekly = getWeeklySummary()
+  const weeklyArr = getWeeklySummary()
+  const weekly = {
+    avgSteps:     Math.round(weeklyArr.reduce((s, d) => s + d.steps, 0) / Math.max(weeklyArr.length, 1)),
+    avgSleep:     weeklyArr.reduce((s, d) => s + d.sleepHours, 0) / Math.max(weeklyArr.length, 1),
+    avgCalories:  Math.round(weeklyArr.reduce((s, d) => s + d.caloriesBurned, 0) / Math.max(weeklyArr.length, 1)),
+    avgHeartRate: Math.round(weeklyArr.filter(d => d.avgHeartRate > 0).reduce((s, d) => s + d.avgHeartRate, 0) / Math.max(weeklyArr.filter(d => d.avgHeartRate > 0).length, 1)),
+  }
 
   const stepPct = Math.min((today?.steps ?? 0) / stepGoal, 1)
-  const sleepH = today?.sleep?.totalHours ?? 0
+  const sleepH = today?.sleepHours ?? 0
   const sleepPct = Math.min(sleepH / sleepGoal, 1)
-  const restingHR = today?.heartRate?.resting ?? weekly.avgHeartRate ?? 0
+  const restingHR = today?.restingHeartRate ?? today?.avgHeartRate ?? 0
 
   const SLEEP_QUALITY: Record<string, string> = {
     poor: '😴 Pobre', fair: '🙂 Regular', good: '😊 Bueno', excellent: '🤩 Excelente'
@@ -345,7 +351,7 @@ function HealthTab({ onGoToTracker }: { onGoToTracker: () => void }) {
           <View style={ht.cell}>
             <Text style={ht.cellEmoji}>🌙</Text>
             <Text style={ht.cellVal}>{sleepH > 0 ? `${sleepH.toFixed(1)}h` : '—'}</Text>
-            <Text style={ht.cellLabel}>{today?.sleep ? SLEEP_QUALITY[today.sleep.quality] : 'sin registro'}</Text>
+            <Text style={ht.cellLabel}>{today?.sleepQuality ? SLEEP_QUALITY[today.sleepQuality] : 'sin registro'}</Text>
             <View style={ht.miniBarBg}>
               <View style={[ht.miniBarFill, { width: `${sleepPct * 100}%` as any, backgroundColor: Colors.secondary[400] }]} />
             </View>
@@ -509,8 +515,9 @@ const mt = StyleSheet.create({
 function LogrosTab({ onGoToAchievements, onGoToLeaderboard }: {
   onGoToAchievements: () => void; onGoToLeaderboard: () => void
 }) {
-  const { getUnlocked, getLocked, totalXP, getCurrentLevel } = useAchievementStore()
+  const { getUnlocked, getLocked, totalXP, getCurrentLevel, unlockedAchievements } = useAchievementStore()
   const unlocked = getUnlocked()
+  const unlockedDateMap = Object.fromEntries(unlockedAchievements.map(u => [u.achievementId, u.unlockedAt]))
   const locked = getLocked()
   const level = getCurrentLevel()
   const [showLocked, setShowLocked] = useState(false)
@@ -544,8 +551,8 @@ function LogrosTab({ onGoToAchievements, onGoToLeaderboard }: {
                 emoji={a.emoji}
                 title={a.title}
                 description={a.description}
-                xp={a.xp}
-                unlockedAt={a.unlockedAt!}
+                xp={a.xpReward}
+                unlockedAt={unlockedDateMap[a.id] ?? new Date().toISOString()}
               />
             ))}
           </View>
@@ -582,7 +589,7 @@ function LogrosTab({ onGoToAchievements, onGoToLeaderboard }: {
                     <Text style={lt.lockedTitle}>{a.title}</Text>
                     <Text style={lt.lockedDesc}>{a.description}</Text>
                   </View>
-                  <Text style={lt.lockedXp}>+{a.xp} XP</Text>
+                  <Text style={lt.lockedXp}>+{a.xpReward} XP</Text>
                 </View>
               ))}
             </View>

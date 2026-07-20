@@ -58,7 +58,7 @@ export async function predictGoalCompletion(params: {
     milestones,
     warnings: params.weeklyWorkouts < 3 ? ['Aumenta a 3+ entrenamientos por semana para acelerar resultados'] : [],
     recommendations: [
-      `Mantén un déficit de ${Math.round((params.currentCalories - params.targetCalories) / 7)} kcal/día`,
+      `Mantén un déficit de ${Math.round((params.avgCalories - params.targetCalories) / 7)} kcal/día`,
       'Prioriza el sueño: 7-9 horas acelera la recuperación y el metabolismo',
       params.currentStreak < 7 ? 'Construye consistencia antes de aumentar intensidad' : 'Tu racha es sólida — mantén el ritmo',
     ].filter(Boolean),
