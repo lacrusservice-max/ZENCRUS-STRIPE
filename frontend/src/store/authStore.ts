@@ -38,10 +38,11 @@ interface AuthState {
   isLoading: boolean
   needsVerification: boolean
   pendingEmail: string | null
+  pendingProfileData: Record<string, unknown> | null
 
   initialize: () => Promise<void>
   login: (email: string, password: string) => Promise<void>
-  register: (email: string, password: string, fullName: string) => Promise<void>
+  register: (email: string, password: string, fullName: string, username?: string, profileData?: Record<string, unknown>) => Promise<void>
   verifyEmail: (email: string, code: string) => Promise<void>
   resendVerification: (email: string) => Promise<void>
   forgotPassword: (email: string) => Promise<void>
@@ -59,6 +60,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   isLoading: true,
   needsVerification: false,
   pendingEmail: null,
+  pendingProfileData: null,
 
   initialize: async () => {
     try {
@@ -87,9 +89,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     set({ user: profileRes.data.data, accessToken, isAuthenticated: true })
   },
 
-  register: async (email, password, fullName) => {
-    await api.post('/auth/register', { email, password, fullName })
-    set({ needsVerification: true, pendingEmail: email })
+  register: async (email, password, fullName, username?, profileData?) => {
+    await api.post('/auth/register', { email, password, fullName, username, profileData })
+    set({ needsVerification: true, pendingEmail: email, pendingProfileData: profileData ?? null })
   },
 
   verifyEmail: async (email, code) => {
@@ -98,13 +100,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     await SecureStore.setItemAsync('accessToken', accessToken, SECURE_OPTS)
     await SecureStore.setItemAsync('refreshToken', refreshToken, SECURE_OPTS)
     const profileRes = await api.get('/users/profile')
+    const pendingProfile = get().pendingProfileData
     set({
       user: profileRes.data.data,
       accessToken,
       isAuthenticated: true,
       needsVerification: false,
       pendingEmail: null,
+      pendingProfileData: null,
     })
+    // Auto-save profile data if collected during onboarding
+    if (pendingProfile) {
+      try {
+        await api.post('/users/me/onboarding', pendingProfile)
+      } catch {}
+    }
   },
 
   resendVerification: async (email) => {

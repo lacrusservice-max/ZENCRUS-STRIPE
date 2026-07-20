@@ -28,6 +28,13 @@ export const registerSchema = z.object({
       .max(100)
       .trim()
       .regex(/^[a-zA-ZáéíóúñÁÉÍÓÚÑ\s]+$/, 'Solo letras y espacios'),
+    username: z
+      .string()
+      .min(3, 'Mínimo 3 caracteres')
+      .max(20, 'Máximo 20 caracteres')
+      .regex(/^[a-zA-Z0-9_]+$/, 'Solo letras, números y _')
+      .optional(),
+    profileData: z.any().optional(),
   }),
 })
 
@@ -86,38 +93,67 @@ function cookieOptions() {
 
 // ── Controllers ───────────────────────────────────────────────────────────────
 
-export async function register(req: Request, res: Response): Promise<void> {
-  const { email, password, fullName } = req.body
-
-  const { data: existing } = await supabase
-    .from('users')
-    .select('id')
-    .eq('email', email)
-    .maybeSingle()
-
-  if (existing) {
-    res.status(409).json({
-      success: false,
-      message: 'Ya existe una cuenta con este correo electrónico',
-    } satisfies ApiResponse)
+export async function checkUsername(req: Request, res: Response): Promise<void> {
+  const { username } = req.query
+  if (!username || typeof username !== 'string') {
+    res.status(400).json({ success: false, message: 'Username requerido' } satisfies ApiResponse)
     return
+  }
+  const clean = username.toLowerCase().trim()
+  if (!/^[a-z0-9_]{3,20}$/.test(clean)) {
+    res.status(200).json({ success: true, data: { available: false, reason: 'formato_invalido' } } satisfies ApiResponse)
+    return
+  }
+  const { data } = await supabase.from('users').select('id').eq('username', clean).maybeSingle()
+  res.status(200).json({ success: true, data: { available: !data } } satisfies ApiResponse)
+}
+
+export async function register(req: Request, res: Response): Promise<void> {
+  const { email, password, fullName, username, profileData } = req.body
+
+  // Check email uniqueness
+  const { data: existingEmail } = await supabase.from('users').select('id').eq('email', email).maybeSingle()
+  if (existingEmail) {
+    res.status(409).json({ success: false, message: 'Ya existe una cuenta con este correo electrónico' } satisfies ApiResponse)
+    return
+  }
+
+  // Check username uniqueness if provided
+  if (username) {
+    const { data: existingUsername } = await supabase.from('users').select('id').eq('username', username.toLowerCase()).maybeSingle()
+    if (existingUsername) {
+      res.status(409).json({ success: false, message: 'Este nombre de usuario ya está en uso' } satisfies ApiResponse)
+      return
+    }
   }
 
   const passwordHash = await argon2.hash(password, ARGON2_OPTIONS)
   const verificationCode = generateVerificationCode()
   const codeExpires = new Date(Date.now() + 10 * 60 * 1000)
 
-  const { error } = await supabase.from('users').insert({
+  const insertData: Record<string, unknown> = {
     email,
     password_hash: passwordHash,
     full_name: fullName,
     email_verification_code: verificationCode,
     email_verification_expires: codeExpires.toISOString(),
-  })
+  }
+  if (username) insertData.username = username.toLowerCase()
+  if (profileData) {
+    insertData.onboarding_data = profileData
+    if (profileData.peso) insertData.weight = profileData.peso
+    if (profileData.talla) insertData.height = profileData.talla
+    if (profileData.sexo) insertData.gender = profileData.sexo
+    if (profileData.nivelActividad) insertData.activity_level = profileData.nivelActividad
+    if (profileData.peso && profileData.talla && profileData.sexo && profileData.nivelActividad) {
+      insertData.profile_completed = true
+    }
+  }
 
+  const { error } = await supabase.from('users').insert(insertData)
   if (error) {
     logger.error('Error registrando usuario:', error.message)
-    res.status(500).json({ success: false, message: 'Error creando cuenta' } satisfies ApiResponse)
+    res.status(500).json({ success: false, message: 'Error creando cuenta. Intenta de nuevo.' } satisfies ApiResponse)
     return
   }
 

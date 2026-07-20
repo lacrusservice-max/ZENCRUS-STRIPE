@@ -1,7 +1,7 @@
 import { Router } from 'express'
 import {
   register, login, logout, verifyEmail, forgotPassword,
-  resetPassword, refreshTokens, resendVerification,
+  resetPassword, refreshTokens, resendVerification, checkUsername,
   registerSchema, loginSchema, verifyEmailSchema,
   forgotPasswordSchema, resetPasswordSchema,
 } from '../controllers/authController'
@@ -12,6 +12,7 @@ import { z } from 'zod'
 
 const router = Router()
 
+router.get('/check-username', checkUsername)
 router.post('/register', authLimiter, validate(registerSchema), register)
 router.post('/login', authLimiter, validate(loginSchema), login)
 router.post('/logout', authenticate, logout)
