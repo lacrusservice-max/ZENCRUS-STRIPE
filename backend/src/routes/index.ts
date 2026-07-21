@@ -6,6 +6,7 @@ import workoutRoutes from './workout.routes'
 import chatRoutes from './chat.routes'
 import subscriptionRoutes from './subscription.routes'
 import adminRoutes from './admin.routes'
+import setupRoutes from './setup.routes'
 import { ApiResponse } from '../models/types'
 import { supabase } from '../config/supabase'
 import { logger } from '../config/logger'
@@ -49,5 +50,6 @@ router.use('/workout', workoutRoutes)
 router.use('/chat', chatRoutes)
 router.use('/subscriptions', subscriptionRoutes)
 router.use('/admin', adminRoutes)
+router.use('/setup', setupRoutes)
 
 export default router
