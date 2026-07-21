@@ -35,17 +35,16 @@ router.post('/init-admin', async (req, res) => {
       .update({ role: 'admin', updated_at: new Date().toISOString() })
       .eq('email', email)
       .select('id, email, role')
-      .single()
 
     if (error) {
       return res.status(500).json({ success: false, message: error.message })
     }
 
-    if (!data) {
-      return res.status(404).json({ success: false, message: 'Usuario no encontrado. Debes registrarte primero.' })
+    if (!data || data.length === 0) {
+      return res.status(404).json({ success: false, message: 'Usuario no encontrado. Debes registrarte primero en zencrus.com.' })
     }
 
-    return res.json({ success: true, message: `✅ ${email} ahora es administrador`, data })
+    return res.json({ success: true, message: `✅ ${email} ahora es administrador`, data: data[0] })
   } catch (err: unknown) {
     return res.status(500).json({ success: false, message: String(err) })
   }
