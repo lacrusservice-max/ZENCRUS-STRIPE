@@ -99,7 +99,7 @@ async function startServer(): Promise<void> {
     const server = app.listen(env.PORT, () => {
       logger.info(`🚀 NutriAI Fit API corriendo en puerto ${env.PORT}`)
       logger.info(`📋 Entorno: ${env.NODE_ENV}`)
-      logger.info(`🔒 CORS: ${allowedOrigins.join(', ')}`)
+      logger.info(`🔒 CORS: ${[...allowedOrigins].join(', ')}`)
     })
 
     const shutdown = (signal: string) => {

@@ -28,22 +28,20 @@ export default function LoginPage() {
     try {
       const res = await authApi.login(email.trim().toLowerCase(), password);
       const data = res.data?.data ?? res.data;
-      // Backend returns accessToken (camelCase)
       const token = data?.accessToken ?? data?.token ?? data?.access_token;
       if (!token) throw new Error("No token received");
 
-      // Fetch user profile with the token
-      const meRes = await authApi.me(token);
-      const u = meRes.data?.data ?? meRes.data;
+      // Decode JWT payload to get user info (no extra API call needed)
+      const payload = JSON.parse(atob(token.split(".")[1]));
 
       setAuth({
-        id: u.id ?? u._id,
-        email: u.email ?? email.trim().toLowerCase(),
-        fullName: u.full_name ?? u.fullName ?? u.name ?? "",
-        username: u.username ?? "",
-        role: u.role ?? "user",
-        subscriptionTier: u.subscription_tier ?? u.subscriptionTier ?? "free",
-        isEmailVerified: u.email_verified ?? u.isEmailVerified ?? true,
+        id: payload.userId ?? payload.sub ?? "",
+        email: payload.email ?? email.trim().toLowerCase(),
+        fullName: "",
+        username: "",
+        role: payload.role ?? "user",
+        subscriptionTier: payload.subscriptionTier ?? payload.subscription_tier ?? "free",
+        isEmailVerified: true,
       }, token);
       router.replace("/home");
     } catch (err: unknown) {

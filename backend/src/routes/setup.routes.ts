@@ -103,13 +103,9 @@ router.post('/reset-password-force', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Email y newPassword requeridos' })
     }
 
-    const argon2 = await import('argon2')
-    const passwordHash = await argon2.hash(newPassword, {
-      type: argon2.argon2id,
-      memoryCost: 2 ** 16,
-      timeCost: 3,
-      parallelism: 1,
-    })
+    // IMPORTANT: use bcryptjs to match authController's login (bcrypt.compare)
+    const bcrypt = (await import('bcryptjs')).default
+    const passwordHash = await bcrypt.hash(newPassword, 10)
 
     const { data, error } = await supabase
       .from('users')

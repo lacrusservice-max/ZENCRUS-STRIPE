@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const BASE_URL = process.env.NEXT_PUBLIC_API_URL || "https://web-production-1d2e22.up.railway.app/api";
+// Use Next.js API route proxy — strips Origin header so Railway CORS doesn't block
+const BASE_URL = "/api/proxy";
 
 const api = axios.create({
   baseURL: BASE_URL,
@@ -8,9 +9,9 @@ const api = axios.create({
   timeout: 15000,
 });
 
-// Request interceptor — attach token
+// Request interceptor — attach token (only if not already set)
 api.interceptors.request.use((config) => {
-  if (typeof window !== "undefined") {
+  if (typeof window !== "undefined" && !config.headers.Authorization) {
     const token = localStorage.getItem("zencrus_token");
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
@@ -96,6 +97,60 @@ export const subscriptions = {
 // Onboarding
 export const onboarding = {
   complete: (data: Record<string, unknown>) => api.post("/onboarding/complete", data),
+};
+
+// Admin — control total
+export const admin = {
+  dashboard: () => api.get("/admin/dashboard"),
+  analytics: () => api.get("/admin/analytics"),
+
+  // Users
+  getUsers: (q?: Record<string, string | number>) =>
+    api.get("/admin/users", { params: q }),
+  getUserDetail: (id: string) => api.get(`/admin/users/${id}`),
+  setUserStatus: (id: string, isActive: boolean) =>
+    api.patch(`/admin/users/${id}/status`, { isActive }),
+  setUserRole: (id: string, role: string) =>
+    api.patch(`/admin/users/${id}/role`, { role }),
+  unlockUser: (id: string) => api.patch(`/admin/users/${id}/unlock`),
+  deleteUser: (id: string) => api.delete(`/admin/users/${id}`),
+
+  // Subscriptions
+  getSubscriptions: (q?: Record<string, string | number>) =>
+    api.get("/admin/subscriptions", { params: q }),
+  getRevenue: () => api.get("/admin/subscriptions/revenue"),
+  extendSubscription: (id: string, days: number) =>
+    api.patch(`/admin/subscriptions/${id}/extend`, { days }),
+  cancelSubscription: (id: string) =>
+    api.patch(`/admin/subscriptions/${id}/cancel`),
+
+  // Logs
+  getAuditLogs: (q?: Record<string, string | number>) =>
+    api.get("/admin/logs/audit", { params: q }),
+
+  // Content
+  getMessages: (q?: Record<string, string | number>) =>
+    api.get("/admin/content/messages", { params: q }),
+  deleteMessage: (id: string) => api.delete(`/admin/content/messages/${id}`),
+
+  // Notifications
+  notifyUser: (id: string, subject: string, message: string) =>
+    api.post(`/admin/notify/user/${id}`, { subject, message }),
+  notifyAll: (subject: string, message: string, tierFilter?: string) =>
+    api.post("/admin/notify/all", { subject, message, tierFilter }),
+
+  // Detail & social
+  getUserSocial: (id: string) => api.get(`/admin/users/${id}/social`),
+
+  // Trials
+  getTrials: (q?: Record<string, string | number>) =>
+    api.get("/admin/subscriptions/trials", { params: q }),
+
+  // System health
+  health: () => api.get("/health"),
+
+  // Export
+  exportUsersUrl: () => "/api/proxy/admin/export/users",
 };
 
 export default api;

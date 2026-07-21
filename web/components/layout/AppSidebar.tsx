@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
+import { useState, useEffect } from "react";
 import {
   LayoutDashboard,
   Bot,
@@ -10,6 +11,7 @@ import {
   User,
   LogOut,
   Zap,
+  ShieldCheck,
 } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { auth } from "@/lib/api";
@@ -27,6 +29,30 @@ export function AppSidebar() {
   const pathname = usePathname();
   const router = useRouter();
   const { user, clearAuth } = useAuthStore();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const token = localStorage.getItem("zencrus_token");
+        if (!token) return;
+        // First check JWT
+        const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        const payload = JSON.parse(atob(b64));
+        if (payload?.role === "admin") { setIsAdmin(true); return; }
+        // JWT might be stale — check DB via API
+        const res = await fetch("/api/proxy/users/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const user = data?.data ?? data;
+          if (user?.role === "admin") setIsAdmin(true);
+        }
+      } catch { /* ignore */ }
+    };
+    checkAdmin();
+  }, []);
 
   const handleLogout = async () => {
     try {
@@ -40,12 +66,7 @@ export function AppSidebar() {
   };
 
   const initials = user?.fullName
-    ? user.fullName
-        .split(" ")
-        .map((n) => n[0])
-        .join("")
-        .slice(0, 2)
-        .toUpperCase()
+    ? user.fullName.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()
     : "Z";
 
   return (
@@ -107,31 +128,41 @@ export function AppSidebar() {
               key={href}
               href={href}
               style={{
-                display: "flex",
-                alignItems: "center",
-                gap: 12,
-                padding: "10px 12px",
-                borderRadius: 10,
-                textDecoration: "none",
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "10px 12px", borderRadius: 10, textDecoration: "none",
                 color: isActive ? "#f1f5f9" : "#94a3b8",
-                background: isActive
-                  ? "rgba(91,79,255,0.15)"
-                  : "transparent",
+                background: isActive ? "rgba(91,79,255,0.15)" : "transparent",
                 boxShadow: isActive ? "0 0 16px rgba(91,79,255,0.15)" : "none",
                 border: isActive ? "1px solid rgba(91,79,255,0.25)" : "1px solid transparent",
-                transition: "all 0.15s",
-                fontWeight: isActive ? 600 : 400,
-                fontSize: 14,
+                transition: "all 0.15s", fontWeight: isActive ? 600 : 400, fontSize: 14,
               }}
             >
-              <Icon
-                size={18}
-                style={{ color: isActive ? "#5b4fff" : "#94a3b8", flexShrink: 0 }}
-              />
+              <Icon size={18} style={{ color: isActive ? "#5b4fff" : "#94a3b8", flexShrink: 0 }} />
               {label}
             </Link>
           );
         })}
+
+        {/* Admin link — only visible for admin role */}
+        {isAdmin && (
+          <>
+            <div style={{ height: 1, background: "rgba(255,255,255,0.06)", margin: "8px 4px" }} />
+            <Link
+              href="/admin"
+              style={{
+                display: "flex", alignItems: "center", gap: 12,
+                padding: "10px 12px", borderRadius: 10, textDecoration: "none",
+                color: pathname === "/admin" ? "#f1f5f9" : "#f59e0b",
+                background: pathname === "/admin" ? "rgba(245,158,11,0.15)" : "rgba(245,158,11,0.05)",
+                border: pathname === "/admin" ? "1px solid rgba(245,158,11,0.4)" : "1px solid rgba(245,158,11,0.15)",
+                transition: "all 0.15s", fontWeight: 700, fontSize: 14,
+              }}
+            >
+              <ShieldCheck size={18} style={{ color: "#f59e0b", flexShrink: 0 }} />
+              Panel Admin
+            </Link>
+          </>
+        )}
       </nav>
 
       {/* User + logout */}

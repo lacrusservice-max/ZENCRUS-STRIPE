@@ -1,12 +1,12 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
 import { useAuthStore } from "@/store/authStore";
 import {
   LayoutDashboard, Bot, Apple, Users, User, Dumbbell, TrendingUp,
-  Zap, LogOut,
+  Zap, LogOut, ShieldCheck,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -33,6 +33,28 @@ function LoadingScreen() {
 function Sidebar({ pathname }: { pathname: string }) {
   const { user, clearAuth } = useAuthStore();
   const router = useRouter();
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const checkAdmin = async () => {
+      try {
+        const token = localStorage.getItem("zencrus_token");
+        if (!token) return;
+        const b64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+        const payload = JSON.parse(atob(b64));
+        if (payload?.role === "admin") { setIsAdmin(true); return; }
+        const res = await fetch("/api/proxy/users/me", {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.ok) {
+          const data = await res.json();
+          const u = data?.data ?? data;
+          if (u?.role === "admin") setIsAdmin(true);
+        }
+      } catch { /* ignore */ }
+    };
+    checkAdmin();
+  }, []);
 
   const handleLogout = () => {
     clearAuth();
@@ -93,6 +115,23 @@ function Sidebar({ pathname }: { pathname: string }) {
             </Link>
           );
         })}
+
+        {isAdmin && (
+          <>
+            <div style={{ height: 1, background: "#2c2c2e", margin: "8px 4px" }} />
+            <Link href="/admin" style={{
+              display: "flex", alignItems: "center", gap: 12,
+              padding: "10px 14px", borderRadius: 12,
+              background: pathname.startsWith("/admin") ? "#f59e0b" : "rgba(245,158,11,0.08)",
+              color: pathname.startsWith("/admin") ? "#0a0a0a" : "#f59e0b",
+              border: "1px solid rgba(245,158,11,0.3)",
+              fontWeight: 700, fontSize: 14, transition: "all 0.15s", cursor: "pointer",
+            }}>
+              <ShieldCheck size={18} style={{ flexShrink: 0 }} />
+              Panel Admin
+            </Link>
+          </>
+        )}
       </nav>
 
       {/* User + logout */}
