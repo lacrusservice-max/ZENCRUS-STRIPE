@@ -183,6 +183,188 @@ const BASE_CONOCIMIENTO = `
 - 26-35: pico de rendimiento. Optimizar composición corporal.
 - 36-45: declive hormonal progresivo. Enfatizar fuerza (músculo y hueso). Proteína al tope del rango.
 
+---
+
+## MÓDULO 05 — CRONONUTRICIÓN Y TIMING DE NUTRIENTES
+
+PRINCIPIO CENTRAL: el CUÁNDO importa tanto como el QUÉ. La misma comida a las 8am vs 10pm produce respuestas metabólicas radicalmente diferentes debido a los ritmos circadianos.
+
+### SECCIÓN 5.1 — Ritmos Circadianos y Metabolismo
+- El núcleo supraquiasmático (NSQ) del hipotálamo sincroniza el reloj maestro con la luz solar.
+- Cada tejido tiene su propio reloj periférico (hígado, músculo, tejido adiposo, intestino) sincronizable con la alimentación.
+- La desincronización circadiana (comer tarde, turnos nocturnos, jet lag social) se asocia con mayor riesgo metabólico incluso sin cambiar el total calórico.
+- La sensibilidad a insulina es máxima en la mañana y declina progresivamente durante el día → los mismos CHO generan menor pico glucémico en la mañana.
+- La termogénesis inducida por la dieta (TID) es hasta un 44% mayor en la mañana vs la noche → las mismas calorías "cuestan" más energía digerirlas por la mañana.
+- FUENTE CIENTÍFICA: Chrononutrition and metabolic health — PMC12252119 | https://pmc.ncbi.nlm.nih.gov/articles/PMC12252119/
+- FUENTE CIENTÍFICA: Circadian rhythm disruption and metabolic syndrome — Int J Mol Sci 26(11):5116 | https://www.mdpi.com/1422-0067/26/11/5116
+- FUENTE CIENTÍFICA: Early vs Late TRE metabolic effects — medrxiv 2024 | https://www.medrxiv.org/content/10.1101/2024.09.04.24312795
+
+### SECCIÓN 5.2 — Distribución Calórica Diaria (Onboarding Q09, Q10)
+Distribución óptima para usuario SIN entrenamiento o con entrenamiento matutino (regla circadiana):
+- Desayuno (dentro 1-2h tras despertar): 25-30% kcal totales | proteína alta + CHO bajo IG + fibra
+- Almuerzo (comida principal): 30-35% kcal totales | proteína + verduras + CHO moderados
+- Colación (opcional): 10-15% kcal totales | proteína + grasa o fruta + proteína
+- Cena (mínimo 2-3h antes de dormir): 20-25% kcal totales | proteína + verduras + CHO moderados
+
+REGLA CLAVE: La distribución "ligero en la mañana, pesado en la noche" que prevalece en México urbano promueve hiperinsulinemia nocturna y almacenamiento de grasa.
+- Saltarse el desayuno aumenta un 10% el riesgo de síndrome metabólico. FUENTE: Nutrients Oct 2025 | https://www.mdpi.com/2072-6643/17/19/3305
+- Ingesta tardía y obesidad abdominal. FUENTE: da Cunha et al. Clin Nutr 2023 42:1798-1805
+
+AJUSTE POR CRONOTIPO (Onboarding Q10):
+- Matutino (lark): desayuno abundante, comida principal fuerte, cena muy ligera a las 18-19h.
+- Vespertino (owl): primera comida a las 9-10h (nunca después de las 11h), almuerzo más abundante, evitar CHO simples en cena. RIESGO: mayor tendencia a comer tarde → implementar mitigación activa.
+- Intermedio: distribución estándar con ajuste según horario laboral y entrenamiento.
+- FUENTE: Late meal intake and abdominal obesity — da Cunha et al. Clin Nutr 42:1798-1805
+
+### SECCIÓN 5.3 — Desayuno como Herramienta de Control de Apetito (Onboarding Q17-Q18)
+El tipo de desayuno determina el comportamiento hormonal del apetito durante todo el día.
+
+DESAYUNO ALTO EN PROTEÍNA (≥25-30g) vs ALTO EN CHO (<10g proteína):
+- Saciedad: proteína alta → alta y sostenida 3-4h. CHO bajo proteína → moderada con caída marcada.
+- Ghrelina post-desayuno: con proteína → supresión prolongada 3-4h. Con CHO → rebote rápido.
+- GLP-1 y PYY a los 120 min: significativamente más altos con proteína ≥25g.
+- Concentración cognitiva 2-3h después: mejor con proteína >25g.
+- FUENTE: Effect of protein sources at breakfast on satiety, PYY and GLP-1 — PMC12612008 2025 | https://pmc.ncbi.nlm.nih.gov/articles/PMC12612008/
+- FUENTE: Dairy-based protein-rich breakfast and satiety — Dalgaard et al. J Dairy Sci 2024 107(5):2653-2667
+- FUENTE: High-protein breakfast GLP-1 and PYY response — ScienceDirect 2019 | https://www.sciencedirect.com/science/article/pii/S0195666318311978
+
+TIPOS DE CHO RECOMENDADOS EN DESAYUNO (por IG):
+- Avena en hojuelas (no instantánea): IG 40-55 → saciedad prolongada por beta-glucano. EXCELENTE.
+- Tortilla de maíz nixtamalizada: IG 52-58 → buena saciedad con frijol/huevo. EXCELENTE en contexto mexicano.
+- Camote cocido: IG 44 → alta saciedad, fibra + amilosa + vitaminas. MUY BUENA opción pérdida de grasa.
+- Fruta entera (no jugo): IG 35-55 → moderada saciedad. Complemento, no base.
+- Pan blanco/tortilla de harina: IG 70-80 → saciedad corta. SUSTITUIR.
+- Azúcar simple/cereal azucarado: IG >70 → hambre 1.5-2h después. NO RECOMENDADO.
+- CHO alto IG (>65) pre-entrenamiento en 30-60 min: solo si entrena inmediatamente.
+
+FÓRMULA DE DESAYUNO ÓPTIMO PARA CONTROL DE APETITO:
+① Proteína ≥25-30g (huevo, frijoles, requesón, yogur griego, atún)
+② CHO bajo-moderado IG con fibra (avena, tortilla nixtamal, camote, fruta entera)
+③ Grasa saludable moderada (aguacate, aceite de oliva, semillas)
+④ Fibra total >8-10g
+→ Maximiza GLP-1 + PYY, suprime ghrelina 3-4h, estabiliza glucemia, reduce ingesta espontánea en almuerzo.
+
+COMBINACIÓN ESTRELLA MÉXICO: huevo + frijoles + tortilla nixtamalizada + aguacate = proteína completa + CHO moderado + fibra + grasa saludable.
+
+### SECCIÓN 5.4 — Timing Peri-Entrenamiento y CHO por Horario (Onboarding Q11)
+PRINCIPIO QUE RESUELVE LA CONTRADICCIÓN CIRCADIANA:
+- La regla circadiana aplica para usuarios SEDENTARIOS o con entrenamiento MATUTINO.
+- Cuando hay entrenamiento intenso en tarde-noche (>45 min, >65% VO2máx o fuerza), la PERIODIZACIÓN DE CHO alrededor del ejercicio tiene PRIORIDAD METABÓLICA sobre la regla circadiana.
+- Razón fisiológica: el ejercicio activa GLUT4 en músculo vía AMPK → independiente de insulina → ventana de alta captación muscular de glucosa que dura 1-2h post-entrenamiento, incluso de noche.
+- En contexto post-ejercicio: cortisol baja, insulina más sensible, GLUT4 activo dirige los CHO al músculo (glucógeno), no al tejido adiposo.
+- CONCLUSIÓN: la cena post-entrenamiento nocturno DEBE incluir CHO de IG moderado. Evitarlos por "miedo a comer de noche" es un error fisiológico.
+- FUENTE: ISSN Nutrient Timing Position Stand — Kerksick et al. 2017 | https://pmc.ncbi.nlm.nih.gov/articles/PMC5596471/
+- FUENTE: Muscle glycogen resynthesis post-exercise timing independence — PMC5852829 | https://pmc.ncbi.nlm.nih.gov/articles/PMC5852829/
+- FUENTE: Nutritional strategies for post-exercise recovery — Sports Med 2025 | https://link.springer.com/article/10.1007/s40279-025-02213-6
+
+CÓMO COMUNICAR EL CHO NOCTURNO POST-ENTRENAMIENTO:
+"Acabas de entrenar, así que tu cuerpo va a usar esos carbohidratos para recuperar el glucógeno muscular, no para almacenarlos como grasa. La regla de evitar CHO de noche aplica cuando no entrenaste — hoy sí entrenaste, así que la situación es diferente."
+
+PRE-ENTRENAMIENTO:
+- 3-4h antes (comida completa): proteína 30-40g + CHO complejos 50-100g + verduras + poca grasa.
+- 1-2h antes (snack): CHO IG moderado 30-50g + proteína ligera 15-20g.
+- 30-60 min antes (solo si hay hambre): CHO rápidos 20-30g (plátano, dátil, tortilla pequeña).
+- Entrenamiento en ayuno: válido solo para zona 2 baja intensidad. NO para fuerza o alta intensidad.
+
+POST-ENTRENAMIENTO (por objetivo):
+- Hipertrofia: CHO 30-50g + proteína 25-35g dentro de 1-2h. Ejemplo: arroz + pollo + verduras.
+- Pérdida de grasa: CHO 15-25g + proteína 25-40g dentro de 1-2h. Ejemplo: yogur griego + fruta.
+- Resistencia/endurance: CHO 50-80g + proteína 20-25g cuanto antes si hay 2da sesión.
+- MITO VENTANA ANABÓLICA: la urgencia de "30 minutos" no existe para quienes entrenan 1 vez al día y comieron adecuadamente antes. El músculo es sensible a proteína hasta 24h post-entrenamiento. FUENTE: Aragon & Schoenfeld JISSN 2013 | https://pmc.ncbi.nlm.nih.gov/articles/PMC3577439/
+
+TABLA MAESTRA DE CHO POR HORARIO DE ENTRENAMIENTO (Onboarding Q11):
+- Mañana (6-10h): 20-25% CHO pre-entreno | 25-30% CHO post-entreno | Cena LIGERA 10-15% CHO del día.
+- Mediodía (11-14h): 20-25% CHO desayuno+colación | 25-30% CHO comida post | Cena moderada 15-20% CHO.
+- Tarde (15-18h): 30-35% CHO desayuno+comida | 25-30% CHO merienda post | Cena moderada 20-25% CHO.
+- Noche (19-22h): 25-30% CHO desayuno+comida | 30-35% CHO cena post-entreno | Cena principal CON CHO.
+- Caseína pre-sueño (queso cottage, yogur griego, 30-40g proteína): para usuarios con entrenamiento nocturno e hipertrofia. FUENTE: Carbohydrate periodization GSSI 2022 | https://www.gssiweb.org/docs/sse_231_005.pdf
+
+### SECCIÓN 5.5 — Escenarios Completos por Horario (base 70kg, 2000 kcal, 160g prot, 200g CHO, 65g grasa)
+
+ESCENARIO 1 — Entrenamiento matutino (7-9h): regla circadiana y timing alineados.
+- Pre-entreno (6:00-6:30h): CHO 20-30g + prot 10-15g. Plátano + leche O tortilla + frijoles.
+- POST-ENTRENAMIENTO (9:00-9:30h): CHO 50-60g + prot 35-40g. Huevos + avena + fruta + yogur griego.
+- Comida principal (13:00-14:00h): CHO 70-80g + prot 40-45g. Arroz + pollo + verduras + aguacate.
+- Colación (16:00-17:00h): CHO 20-25g + prot 20g. Requesón + fruta.
+- Cena LIGERA (19:00-20:00h): CHO 25-30g + prot 30-35g. Ensalada + huevo o pescado + 1-2 tortillas.
+
+ESCENARIO 2 — Entrenamiento mediodía (12-14h):
+- Desayuno pre-entreno (7:00-8:00h): CHO 50-60g + prot 30-35g. Avena + huevos + fruta + leche.
+- Colación pre (10:30-11:00h): CHO 20-25g + prot 15g. Plátano + proteína O tortilla + requesón.
+- POST-ENTRENAMIENTO (14:00-15:00h): CHO 70-80g + prot 40-45g. Arroz + pollo o pescado + frijoles + verduras.
+- Cena LIGERA (20:00-21:00h): CHO 20-25g + prot 30-35g. Sopa verduras + huevo o atún + 1-2 tortillas.
+
+ESCENARIO 3 — Entrenamiento vespertino (17-19h):
+- Desayuno (7:00-8:00h): CHO 45-55g + prot 30-35g. Huevos + frijoles + 2 tortillas + aguacate.
+- Comida (12:00-13:00h): CHO 55-65g + prot 35-40g. Arroz integral + carne + verduras.
+- Colación PRE-ENTRENO (15:30-16:00h): CHO 25-30g + prot 15-20g. Plátano + proteína O tortilla + atún.
+- POST-ENTRENAMIENTO/cena (19:00-20:00h): CHO 45-55g + prot 35-40g. Camote + pollo o pescado + verduras.
+
+ESCENARIO 4 — Entrenamiento nocturno (20-22h): el más contraintuitivo.
+- Desayuno MAYOR del día (7:00-8:00h): CHO 55-65g + prot 35-40g. Huevos + avena + fruta + yogur griego.
+- Comida (12:00-13:00h): CHO 60-70g + prot 40-45g. Arroz + proteína + verduras + frijoles.
+- Colación PRE-ENTRENO (18:30-19:00h): CHO 30-35g + prot 20g. Plátano + leche O pan integral + atún.
+- POST-ENTRENAMIENTO/cena (22:00-22:30h): CHO 40-50g + prot 35-40g. Camote o arroz + pollo o huevos + verduras.
+- Antes de dormir SOLO HIPERTROFIA (23:00-23:30h): prot 25-30g + grasa 5g. Queso cottage o yogur griego.
+
+### SECCIÓN 5.6 — Distribución de Proteína a lo Largo del Día (Onboarding Q12)
+- MPS tiene "techo" por toma: 20-40g de proteína de alta calidad maximiza activación de mTORC1.
+- 4 tomas de 25g producen mayor MPS acumulada que las mismas calorías en 2 comidas.
+- Leucina como "interruptor" de mTOR: se necesitan ~2-3g leucina por toma ≈ 20-25g proteína de alta calidad.
+- Proteína antes de dormir (caseína, 30-40g): aumenta MPS nocturna sin inhibir lipólisis. Útil con hipertrofia + entrenamiento nocturno.
+- FUENTE: ISSN Position Stand Protein and Exercise — Jäger et al. 2017 | https://pmc.ncbi.nlm.nih.gov/articles/PMC5477153/
+- FUENTE: Protein distribution and MPS — Areta et al. J Physiology 2013
+
+### SECCIÓN 5.7 — Orden del Plato y Frecuencia de Ingesta
+ORDEN DEL PLATO (aplicar en TODAS las comidas):
+- VERDURA → PROTEÍNA → CARBOHIDRATO reduce el pico glucémico postprandial hasta un 36-37%.
+- Mecanismo: fibra de verduras forma gel y retarda absorción de glucosa. Proteína estimula GLP-1 antes de que llegue la glucosa del carbohidrato.
+- En México: comer el nopal, los frijoles o el aguacate ANTES de la tortilla.
+- FUENTE: Food order and postprandial glucose — Shukla et al. Diabetes Care 2019 | https://pmc.ncbi.nlm.nih.gov/articles/PMC6463522/
+
+FRECUENCIA DE INGESTA:
+- La evidencia NO respalda que 5-6 comidas/día sea superior a 3 para pérdida de peso cuando calorías son iguales.
+- Lo que SÍ importa: ① proteína distribuida en ≥3 tomas, ② respetar ritmo circadiano, ③ patrón sostenible.
+- Para resistencia a insulina: 3-4 comidas regulares sin ayunos prolongados.
+- Para pérdida de grasa con buena flexibilidad metabólica: 2-3 comidas bien estructuradas con ventana de ayuno 12-14h puede ser ventajoso.
+
+### SECCIÓN 5.8 — Ayuno Intermitente y Alimentación Restringida en Tiempo (TRE)
+La variable más importante es la POSICIÓN de la ventana, no su tamaño.
+
+TIPOS Y RECOMENDACIÓN:
+- 12:12: recomendable para TODO usuario como mínimo. Sincronía circadiana básica.
+- 14:10: apropiado para mayoría. Mejora marcadores metabólicos. Ej: 8am-6pm o 9am-7pm.
+- 16:8: válido SI la ventana está en mañana-tarde.
+- 5:2 (2 días <600 kcal): comparable a restricción calórica continua.
+- OMAD: NO recomendado para hipertrofia — riesgo de pérdida muscular.
+
+POSICIÓN DE LA VENTANA (CRÍTICO):
+- Early TRE (mañana-tarde, ej: 8am-4pm o 8am-6pm): mejora insulina, glucosa, presión arterial y marcadores inflamatorios. ALINEADO circadianamente.
+- Late TRE (tarde-noche, ej: 12pm-8pm o 2pm-10pm): NO mejora el metabolismo. ANULA beneficios circadianos. Es la forma más común en México y la MENOS beneficiosa.
+- FUENTE: Chrononutrition and TRE — PMC12252119 | https://pmc.ncbi.nlm.nih.gov/articles/PMC12252119/
+- FUENTE: Time-Restricted Eating and Metabolic Health — Lowe et al. NEJM Evidence 2022
+
+CUÁNDO LA IA NO RECOMIENDA AYUNO INTERMITENTE:
+- Objetivo hipertrofia con dificultad para alcanzar total proteico en ventana reducida.
+- Señales de resistencia a insulina severa o hipoglucemia reactiva frecuente.
+- Ciclo irregular o señales de RED-S — el ayuno adiciona estrés hormonal.
+- Estrés ≥8/10 — el ayuno eleva cortisol y puede empeorar la situación.
+- Adolescentes 17-19 años en período de crecimiento.
+
+### RESUMEN OPERATIVO MÓDULO 05 (reglas de decisión rápida para la IA)
+1. DESAYUNO: dentro de las 2 primeras horas tras despertar. Saltarse desayuno → 10% mayor riesgo síndrome metabólico.
+2. DISTRIBUCIÓN SIN ENTRENAMIENTO: 30% desayuno · 35% almuerzo · 15% colación · 20% cena.
+3. DESAYUNO ÓPTIMO: ≥25-30g proteína + CHO bajo IG + fibra >8g. Suprime ghrelina 3-4h.
+4. CUANDO HAY ENTRENAMIENTO: 55-65% CHO distribuidos alrededor del ejercicio (pre+post), adaptando horario.
+5. ENTRENAMIENTO NOCTURNO: cena post-entreno DEBE incluir CHO moderado + proteína alta. GLUT4 activado dirige glucosa al músculo, no a la grasa.
+6. ORDEN DEL PLATO: VERDURA → PROTEÍNA → CARBOHIDRATO. Reduce pico glucémico hasta 37% sin cambiar nada más.
+7. VENTANA ANABÓLICA: el músculo es sensible a proteína hasta 24h post-entrenamiento. La urgencia de "30 minutos" es un mito.
+8. DISTRIBUCIÓN PROTEÍNA: 3-4 tomas de 20-40g cada 3-4h es más importante que el timing post-entrenamiento.
+9. AYUNO INTERMITENTE: solo funciona bien si la ventana está en mañana-tarde (early TRE). Late TRE anula beneficios circadianos.
+10. AI NO RECOMENDADO EN: hipertrofia con dificultad de proteína, ciclo irregular, estrés alto, adolescentes.
+
+Onboarding questions que activan este módulo: Q09 (horario de sueño), Q10 (cronotipo), Q11 (horario de entrenamiento), Q05 (objetivo), Q12 (frecuencia comidas), Q17-Q18 (señales de hambre y saciedad).
+
 === FIN BASE DE CONOCIMIENTO ===
 `
 

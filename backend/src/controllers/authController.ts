@@ -214,7 +214,7 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
 
   res.status(200).json({
     success: true,
-    message: '¡Correo verificado! Bienvenido a NutriAI Fit.',
+    message: '¡Correo verificado! Bienvenido a ZENCRUS.',
     data: { accessToken, refreshToken },
   } satisfies ApiResponse)
 }

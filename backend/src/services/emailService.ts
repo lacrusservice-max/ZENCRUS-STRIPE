@@ -1,54 +1,22 @@
-import nodemailer from 'nodemailer'
 import { Resend } from 'resend'
 import { env } from '../config/env'
 import { logger } from '../config/logger'
 
 const LOGO_URL = 'https://bmawnpbazezbkevsfbte.supabase.co/storage/v1/object/public/assets/email/logo-zencrus.png'
 
-// Gmail SMTP (primario cuando SMTP_PASS está configurado)
-const smtpTransporter = nodemailer.createTransport({
-  host: 'smtp.gmail.com',
-  port: 587,
-  secure: false,
-  auth: {
-    user: 'lacrusservice@gmail.com',
-    pass: env.SMTP_PASS,
-  },
-  connectionTimeout: 8000,
-  greetingTimeout: 8000,
-  socketTimeout: 10000,
-})
-
-// Resend (fallback o cuando no hay SMTP_PASS pero sí RESEND_API_KEY)
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null
 
 async function sendEmail(to: string, subject: string, html: string): Promise<void> {
-  // Usar Gmail SMTP si hay App Password configurado
-  if (env.SMTP_PASS) {
-    await smtpTransporter.sendMail({
-      from: 'ZENCRUS <lacrusservice@gmail.com>',
-      to,
-      subject,
-      html,
-    })
-    logger.info(`✅ Email enviado via Gmail a ${to}: ${subject}`)
-    return
-  }
+  if (!resend) throw new Error('RESEND_API_KEY no configurado')
 
-  // Fallback: Resend (solo funciona para lacrusservice@gmail.com sin dominio verificado)
-  if (resend) {
-    const { error } = await resend.emails.send({
-      from: env.EMAIL_FROM || 'ZENCRUS <onboarding@resend.dev>',
-      to,
-      subject,
-      html,
-    })
-    if (error) throw new Error(error.message)
-    logger.info(`✅ Email enviado via Resend a ${to}: ${subject}`)
-    return
-  }
-
-  throw new Error('No hay proveedor de email configurado (SMTP_PASS o RESEND_API_KEY)')
+  const { error } = await resend.emails.send({
+    from: env.EMAIL_FROM || 'ZENCRUS <noreply@zencrus.com>',
+    to,
+    subject,
+    html,
+  })
+  if (error) throw new Error(error.message)
+  logger.info(`✅ Email enviado via Resend a ${to}: ${subject}`)
 }
 
 // ── Base template: negro puro, logo arriba, contenido centrado ───────────────
