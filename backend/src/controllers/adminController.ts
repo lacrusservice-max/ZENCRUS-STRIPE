@@ -2,6 +2,11 @@ import { Request, Response } from 'express'
 import { supabase } from '../config/supabase'
 import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
+import { Resend } from 'resend'
+import { env } from '../config/env'
+
+const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null
+const FROM_EMAIL = 'ZENCRUS <noreply@zencrus.com>'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
@@ -588,6 +593,227 @@ export function streamEvents(req: Request, res: Response): void {
 export function broadcastEvent(type: string, payload: unknown): void {
   const msg = `data: ${JSON.stringify({ type, payload, ts: Date.now() })}\n\n`
   sseClients.forEach(client => { try { client.write(msg) } catch { sseClients.delete(client) } })
+}
+
+// ── Trials ────────────────────────────────────────────────────────────────────
+
+export async function getTrials(req: Request, res: Response): Promise<void> {
+  try {
+    const { p, limit } = page(req)
+    const { from, to } = range(p, limit)
+
+    const { data, count, error } = await supabase
+      .from('subscriptions')
+      .select('id,tier,status,start_date,end_date,created_at,users(id,email,full_name,username)', { count: 'exact' })
+      .eq('payment_provider', 'none')
+      .eq('tier', 'premium')
+      .order('end_date', { ascending: true })
+      .range(from, to)
+
+    if (error) throw error
+
+    res.json({
+      success: true,
+      data,
+      pagination: { page: p, limit, total: count ?? 0, totalPages: Math.ceil((count ?? 0) / limit) },
+    })
+  } catch (err) {
+    logger.error('Admin getTrials error:', err)
+    res.status(500).json({ success: false, message: 'Error obteniendo trials' })
+  }
+}
+
+export async function extendSubscription(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params
+    const { days } = req.body as { days: number }
+
+    const { data: sub } = await supabase.from('subscriptions').select('end_date,user_id').eq('id', id).single()
+    if (!sub) { res.status(404).json({ success: false, message: 'Suscripción no encontrada' }); return }
+
+    const newEnd = new Date((sub as any).end_date ?? new Date())
+    newEnd.setDate(newEnd.getDate() + days)
+
+    await supabase.from('subscriptions').update({ end_date: newEnd.toISOString(), status: 'active' }).eq('id', id)
+    await supabase.from('users').update({ subscription_expires_at: newEnd.toISOString() }).eq('id', (sub as any).user_id)
+    await supabase.from('audit_logs').insert({ action: 'admin_extend_subscription', metadata: { sub_id: id, days, new_end: newEnd, admin_id: req.user?.id } })
+
+    res.json({ success: true, message: `Suscripción extendida ${days} días` })
+  } catch (err) {
+    logger.error('Admin extendSubscription error:', err)
+    res.status(500).json({ success: false, message: 'Error extendiendo suscripción' })
+  }
+}
+
+export async function cancelSubscriptionAdmin(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params
+    const { data: sub } = await supabase.from('subscriptions').select('user_id').eq('id', id).single()
+    if (!sub) { res.status(404).json({ success: false, message: 'Suscripción no encontrada' }); return }
+
+    await supabase.from('subscriptions').update({ status: 'cancelled', auto_renew: false, cancelled_at: new Date().toISOString() }).eq('id', id)
+    await supabase.from('users').update({ subscription_tier: 'free' }).eq('id', (sub as any).user_id)
+    await supabase.from('audit_logs').insert({ action: 'admin_cancel_subscription', metadata: { sub_id: id, admin_id: req.user?.id } })
+
+    res.json({ success: true, message: 'Suscripción cancelada' })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error cancelando suscripción' })
+  }
+}
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+
+export async function getAnalytics(_req: Request, res: Response): Promise<void> {
+  try {
+    const days = 30
+    const start = new Date(Date.now() - days * 864e5).toISOString()
+
+    const [
+      { data: userRows },
+      { data: subRows },
+    ] = await Promise.all([
+      supabase.from('users').select('created_at').gte('created_at', start).order('created_at'),
+      supabase.from('subscriptions').select('created_at,tier,payment_provider').gte('created_at', start).order('created_at'),
+    ])
+
+    // Build day-by-day buckets
+    const registrationsPerDay: Record<string, number> = {}
+    const subsPerDay: Record<string, number> = {}
+    for (let i = 0; i < days; i++) {
+      const d = new Date(Date.now() - (days - 1 - i) * 864e5).toISOString().slice(0, 10)
+      registrationsPerDay[d] = 0
+      subsPerDay[d] = 0
+    }
+
+    for (const u of userRows ?? []) {
+      const d = (u as any).created_at.slice(0, 10)
+      if (registrationsPerDay[d] !== undefined) registrationsPerDay[d]++
+    }
+
+    for (const s of subRows ?? []) {
+      const d = (s as any).created_at.slice(0, 10)
+      if (subsPerDay[d] !== undefined) subsPerDay[d]++
+    }
+
+    res.json({
+      success: true,
+      data: {
+        registrationsPerDay,
+        subsPerDay,
+        totalUsers: userRows?.length ?? 0,
+        totalSubs: subRows?.length ?? 0,
+      },
+    })
+  } catch (err) {
+    logger.error('Admin getAnalytics error:', err)
+    res.status(500).json({ success: false, message: 'Error obteniendo analíticas' })
+  }
+}
+
+// ── Notifications ──────────────────────────────────────────────────────────────
+
+export async function sendNotificationToUser(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params
+    const { subject, message } = req.body as { subject: string; message: string }
+
+    const { data: user } = await supabase.from('users').select('email,full_name').eq('id', id).single()
+    if (!user) { res.status(404).json({ success: false, message: 'Usuario no encontrado' }); return }
+
+    if (!resend) {
+      logger.warn('Resend no configurado — notificación simulada')
+      res.json({ success: true, message: 'Notificación simulada (Resend no configurado)' })
+      return
+    }
+
+    const name = (user as any).full_name || 'Usuario'
+    const html = `
+      <div style="background:#0a0a0a;padding:32px;font-family:sans-serif;color:#e2e8f0;max-width:600px;margin:0 auto;border-radius:12px">
+        <div style="font-size:22px;font-weight:800;color:#a78bfa;margin-bottom:16px">ZENCRUS</div>
+        <h2 style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:12px">${subject}</h2>
+        <p style="font-size:15px;line-height:1.7;color:#94a3b8">Hola ${name},</p>
+        <div style="font-size:15px;line-height:1.7;color:#cbd5e1;margin:16px 0;white-space:pre-line">${message}</div>
+        <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:24px 0"/>
+        <p style="font-size:12px;color:#475569">El equipo de ZENCRUS — noreply@zencrus.com</p>
+      </div>`
+
+    await resend.emails.send({ from: FROM_EMAIL, to: (user as any).email, subject, html })
+    await supabase.from('audit_logs').insert({ action: 'admin_send_notification', user_id: id, metadata: { subject, admin_id: req.user?.id } })
+
+    res.json({ success: true, message: `Notificación enviada a ${(user as any).email}` })
+  } catch (err) {
+    logger.error('Admin sendNotification error:', err)
+    res.status(500).json({ success: false, message: 'Error enviando notificación' })
+  }
+}
+
+export async function sendNotificationToAll(req: Request, res: Response): Promise<void> {
+  try {
+    const { subject, message, tierFilter } = req.body as { subject: string; message: string; tierFilter?: string }
+
+    let q = supabase.from('users').select('id,email,full_name').eq('is_active', true)
+    if (tierFilter) q = q.eq('subscription_tier', tierFilter)
+
+    const { data: users } = await q
+
+    if (!resend) {
+      logger.warn(`Resend no configurado — notificación masiva simulada para ${users?.length ?? 0} usuarios`)
+      res.json({ success: true, message: `Notificación masiva simulada (${users?.length ?? 0} usuarios)` })
+      return
+    }
+
+    let sent = 0
+    for (const user of users ?? []) {
+      try {
+        const name = (user as any).full_name || 'Usuario'
+        const html = `
+          <div style="background:#0a0a0a;padding:32px;font-family:sans-serif;color:#e2e8f0;max-width:600px;margin:0 auto;border-radius:12px">
+            <div style="font-size:22px;font-weight:800;color:#a78bfa;margin-bottom:16px">ZENCRUS</div>
+            <h2 style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:12px">${subject}</h2>
+            <p style="font-size:15px;line-height:1.7;color:#94a3b8">Hola ${name},</p>
+            <div style="font-size:15px;line-height:1.7;color:#cbd5e1;margin:16px 0;white-space:pre-line">${message}</div>
+            <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:24px 0"/>
+            <p style="font-size:12px;color:#475569">El equipo de ZENCRUS</p>
+          </div>`
+        await resend.emails.send({ from: FROM_EMAIL, to: (user as any).email, subject, html })
+        sent++
+      } catch { /* continue */ }
+    }
+
+    await supabase.from('audit_logs').insert({ action: 'admin_send_mass_notification', metadata: { subject, sent, total: users?.length ?? 0, admin_id: req.user?.id } })
+    res.json({ success: true, message: `Notificación enviada a ${sent} usuarios` })
+  } catch (err) {
+    logger.error('Admin sendNotificationToAll error:', err)
+    res.status(500).json({ success: false, message: 'Error enviando notificación masiva' })
+  }
+}
+
+// ── Export ────────────────────────────────────────────────────────────────────
+
+export async function exportUsers(req: Request, res: Response): Promise<void> {
+  try {
+    const { data: users } = await supabase
+      .from('users')
+      .select('id,email,full_name,username,role,subscription_tier,is_active,email_verified,created_at,last_login')
+      .order('created_at', { ascending: false })
+      .limit(5000)
+
+    const header = ['ID','Email','Nombre','Username','Rol','Plan','Activo','Verificado','Registro','Último acceso']
+    const rows = (users ?? []).map((u: any) => [
+      u.id, u.email, u.full_name, u.username ?? '', u.role, u.subscription_tier,
+      u.is_active ? 'Sí' : 'No', u.email_verified ? 'Sí' : 'No',
+      u.created_at ? new Date(u.created_at).toLocaleDateString('es-MX') : '',
+      u.last_login  ? new Date(u.last_login).toLocaleDateString('es-MX') : '',
+    ].map(v => `"${String(v).replace(/"/g, '""')}"`))
+
+    const csv = [header.join(','), ...rows.map(r => r.join(','))].join('\n')
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8')
+    res.setHeader('Content-Disposition', `attachment; filename="zencrus-usuarios-${new Date().toISOString().slice(0,10)}.csv"`)
+    res.send('﻿' + csv) // BOM for Excel
+  } catch (err) {
+    logger.error('Admin exportUsers error:', err)
+    res.status(500).json({ success: false, message: 'Error exportando usuarios' })
+  }
 }
 
 // Poll every 10s for new entries and broadcast to connected admin clients

@@ -107,9 +107,11 @@ export default function RegisterScreen() {
 
   const validateStep0 = (): string | null => {
     if (!fullName.trim() || fullName.trim().length < 2) return 'Ingresa tu nombre completo'
-    if (username.length > 0 && username.length < 3) return 'El username debe tener mínimo 3 caracteres'
+    if (!username || username.length < 3) return 'El username es obligatorio (mínimo 3 caracteres)'
+    if (usernameStatus === 'checking') return 'Esperando verificación de username...'
     if (usernameStatus === 'taken') return 'Ese username ya está en uso'
     if (usernameStatus === 'invalid') return 'Username solo puede tener letras, números y _'
+    if (usernameStatus !== 'ok') return 'Ingresa un username válido para continuar'
     return null
   }
 
@@ -151,7 +153,7 @@ export default function RegisterScreen() {
     setLoading(true)
     try {
       const emailClean = email.trim().toLowerCase()
-      await register(emailClean, password, fullName.trim(), username || undefined)
+      await register(emailClean, password, fullName.trim(), username)
       router.push({ pathname: '/(auth)/verify-email', params: { email: emailClean } })
     } catch (err: any) {
       Alert.alert('Error', err?.response?.data?.message || err?.message || 'Error al crear la cuenta')
@@ -218,7 +220,7 @@ export default function RegisterScreen() {
                     </View>
 
                     <Text style={s.fieldLabel}>
-                      Username <Text style={s.optional}>(opcional)</Text>
+                      Username <Text style={{ color: '#ef4444', fontSize: 13 }}>*</Text>
                     </Text>
                     <View style={inputStyle('user')}>
                       <Text style={s.atSign}>@</Text>

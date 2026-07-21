@@ -281,6 +281,7 @@ input::placeholder{color:var(--muted)}
 @keyframes toast-in{from{transform:translateY(12px);opacity:0}to{transform:translateY(0);opacity:1}}
 .toast-success{background:#059669;color:#fff;border:1px solid rgba(255,255,255,.15)}
 .toast-error{background:#dc2626;color:#fff;border:1px solid rgba(255,255,255,.15)}
+.toast-info{background:#1d4ed8;color:#fff;border:1px solid rgba(255,255,255,.15)}
 
 /* ── LIVE EVENTS BANNER ───────────────────────────────────────────────────── */
 .live-banner{
@@ -403,6 +404,34 @@ input::placeholder{color:var(--muted)}
         </svg>
         <span>Suscripciones</span>
       </div>
+      <!-- Trials -->
+      <div class="nav-item" :class="page==='trials'?'active':''" @click="loadPage('trials')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span>Trials</span>
+      </div>
+      <!-- Revenue -->
+      <div class="nav-item" :class="page==='revenue'?'active':''" @click="loadPage('revenue')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>
+        </svg>
+        <span>Ingresos</span>
+      </div>
+      <!-- Analytics -->
+      <div class="nav-item" :class="page==='analytics'?'active':''" @click="loadPage('analytics')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+        </svg>
+        <span>Analíticas</span>
+      </div>
+      <!-- Notificaciones -->
+      <div class="nav-item" :class="page==='notifications'?'active':''" @click="loadPage('notifications')">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+          <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/>
+        </svg>
+        <span>Notificaciones</span>
+      </div>
       <!-- Planes -->
       <div class="nav-item" :class="page==='plans'?'active':''" @click="loadPage('plans')">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
@@ -522,6 +551,13 @@ input::placeholder{color:var(--muted)}
               <canvas id="tierChart" height="180"></canvas>
             </div>
             <div class="glass rounded-2xl p-5">
+              <div class="sec-head" style="margin-bottom:10px">Registros últimos 14 días</div>
+              <canvas id="recentRegChart" height="160"></canvas>
+            </div>
+          </div>
+          <!-- Recent users row -->
+          <div class="grid grid-cols-2 gap-5 mb-5">
+            <div class="glass rounded-2xl p-5">
               <div class="sec-head">Usuarios recientes</div>
               <div class="space-y-3">
                 <template x-for="u in dash.recentUsers" :key="u.id">
@@ -532,6 +568,28 @@ input::placeholder{color:var(--muted)}
                       <div style="font-size:11px;color:var(--muted)" x-text="u.email"></div>
                     </div>
                     <span class="bdg" :class="tierBadge(u.subscription_tier)" x-text="u.subscription_tier"></span>
+                  </div>
+                </template>
+              </div>
+            </div>
+            <!-- Live feed -->
+            <div class="glass rounded-2xl p-5">
+              <div class="flex items-center justify-between mb-3">
+                <div class="sec-head" style="margin-bottom:0">Actividad en tiempo real</div>
+                <button x-show="liveEvents.length>0" @click="liveEvents=[]" style="font-size:11px;color:var(--muted)" class="hover:text-white">Limpiar</button>
+              </div>
+              <template x-if="liveEvents.length === 0">
+                <div style="text-align:center;padding:28px 0;color:var(--muted);font-size:12px">
+                  <div style="font-size:24px;margin-bottom:8px;opacity:.4">📡</div>
+                  Esperando eventos...
+                </div>
+              </template>
+              <div class="space-y-2 max-h-48 overflow-y-auto">
+                <template x-for="ev in liveEvents.slice(0,20)" :key="ev.ts">
+                  <div style="display:flex;align-items:center;gap:8px;padding:6px 8px;background:rgba(255,255,255,.03);border-radius:8px;font-size:11px">
+                    <div class="live-dot" style="width:6px;height:6px;flex-shrink:0"></div>
+                    <span style="color:#a5b4fc;font-weight:700;text-transform:uppercase;letter-spacing:.04em" x-text="ev.type?.replace(/_/g,' ')"></span>
+                    <span style="color:var(--muted);margin-left:auto" x-text="new Date(ev.ts).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit'})"></span>
                   </div>
                 </template>
               </div>
@@ -565,6 +623,13 @@ input::placeholder{color:var(--muted)}
     <!-- ═══ USUARIOS ═════════════════════════════════════════════════════════ -->
     <div x-show="page==='users'" x-cloak class="content-area">
       <!-- Filters -->
+      <div class="flex items-center justify-between mb-4">
+        <div style="font-size:18px;font-weight:800;color:#f1f5f9">Usuarios</div>
+        <button @click="exportUsersCSV()" class="btn btn-ghost btn-sm">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar CSV
+        </button>
+      </div>
       <div class="flex items-center gap-3 mb-5 flex-wrap">
         <input x-model="usersFilter.search" @input.debounce.400ms="loadUsers()" placeholder="Buscar nombre o correo..." style="max-width:260px"/>
         <select x-model="usersFilter.role"   @change="loadUsers()" style="max-width:140px">
@@ -973,7 +1038,306 @@ input::placeholder{color:var(--muted)}
       </div>
     </div>
 
+    <!-- ═══ TRIALS ═════════════════════════════════════════════════════════════ -->
+    <div x-show="page==='trials'" x-cloak class="content-area">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <div style="font-size:18px;font-weight:800;color:#f1f5f9;margin-bottom:4px">Períodos de prueba</div>
+          <div style="font-size:13px;color:var(--muted)">Usuarios con trial activo — ordenados por fecha de vencimiento</div>
+        </div>
+      </div>
+      <div class="tbl-wrap">
+        <template x-if="loading"><div style="padding:20px;color:var(--muted);font-size:13px">Cargando trials...</div></template>
+        <template x-if="!loading && trials.length===0">
+          <div style="padding:48px;text-align:center;color:var(--muted)">
+            <div style="font-size:36px;margin-bottom:12px">⏱</div>
+            <div style="font-size:15px;font-weight:700;color:#e2e8f0;margin-bottom:6px">Sin trials activos</div>
+            <div style="font-size:13px">Cuando los usuarios inicien su período de prueba aparecerán aquí.</div>
+          </div>
+        </template>
+        <table x-show="!loading && trials.length>0">
+          <thead><tr>
+            <th>Usuario</th><th>Username</th><th>Inicio</th><th>Vence</th><th>Días restantes</th><th>Estado</th><th>Acciones</th>
+          </tr></thead>
+          <tbody>
+            <template x-for="s in trials" :key="s.id">
+              <tr>
+                <td>
+                  <div style="font-weight:600;color:#e2e8f0" x-text="s.users?.full_name ?? 'N/A'"></div>
+                  <div style="font-size:11px;color:var(--muted)" x-text="s.users?.email ?? ''"></div>
+                </td>
+                <td style="font-size:12px;color:#a5b4fc" x-text="s.users?.username ? '@'+s.users.username : '—'"></td>
+                <td style="font-size:12px;color:var(--muted)" x-text="fmtDate(s.start_date)"></td>
+                <td style="font-size:12px;color:var(--muted)" x-text="fmtDate(s.end_date)"></td>
+                <td>
+                  <span style="font-size:14px;font-weight:800" :style="`color:${trialDaysColor(s.end_date)}`" x-text="trialDaysLeft(s.end_date) === 0 ? 'Expirado' : trialDaysLeft(s.end_date)+' días'"></span>
+                </td>
+                <td><span class="bdg" :class="statusBadge(s.status)" x-text="s.status"></span></td>
+                <td>
+                  <div class="flex gap-2">
+                    <button @click="openExtendModal(s)" class="btn btn-primary btn-sm">Extender</button>
+                    <button @click="cancelSubAdmin(s.id)" class="btn btn-danger btn-sm">Cancelar</button>
+                  </div>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div x-show="trials.length>0" class="tbl-footer">
+          <span style="font-size:12px;color:var(--muted)" x-text="`${pagination.total} trials`"></span>
+          <div class="flex items-center gap-2">
+            <button @click="prevPage('trials')" :disabled="pagination.page<=1" class="btn btn-ghost btn-sm">← Ant.</button>
+            <span style="font-size:12px;color:#94a3b8" x-text="`${pagination.page} / ${pagination.totalPages}`"></span>
+            <button @click="nextPage('trials')" :disabled="pagination.page>=pagination.totalPages" class="btn btn-ghost btn-sm">Sig. →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ═══ REVENUE ══════════════════════════════════════════════════════════════ -->
+    <div x-show="page==='revenue'" x-cloak class="content-area">
+      <div style="font-size:18px;font-weight:800;color:#f1f5f9;margin-bottom:20px">Ingresos & Facturación</div>
+      <template x-if="!revenue">
+        <div style="color:var(--muted);font-size:13px;padding:20px 0">Cargando datos de ingresos...</div>
+      </template>
+      <template x-if="revenue">
+        <div>
+          <!-- KPI row -->
+          <div class="grid grid-cols-4 gap-4 mb-6">
+            <div class="stat-card">
+              <div class="stat-card-label">MRR</div>
+              <div class="stat-card-value" style="color:#34d399" x-text="fmtMoney(revenue.mrr)"></div>
+              <div class="stat-card-sub">Ingreso mensual recurrente</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">ARR estimado</div>
+              <div class="stat-card-value" style="color:#60a5fa" x-text="fmtMoney((revenue.mrr ?? 0) * 12)"></div>
+              <div class="stat-card-sub">MRR × 12</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Nuevos 30d</div>
+              <div class="stat-card-value" style="color:#a78bfa" x-text="fmtMoney(revenue.newRevenue30d)"></div>
+              <div class="stat-card-sub">Suscripciones de este mes</div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Cancelados 30d</div>
+              <div class="stat-card-value" style="color:#f87171" x-text="revenue.cancelled30d ?? 0"></div>
+              <div class="stat-card-sub">Churn del período</div>
+            </div>
+          </div>
+          <!-- Chart + Breakdown -->
+          <div class="grid grid-cols-2 gap-5 mb-5">
+            <div class="glass-pur rounded-2xl p-5">
+              <div class="sec-head">Usuarios activos e ingresos por plan</div>
+              <canvas id="revenueChart" height="200"></canvas>
+            </div>
+            <div class="glass rounded-2xl p-5">
+              <div class="sec-head">Desglose por plan</div>
+              <div class="space-y-3">
+                <template x-for="[tier, count] in Object.entries(revenue.byTier ?? {})" :key="tier">
+                  <div style="background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:12px 14px">
+                    <div class="flex items-center justify-between mb-2">
+                      <span class="bdg" :class="tierBadge(tier)" x-text="tier"></span>
+                      <span style="font-size:14px;font-weight:700;color:#e2e8f0" x-text="count+' usuarios'"></span>
+                    </div>
+                    <div class="flex justify-between" style="font-size:12px;color:var(--muted)">
+                      <span x-text="`$${(revenue.prices?.[tier] ?? 0).toLocaleString()} MXN/mes`"></span>
+                      <span style="color:#34d399;font-weight:700" x-text="`= ${fmtMoney((revenue.prices?.[tier] ?? 0) * count)}`"></span>
+                    </div>
+                  </div>
+                </template>
+              </div>
+              <div style="border-top:1px solid var(--brd);margin-top:16px;padding-top:12px;display:flex;justify-content:space-between;align-items:center">
+                <span style="font-size:12px;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.05em">Total MRR</span>
+                <span style="font-size:18px;font-weight:800;color:#34d399" x-text="fmtMoney(revenue.mrr)"></span>
+              </div>
+            </div>
+          </div>
+          <!-- Provider breakdown -->
+          <div class="glass rounded-2xl p-5">
+            <div class="sec-head">Por proveedor de pago</div>
+            <div class="flex gap-4">
+              <template x-for="[prov, count] in Object.entries(revenue.byProvider ?? {})" :key="prov">
+                <div style="background:var(--bg3);border:1px solid var(--brd);border-radius:12px;padding:16px 20px;min-width:140px">
+                  <div class="flex items-center gap-2 mb-2">
+                    <span class="bdg" :class="providerBadge(prov)" x-text="prov"></span>
+                  </div>
+                  <div style="font-size:24px;font-weight:800;color:#e2e8f0" x-text="count"></div>
+                  <div style="font-size:11px;color:var(--muted)">suscripciones activas</div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ═══ ANALYTICS ════════════════════════════════════════════════════════════ -->
+    <div x-show="page==='analytics'" x-cloak class="content-area">
+      <div class="flex items-center justify-between mb-5">
+        <div>
+          <div style="font-size:18px;font-weight:800;color:#f1f5f9;margin-bottom:4px">Analíticas</div>
+          <div style="font-size:13px;color:var(--muted)">Últimos 30 días</div>
+        </div>
+        <button @click="loadAnalytics()" class="btn btn-ghost">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+          Actualizar
+        </button>
+      </div>
+      <template x-if="loading">
+        <div style="color:var(--muted);font-size:13px;padding:20px 0">Cargando analíticas...</div>
+      </template>
+      <template x-if="!loading && analytics">
+        <div>
+          <!-- KPI summary -->
+          <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="stat-card">
+              <div class="stat-card-label">Registros en 30 días</div>
+              <div class="stat-card-value text-white" x-text="analytics.totalUsers"></div>
+            </div>
+            <div class="stat-card">
+              <div class="stat-card-label">Suscripciones en 30 días</div>
+              <div class="stat-card-value" style="color:#a78bfa" x-text="analytics.totalSubs"></div>
+            </div>
+          </div>
+          <!-- Registration chart -->
+          <div class="glass-pur rounded-2xl p-5 mb-5">
+            <div class="sec-head">Registros diarios (30 días)</div>
+            <canvas id="registrationChart" height="160"></canvas>
+          </div>
+          <!-- Subscriptions chart -->
+          <div class="glass rounded-2xl p-5">
+            <div class="sec-head">Nuevas suscripciones diarias (30 días)</div>
+            <canvas id="subsAnalyticsChart" height="160"></canvas>
+          </div>
+        </div>
+      </template>
+    </div>
+
+    <!-- ═══ NOTIFICACIONES ════════════════════════════════════════════════════════ -->
+    <div x-show="page==='notifications'" x-cloak class="content-area">
+      <div style="font-size:18px;font-weight:800;color:#f1f5f9;margin-bottom:6px">Notificaciones</div>
+      <div style="font-size:13px;color:var(--muted);margin-bottom:24px">Envía correos electrónicos a tus usuarios desde aquí</div>
+
+      <div class="grid grid-cols-2 gap-5">
+        <!-- Mass notification -->
+        <div class="glass rounded-2xl p-6">
+          <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:4px">Notificación masiva</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:20px">Envía a todos los usuarios o filtra por plan</div>
+
+          <div style="margin-bottom:14px">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Filtrar por plan (opcional)</label>
+            <select x-model="notifyForm.tierFilter" style="width:100%">
+              <option value="">Todos los usuarios activos</option>
+              <option value="free">Solo plan Free</option>
+              <option value="premium">Solo plan Premium</option>
+              <option value="basic">Solo plan Basic</option>
+            </select>
+          </div>
+
+          <div style="margin-bottom:14px">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Asunto del correo</label>
+            <input x-model="notifyForm.subject" placeholder="Ej. Actualización importante de ZENCRUS" style="width:100%"/>
+          </div>
+
+          <div style="margin-bottom:20px">
+            <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Mensaje</label>
+            <textarea x-model="notifyForm.message" placeholder="Escribe el mensaje aquí..." rows="6" style="width:100%;background:var(--bg3);border:1px solid var(--brd);color:var(--txt);border-radius:9px;padding:10px 12px;font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+          </div>
+
+          <button @click="sendNotifyToAll()" :disabled="notifyLoading" class="btn btn-primary w-full py-2.5" style="width:100%;justify-content:center">
+            <span x-show="!notifyLoading">Enviar correo masivo</span>
+            <span x-show="notifyLoading">Enviando...</span>
+          </button>
+        </div>
+
+        <!-- Info card -->
+        <div>
+          <div class="glass rounded-2xl p-6 mb-4">
+            <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:12px">Notificación individual</div>
+            <div style="font-size:13px;color:var(--muted);line-height:1.7">
+              Para enviar a un usuario específico, ve a la sección <strong style="color:#a5b4fc">Usuarios</strong>, abre el perfil del usuario y usa el botón <strong style="color:#a5b4fc">"Notificar"</strong> en la pestaña de Control.
+            </div>
+          </div>
+          <div class="glass-pur rounded-2xl p-6">
+            <div style="font-size:13px;font-weight:700;color:#a78bfa;margin-bottom:10px">Casos de uso sugeridos</div>
+            <div class="space-y-3">
+              <div style="font-size:13px;color:#94a3b8;display:flex;gap:8px;align-items:flex-start">
+                <span style="color:#5b4fff;font-size:16px;flex-shrink:0">•</span>
+                Usuarios con trial a punto de vencer — ofrecerles descuento
+              </div>
+              <div style="font-size:13px;color:#94a3b8;display:flex;gap:8px;align-items:flex-start">
+                <span style="color:#5b4fff;font-size:16px;flex-shrink:0">•</span>
+                Anuncio de nuevas funcionalidades
+              </div>
+              <div style="font-size:13px;color:#94a3b8;display:flex;gap:8px;align-items:flex-start">
+                <span style="color:#5b4fff;font-size:16px;flex-shrink:0">•</span>
+                Recordatorio a usuarios Free para actualizar su plan
+              </div>
+              <div style="font-size:13px;color:#94a3b8;display:flex;gap:8px;align-items:flex-start">
+                <span style="color:#5b4fff;font-size:16px;flex-shrink:0">•</span>
+                Comunicados importantes / cambios en términos
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
   </main>
+</div>
+
+<!-- ═══════════════════════════════════════════ EXTEND TRIAL MODAL ════════ -->
+<div x-show="extendModal" x-cloak class="modal-bg" @click.self="extendModal=null">
+  <div class="modal" x-show="extendModal">
+    <div style="text-align:center;margin-bottom:20px">
+      <div style="font-size:36px;margin-bottom:10px">⏳</div>
+      <h2 style="font-size:17px;font-weight:700;color:#f1f5f9;margin-bottom:4px">Extender suscripción</h2>
+      <p style="font-size:13px;color:var(--muted)" x-text="extendModal?.users?.email"></p>
+    </div>
+    <div style="margin-bottom:16px">
+      <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:8px">Días a extender</label>
+      <div class="flex gap-2 mb-3">
+        <button @click="extendDays=3"  class="btn btn-ghost btn-sm flex-1" :class="extendDays===3?'btn-primary':''">3 días</button>
+        <button @click="extendDays=7"  class="btn btn-ghost btn-sm flex-1" :class="extendDays===7?'btn-primary':''">7 días</button>
+        <button @click="extendDays=14" class="btn btn-ghost btn-sm flex-1" :class="extendDays===14?'btn-primary':''">14 días</button>
+        <button @click="extendDays=30" class="btn btn-ghost btn-sm flex-1" :class="extendDays===30?'btn-primary':''">30 días</button>
+      </div>
+      <input type="number" x-model.number="extendDays" min="1" max="365" style="width:100%" placeholder="O ingresa un número personalizado"/>
+    </div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:20px" x-show="extendModal?.end_date">
+      Vencimiento actual: <strong style="color:#e2e8f0" x-text="fmtDate(extendModal?.end_date)"></strong>
+    </div>
+    <div class="flex gap-3">
+      <button @click="extendModal=null" class="btn btn-ghost flex-1">Cancelar</button>
+      <button @click="doExtend()" class="btn btn-primary flex-1" :disabled="!extendDays || extendDays<1">Extender <span x-text="extendDays"></span> días</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════════════════════════════════ NOTIFY USER MODAL ══════════ -->
+<div x-show="notifyTarget" x-cloak class="modal-bg" @click.self="notifyTarget=null">
+  <div class="modal" x-show="notifyTarget" style="max-width:480px">
+    <div style="margin-bottom:20px">
+      <div style="font-size:15px;font-weight:700;color:#f1f5f9;margin-bottom:4px">Notificar usuario</div>
+      <div style="font-size:13px;color:var(--muted)" x-text="notifyTarget?.email ?? notifyTarget?.full_name"></div>
+    </div>
+    <div style="margin-bottom:12px">
+      <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Asunto</label>
+      <input x-model="notifyForm.subject" placeholder="Asunto del correo" style="width:100%"/>
+    </div>
+    <div style="margin-bottom:20px">
+      <label style="font-size:11px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;display:block;margin-bottom:6px">Mensaje</label>
+      <textarea x-model="notifyForm.message" placeholder="Escribe el mensaje..." rows="5" style="width:100%;background:var(--bg3);border:1px solid var(--brd);color:var(--txt);border-radius:9px;padding:10px 12px;font-size:13px;outline:none;resize:vertical;font-family:inherit"></textarea>
+    </div>
+    <div class="flex gap-3">
+      <button @click="notifyTarget=null" class="btn btn-ghost flex-1">Cancelar</button>
+      <button @click="sendNotifyToUser()" :disabled="notifyLoading" class="btn btn-primary flex-1">
+        <span x-show="!notifyLoading">Enviar correo</span>
+        <span x-show="notifyLoading">Enviando...</span>
+      </button>
+    </div>
+  </div>
 </div>
 
 <!-- ═══════════════════════════════════ USER PROFILE PANEL (slide-over) ════ -->
@@ -1021,8 +1385,9 @@ input::placeholder{color:var(--muted)}
 
         <!-- Tabs -->
         <div class="panel-tabs">
-          <button class="panel-tab" :class="userPanelTab==='info'?'active':''"    @click="userPanelTab='info'">Información</button>
-          <button class="panel-tab" :class="userPanelTab==='posts'?'active':''"   @click="userPanelTab='posts'">Posts</button>
+          <button class="panel-tab" :class="userPanelTab==='info'?'active':''"    @click="userPanelTab='info'">Info</button>
+          <button class="panel-tab" :class="userPanelTab==='fisica'?'active':''"  @click="userPanelTab='fisica'">Perfil</button>
+          <button class="panel-tab" :class="userPanelTab==='subs'?'active':''"    @click="userPanelTab='subs'">Subs</button>
           <button class="panel-tab" :class="userPanelTab==='logs'?'active':''"    @click="userPanelTab='logs'">Actividad</button>
           <button class="panel-tab" :class="userPanelTab==='control'?'active':''" @click="userPanelTab='control'">Control</button>
         </div>
@@ -1033,9 +1398,17 @@ input::placeholder{color:var(--muted)}
           <!-- INFO TAB -->
           <div x-show="userPanelTab==='info'">
             <div class="info-grid">
+              <div class="info-cell" style="grid-column:span 2">
+                <div class="info-cell-label">Username</div>
+                <div class="info-cell-value" style="color:#a5b4fc;font-size:15px;font-weight:700" x-text="userPanel.user?.username ? '@'+userPanel.user.username : '—'"></div>
+              </div>
               <div class="info-cell">
-                <div class="info-cell-label">ID</div>
-                <div class="info-cell-value" style="font-family:monospace;font-size:11px" x-text="userPanel.user?.id?.slice(0,18)+'...'"></div>
+                <div class="info-cell-label">Correo</div>
+                <div class="info-cell-value" style="font-size:12px" x-text="userPanel.user?.email"></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Nombre completo</div>
+                <div class="info-cell-value" x-text="userPanel.user?.full_name || '—'"></div>
               </div>
               <div class="info-cell">
                 <div class="info-cell-label">Rol</div>
@@ -1046,37 +1419,94 @@ input::placeholder{color:var(--muted)}
                 <div class="info-cell-value"><span class="bdg" :class="tierBadge(userPanel.user?.subscription_tier)" x-text="userPanel.user?.subscription_tier"></span></div>
               </div>
               <div class="info-cell">
-                <div class="info-cell-label">Verificado</div>
-                <div class="info-cell-value" :style="userPanel.user?.email_verified ? 'color:#34d399' : 'color:#f87171'" x-text="userPanel.user?.email_verified ? 'Sí' : 'No'"></div>
+                <div class="info-cell-label">Email verificado</div>
+                <div class="info-cell-value" :style="userPanel.user?.email_verified ? 'color:#34d399' : 'color:#f87171'" x-text="userPanel.user?.email_verified ? '✓ Sí' : '✗ No'"></div>
               </div>
               <div class="info-cell">
-                <div class="info-cell-label">Último login</div>
-                <div class="info-cell-value" x-text="fmt(userPanel.user?.last_login)"></div>
+                <div class="info-cell-label">Perfil completado</div>
+                <div class="info-cell-value" :style="userPanel.user?.profile_completed ? 'color:#34d399' : 'color:#f87171'" x-text="userPanel.user?.profile_completed ? '✓ Sí' : '✗ No'"></div>
               </div>
               <div class="info-cell">
                 <div class="info-cell-label">Registro</div>
                 <div class="info-cell-value" x-text="fmtDate(userPanel.user?.created_at)"></div>
               </div>
               <div class="info-cell">
+                <div class="info-cell-label">Último login</div>
+                <div class="info-cell-value" x-text="fmt(userPanel.user?.last_login)"></div>
+              </div>
+              <div class="info-cell">
                 <div class="info-cell-label">Intentos fallidos</div>
                 <div class="info-cell-value" :style="(userPanel.user?.failed_login_attempts ?? 0) > 0 ? 'color:#fbbf24' : ''" x-text="userPanel.user?.failed_login_attempts ?? 0"></div>
               </div>
               <div class="info-cell">
-                <div class="info-cell-label">Perfil completado</div>
-                <div class="info-cell-value" :style="userPanel.user?.profile_completed ? 'color:#34d399' : 'color:#f87171'" x-text="userPanel.user?.profile_completed ? 'Sí' : 'No'"></div>
+                <div class="info-cell-label">Sub. vence</div>
+                <div class="info-cell-value" style="font-size:12px" x-text="fmtDate(userPanel.user?.subscription_expires_at) || '—'"></div>
               </div>
             </div>
-            <!-- Bio -->
-            <template x-if="userPanel.user?.bio">
-              <div style="margin-top:16px">
-                <div class="sec-head">Biografía</div>
-                <div style="background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:12px;font-size:13px;color:#94a3b8;line-height:1.6" x-text="userPanel.user?.bio"></div>
+          </div>
+
+          <!-- PERFIL FÍSICO TAB -->
+          <div x-show="userPanelTab==='fisica'">
+            <div class="info-grid" style="margin-bottom:16px">
+              <div class="info-cell">
+                <div class="info-cell-label">Género</div>
+                <div class="info-cell-value" x-text="userPanel.user?.gender || '—'"></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Edad</div>
+                <div class="info-cell-value" x-text="userPanel.user?.age ? userPanel.user.age+' años' : '—'"></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Peso</div>
+                <div class="info-cell-value" x-text="userPanel.user?.weight ? userPanel.user.weight+' kg' : '—'"></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Altura</div>
+                <div class="info-cell-value" x-text="userPanel.user?.height ? userPanel.user.height+' cm' : '—'"></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Nivel actividad</div>
+                <div class="info-cell-value" x-text="userPanel.user?.activity_level || '—'"></div>
+              </div>
+              <div class="info-cell">
+                <div class="info-cell-label">Fecha nacimiento</div>
+                <div class="info-cell-value" x-text="fmtDate(userPanel.user?.birth_date)"></div>
+              </div>
+            </div>
+            <template x-if="userPanel.user?.goals">
+              <div style="margin-bottom:14px">
+                <div class="sec-head">Objetivos nutricionales (IA)</div>
+                <div class="info-grid">
+                  <div class="info-cell">
+                    <div class="info-cell-label">Objetivo principal</div>
+                    <div class="info-cell-value" x-text="userPanel.user.goals?.main_goal || '—'"></div>
+                  </div>
+                  <div class="info-cell">
+                    <div class="info-cell-label">Calorías objetivo</div>
+                    <div class="info-cell-value" style="color:#34d399" x-text="userPanel.user.goals?.calories_target ? userPanel.user.goals.calories_target+' kcal' : '—'"></div>
+                  </div>
+                  <div class="info-cell">
+                    <div class="info-cell-label">Proteína</div>
+                    <div class="info-cell-value" x-text="userPanel.user.goals?.protein_g ? userPanel.user.goals.protein_g+'g' : '—'"></div>
+                  </div>
+                  <div class="info-cell">
+                    <div class="info-cell-label">Carbohidratos</div>
+                    <div class="info-cell-value" x-text="userPanel.user.goals?.carbs_g ? userPanel.user.goals.carbs_g+'g' : '—'"></div>
+                  </div>
+                  <div class="info-cell">
+                    <div class="info-cell-label">Grasas</div>
+                    <div class="info-cell-value" x-text="userPanel.user.goals?.fat_g ? userPanel.user.goals.fat_g+'g' : '—'"></div>
+                  </div>
+                  <div class="info-cell">
+                    <div class="info-cell-label">Peso objetivo</div>
+                    <div class="info-cell-value" x-text="userPanel.user.goals?.target_weight ? userPanel.user.goals.target_weight+' kg' : '—'"></div>
+                  </div>
+                </div>
               </div>
             </template>
-            <!-- Diet plans -->
             <template x-if="userPanel.dietPlans?.length > 0">
-              <div style="margin-top:16px">
-                <div class="sec-head">Planes de dieta recientes</div>
+              <div>
+                <div class="sec-head">Planes de dieta</div>
                 <div class="space-y-2">
                   <template x-for="p in userPanel.dietPlans" :key="p.id">
                     <div style="background:var(--bg3);border:1px solid var(--brd);border-radius:10px;padding:10px 12px;display:flex;justify-content:space-between;align-items:center">
@@ -1090,6 +1520,36 @@ input::placeholder{color:var(--muted)}
                 </div>
               </div>
             </template>
+          </div>
+
+          <!-- SUSCRIPCIONES TAB -->
+          <div x-show="userPanelTab==='subs'">
+            <template x-if="!userPanel.subscriptions?.length">
+              <div style="text-align:center;padding:40px 20px;color:var(--muted)">
+                <div style="font-size:32px;margin-bottom:8px">💳</div>
+                <div style="font-size:13px">Sin historial de suscripciones.</div>
+              </div>
+            </template>
+            <div class="space-y-3">
+              <template x-for="s in userPanel.subscriptions" :key="s.id">
+                <div style="background:var(--bg3);border:1px solid var(--brd);border-radius:12px;padding:14px">
+                  <div class="flex items-center justify-between mb-2">
+                    <div class="flex gap-2">
+                      <span class="bdg" :class="tierBadge(s.tier)" x-text="s.tier"></span>
+                      <span class="bdg" :class="statusBadge(s.status)" x-text="s.status"></span>
+                      <span class="bdg" :class="providerBadge(s.payment_provider)" x-text="s.payment_provider"></span>
+                    </div>
+                    <button @click="cancelSubAdmin(s.id)" x-show="s.status==='active'" class="btn btn-danger btn-sm">Cancelar</button>
+                  </div>
+                  <div class="grid grid-cols-2 gap-2" style="font-size:12px;color:var(--muted)">
+                    <div>Inicio: <span style="color:#e2e8f0" x-text="fmtDate(s.start_date)"></span></div>
+                    <div>Fin: <span style="color:#e2e8f0" x-text="fmtDate(s.end_date)"></span></div>
+                    <div>ID pago: <span style="font-family:monospace;color:#94a3b8" x-text="(s.payment_id ?? s.stripe_subscription_id ?? '—')?.slice(0,20)"></span></div>
+                    <div>Auto-renovar: <span :style="s.auto_renew?'color:#34d399':''" x-text="s.auto_renew ? 'Sí' : 'No'"></span></div>
+                  </div>
+                </div>
+              </template>
+            </div>
           </div>
 
           <!-- POSTS TAB -->
@@ -1141,6 +1601,13 @@ input::placeholder{color:var(--muted)}
 
           <!-- CONTROL TAB -->
           <div x-show="userPanelTab==='control'">
+            <!-- Notify -->
+            <div style="margin-bottom:20px;background:var(--pur-dim);border:1px solid var(--pur-brd);border-radius:12px;padding:16px">
+              <div style="font-size:12px;font-weight:700;color:#a5b4fc;text-transform:uppercase;letter-spacing:.06em;margin-bottom:10px">Enviar notificación</div>
+              <button @click="openNotifyModal(userPanel.user);userPanel=null" class="btn btn-primary" style="width:100%;justify-content:center">
+                Enviar correo a este usuario
+              </button>
+            </div>
             <!-- Change role -->
             <div style="margin-bottom:20px">
               <div class="sec-head">Cambiar rol</div>
@@ -1198,7 +1665,7 @@ input::placeholder{color:var(--muted)}
 
 <!-- ═══════════════════════════════════════════════════════════ TOAST ═══════ -->
 <div x-show="toast" x-cloak>
-  <div class="toast" :class="toastType==='success'?'toast-success':'toast-error'" x-text="toast"></div>
+  <div class="toast" :class="{'toast-success':toastType==='success','toast-error':toastType==='error','toast-info':toastType==='info'}" x-text="toast"></div>
 </div>
 
 <!-- Spinner keyframes -->

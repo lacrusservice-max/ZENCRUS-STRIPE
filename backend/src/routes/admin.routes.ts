@@ -5,9 +5,12 @@ import {
   getUsers, getUserDetail, updateUserStatus, updateUserRole, deleteUser, unlockUser,
   getMessages, deleteMessage,
   getAuditLogs, getActivityLogs,
-  getSubscriptions, getRevenue,
+  getSubscriptions, getRevenue, getTrials, extendSubscription, cancelSubscriptionAdmin,
   getDietPlans, deleteDietPlan,
   getUserSocialStats, getSocialPosts, deleteSocialPost,
+  getAnalytics,
+  sendNotificationToUser, sendNotificationToAll,
+  exportUsers,
   streamEvents,
 } from '../controllers/adminController'
 
@@ -47,6 +50,21 @@ router.delete('/plans/diet/:id',      deleteDietPlan)
 router.get('/users/:id/social',       getUserSocialStats)
 router.get('/social/posts',           getSocialPosts)
 router.delete('/social/posts/:id',    deleteSocialPost)
+
+// ── Trials ────────────────────────────────────────────────────────────────────
+router.get('/subscriptions/trials',           getTrials)
+router.patch('/subscriptions/:id/extend',     extendSubscription)
+router.patch('/subscriptions/:id/cancel',     cancelSubscriptionAdmin)
+
+// ── Analytics ─────────────────────────────────────────────────────────────────
+router.get('/analytics',              getAnalytics)
+
+// ── Notifications ──────────────────────────────────────────────────────────────
+router.post('/notify/user/:id',       sendNotificationToUser)
+router.post('/notify/all',            sendNotificationToAll)
+
+// ── Export ────────────────────────────────────────────────────────────────────
+router.get('/export/users',           exportUsers)
 
 // ── Real-time SSE (auth via query token for EventSource compatibility) ────────
 router.get('/stream', (req, _res, next) => {
