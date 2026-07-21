@@ -4,12 +4,10 @@ import { supabase } from '../config/supabase'
 const router = Router()
 
 // One-time bootstrap: sets the first admin if no admin exists yet.
-// This endpoint removes itself from usefulness once an admin exists.
 router.post('/init-admin', async (req, res) => {
   try {
     const { email, secret } = req.body as { email?: string; secret?: string }
 
-    // Simple shared secret to prevent random people from calling this
     if (secret !== process.env.SETUP_SECRET && secret !== 'ZENCRUS_INIT_2026') {
       return res.status(403).json({ success: false, message: 'Forbidden' })
     }
@@ -19,34 +17,47 @@ router.post('/init-admin', async (req, res) => {
     }
 
     // Check if there is already an admin
-    const { data: admins } = await supabase
+    const { data: admins, error: adminError } = await supabase
       .from('users')
-      .select('id')
+      .select('id, email, role')
       .eq('role', 'admin')
-      .limit(1)
 
-    if (admins && admins.length > 0) {
-      return res.status(409).json({ success: false, message: 'Ya existe un administrador' })
+    if (adminError) {
+      return res.status(500).json({ success: false, message: 'Error al verificar admins: ' + adminError.message, code: adminError.code })
     }
 
-    // Update the user's role
-    const { data, error } = await supabase
+    if (admins && admins.length > 0) {
+      return res.status(409).json({ success: false, message: 'Ya existe un administrador', admins })
+    }
+
+    // Find the user first
+    const { data: users, error: findError } = await supabase
       .from('users')
-      .update({ role: 'admin', updated_at: new Date().toISOString() })
+      .select('id, email, role')
+      .eq('email', email)
+
+    if (findError) {
+      return res.status(500).json({ success: false, message: 'Error al buscar usuario: ' + findError.message, code: findError.code })
+    }
+
+    if (!users || users.length === 0) {
+      return res.status(404).json({ success: false, message: 'Usuario no encontrado. Regístrate primero en zencrus.com.' })
+    }
+
+    // Update role
+    const { data: updated, error: updateError } = await supabase
+      .from('users')
+      .update({ role: 'admin' })
       .eq('email', email)
       .select('id, email, role')
 
-    if (error) {
-      return res.status(500).json({ success: false, message: error.message })
+    if (updateError) {
+      return res.status(500).json({ success: false, message: 'Error al actualizar rol: ' + updateError.message, code: updateError.code })
     }
 
-    if (!data || data.length === 0) {
-      return res.status(404).json({ success: false, message: 'Usuario no encontrado. Debes registrarte primero en zencrus.com.' })
-    }
-
-    return res.json({ success: true, message: `✅ ${email} ahora es administrador`, data: data[0] })
+    return res.json({ success: true, message: `✅ ${email} ahora es administrador`, data: updated?.[0] })
   } catch (err: unknown) {
-    return res.status(500).json({ success: false, message: String(err) })
+    return res.status(500).json({ success: false, message: 'Error inesperado: ' + String(err) })
   }
 })
 
