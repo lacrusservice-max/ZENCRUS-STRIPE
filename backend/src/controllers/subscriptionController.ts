@@ -53,12 +53,13 @@ export async function getCurrentSubscription(req: Request, res: Response): Promi
 export async function startTrial(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
 
-  // Verificar si ya usó el trial
+  // Verificar si ya usó el trial — identificado por payment_provider='none' y start_date existente
   const { data: existing } = await supabase
     .from('subscriptions')
-    .select('id, status')
+    .select('id, tier, end_date')
     .eq('user_id', userId)
-    .eq('payment_provider', 'trial')
+    .eq('payment_provider', 'none')
+    .eq('tier', 'premium')
     .maybeSingle()
 
   if (existing) {
@@ -69,6 +70,7 @@ export async function startTrial(req: Request, res: Response): Promise<void> {
     return
   }
 
+  const now = new Date()
   const trialEndsAt = new Date()
   trialEndsAt.setDate(trialEndsAt.getDate() + 5)
 
@@ -76,12 +78,12 @@ export async function startTrial(req: Request, res: Response): Promise<void> {
     .from('subscriptions')
     .insert({
       user_id: userId,
-      tier: 'monthly',
-      status: 'trialing',
-      payment_provider: 'trial',
-      trial_ends_at: trialEndsAt.toISOString(),
-      current_period_start: new Date().toISOString(),
-      current_period_end: trialEndsAt.toISOString(),
+      tier: 'premium',
+      status: 'active',
+      payment_provider: 'none',
+      start_date: now.toISOString(),
+      end_date: trialEndsAt.toISOString(),
+      auto_renew: false,
     })
 
   if (error) {
@@ -90,10 +92,13 @@ export async function startTrial(req: Request, res: Response): Promise<void> {
     return
   }
 
-  // Actualizar subscription_tier del usuario
+  // Actualizar subscription_tier y fecha de expiración del usuario
   await supabase
     .from('users')
-    .update({ subscription_tier: 'monthly' })
+    .update({
+      subscription_tier: 'premium',
+      subscription_expires_at: trialEndsAt.toISOString(),
+    })
     .eq('id', userId)
 
   logger.info(`Trial iniciado para usuario ${userId} — vence ${trialEndsAt.toISOString().slice(0, 10)}`)
@@ -101,7 +106,7 @@ export async function startTrial(req: Request, res: Response): Promise<void> {
   res.status(200).json({
     success: true,
     message: '¡Prueba gratuita activada! Tienes 5 días de acceso Premium completo.',
-    data: { trialEndsAt: trialEndsAt.toISOString(), tier: 'monthly', status: 'trialing' },
+    data: { trialEndsAt: trialEndsAt.toISOString(), tier: 'premium', status: 'active' },
   } satisfies ApiResponse)
 }
 

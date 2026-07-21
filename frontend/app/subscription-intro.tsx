@@ -263,7 +263,7 @@ export default function SubscriptionIntroScreen() {
                 )
               }
             </TouchableOpacity>
-            <Text style={s.trialNote}>Sin cobros automáticos · Cancela cuando quieras</Text>
+            <Text style={s.trialNote}>Sin tarjeta requerida · Al terminar los 5 días se te ofrecerá suscribirte al plan de tu elección</Text>
           </Animated.View>
 
           {/* Divider */}
