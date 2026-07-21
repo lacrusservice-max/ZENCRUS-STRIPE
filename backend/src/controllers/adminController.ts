@@ -1,7 +1,9 @@
 import { Request, Response } from 'express'
+import bcrypt from 'bcryptjs'
 import { supabase } from '../config/supabase'
 import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
+import { signAccessToken, signRefreshToken } from '../utils/jwt'
 import { Resend } from 'resend'
 import { env } from '../config/env'
 
@@ -256,6 +258,127 @@ export async function unlockUser(req: Request, res: Response): Promise<void> {
     res.json({ success: true, message: 'Cuenta desbloqueada' })
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error desbloqueando cuenta' })
+  }
+}
+
+// ── Fase 2: gestión avanzada de cuenta ─────────────────────────────────────────
+
+// Regalar / activar suscripción manual (premium por X días, sin cobro)
+export async function grantSubscription(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params
+    const { tier = 'premium', days = 30 } = req.body as { tier?: string; days?: number }
+    const d = Math.max(1, Math.min(3650, Number(days) || 30))
+
+    const now = new Date()
+    const end = new Date(now.getTime() + d * 864e5)
+
+    // Cancelar suscripciones activas previas para no duplicar
+    await supabase.from('subscriptions').update({ status: 'cancelled', auto_renew: false }).eq('user_id', id).eq('status', 'active')
+
+    const { error: subErr } = await supabase.from('subscriptions').insert({
+      user_id: id,
+      tier,
+      status: 'active',
+      payment_provider: 'none', // regalo/manual
+      start_date: now.toISOString(),
+      end_date: end.toISOString(),
+      auto_renew: false,
+    })
+    if (subErr) throw subErr
+
+    await supabase.from('users').update({
+      subscription_tier: tier,
+      subscription_expires_at: end.toISOString(),
+      updated_at: new Date(),
+    }).eq('id', id)
+
+    await supabase.from('audit_logs').insert({
+      user_id: id,
+      action: 'admin_grant_subscription',
+      metadata: { tier, days: d, end: end.toISOString(), admin_id: req.user?.id },
+    })
+
+    res.json({ success: true, message: `${tier} activado por ${d} días (vence ${end.toISOString().slice(0, 10)})` })
+  } catch (err) {
+    logger.error('Admin grantSubscription error:', err)
+    res.status(500).json({ success: false, message: 'Error otorgando suscripción' })
+  }
+}
+
+// Quitar suscripción — vuelve a free
+export async function revokeSubscription(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params
+    await supabase.from('subscriptions').update({ status: 'cancelled', auto_renew: false, cancelled_at: new Date().toISOString() }).eq('user_id', id).eq('status', 'active')
+    await supabase.from('users').update({ subscription_tier: 'free', subscription_expires_at: null, updated_at: new Date() }).eq('id', id)
+    await supabase.from('audit_logs').insert({ user_id: id, action: 'admin_revoke_subscription', metadata: { admin_id: req.user?.id } })
+    res.json({ success: true, message: 'Suscripción removida — usuario en plan Free' })
+  } catch (err) {
+    logger.error('Admin revokeSubscription error:', err)
+    res.status(500).json({ success: false, message: 'Error removiendo suscripción' })
+  }
+}
+
+// Verificar email manualmente (seguro, autenticado como admin)
+export async function verifyUserEmail(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params
+    const { error } = await supabase.from('users').update({ email_verified: true, email_verification_code: null, updated_at: new Date() }).eq('id', id)
+    if (error) throw error
+    await supabase.from('audit_logs').insert({ user_id: id, action: 'admin_verify_email', metadata: { admin_id: req.user?.id } })
+    res.json({ success: true, message: 'Email verificado' })
+  } catch (err) {
+    logger.error('Admin verifyUserEmail error:', err)
+    res.status(500).json({ success: false, message: 'Error verificando email' })
+  }
+}
+
+// Resetear contraseña de cualquier usuario (bcrypt, compatible con login)
+export async function resetUserPassword(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params
+    const { password } = req.body as { password: string }
+    if (!password || password.length < 6) {
+      res.status(400).json({ success: false, message: 'La contraseña debe tener al menos 6 caracteres' })
+      return
+    }
+    const password_hash = await bcrypt.hash(password, 10)
+    const { error } = await supabase.from('users').update({
+      password_hash,
+      failed_login_attempts: 0,
+      locked_until: null,
+      updated_at: new Date(),
+    }).eq('id', id)
+    if (error) throw error
+    await supabase.from('audit_logs').insert({ user_id: id, action: 'admin_reset_password', metadata: { admin_id: req.user?.id } })
+    res.json({ success: true, message: 'Contraseña restablecida' })
+  } catch (err) {
+    logger.error('Admin resetUserPassword error:', err)
+    res.status(500).json({ success: false, message: 'Error restableciendo contraseña' })
+  }
+}
+
+// Impersonar — genera un token válido para entrar como ese usuario (soporte)
+export async function impersonateUser(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params
+    const { data: u, error } = await supabase.from('users').select('id,email,role,subscription_tier').eq('id', id).single()
+    if (error || !u) { res.status(404).json({ success: false, message: 'Usuario no encontrado' }); return }
+
+    const accessToken = signAccessToken({
+      userId: (u as any).id,
+      email: (u as any).email,
+      role: (u as any).role,
+      subscriptionTier: (u as any).subscription_tier,
+    })
+    const refreshToken = signRefreshToken({ userId: (u as any).id, tokenFamily: 'impersonation' })
+
+    await supabase.from('audit_logs').insert({ user_id: id, action: 'admin_impersonate', metadata: { admin_id: req.user?.id, admin_email: req.user?.email } })
+    res.json({ success: true, message: `Sesión como ${(u as any).email}`, data: { accessToken, refreshToken, email: (u as any).email } })
+  } catch (err) {
+    logger.error('Admin impersonateUser error:', err)
+    res.status(500).json({ success: false, message: 'Error impersonando usuario' })
   }
 }
 

@@ -142,6 +142,15 @@ export const admin = {
   // Detail & social
   getUserSocial: (id: string) => api.get(`/admin/users/${id}/social`),
 
+  // Fase 2: gestión avanzada
+  grantSubscription: (id: string, tier: string, days: number) =>
+    api.post(`/admin/users/${id}/grant-subscription`, { tier, days }),
+  revokeSubscription: (id: string) => api.post(`/admin/users/${id}/revoke-subscription`),
+  verifyEmail: (id: string) => api.post(`/admin/users/${id}/verify-email`),
+  resetPassword: (id: string, password: string) =>
+    api.post(`/admin/users/${id}/reset-password`, { password }),
+  impersonate: (id: string) => api.post(`/admin/users/${id}/impersonate`),
+
   // Trials
   getTrials: (q?: Record<string, string | number>) =>
     api.get("/admin/subscriptions/trials", { params: q }),

@@ -3,6 +3,7 @@ import { authenticate, authorize } from '../middleware/auth'
 import {
   getDashboard,
   getUsers, getUserDetail, updateUserStatus, updateUserRole, deleteUser, unlockUser,
+  grantSubscription, revokeSubscription, verifyUserEmail, resetUserPassword, impersonateUser,
   getMessages, deleteMessage,
   getAuditLogs, getActivityLogs,
   getSubscriptions, getRevenue, getTrials, extendSubscription, cancelSubscriptionAdmin,
@@ -29,6 +30,13 @@ router.patch('/users/:id/status',     updateUserStatus)
 router.patch('/users/:id/role',       updateUserRole)
 router.patch('/users/:id/unlock',     unlockUser)
 router.delete('/users/:id',           deleteUser)
+
+// ── Fase 2: gestión avanzada ──────────────────────────────────────────────────
+router.post('/users/:id/grant-subscription',  grantSubscription)
+router.post('/users/:id/revoke-subscription', revokeSubscription)
+router.post('/users/:id/verify-email',        verifyUserEmail)
+router.post('/users/:id/reset-password',       resetUserPassword)
+router.post('/users/:id/impersonate',          impersonateUser)
 
 // ── Content ───────────────────────────────────────────────────────────────────
 router.get('/content/messages',       getMessages)

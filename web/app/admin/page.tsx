@@ -713,17 +713,17 @@ export default function AdminPage() {
 
 function EditUserForm({ u, onDone }: { u: UserRow; onDone: () => void }) {
   const [role, setRole] = useState(u.role || "user");
-  const [saving, setSaving] = useState(false);
+  const [savingRole, setSavingRole] = useState(false);
+  const [giftTier, setGiftTier] = useState("premium");
+  const [giftDays, setGiftDays] = useState(30);
+  const [busy, setBusy] = useState<string | null>(null);
+  const [newPass, setNewPass] = useState("");
 
-  const save = async () => {
-    setSaving(true);
-    try {
-      if (role !== u.role) await admin.setUserRole(u.id, role);
-      toast.success("Cambios guardados");
-      onDone();
-    } catch (e: unknown) {
-      toast.error((e as any)?.response?.data?.message ?? "Error guardando");
-    } finally { setSaving(false); }
+  const run = async (key: string, fn: () => Promise<unknown>, ok: string) => {
+    setBusy(key);
+    try { await fn(); toast.success(ok); await onDone(); }
+    catch (e: unknown) { toast.error((e as any)?.response?.data?.message ?? "Error"); }
+    finally { setBusy(null); }
   };
 
   const roles = [
@@ -732,13 +732,17 @@ function EditUserForm({ u, onDone }: { u: UserRow; onDone: () => void }) {
     { v: "admin", label: "Administrador", color: C.blue, icon: <Shield size={15} /> },
   ];
 
+  const section: React.CSSProperties = { fontSize: 11, fontWeight: 800, color: C.dim, marginBottom: 10, letterSpacing: 1, textTransform: "uppercase" };
+  const divider = <div style={{ height: 1, background: C.border, margin: "22px 0" }} />;
+
   return (
     <div>
-      <div style={{ fontSize: 12, fontWeight: 700, color: C.dim, marginBottom: 10, letterSpacing: 0.5 }}>ROL DEL USUARIO</div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 22 }}>
+      {/* ROL */}
+      <div style={section}>Rol del usuario</div>
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
         {roles.map(r => (
           <button key={r.v} onClick={() => setRole(r.v)} style={{
-            display: "flex", alignItems: "center", gap: 12, padding: "12px 14px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
+            display: "flex", alignItems: "center", gap: 12, padding: "11px 14px", borderRadius: 12, cursor: "pointer", fontFamily: "inherit",
             background: role === r.v ? `${r.color}18` : "rgba(255,255,255,0.03)",
             border: `1px solid ${role === r.v ? `${r.color}50` : C.border}`,
             color: role === r.v ? r.color : C.dim, fontSize: 14, fontWeight: role === r.v ? 700 : 500, textAlign: "left",
@@ -748,9 +752,61 @@ function EditUserForm({ u, onDone }: { u: UserRow; onDone: () => void }) {
           </button>
         ))}
       </div>
-      <button onClick={save} disabled={saving || role === u.role} style={{ ...btnPrimary, opacity: saving || role === u.role ? 0.5 : 1 }}>
-        {saving ? "Guardando..." : "Guardar cambios"}
-      </button>
+      {role !== u.role && (
+        <button onClick={() => run("role", () => admin.setUserRole(u.id, role), "Rol actualizado")} disabled={busy === "role"} style={{ ...btnPrimary, marginTop: 10, opacity: busy === "role" ? 0.5 : 1 }}>
+          {busy === "role" ? "Guardando..." : "Guardar rol"}
+        </button>
+      )}
+
+      {divider}
+
+      {/* SUSCRIPCIÓN */}
+      <div style={section}>Suscripción · plan actual: {(u.subscription_tier || "free").toUpperCase()}</div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+        <select value={giftTier} onChange={e => setGiftTier(e.target.value)} style={{ ...inputStyle, flex: 1, cursor: "pointer" }}>
+          <option value="premium">Premium</option>
+          <option value="annual_individual">Anual Individual</option>
+          <option value="annual_duo">Anual Dúo</option>
+          <option value="annual_familiar">Anual Familiar</option>
+        </select>
+        <select value={giftDays} onChange={e => setGiftDays(Number(e.target.value))} style={{ ...inputStyle, width: 130, cursor: "pointer" }}>
+          <option value={7}>7 días</option>
+          <option value={30}>30 días</option>
+          <option value={90}>90 días</option>
+          <option value={365}>1 año</option>
+        </select>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <button onClick={() => run("grant", () => admin.grantSubscription(u.id, giftTier, giftDays), "Suscripción activada 🎁")} disabled={busy === "grant"} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "rgba(255,215,0,0.12)", border: "1px solid rgba(255,215,0,0.3)", borderRadius: 10, padding: 11, color: C.gold, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          <Crown size={15} /> Regalar
+        </button>
+        <button onClick={() => run("revoke", () => admin.revokeSubscription(u.id), "Vuelto a Free")} disabled={busy === "revoke" || u.subscription_tier === "free"} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "rgba(255,59,48,0.1)", border: "1px solid rgba(255,59,48,0.25)", borderRadius: 10, padding: 11, color: C.red, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: u.subscription_tier === "free" ? 0.4 : 1 }}>
+          <Ban size={15} /> Quitar
+        </button>
+      </div>
+
+      {divider}
+
+      {/* CUENTA */}
+      <div style={section}>Cuenta</div>
+      <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+        <button onClick={() => run("verify", () => admin.verifyEmail(u.id), "Email verificado")} disabled={busy === "verify" || u.email_verified} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "rgba(48,209,88,0.1)", border: "1px solid rgba(48,209,88,0.3)", borderRadius: 10, padding: 11, color: C.green, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: u.email_verified ? 0.4 : 1 }}>
+          <CheckCircle size={15} /> {u.email_verified ? "Ya verificado" : "Verificar email"}
+        </button>
+        <button onClick={() => run("imp", async () => {
+          const res = await admin.impersonate(u.id);
+          const tk = res.data?.data?.accessToken;
+          if (tk) { localStorage.setItem("zencrus_token", tk); window.location.href = "/home"; }
+        }, "Entrando como usuario...")} disabled={busy === "imp"} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 10, padding: 11, color: "#60a5fa", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+          <Eye size={15} /> Ver como
+        </button>
+      </div>
+      <div style={{ display: "flex", gap: 8 }}>
+        <input value={newPass} onChange={e => setNewPass(e.target.value)} placeholder="Nueva contraseña" style={{ ...inputStyle, flex: 1 }} />
+        <button onClick={() => run("pass", async () => { await admin.resetPassword(u.id, newPass); setNewPass(""); }, "Contraseña restablecida")} disabled={busy === "pass" || newPass.length < 6} style={{ display: "flex", alignItems: "center", gap: 7, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 10, padding: "0 16px", color: "#a78bfa", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: newPass.length < 6 ? 0.4 : 1 }}>
+          Resetear
+        </button>
+      </div>
     </div>
   );
 }
