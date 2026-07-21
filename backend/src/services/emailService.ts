@@ -2,7 +2,7 @@ import { Resend } from 'resend'
 import { env } from '../config/env'
 import { logger } from '../config/logger'
 
-const LOGO_URL = 'https://bmawnpbazezbkevsfbte.supabase.co/storage/v1/object/public/assets/email/logo-zencrus.png'
+const LOGO_BLANCO_URL = 'https://bmawnpbazezbkevsfbte.supabase.co/storage/v1/object/public/assets/email/logo-zencrus.png'
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null
 
@@ -35,10 +35,16 @@ function base(body: string): string {
 
   <table role="presentation" width="540" cellspacing="0" cellpadding="0" border="0" style="max-width:540px;width:100%;">
 
-    <!-- Logo -->
+    <!-- Logo — fondo oscuro forzado para todos los clientes de correo -->
     <tr>
       <td align="center" style="padding-bottom:40px;">
-        <img src="${LOGO_URL}" width="150" alt="ZENCRUS" style="display:block;max-width:150px;height:auto;"/>
+        <table role="presentation" cellspacing="0" cellpadding="0" border="0">
+          <tr>
+            <td style="background:#0a0a0a;border-radius:12px;padding:10px 20px;">
+              <img src="${LOGO_BLANCO_URL}" width="140" alt="ZENCRUS" style="display:block;max-width:140px;height:auto;"/>
+            </td>
+          </tr>
+        </table>
       </td>
     </tr>
 

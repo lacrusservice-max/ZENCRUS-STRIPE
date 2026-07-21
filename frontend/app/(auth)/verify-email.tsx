@@ -56,7 +56,7 @@ export default function VerifyEmailScreen() {
     setLoading(true)
     try {
       await verifyEmail(email || '', finalCode)
-      router.replace('/(tabs)')
+      router.replace('/(onboarding)')
     } catch (err: any) {
       shake()
       Alert.alert('Código incorrecto', err?.response?.data?.message || 'Verifica el código e intenta de nuevo')

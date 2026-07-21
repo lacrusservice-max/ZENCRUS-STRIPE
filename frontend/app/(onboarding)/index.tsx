@@ -159,7 +159,7 @@ export default function OnboardingScreen() {
       }
       const { data: res } = await api.put('/users/profile', payload)
       if (res?.data) setUser(res.data)
-      router.replace('/(tabs)')
+      router.replace('/welcome')
     } catch (e: any) {
       Alert.alert('Error', e?.response?.data?.message || 'No se pudo guardar el perfil. Intenta de nuevo.')
     } finally {

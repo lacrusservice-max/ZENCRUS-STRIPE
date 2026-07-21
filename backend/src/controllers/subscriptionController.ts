@@ -50,6 +50,61 @@ export async function getCurrentSubscription(req: Request, res: Response): Promi
   } satisfies ApiResponse)
 }
 
+export async function startTrial(req: Request, res: Response): Promise<void> {
+  const userId = req.user!.userId
+
+  // Verificar si ya usó el trial
+  const { data: existing } = await supabase
+    .from('subscriptions')
+    .select('id, status')
+    .eq('user_id', userId)
+    .eq('payment_provider', 'trial')
+    .maybeSingle()
+
+  if (existing) {
+    res.status(400).json({
+      success: false,
+      message: 'Ya usaste tu período de prueba gratuito. Elige un plan para continuar.',
+    } satisfies ApiResponse)
+    return
+  }
+
+  const trialEndsAt = new Date()
+  trialEndsAt.setDate(trialEndsAt.getDate() + 5)
+
+  const { error } = await supabase
+    .from('subscriptions')
+    .insert({
+      user_id: userId,
+      tier: 'monthly',
+      status: 'trialing',
+      payment_provider: 'trial',
+      trial_ends_at: trialEndsAt.toISOString(),
+      current_period_start: new Date().toISOString(),
+      current_period_end: trialEndsAt.toISOString(),
+    })
+
+  if (error) {
+    logger.error('Error creando trial:', error.message)
+    res.status(500).json({ success: false, message: 'No se pudo iniciar el período de prueba' } satisfies ApiResponse)
+    return
+  }
+
+  // Actualizar subscription_tier del usuario
+  await supabase
+    .from('users')
+    .update({ subscription_tier: 'monthly' })
+    .eq('id', userId)
+
+  logger.info(`Trial iniciado para usuario ${userId} — vence ${trialEndsAt.toISOString().slice(0, 10)}`)
+
+  res.status(200).json({
+    success: true,
+    message: '¡Prueba gratuita activada! Tienes 5 días de acceso Premium completo.',
+    data: { trialEndsAt: trialEndsAt.toISOString(), tier: 'monthly', status: 'trialing' },
+  } satisfies ApiResponse)
+}
+
 export async function createCheckoutSession(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
   const userEmail = req.user!.email
