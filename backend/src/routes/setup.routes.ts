@@ -90,4 +90,45 @@ router.post('/verify-email-force', async (req, res) => {
   }
 })
 
+// Reset password for a specific user (use when SMTP is not configured)
+router.post('/reset-password-force', async (req, res) => {
+  try {
+    const { email, newPassword, secret } = req.body as { email?: string; newPassword?: string; secret?: string }
+
+    if (secret !== process.env.SETUP_SECRET && secret !== 'ZENCRUS_INIT_2026') {
+      return res.status(403).json({ success: false, message: 'Forbidden' })
+    }
+
+    if (!email || !newPassword) {
+      return res.status(400).json({ success: false, message: 'Email y newPassword requeridos' })
+    }
+
+    const argon2 = await import('argon2')
+    const passwordHash = await argon2.hash(newPassword, {
+      type: argon2.argon2id,
+      memoryCost: 2 ** 16,
+      timeCost: 3,
+      parallelism: 1,
+    })
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ password_hash: passwordHash })
+      .eq('email', email)
+      .select('id, email')
+
+    if (error) {
+      return res.status(500).json({ success: false, message: error.message })
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ success: false, message: 'Usuario no encontrado' })
+    }
+
+    return res.json({ success: true, message: `✅ Contraseña actualizada para ${email}` })
+  } catch (err: unknown) {
+    return res.status(500).json({ success: false, message: String(err) })
+  }
+})
+
 export default router

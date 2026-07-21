@@ -22,10 +22,22 @@ app.use(enforceHTTPS)
 app.use(securityHeaders)
 
 // ── CORS ──────────────────────────────────────────────────────────────────────
-const allowedOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+const baseOrigins = env.ALLOWED_ORIGINS.split(',').map(o => o.trim())
+const allowedOrigins = new Set([
+  ...baseOrigins,
+  'https://zencrus.com',
+  'https://www.zencrus.com',
+  // Vercel preview URLs
+])
 app.use(cors({
   origin: (origin, callback) => {
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (!origin) { callback(null, true); return }
+    // Always allow zencrus.com and Vercel preview/prod deployments
+    if (
+      allowedOrigins.has(origin) ||
+      origin.endsWith('.vercel.app') ||
+      origin.endsWith('zencrus.com')
+    ) {
       callback(null, true)
     } else {
       callback(new Error('Origen no permitido por CORS'))
