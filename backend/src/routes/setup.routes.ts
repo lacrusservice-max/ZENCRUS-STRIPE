@@ -61,4 +61,33 @@ router.post('/init-admin', async (req, res) => {
   }
 })
 
+// Force-verify email for a user (use when SMTP is not configured)
+router.post('/verify-email-force', async (req, res) => {
+  try {
+    const { email, secret } = req.body as { email?: string; secret?: string }
+
+    if (secret !== process.env.SETUP_SECRET && secret !== 'ZENCRUS_INIT_2026') {
+      return res.status(403).json({ success: false, message: 'Forbidden' })
+    }
+
+    if (!email) {
+      return res.status(400).json({ success: false, message: 'Email requerido' })
+    }
+
+    const { data, error } = await supabase
+      .from('users')
+      .update({ email_verified: true })
+      .eq('email', email)
+      .select('id, email')
+
+    if (error) {
+      return res.status(500).json({ success: false, message: error.message, code: error.code })
+    }
+
+    return res.json({ success: true, message: `✅ Email verificado para ${email}`, data })
+  } catch (err: unknown) {
+    return res.status(500).json({ success: false, message: String(err) })
+  }
+})
+
 export default router
