@@ -8,6 +8,17 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "ZENCRUS — Nutrición + Fitness con IA",
   description: "Tu plan de nutrición y fitness personalizado con inteligencia artificial.",
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png" }],
+    shortcut: "/icon.png",
+    apple: "/icon.png",
+  },
+  openGraph: {
+    title: "ZENCRUS — Nutrición + Fitness con IA",
+    description: "Tu plan de nutrición y fitness personalizado con inteligencia artificial.",
+    images: ["/logo-blanco.png"],
+    type: "website",
+  },
 };
 
 export const viewport: Viewport = {

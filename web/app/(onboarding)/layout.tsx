@@ -1,4 +1,4 @@
-import { Zap } from "lucide-react";
+import Image from "next/image";
 
 export default function OnboardingLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -25,32 +25,8 @@ export default function OnboardingLayout({ children }: { children: React.ReactNo
           pointerEvents: "none",
         }}
       />
-      <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 40 }}>
-        <div
-          style={{
-            width: 36,
-            height: 36,
-            borderRadius: 10,
-            background: "linear-gradient(135deg, #5b4fff, #2563eb)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "center",
-          }}
-        >
-          <Zap size={18} color="#fff" fill="#fff" />
-        </div>
-        <span
-          style={{
-            fontSize: 20,
-            fontWeight: 800,
-            background: "linear-gradient(135deg, #5b4fff, #2563eb)",
-            WebkitBackgroundClip: "text",
-            WebkitTextFillColor: "transparent",
-            backgroundClip: "text",
-          }}
-        >
-          ZENCRUS
-        </span>
+      <div style={{ display: "flex", alignItems: "center", marginBottom: 40 }}>
+        <Image src="/logo-blanco.png" alt="ZENCRUS" width={150} height={44} style={{ objectFit: "contain" }} priority />
       </div>
       <div style={{ width: "100%", maxWidth: 520, position: "relative" }}>
         {children}

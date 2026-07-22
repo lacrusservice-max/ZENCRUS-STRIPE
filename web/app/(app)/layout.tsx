@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import Link from "next/link";
+import Image from "next/image";
 import { useAuthStore } from "@/store/authStore";
 import {
   LayoutDashboard, Bot, Apple, Users, User, Dumbbell, TrendingUp,
-  Zap, LogOut, ShieldCheck,
+  LogOut, ShieldCheck,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -80,16 +81,7 @@ function Sidebar({ pathname }: { pathname: string }) {
     }}>
       {/* Logo */}
       <div style={{ padding: "24px 20px 16px", borderBottom: "1px solid #2c2c2e" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <div style={{
-            width: 32, height: 32, borderRadius: 9,
-            background: "#2563EB",
-            display: "flex", alignItems: "center", justifyContent: "center",
-          }}>
-            <Zap size={16} color="#fff" fill="#fff" />
-          </div>
-          <span style={{ fontSize: 16, fontWeight: 900, letterSpacing: 2, color: "#f4f4f5" }}>ZENCRUS</span>
-        </div>
+        <Image src="/logo-blanco.png" alt="ZENCRUS" width={140} height={40} style={{ objectFit: "contain" }} priority />
       </div>
 
       {/* Nav */}

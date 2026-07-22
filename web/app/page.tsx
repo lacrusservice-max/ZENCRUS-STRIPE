@@ -6,7 +6,7 @@ import Image from "next/image";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
-import { Reveal, Counter, Magnetic, ScrollProgress } from "@/components/landing/scrollfx";
+import { Reveal, Counter, Magnetic } from "@/components/landing/scrollfx";
 import {
   Bot, Apple, Dumbbell, TrendingUp, Users, Zap, Star,
   Check, ArrowRight, Menu, X, Brain,
@@ -474,7 +474,6 @@ export default function LandingPage() {
 
   return (
     <div style={{ background: "#050506", minHeight: "100vh", color: "#f4f4f5", position: "relative", overflowX: "hidden" }}>
-      <ScrollProgress />
       <Aurora />
       <CursorGlow />
       <Nav />
