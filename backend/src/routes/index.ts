@@ -7,6 +7,7 @@ import chatRoutes from './chat.routes'
 import subscriptionRoutes from './subscription.routes'
 import adminRoutes from './admin.routes'
 import setupRoutes from './setup.routes'
+import { getPublicFlags } from '../controllers/adminController'
 import { ApiResponse } from '../models/types'
 import { supabase } from '../config/supabase'
 import { logger } from '../config/logger'
@@ -42,6 +43,9 @@ router.get('/health', async (_req, res) => {
     data: status,
   } satisfies ApiResponse)
 })
+
+// Endpoint público de feature flags (la app lo lee sin autenticación)
+router.get('/flags', getPublicFlags)
 
 router.use('/auth', authRoutes)
 router.use('/users', userRoutes)

@@ -963,15 +963,26 @@ export async function getUserNotes(req: Request, res: Response): Promise<void> {
 
 // ── Feature flags / modo mantenimiento ─────────────────────────────────────────
 
+// Feature flags almacenados en audit_logs (action='feature_flag_set') — último valor por clave gana.
+// No requiere tabla nueva.
 export async function getFeatureFlags(_req: Request, res: Response): Promise<void> {
   try {
-    const { data, error } = await supabase.from('feature_flags').select('*').order('key')
-    if (error && error.code === '42P01') {
-      res.json({ success: true, data: [], tableExists: false })
-      return
+    const { data } = await supabase
+      .from('audit_logs')
+      .select('metadata,created_at')
+      .eq('action', 'feature_flag_set')
+      .order('created_at', { ascending: false })
+      .limit(500)
+
+    const seen = new Set<string>()
+    const flags: { key: string; enabled: boolean; description?: string; updated_at: string }[] = []
+    for (const row of data ?? []) {
+      const m = (row as any).metadata ?? {}
+      if (!m.key || seen.has(m.key)) continue
+      seen.add(m.key)
+      flags.push({ key: m.key, enabled: !!m.enabled, description: m.description, updated_at: (row as any).created_at })
     }
-    if (error) throw error
-    res.json({ success: true, data: data ?? [], tableExists: true })
+    res.json({ success: true, data: flags, tableExists: true })
   } catch (err) {
     logger.error('Admin getFeatureFlags error:', err)
     res.status(500).json({ success: false, message: 'Error obteniendo flags' })
@@ -982,21 +993,39 @@ export async function updateFeatureFlag(req: Request, res: Response): Promise<vo
   try {
     const { key } = req.params
     const { enabled, description } = req.body as { enabled: boolean; description?: string }
-    const { error } = await supabase.from('feature_flags').upsert({
-      key,
-      enabled: !!enabled,
-      ...(description !== undefined ? { description } : {}),
-      updated_at: new Date().toISOString(),
-    }, { onConflict: 'key' })
-    if (error) {
-      if (error.code === '42P01') { res.status(400).json({ success: false, message: 'La tabla feature_flags no existe todavía' }); return }
-      throw error
-    }
-    await supabase.from('audit_logs').insert({ action: 'admin_toggle_flag', metadata: { key, enabled, admin_id: req.user?.id } })
+    const { error } = await supabase.from('audit_logs').insert({
+      action: 'feature_flag_set',
+      metadata: { key, enabled: !!enabled, description, admin_id: req.user?.id },
+    })
+    if (error) throw error
     res.json({ success: true, message: `Flag "${key}" ${enabled ? 'activado' : 'desactivado'}` })
   } catch (err) {
     logger.error('Admin updateFeatureFlag error:', err)
     res.status(500).json({ success: false, message: 'Error actualizando flag' })
+  }
+}
+
+// Endpoint público — la app móvil/web lee los flags activos (ej. modo mantenimiento)
+export async function getPublicFlags(_req: Request, res: Response): Promise<void> {
+  try {
+    const { data } = await supabase
+      .from('audit_logs')
+      .select('metadata,created_at')
+      .eq('action', 'feature_flag_set')
+      .order('created_at', { ascending: false })
+      .limit(500)
+
+    const seen = new Set<string>()
+    const flags: Record<string, boolean> = {}
+    for (const row of data ?? []) {
+      const m = (row as any).metadata ?? {}
+      if (!m.key || seen.has(m.key)) continue
+      seen.add(m.key)
+      flags[m.key] = !!m.enabled
+    }
+    res.json({ success: true, data: flags })
+  } catch {
+    res.json({ success: true, data: {} })
   }
 }
 

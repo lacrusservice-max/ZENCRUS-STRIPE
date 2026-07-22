@@ -687,12 +687,7 @@ export default function AdminPage() {
                 <Server size={16} color={C.blue} />
                 <span style={{ fontSize: 15, fontWeight: 800 }}>Feature flags & mantenimiento</span>
               </div>
-              {!flagsTableExists && (
-                <div style={{ margin: 18, padding: 14, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, display: "flex", gap: 12 }}>
-                  <AlertTriangle size={18} color={C.amber} style={{ flexShrink: 0, marginTop: 2 }} />
-                  <div style={{ fontSize: 12, color: "#fcd34d", lineHeight: 1.5 }}>La tabla <b>feature_flags</b> aún no existe en Supabase. Los toggles se guardarán en cuanto la crees (SQL provisto por tu admin).</div>
-                </div>
-              )}
+              {false && flagsTableExists && null}
               <div style={{ padding: "8px 0" }}>
                 {FLAG_CATALOG.map(f => {
                   const current = flags.find(fl => fl.key === f.key);
