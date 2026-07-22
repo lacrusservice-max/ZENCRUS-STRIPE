@@ -45,7 +45,7 @@ function CursorGlow() {
     window.addEventListener("mousemove", move); loop();
     return () => { window.removeEventListener("mousemove", move); cancelAnimationFrame(rafId); };
   }, []);
-  return <div ref={ref} aria-hidden style={{ position: "fixed", top: 0, left: 0, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(37,99,235,0.10), transparent 65%)", pointerEvents: "none", zIndex: 1, mixBlendMode: "screen" }} />;
+  return <div ref={ref} aria-hidden style={{ position: "fixed", top: 0, left: 0, width: 400, height: 400, borderRadius: "50%", background: "radial-gradient(circle, rgba(30,58,138,0.10), transparent 65%)", pointerEvents: "none", zIndex: 1, mixBlendMode: "screen" }} />;
 }
 
 function Nav() {
@@ -73,7 +73,7 @@ function Nav() {
           <div style={{ width: 1, height: 20, background: "rgba(255,255,255,0.1)", margin: "0 8px" }} />
           <Link href="/login" style={{ padding: "8px 16px", color: "rgba(255,255,255,0.82)", fontSize: 13, fontWeight: 600, textDecoration: "none", borderRadius: 10, border: "1px solid rgba(255,255,255,0.12)" }}>Iniciar sesión</Link>
           <Magnetic strength={0.3}>
-            <Link href="/register" className="cta-shine" style={{ display: "inline-block", padding: "9px 18px", color: "#fff", fontSize: 13, fontWeight: 700, textDecoration: "none", borderRadius: 10, background: "linear-gradient(135deg,#2563EB,#1e40af)", boxShadow: "0 4px 20px rgba(37,99,235,0.35)" }}>Registrarse</Link>
+            <Link href="/register" className="cta-shine" style={{ display: "inline-block", padding: "9px 18px", color: "#fff", fontSize: 13, fontWeight: 700, textDecoration: "none", borderRadius: 10, background: "linear-gradient(135deg,#1e3a8a,#16296b)", boxShadow: "0 4px 20px rgba(30,58,138,0.35)" }}>Registrarse</Link>
           </Magnetic>
         </div>
         <button onClick={() => setOpen(!open)} className="mobile-menu-btn" style={{ display: "none", background: "none", border: "none", color: "#fff", cursor: "pointer", padding: 8 }}>
@@ -86,7 +86,7 @@ function Nav() {
             <a key={href} href={href} onClick={() => setOpen(false)} style={{ padding: "12px 0", color: "rgba(255,255,255,0.7)", textDecoration: "none", fontSize: 15, fontWeight: 500, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>{label}</a>
           ))}
           <Link href="/login" onClick={() => setOpen(false)} style={{ textAlign: "center", padding: 12, color: "#fff", textDecoration: "none", borderRadius: 12, border: "1px solid rgba(255,255,255,0.15)", fontWeight: 600, marginTop: 8 }}>Iniciar sesión</Link>
-          <Link href="/register" onClick={() => setOpen(false)} style={{ textAlign: "center", padding: 12, color: "#fff", textDecoration: "none", borderRadius: 12, background: "#2563EB", fontWeight: 700 }}>Registrarse gratis</Link>
+          <Link href="/register" onClick={() => setOpen(false)} style={{ textAlign: "center", padding: 12, color: "#fff", textDecoration: "none", borderRadius: 12, background: "#1e3a8a", fontWeight: 700 }}>Registrarse gratis</Link>
         </div>
       )}
     </nav>
@@ -100,16 +100,17 @@ function Hero() {
   return (
     <section style={{ minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", position: "relative", overflow: "hidden", padding: "120px 24px 60px" }}>
       <div style={{ position: "absolute", inset: 0, zIndex: 0 }}><BioField /></div>
-      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 60% 50% at 50% 45%, transparent 30%, rgba(5,5,6,0.55) 75%)", zIndex: 1, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", inset: 0, background: "radial-gradient(ellipse 65% 55% at 50% 40%, transparent 40%, rgba(5,5,6,0.5) 80%)", zIndex: 1, pointerEvents: "none" }} />
+      <div style={{ position: "absolute", left: 0, right: 0, bottom: 0, height: "40%", background: "linear-gradient(180deg, transparent, #050506 92%)", zIndex: 1, pointerEvents: "none" }} />
       <div style={{ maxWidth: 940, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 2, pointerEvents: "none" }}>
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(37,99,235,0.10)", border: "1px solid rgba(37,99,235,0.28)", borderRadius: 999, padding: "6px 16px", marginBottom: 30, backdropFilter: "blur(10px)", opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(16px)", transition: "all 0.8s cubic-bezier(0.16,1,0.3,1)", pointerEvents: "auto" }}>
-          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#00E5D0", boxShadow: "0 0 8px #00E5D0", animation: "pulse 1.6s infinite" }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#7fd8e8" }}>IA entrenada en 11 módulos de fisiología deportiva certificada</span>
+        <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(30,58,138,0.10)", border: "1px solid rgba(30,58,138,0.28)", borderRadius: 999, padding: "6px 16px", marginBottom: 30, backdropFilter: "blur(10px)", opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(16px)", transition: "all 0.8s cubic-bezier(0.16,1,0.3,1)", pointerEvents: "auto" }}>
+          <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5f7bc4", boxShadow: "0 0 8px #5f7bc4", animation: "pulse 1.6s infinite" }} />
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#8fa9dd" }}>IA entrenada en 11 módulos de fisiología deportiva certificada</span>
         </div>
         <h1 style={{ fontSize: "clamp(2.6rem,7vw,5.5rem)", fontWeight: 900, color: "#f4f4f5", lineHeight: 1.02, marginBottom: 24, letterSpacing: "-0.03em" }}>
           {words.map((w, i) => (
             <span key={i} style={{ display: "inline-block", marginRight: "0.28em", opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(30px) rotateX(40deg)", transition: `all 0.9s cubic-bezier(0.16,1,0.3,1) ${200 + i * 90}ms`,
-              ...(w === "descifrada" ? { background: "linear-gradient(115deg,#2563EB 0%,#00E5D0 60%,#a78bfa 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" } : {}) }}>{w}</span>
+              ...(w === "descifrada" ? { background: "linear-gradient(115deg,#1e3a8a 0%,#5f7bc4 60%,#7d8ba8 100%)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", backgroundClip: "text" } : {}) }}>{w}</span>
           ))}
         </h1>
         <p style={{ fontSize: "clamp(1rem,2vw,1.25rem)", color: "rgba(255,255,255,0.58)", maxWidth: 640, margin: "0 auto 44px", lineHeight: 1.75, opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(20px)", transition: "all 0.9s cubic-bezier(0.16,1,0.3,1) 0.7s" }}>
@@ -117,7 +118,7 @@ function Hero() {
         </p>
         <div style={{ display: "flex", gap: 14, justifyContent: "center", flexWrap: "wrap", marginBottom: 60, pointerEvents: "auto", opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(20px)", transition: "all 0.9s cubic-bezier(0.16,1,0.3,1) 0.85s" }}>
           <Magnetic strength={0.35}>
-            <Link href="/register" className="cta-shine" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 34px", background: "linear-gradient(135deg,#2563EB,#1e40af)", color: "#fff", textDecoration: "none", borderRadius: 14, fontWeight: 700, fontSize: 15, boxShadow: "0 8px 40px rgba(37,99,235,0.45)" }}>
+            <Link href="/register" className="cta-shine" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 34px", background: "linear-gradient(135deg,#1e3a8a,#16296b)", color: "#fff", textDecoration: "none", borderRadius: 14, fontWeight: 700, fontSize: 15, boxShadow: "0 8px 40px rgba(30,58,138,0.45)" }}>
               Empieza gratis <ArrowRight size={17} />
             </Link>
           </Magnetic>
@@ -126,7 +127,7 @@ function Hero() {
         <div style={{ display: "flex", gap: 48, justifyContent: "center", flexWrap: "wrap", pointerEvents: "auto" }}>
           {[["26", "Variables biométricas"], ["11", "Módulos científicos"], ["100%", "Personalizado a tu biología"]].map(([v, l]) => (
             <div key={l} style={{ textAlign: "center" }}>
-              <Counter value={v} style={{ fontSize: "clamp(1.8rem,3.5vw,2.8rem)", fontWeight: 900, letterSpacing: "-0.03em", background: "linear-gradient(135deg,#60a5fa,#00E5D0)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", display: "inline-block" }} />
+              <Counter value={v} style={{ fontSize: "clamp(1.8rem,3.5vw,2.8rem)", fontWeight: 900, letterSpacing: "-0.03em", background: "linear-gradient(135deg,#8fa9dd,#5f7bc4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", display: "inline-block" }} />
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600, marginTop: 4, maxWidth: 130 }}>{l}</div>
             </div>
           ))}
@@ -135,7 +136,7 @@ function Hero() {
       <div style={{ position: "absolute", bottom: 28, left: "50%", transform: "translateX(-50%)", zIndex: 2, display: "flex", flexDirection: "column", alignItems: "center", gap: 8, opacity: 0.5 }}>
         <span style={{ fontSize: 10, letterSpacing: 2, color: "rgba(255,255,255,0.5)", textTransform: "uppercase" }}>Scroll</span>
         <div style={{ width: 22, height: 34, borderRadius: 12, border: "1.5px solid rgba(255,255,255,0.25)", display: "flex", justifyContent: "center", paddingTop: 6 }}>
-          <span style={{ width: 3, height: 7, borderRadius: 2, background: "#00E5D0", animation: "scrolldot 1.6s infinite" }} />
+          <span style={{ width: 3, height: 7, borderRadius: 2, background: "#5f7bc4", animation: "scrolldot 1.6s infinite" }} />
         </div>
       </div>
     </section>
@@ -145,24 +146,24 @@ function Hero() {
 // ── Ciencia — connected timeline (no floating cards) ────────────────────────
 function CienciaIA() {
   const modulos = [
-    { num: "01", titulo: "Fisiología de la Nutrición", color: "#2563EB", icon: <Microscope size={22} color="#2563EB" />, desc: "La IA conoce las 3 vías de ATP, el metabolismo del glucógeno muscular (~400-500g) y hepático (~80-100g), y cómo optimizar cada macronutriente según tu tipo e intensidad de entrenamiento.", puntos: ["Sistema ATP-CP, glucólisis anaeróbica y metabolismo oxidativo", "Timing óptimo de carbohidratos según zona de entrenamiento", "Relación glucosa/grasa según intensidad (% VO₂máx)", "Carga de glucógeno 48-72h antes de eventos de resistencia"], fuente: "Burke, Deakin, Minehan — Nutrición Deportiva Clínica 6ª ed. (McGraw-Hill)" },
-    { num: "E1", titulo: "Fisiología Muscular Profunda", color: "#FF6B35", icon: <Dumbbell size={22} color="#FF6B35" />, desc: "La IA entiende los 3 mecanismos de hipertrofia (tensión mecánica, daño muscular, estrés metabólico), señalización mTORC1, tipos de fibra muscular y síntesis proteica para justificar cada ejercicio y protocolo.", puntos: ["3 mecanismos de hipertrofia: tensión, daño y estrés metabólico", "Principio de Henneman: reclutamiento de fibras tipo I y II", "Señalización mTORC1, AMPK, IGF-1 y células satélite", "Ventana anabólica y distribución óptima de proteína"], fuente: "Schoenfeld JSCR 2010 · Roberts et al. Physiol Rev 2023 · Vargas Molina 2017" },
-    { num: "02", titulo: "Cálculo Energético y Macros", color: "#30D158", icon: <BarChart3 size={22} color="#30D158" />, desc: "Usa Mifflin-St Jeor (la más validada en adultos 18-65 años, error ±10%) para calcular tu TMB y GET. Distribuye macros según objetivo con ajustes por estrés, sueño, ciclo menstrual y presupuesto.", puntos: ["TMB con Mifflin-St Jeor: (10×kg)+(6.25×cm)−(5×edad)±5", "Factores de actividad NEAT + ejercicio programado", "Déficit 300-500 kcal para pérdida de grasa sostenible", "Superávit 200-350 kcal para ganancia muscular limpia"], fuente: "Frankenfield et al. 2005, J Am Diet Assoc · Mifflin MD et al. 1990" },
-    { num: "03", titulo: "Eje Hormonal y Metabolismo", color: "#a78bfa", icon: <Brain size={22} color="#a78bfa" />, desc: "La IA monitorea tu perfil hormonal: insulina, cortisol, leptina, ghrelina, GLP-1, testosterona y estrógenos. Ajusta tu plan cuando detecta estrés ≥7/10, sueño <7h o ciclos de hambre irregular.", puntos: ["Insulina y glucagón: cuándo y qué comer para composición corporal", "Cortisol y HPA: ajustes automáticos en semanas de estrés agudo", "Leptina y ghrelina: gestión del hambre en déficit calórico", "GLP-1, PYY, CCK: diseño de comidas saciantes inteligentes"], fuente: "Guyton & Hall Fisiología Médica 14ª ed. · ISSN Position Stand 2023" },
-    { num: "04", titulo: "Ciclo Menstrual y Fisiología por Sexo", color: "#f472b6", icon: <Calendar size={22} color="#f472b6" />, desc: "El módulo más diferenciador: ajusta calorías, macros y entrenamiento según las 4 fases del ciclo. En fase lútea el cuerpo quema 100-300 kcal/día más — la IA lo sabe y adapta tu plan automáticamente.", puntos: ["Fase folicular: alta sensibilidad insulínica → CHO y alto volumen", "Ovulación: pico de rendimiento → PRs y alta intensidad", "Fase lútea: oxidación de grasas ↑ y TMR ↑ hasta 300 kcal/día", "Fase menstrual: ajuste de hierro, magnesio y omega-3"], fuente: "Nutrition Reviews 2023 · News-Medical 2026 · RED-S Consensus 2023" },
-    { num: "05", titulo: "Crononutrición y Timing", color: "#00E5D0", icon: <Clock size={22} color="#00E5D0" />, desc: "El reloj biológico importa. La IA sincroniza tus comidas con tu ritmo circadiano: por la mañana la termogénesis dietaria es hasta 44% mayor que por la noche. Si entrenas de noche, el ejercicio tiene prioridad.", puntos: ["NSQ: relojes centrales sincronizados por luz solar", "Relojes periféricos (hígado, páncreas, músculo) por comida", "Timing peri-entrenamiento y recuperación de glucógeno", "Ayuno intermitente: protocolos y contraindicaciones"], fuente: "Satchidananda Panda, Salk Institute · Chrono-nutrition, Nutrients 2024" },
+    { num: "01", titulo: "Fisiología de la Nutrición", color: "#1e3a8a", icon: <Microscope size={22} color="#1e3a8a" />, desc: "La IA conoce las 3 vías de ATP, el metabolismo del glucógeno muscular (~400-500g) y hepático (~80-100g), y cómo optimizar cada macronutriente según tu tipo e intensidad de entrenamiento.", puntos: ["Sistema ATP-CP, glucólisis anaeróbica y metabolismo oxidativo", "Timing óptimo de carbohidratos según zona de entrenamiento", "Relación glucosa/grasa según intensidad (% VO₂máx)", "Carga de glucógeno 48-72h antes de eventos de resistencia"], fuente: "Burke, Deakin, Minehan — Nutrición Deportiva Clínica 6ª ed. (McGraw-Hill)" },
+    { num: "E1", titulo: "Fisiología Muscular Profunda", color: "#707a8c", icon: <Dumbbell size={22} color="#707a8c" />, desc: "La IA entiende los 3 mecanismos de hipertrofia (tensión mecánica, daño muscular, estrés metabólico), señalización mTORC1, tipos de fibra muscular y síntesis proteica para justificar cada ejercicio y protocolo.", puntos: ["3 mecanismos de hipertrofia: tensión, daño y estrés metabólico", "Principio de Henneman: reclutamiento de fibras tipo I y II", "Señalización mTORC1, AMPK, IGF-1 y células satélite", "Ventana anabólica y distribución óptima de proteína"], fuente: "Schoenfeld JSCR 2010 · Roberts et al. Physiol Rev 2023 · Vargas Molina 2017" },
+    { num: "02", titulo: "Cálculo Energético y Macros", color: "#5f6875", icon: <BarChart3 size={22} color="#5f6875" />, desc: "Usa Mifflin-St Jeor (la más validada en adultos 18-65 años, error ±10%) para calcular tu TMB y GET. Distribuye macros según objetivo con ajustes por estrés, sueño, ciclo menstrual y presupuesto.", puntos: ["TMB con Mifflin-St Jeor: (10×kg)+(6.25×cm)−(5×edad)±5", "Factores de actividad NEAT + ejercicio programado", "Déficit 300-500 kcal para pérdida de grasa sostenible", "Superávit 200-350 kcal para ganancia muscular limpia"], fuente: "Frankenfield et al. 2005, J Am Diet Assoc · Mifflin MD et al. 1990" },
+    { num: "03", titulo: "Eje Hormonal y Metabolismo", color: "#7d8ba8", icon: <Brain size={22} color="#7d8ba8" />, desc: "La IA monitorea tu perfil hormonal: insulina, cortisol, leptina, ghrelina, GLP-1, testosterona y estrógenos. Ajusta tu plan cuando detecta estrés ≥7/10, sueño <7h o ciclos de hambre irregular.", puntos: ["Insulina y glucagón: cuándo y qué comer para composición corporal", "Cortisol y HPA: ajustes automáticos en semanas de estrés agudo", "Leptina y ghrelina: gestión del hambre en déficit calórico", "GLP-1, PYY, CCK: diseño de comidas saciantes inteligentes"], fuente: "Guyton & Hall Fisiología Médica 14ª ed. · ISSN Position Stand 2023" },
+    { num: "04", titulo: "Ciclo Menstrual y Fisiología por Sexo", color: "#707a8c", icon: <Calendar size={22} color="#707a8c" />, desc: "El módulo más diferenciador: ajusta calorías, macros y entrenamiento según las 4 fases del ciclo. En fase lútea el cuerpo quema 100-300 kcal/día más — la IA lo sabe y adapta tu plan automáticamente.", puntos: ["Fase folicular: alta sensibilidad insulínica → CHO y alto volumen", "Ovulación: pico de rendimiento → PRs y alta intensidad", "Fase lútea: oxidación de grasas ↑ y TMR ↑ hasta 300 kcal/día", "Fase menstrual: ajuste de hierro, magnesio y omega-3"], fuente: "Nutrition Reviews 2023 · News-Medical 2026 · RED-S Consensus 2023" },
+    { num: "05", titulo: "Crononutrición y Timing", color: "#5f7bc4", icon: <Clock size={22} color="#5f7bc4" />, desc: "El reloj biológico importa. La IA sincroniza tus comidas con tu ritmo circadiano: por la mañana la termogénesis dietaria es hasta 44% mayor que por la noche. Si entrenas de noche, el ejercicio tiene prioridad.", puntos: ["NSQ: relojes centrales sincronizados por luz solar", "Relojes periféricos (hígado, páncreas, músculo) por comida", "Timing peri-entrenamiento y recuperación de glucógeno", "Ayuno intermitente: protocolos y contraindicaciones"], fuente: "Satchidananda Panda, Salk Institute · Chrono-nutrition, Nutrients 2024" },
   ];
   return (
     <section id="ciencia" style={{ padding: "120px 24px", position: "relative", zIndex: 2 }}>
       <div style={{ maxWidth: 1080, margin: "0 auto" }}>
         <Reveal style={{ textAlign: "center", marginBottom: 80 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#00E5D0", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 }}>Base Científica</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#5f7bc4", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 }}>Base Científica</div>
           <h2 style={{ fontSize: "clamp(2rem,5vw,3.4rem)", fontWeight: 900, color: "#f4f4f5", marginBottom: 18, letterSpacing: "-0.03em", lineHeight: 1.05 }}>No es una app genérica.<br />Es fisiología aplicada a ti.</h2>
           <p style={{ fontSize: 16, color: "rgba(255,255,255,0.48)", maxWidth: 560, margin: "0 auto", lineHeight: 1.7 }}>Cada módulo fue desarrollado con las fuentes científicas más sólidas y aplicado a tu perfil único de 26 variables.</p>
         </Reveal>
         <div style={{ position: "relative" }}>
           {/* spine */}
-          <div className="spine" style={{ position: "absolute", left: 27, top: 10, bottom: 10, width: 2, background: "linear-gradient(180deg,#2563EB,#FF6B35,#30D158,#a78bfa,#f472b6,#00E5D0)", opacity: 0.35 }} />
+          <div className="spine" style={{ position: "absolute", left: 27, top: 10, bottom: 10, width: 2, background: "linear-gradient(180deg,#1e3a8a,#707a8c,#5f6875,#7d8ba8,#707a8c,#5f7bc4)", opacity: 0.35 }} />
           <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
             {modulos.map((m, i) => (
               <Reveal key={m.num} delay={i * 60} x={-24} y={0}>
@@ -191,8 +192,8 @@ function CienciaIA() {
           </div>
         </div>
         <Reveal delay={100} style={{ marginTop: 28 }}>
-          <div style={{ padding: "22px 28px", background: "linear-gradient(135deg, rgba(37,99,235,0.08), rgba(0,229,208,0.04))", borderRadius: 18, border: "1px solid rgba(37,99,235,0.18)", display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(37,99,235,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Brain size={20} color="#60a5fa" /></div>
+          <div style={{ padding: "22px 28px", background: "linear-gradient(135deg, rgba(30,58,138,0.08), rgba(95,123,196,0.04))", borderRadius: 18, border: "1px solid rgba(30,58,138,0.18)", display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(30,58,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Brain size={20} color="#8fa9dd" /></div>
             <div style={{ flex: 1, minWidth: 240 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#f4f4f5", marginBottom: 4 }}>Módulos 06–11 en desarrollo</div>
               <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.42)", lineHeight: 1.6 }}>Micronutrientes y suplementación · Entrenamiento de fuerza · Cardio y resistencia · Recuperación y sueño · Psiconutrición · Salud a largo plazo</div>
@@ -207,16 +208,16 @@ function CienciaIA() {
 // ── Cómo funciona — stepped horizontal flow ─────────────────────────────────
 function ComoFunciona() {
   const capas = [
-    { num: "Capa 0", titulo: "Biometría y objetivo", tiempo: "2 min", color: "#2563EB", preguntas: ["Edad y sexo biológico", "Peso, talla y % grasa corporal", "Objetivo principal", "Tiempo esperado de resultados", "Nivel de actividad física", "Actividad en vida diaria"], ia: "Con estos datos la IA calcula tu TMB con Mifflin-St Jeor y tu GET. Ya puede generar tu primer plan nutricional personalizado." },
-    { num: "Capa 1", titulo: "Hábitos", tiempo: "2 min", color: "#00E5D0", preguntas: ["Horario de sueño y cronotipo", "Horario de entrenamiento", "Frecuencia y tipo de ejercicio", "Frecuencia de comidas", "Restricciones alimentarias", "Presupuesto semanal"], ia: "Se activa la Crononutrición (Módulo 05). La IA sincroniza tus comidas con tu ritmo circadiano y adapta el timing al horario de entrenamiento." },
-    { num: "Capa 2", titulo: "Señales corporales", tiempo: "1 min", color: "#a78bfa", preguntas: ["Nivel de estrés habitual (1-10)", "Calidad y duración del sueño", "Patrón de hambre durante el día", "Ciclo menstrual (si aplica)"], ia: "Se activa el Módulo 03 (Eje Hormonal) y el Módulo 04 (Ciclo Menstrual). El plan ajusta cortisol, leptina, ghrelina y fases del ciclo automáticamente." },
-    { num: "Capa 3", titulo: "Contexto vital", tiempo: "1 min", color: "#f472b6", preguntas: ["Experiencia previa con dietas", "Historial de lesiones", "Acceso a equipamiento", "Preferencias de entrenamiento"], ia: "Se finaliza el perfil de 26 variables. La IA genera un plan completamente personalizado a tu biología desde el día 1." },
+    { num: "Capa 0", titulo: "Biometría y objetivo", tiempo: "2 min", color: "#1e3a8a", preguntas: ["Edad y sexo biológico", "Peso, talla y % grasa corporal", "Objetivo principal", "Tiempo esperado de resultados", "Nivel de actividad física", "Actividad en vida diaria"], ia: "Con estos datos la IA calcula tu TMB con Mifflin-St Jeor y tu GET. Ya puede generar tu primer plan nutricional personalizado." },
+    { num: "Capa 1", titulo: "Hábitos", tiempo: "2 min", color: "#5f7bc4", preguntas: ["Horario de sueño y cronotipo", "Horario de entrenamiento", "Frecuencia y tipo de ejercicio", "Frecuencia de comidas", "Restricciones alimentarias", "Presupuesto semanal"], ia: "Se activa la Crononutrición (Módulo 05). La IA sincroniza tus comidas con tu ritmo circadiano y adapta el timing al horario de entrenamiento." },
+    { num: "Capa 2", titulo: "Señales corporales", tiempo: "1 min", color: "#7d8ba8", preguntas: ["Nivel de estrés habitual (1-10)", "Calidad y duración del sueño", "Patrón de hambre durante el día", "Ciclo menstrual (si aplica)"], ia: "Se activa el Módulo 03 (Eje Hormonal) y el Módulo 04 (Ciclo Menstrual). El plan ajusta cortisol, leptina, ghrelina y fases del ciclo automáticamente." },
+    { num: "Capa 3", titulo: "Contexto vital", tiempo: "1 min", color: "#707a8c", preguntas: ["Experiencia previa con dietas", "Historial de lesiones", "Acceso a equipamiento", "Preferencias de entrenamiento"], ia: "Se finaliza el perfil de 26 variables. La IA genera un plan completamente personalizado a tu biología desde el día 1." },
   ];
   return (
     <section id="como" style={{ padding: "120px 24px", position: "relative", zIndex: 2 }}>
       <div style={{ maxWidth: 1140, margin: "0 auto" }}>
         <Reveal style={{ textAlign: "center", marginBottom: 72 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#00E5D0", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 }}>Proceso de onboarding</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#5f7bc4", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 }}>Proceso de onboarding</div>
           <h2 style={{ fontSize: "clamp(2rem,5vw,3.4rem)", fontWeight: 900, color: "#f4f4f5", marginBottom: 16, letterSpacing: "-0.03em" }}>26 variables. 4 capas. ~6 min.</h2>
           <p style={{ fontSize: 16, color: "rgba(255,255,255,0.48)", maxWidth: 520, margin: "0 auto", lineHeight: 1.7 }}>No hacemos preguntas de relleno. Cada variable tiene un propósito fisiológico, hormonal o conductual específico.</p>
         </Reveal>
@@ -254,24 +255,24 @@ function ComoFunciona() {
 // ── Features — tilting depth panels ─────────────────────────────────────────
 function FeaturesApp() {
   const features = [
-    { icon: <Bot size={24} color="#2563EB" />, color: "#2563EB", t: "ZENA — Tu coach IA", d: "Chat ilimitado con tu asistente de nutrición y fitness. ZENA usa todos los módulos de la IA para responderte con ciencia real." },
-    { icon: <Apple size={24} color="#30D158" />, color: "#30D158", t: "Plan nutricional exacto", d: "Calculado con tu TDEE real y macros específicos. Incluye recetas, lista de compras y se actualiza semanalmente." },
-    { icon: <Dumbbell size={24} color="#FF6B35" />, color: "#FF6B35", t: "Rutinas personalizadas", d: "Planes de workout adaptados a tu nivel, equipo y objetivo. Basados en el Módulo E1 de fisiología muscular." },
-    { icon: <Activity size={24} color="#00E5D0" />, color: "#00E5D0", t: "Health tracker completo", d: "Health Score diario, medidas corporales, peso y fotos de progreso. Visualiza tu composición corporal cambiando." },
-    { icon: <Heart size={24} color="#f472b6" />, color: "#f472b6", t: "Tracker del ciclo menstrual", d: "Seguimiento de las 4 fases con ajuste automático de calorías, macros y entrenamiento según el Módulo 04." },
-    { icon: <Moon size={24} color="#a78bfa" />, color: "#a78bfa", t: "Crononutrición activa", d: "Tu horario de comidas sincronizado con tu ritmo circadiano. La ciencia de CUÁNDO comer, no solo QUÉ comer." },
-    { icon: <Calendar size={24} color="#60a5fa" />, color: "#60a5fa", t: "Planificador semanal", d: "Plan de comidas para toda la semana con cantidades exactas en gramos y macros por comida, automático." },
-    { icon: <FlameIcon size={24} color="#FF6B35" />, color: "#FF6B35", t: "Ciclo de macros avanzado", d: "Periodización de carbohidratos: días altos, moderados y bajos según tu calendario de entrenamiento." },
-    { icon: <Users size={24} color="#a78bfa" />, color: "#a78bfa", t: "Comunidad + Duelos", d: "Feed social, publicaciones de progreso, duelos de 7 días y leaderboard semanal. Competencia que motiva." },
-    { icon: <Trophy size={24} color="#FFD60A" />, color: "#FFD60A", t: "Sistema de logros", d: "Más de 30 logros desbloqueables por consistencia, progreso y participación. Cada avance se celebra." },
-    { icon: <Shield size={24} color="#30D158" />, color: "#30D158", t: "Privacidad total", d: "Datos biométricos encriptados y privados. Cumplimiento LFPDPPP. Exporta o elimina tus datos cuando quieras." },
-    { icon: <Zap size={24} color="#FFD60A" />, color: "#FFD60A", t: "Todo sincronizado", d: "Día de alto estrés → ajusta macros. ¿No dormiste bien? → adapta el workout. Todo conectado en tiempo real." },
+    { icon: <Bot size={24} color="#1e3a8a" />, color: "#1e3a8a", t: "ZENA — Tu coach IA", d: "Chat ilimitado con tu asistente de nutrición y fitness. ZENA usa todos los módulos de la IA para responderte con ciencia real." },
+    { icon: <Apple size={24} color="#5f6875" />, color: "#5f6875", t: "Plan nutricional exacto", d: "Calculado con tu TDEE real y macros específicos. Incluye recetas, lista de compras y se actualiza semanalmente." },
+    { icon: <Dumbbell size={24} color="#707a8c" />, color: "#707a8c", t: "Rutinas personalizadas", d: "Planes de workout adaptados a tu nivel, equipo y objetivo. Basados en el Módulo E1 de fisiología muscular." },
+    { icon: <Activity size={24} color="#5f7bc4" />, color: "#5f7bc4", t: "Health tracker completo", d: "Health Score diario, medidas corporales, peso y fotos de progreso. Visualiza tu composición corporal cambiando." },
+    { icon: <Heart size={24} color="#707a8c" />, color: "#707a8c", t: "Tracker del ciclo menstrual", d: "Seguimiento de las 4 fases con ajuste automático de calorías, macros y entrenamiento según el Módulo 04." },
+    { icon: <Moon size={24} color="#7d8ba8" />, color: "#7d8ba8", t: "Crononutrición activa", d: "Tu horario de comidas sincronizado con tu ritmo circadiano. La ciencia de CUÁNDO comer, no solo QUÉ comer." },
+    { icon: <Calendar size={24} color="#8fa9dd" />, color: "#8fa9dd", t: "Planificador semanal", d: "Plan de comidas para toda la semana con cantidades exactas en gramos y macros por comida, automático." },
+    { icon: <FlameIcon size={24} color="#707a8c" />, color: "#707a8c", t: "Ciclo de macros avanzado", d: "Periodización de carbohidratos: días altos, moderados y bajos según tu calendario de entrenamiento." },
+    { icon: <Users size={24} color="#7d8ba8" />, color: "#7d8ba8", t: "Comunidad + Duelos", d: "Feed social, publicaciones de progreso, duelos de 7 días y leaderboard semanal. Competencia que motiva." },
+    { icon: <Trophy size={24} color="#9aa3b2" />, color: "#9aa3b2", t: "Sistema de logros", d: "Más de 30 logros desbloqueables por consistencia, progreso y participación. Cada avance se celebra." },
+    { icon: <Shield size={24} color="#5f6875" />, color: "#5f6875", t: "Privacidad total", d: "Datos biométricos encriptados y privados. Cumplimiento LFPDPPP. Exporta o elimina tus datos cuando quieras." },
+    { icon: <Zap size={24} color="#9aa3b2" />, color: "#9aa3b2", t: "Todo sincronizado", d: "Día de alto estrés → ajusta macros. ¿No dormiste bien? → adapta el workout. Todo conectado en tiempo real." },
   ];
   return (
     <section id="modulos" style={{ padding: "120px 24px", position: "relative", zIndex: 2 }}>
       <div style={{ maxWidth: 1200, margin: "0 auto" }}>
         <Reveal style={{ textAlign: "center", marginBottom: 72 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#FF6B35", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 }}>El ecosistema</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#707a8c", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 }}>El ecosistema</div>
           <h2 style={{ fontSize: "clamp(2rem,5vw,3.4rem)", fontWeight: 900, color: "#f4f4f5", marginBottom: 16, letterSpacing: "-0.03em" }}>Un sistema, no una app de recetas</h2>
           <p style={{ fontSize: 16, color: "rgba(255,255,255,0.48)", maxWidth: 500, margin: "0 auto", lineHeight: 1.7 }}>No es un contador de calorías. Es un ecosistema de transformación personal basado en ciencia.</p>
         </Reveal>
@@ -330,24 +331,24 @@ function Diferenciadores() {
     <section style={{ padding: "100px 24px", position: "relative", zIndex: 2 }}>
       <div style={{ maxWidth: 920, margin: "0 auto" }}>
         <Reveal style={{ textAlign: "center", marginBottom: 56 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#30D158", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 }}>Comparativa</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#5f6875", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 }}>Comparativa</div>
           <h2 style={{ fontSize: "clamp(1.9rem,4.5vw,3rem)", fontWeight: 900, color: "#f4f4f5", letterSpacing: "-0.03em" }}>Por qué ZENCRUS es diferente</h2>
         </Reveal>
         <Reveal>
           <div style={{ background: "linear-gradient(160deg, rgba(255,255,255,0.045), rgba(255,255,255,0.01))", borderRadius: 22, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 130px 130px", padding: "16px 26px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>Función</div>
-              <div style={{ fontSize: 12, fontWeight: 800, background: "linear-gradient(135deg,#60a5fa,#00E5D0)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textAlign: "center" }}>ZENCRUS</div>
+              <div style={{ fontSize: 12, fontWeight: 800, background: "linear-gradient(135deg,#8fa9dd,#5f7bc4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textAlign: "center" }}>ZENCRUS</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>Otras apps</div>
             </div>
             {rows.map((r, i) => (
               <div key={r.feature} className="cmp-row" style={{ display: "grid", gridTemplateColumns: "1fr 130px 130px", padding: "14px 26px", borderBottom: i < rows.length - 1 ? "1px solid rgba(255,255,255,0.05)" : "none", alignItems: "center", transition: "background 0.2s" }}>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.72)" }}>{r.feature}</div>
-                <div style={{ textAlign: "center" }}><span style={{ display: "inline-flex", width: 24, height: 24, borderRadius: "50%", background: "rgba(48,209,88,0.15)", alignItems: "center", justifyContent: "center" }}><Check size={14} color="#30D158" /></span></div>
+                <div style={{ textAlign: "center" }}><span style={{ display: "inline-flex", width: 24, height: 24, borderRadius: "50%", background: "rgba(95,123,196,0.15)", alignItems: "center", justifyContent: "center" }}><Check size={14} color="#5f6875" /></span></div>
                 <div style={{ textAlign: "center" }}>
                   {r.otros === true ? <Check size={16} color="rgba(255,255,255,0.2)" style={{ display: "inline" }} />
-                    : r.otros === "Parcial" ? <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,200,0,0.6)" }}>Parcial</span>
-                      : <span style={{ fontSize: 15, color: "rgba(255,59,48,0.55)", fontWeight: 700 }}>✕</span>}
+                    : r.otros === "Parcial" ? <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(154,163,178,0.6)" }}>Parcial</span>
+                      : <span style={{ fontSize: 15, color: "rgba(95,104,117,0.55)", fontWeight: 700 }}>✕</span>}
                 </div>
               </div>
             ))}
@@ -366,13 +367,13 @@ function Precios() {
     <section id="precios" style={{ padding: "120px 24px", position: "relative", zIndex: 2 }}>
       <div style={{ maxWidth: 980, margin: "0 auto" }}>
         <Reveal style={{ textAlign: "center", marginBottom: 52 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#a78bfa", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 }}>Precios</div>
+          <div style={{ fontSize: 11, fontWeight: 800, color: "#7d8ba8", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 }}>Precios</div>
           <h2 style={{ fontSize: "clamp(2rem,5vw,3.4rem)", fontWeight: 900, color: "#f4f4f5", marginBottom: 16, letterSpacing: "-0.03em" }}>Elige tu plan</h2>
           <p style={{ fontSize: 16, color: "rgba(255,255,255,0.48)", maxWidth: 400, margin: "0 auto 28px" }}>Empieza gratis. Sube a Premium cuando estés listo para el sistema completo.</p>
           <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 4, gap: 4 }}>
-            <button onClick={() => setAnual(false)} style={{ padding: "8px 20px", borderRadius: 9, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700, background: !anual ? "#2563EB" : "transparent", color: !anual ? "#fff" : "rgba(255,255,255,0.4)", transition: "all 0.2s" }}>Mensual</button>
-            <button onClick={() => setAnual(true)} style={{ padding: "8px 20px", borderRadius: 9, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700, background: anual ? "#2563EB" : "transparent", color: anual ? "#fff" : "rgba(255,255,255,0.4)", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}>
-              Anual <span style={{ background: "#22c55e", color: "#fff", fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 6 }}>−37%</span>
+            <button onClick={() => setAnual(false)} style={{ padding: "8px 20px", borderRadius: 9, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700, background: !anual ? "#1e3a8a" : "transparent", color: !anual ? "#fff" : "rgba(255,255,255,0.4)", transition: "all 0.2s" }}>Mensual</button>
+            <button onClick={() => setAnual(true)} style={{ padding: "8px 20px", borderRadius: 9, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700, background: anual ? "#1e3a8a" : "transparent", color: anual ? "#fff" : "rgba(255,255,255,0.4)", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}>
+              Anual <span style={{ background: "#5f6875", color: "#fff", fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 6 }}>−37%</span>
             </button>
           </div>
         </Reveal>
@@ -385,24 +386,24 @@ function Precios() {
               <Link href="/register" style={{ display: "block", textAlign: "center", padding: 13, color: "#f4f4f5", textDecoration: "none", borderRadius: 12, border: "1px solid rgba(255,255,255,0.15)", fontWeight: 700, fontSize: 14, marginBottom: 28 }}>Empezar gratis</Link>
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
                 {FREE.map((f) => (
-                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}><Check size={14} color="#30D158" /><span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{f}</span></div>
+                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}><Check size={14} color="#5f6875" /><span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{f}</span></div>
                 ))}
               </div>
             </div>
           </Reveal>
           <Reveal x={24} y={0} delay={80}>
-            <div className="premium-card" style={{ borderRadius: 22, background: "linear-gradient(160deg, rgba(37,99,235,0.10), rgba(0,229,208,0.03))", border: "1px solid rgba(37,99,235,0.4)", padding: 34, position: "relative", overflow: "hidden", height: "100%", boxShadow: "0 0 60px rgba(37,99,235,0.15)" }}>
-              <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: "rgba(0,229,208,0.14)", filter: "blur(50px)" }} />
-              <div style={{ position: "absolute", top: 16, right: 20, background: "linear-gradient(135deg,#2563EB,#00E5D0)", color: "#fff", fontSize: 10, fontWeight: 800, padding: "5px 12px", borderRadius: 999, letterSpacing: 0.5 }}>MÁS POPULAR</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#7fd8e8", marginBottom: 8 }}>PREMIUM</div>
+            <div className="premium-card" style={{ borderRadius: 22, background: "linear-gradient(160deg, rgba(30,58,138,0.10), rgba(95,123,196,0.03))", border: "1px solid rgba(30,58,138,0.4)", padding: 34, position: "relative", overflow: "hidden", height: "100%", boxShadow: "0 0 60px rgba(30,58,138,0.15)" }}>
+              <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: "rgba(95,123,196,0.14)", filter: "blur(50px)" }} />
+              <div style={{ position: "absolute", top: 16, right: 20, background: "linear-gradient(135deg,#1e3a8a,#5f7bc4)", color: "#fff", fontSize: 10, fontWeight: 800, padding: "5px 12px", borderRadius: 999, letterSpacing: 0.5 }}>MÁS POPULAR</div>
+              <div style={{ fontSize: 12, fontWeight: 700, color: "#8fa9dd", marginBottom: 8 }}>PREMIUM</div>
               <div style={{ fontSize: 46, fontWeight: 900, color: "#f4f4f5", marginBottom: 4, letterSpacing: "-0.03em" }}>{anual ? "$1,499" : "$199"}<span style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>/{anual ? "año" : "mes"}</span></div>
               <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 28 }}>{anual ? "= $125/mes · Ahorra $888 al año" : "Cancela cuando quieras"} MXN</div>
               <Magnetic strength={0.25} style={{ display: "block" }}>
-                <Link href="/register" className="cta-shine" style={{ display: "block", textAlign: "center", padding: 14, color: "#fff", textDecoration: "none", borderRadius: 12, background: "linear-gradient(135deg,#2563EB,#1e40af)", fontWeight: 700, fontSize: 14, marginBottom: 28, boxShadow: "0 8px 30px rgba(37,99,235,0.4)" }}>Probar 7 días gratis</Link>
+                <Link href="/register" className="cta-shine" style={{ display: "block", textAlign: "center", padding: 14, color: "#fff", textDecoration: "none", borderRadius: 12, background: "linear-gradient(135deg,#1e3a8a,#16296b)", fontWeight: 700, fontSize: 14, marginBottom: 28, boxShadow: "0 8px 30px rgba(30,58,138,0.4)" }}>Probar 7 días gratis</Link>
               </Magnetic>
               <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
                 {PREMIUM.map((f) => (
-                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}><Check size={14} color="#00E5D0" /><span style={{ fontSize: 13, color: "rgba(255,255,255,0.68)" }}>{f}</span></div>
+                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}><Check size={14} color="#5f7bc4" /><span style={{ fontSize: 13, color: "rgba(255,255,255,0.68)" }}>{f}</span></div>
                 ))}
               </div>
             </div>
@@ -418,14 +419,14 @@ function CTA() {
   return (
     <section style={{ padding: "100px 24px", position: "relative", zIndex: 2 }}>
       <Reveal>
-        <div style={{ maxWidth: 760, margin: "0 auto", textAlign: "center", background: "linear-gradient(160deg, rgba(37,99,235,0.10), rgba(0,229,208,0.04))", border: "1px solid rgba(37,99,235,0.22)", borderRadius: 28, padding: "64px 40px", position: "relative", overflow: "hidden" }}>
-          <div style={{ position: "absolute", top: -100, left: "50%", transform: "translateX(-50%)", width: 460, height: 240, borderRadius: "50%", background: "rgba(0,229,208,0.12)", filter: "blur(70px)", pointerEvents: "none" }} />
+        <div style={{ maxWidth: 760, margin: "0 auto", textAlign: "center", background: "linear-gradient(160deg, rgba(30,58,138,0.10), rgba(95,123,196,0.04))", border: "1px solid rgba(30,58,138,0.22)", borderRadius: 28, padding: "64px 40px", position: "relative", overflow: "hidden" }}>
+          <div style={{ position: "absolute", top: -100, left: "50%", transform: "translateX(-50%)", width: 460, height: 240, borderRadius: "50%", background: "rgba(95,123,196,0.12)", filter: "blur(70px)", pointerEvents: "none" }} />
           <div style={{ position: "relative" }}>
             <div style={{ display: "flex", justifyContent: "center", marginBottom: 26 }}><Image src="/logo-blanco.png" alt="ZENCRUS" width={150} height={45} style={{ objectFit: "contain" }} /></div>
             <h2 style={{ fontSize: "clamp(1.8rem,4.5vw,2.8rem)", fontWeight: 900, color: "#f4f4f5", marginBottom: 16, letterSpacing: "-0.03em" }}>Tu transformación empieza hoy</h2>
             <p style={{ fontSize: 15.5, color: "rgba(255,255,255,0.52)", marginBottom: 34, lineHeight: 1.7, maxWidth: 480, marginLeft: "auto", marginRight: "auto" }}>Sin fad diets, sin suplementos innecesarios, sin pseudociencia. Solo biología real aplicada a tu cuerpo.</p>
             <Magnetic strength={0.35}>
-              <Link href="/register" className="cta-shine" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 38px", background: "linear-gradient(135deg,#2563EB,#1e40af)", color: "#fff", textDecoration: "none", borderRadius: 14, fontWeight: 700, fontSize: 15, boxShadow: "0 8px 44px rgba(37,99,235,0.45)" }}>Comenzar gratis ahora <ArrowRight size={17} /></Link>
+              <Link href="/register" className="cta-shine" style={{ display: "inline-flex", alignItems: "center", gap: 8, padding: "16px 38px", background: "linear-gradient(135deg,#1e3a8a,#16296b)", color: "#fff", textDecoration: "none", borderRadius: 14, fontWeight: 700, fontSize: 15, boxShadow: "0 8px 44px rgba(30,58,138,0.45)" }}>Comenzar gratis ahora <ArrowRight size={17} /></Link>
             </Magnetic>
             <p style={{ marginTop: 16, fontSize: 12, color: "rgba(255,255,255,0.28)" }}>Sin tarjeta de crédito · 7 días gratis en Premium</p>
           </div>
@@ -467,7 +468,7 @@ export default function LandingPage() {
   if (!isLoading && token) {
     return (
       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#050506" }}>
-        <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid #2563EB", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} />
+        <div style={{ width: 32, height: 32, borderRadius: "50%", border: "2px solid #1e3a8a", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} />
       </div>
     );
   }
@@ -494,10 +495,10 @@ export default function LandingPage() {
         @keyframes drift2 { 0%,100% { transform: translate(0,0) scale(1.1); } 50% { transform: translate(-10vw,-4vh) scale(0.9); } }
         @keyframes drift3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(6vw,-8vh) scale(1.3); } }
         .aurora { position: absolute; border-radius: 50%; filter: blur(90px); opacity: 0.5; }
-        .aurora.a1 { top: -10%; right: -5%; width: 45vw; height: 45vw; background: radial-gradient(circle, rgba(37,99,235,0.5), transparent 70%); animation: drift1 22s ease-in-out infinite; }
-        .aurora.a2 { bottom: -15%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(0,229,208,0.28), transparent 70%); animation: drift2 26s ease-in-out infinite; }
-        .aurora.a3 { top: 30%; left: 30%; width: 35vw; height: 35vw; background: radial-gradient(circle, rgba(167,139,250,0.22), transparent 70%); animation: drift3 30s ease-in-out infinite; }
-        .nav-link::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 2px; height: 1px; background: linear-gradient(90deg,#2563EB,#00E5D0); transform: scaleX(0); transform-origin: left; transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); }
+        .aurora.a1 { top: -10%; right: -5%; width: 45vw; height: 45vw; background: radial-gradient(circle, rgba(30,58,138,0.5), transparent 70%); animation: drift1 22s ease-in-out infinite; }
+        .aurora.a2 { bottom: -15%; left: -10%; width: 50vw; height: 50vw; background: radial-gradient(circle, rgba(95,123,196,0.28), transparent 70%); animation: drift2 26s ease-in-out infinite; }
+        .aurora.a3 { top: 30%; left: 30%; width: 35vw; height: 35vw; background: radial-gradient(circle, rgba(95,104,117,0.22), transparent 70%); animation: drift3 30s ease-in-out infinite; }
+        .nav-link::after { content: ""; position: absolute; left: 14px; right: 14px; bottom: 2px; height: 1px; background: linear-gradient(90deg,#1e3a8a,#5f7bc4); transform: scaleX(0); transform-origin: left; transition: transform 0.3s cubic-bezier(0.16,1,0.3,1); }
         .nav-link:hover { color: #fff !important; }
         .nav-link:hover::after { transform: scaleX(1); }
         .cta-shine { position: relative; overflow: hidden; }

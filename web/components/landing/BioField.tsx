@@ -44,19 +44,20 @@ export default function BioField() {
     const height = 34;
     const turns = 3.4;
 
-    const blue = new THREE.Color("#2563EB");
-    const cyan = new THREE.Color("#00E5D0");
-    const violet = new THREE.Color("#a78bfa");
-    const ember = new THREE.Color("#FF6B35");
+    // Paleta estricta: azul marino, blanco, gris
+    const navy = new THREE.Color("#2a4a9a");
+    const navyLight = new THREE.Color("#4d6fc4");
+    const white = new THREE.Color("#e8ecf4");
+    const gray = new THREE.Color("#5f6875");
 
     // Two backbones as instanced spheres
     const nodeGeo = new THREE.SphereGeometry(0.16, 12, 12);
-    const strandA = new THREE.InstancedMesh(nodeGeo, new THREE.MeshBasicMaterial({ color: blue }), N);
-    const strandB = new THREE.InstancedMesh(nodeGeo, new THREE.MeshBasicMaterial({ color: cyan }), N);
+    const strandA = new THREE.InstancedMesh(nodeGeo, new THREE.MeshBasicMaterial({ color: navyLight }), N);
+    const strandB = new THREE.InstancedMesh(nodeGeo, new THREE.MeshBasicMaterial({ color: white }), N);
     helix.add(strandA, strandB);
 
     const dummy = new THREE.Object3D();
-    const rungMat = new THREE.LineBasicMaterial({ color: 0x2a6cf0, transparent: true, opacity: 0.28 });
+    const rungMat = new THREE.LineBasicMaterial({ color: 0x3a4a7a, transparent: true, opacity: 0.3 });
     const rungPositions: THREE.Vector3[][] = [];
 
     for (let i = 0; i < N; i++) {
@@ -88,7 +89,7 @@ export default function BioField() {
     const pGeo = new THREE.BufferGeometry();
     const pPos = new Float32Array(P * 3);
     const pCol = new Float32Array(P * 3);
-    const palette = [blue, cyan, violet, ember];
+    const palette = [navy, navyLight, white, gray];
     for (let i = 0; i < P; i++) {
       const r = 14 + Math.random() * 26;
       const th = Math.random() * Math.PI * 2;
