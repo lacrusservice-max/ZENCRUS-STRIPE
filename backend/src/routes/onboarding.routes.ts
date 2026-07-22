@@ -9,7 +9,7 @@ router.use(authenticate)
 // POST /api/onboarding/complete — guarda el perfil del onboarding y lo marca completo
 router.post('/complete', async (req: Request, res: Response): Promise<void> => {
   try {
-    const userId = req.user?.id
+    const userId = req.user?.userId ?? req.user?.id
     if (!userId) { res.status(401).json({ success: false, message: 'No autenticado' }); return }
 
     const b = req.body as Record<string, unknown>
