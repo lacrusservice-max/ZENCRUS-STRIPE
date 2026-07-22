@@ -12,7 +12,7 @@ import {
   Download, CreditCard, ScrollText, LayoutDashboard, BarChart3, X,
   Zap, Ban, Play, Calendar, DollarSign, Send, AlertTriangle, Radio,
   Activity, Clock, Server, Percent, HeartPulse, Dumbbell, MessageSquare,
-  UserX, Eye, TrendingDown,
+  UserX, Eye, TrendingDown, RotateCcw,
 } from "lucide-react";
 
 const BACKEND = "https://web-production-1d2e22.up.railway.app/api";
@@ -546,7 +546,8 @@ export default function AdminPage() {
                           <td style={{ padding: "12px 18px" }}>
                             <div style={{ display: "flex", gap: 6 }}>
                               <IconBtn icon={<Calendar size={15} />} label="Extender 30 días" color={C.blue} onClick={() => act(() => admin.extendSubscription(s.id, 30), "Extendida 30 días")} />
-                              <IconBtn icon={<Ban size={15} />} label="Cancelar" color={C.red} onClick={() => act(() => admin.cancelSubscription(s.id), "Suscripción cancelada")} disabled={s.status === "cancelled"} />
+                              <IconBtn icon={<Ban size={15} />} label="Cancelar" color={C.amber} onClick={() => act(() => admin.cancelSubscription(s.id), "Suscripción cancelada")} disabled={s.status === "cancelled"} />
+                              {s.payment_provider === "stripe" && <IconBtn icon={<RotateCcw size={15} />} label="Reembolsar (Stripe)" color={C.red} onClick={() => { if (confirm("¿Reembolsar el último pago de esta suscripción vía Stripe? Se cancelará la suscripción.")) act(() => admin.refundSubscription(s.id), "Reembolso procesado"); }} />}
                             </div>
                           </td>
                         </tr>

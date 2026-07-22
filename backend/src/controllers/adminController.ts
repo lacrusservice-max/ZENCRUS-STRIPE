@@ -1,5 +1,6 @@
 import { Request, Response } from 'express'
 import bcrypt from 'bcryptjs'
+import Stripe from 'stripe'
 import { supabase } from '../config/supabase'
 import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
@@ -8,6 +9,7 @@ import { Resend } from 'resend'
 import { env } from '../config/env'
 
 const resend = env.RESEND_API_KEY ? new Resend(env.RESEND_API_KEY) : null
+const stripe = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null
 const FROM_EMAIL = 'ZENCRUS <noreply@zencrus.com>'
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
@@ -781,6 +783,55 @@ export async function cancelSubscriptionAdmin(req: Request, res: Response): Prom
     res.json({ success: true, message: 'Suscripción cancelada' })
   } catch (err) {
     res.status(500).json({ success: false, message: 'Error cancelando suscripción' })
+  }
+}
+
+// Reembolso real vía Stripe — refund del último pago + cancela la suscripción
+export async function refundSubscription(req: Request, res: Response): Promise<void> {
+  try {
+    if (!stripe) { res.status(400).json({ success: false, message: 'Stripe no configurado' }); return }
+    const { id } = req.params
+
+    const { data: sub } = await supabase
+      .from('subscriptions')
+      .select('user_id, stripe_subscription_id, payment_provider')
+      .eq('id', id).single()
+    if (!sub) { res.status(404).json({ success: false, message: 'Suscripción no encontrada' }); return }
+
+    const stripeSubId = (sub as any).stripe_subscription_id
+    if ((sub as any).payment_provider !== 'stripe' || !stripeSubId) {
+      res.status(400).json({ success: false, message: 'Esta suscripción no tiene un pago de Stripe reembolsable (manual/trial)' })
+      return
+    }
+
+    // Buscar la última factura pagada de la suscripción → su payment_intent
+    const invoices = await stripe.invoices.list({ subscription: stripeSubId, limit: 1, status: 'paid' })
+    const invoice = invoices.data[0]
+    const paymentIntentId = (invoice as any)?.payment_intent as string | undefined
+    if (!paymentIntentId) {
+      res.status(400).json({ success: false, message: 'No se encontró un pago para reembolsar' })
+      return
+    }
+
+    // Crear el reembolso
+    const refund = await stripe.refunds.create({ payment_intent: paymentIntentId })
+
+    // Cancelar la suscripción en Stripe (sin cobrar de nuevo)
+    try { await stripe.subscriptions.cancel(stripeSubId) } catch { /* puede ya estar cancelada */ }
+
+    // Actualizar DB
+    await supabase.from('subscriptions').update({ status: 'cancelled', auto_renew: false, cancelled_at: new Date().toISOString() }).eq('id', id)
+    await supabase.from('users').update({ subscription_tier: 'free', subscription_expires_at: null }).eq('id', (sub as any).user_id)
+    await supabase.from('audit_logs').insert({
+      user_id: (sub as any).user_id,
+      action: 'admin_refund_subscription',
+      metadata: { sub_id: id, refund_id: refund.id, amount: refund.amount, currency: refund.currency, admin_id: req.user?.id },
+    })
+
+    res.json({ success: true, message: `Reembolso de $${(refund.amount / 100).toFixed(2)} ${refund.currency.toUpperCase()} procesado y suscripción cancelada` })
+  } catch (err) {
+    logger.error('Admin refundSubscription error:', err)
+    res.status(500).json({ success: false, message: (err as any)?.message ?? 'Error procesando reembolso' })
   }
 }
 

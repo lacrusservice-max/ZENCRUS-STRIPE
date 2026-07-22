@@ -123,6 +123,8 @@ export const admin = {
     api.patch(`/admin/subscriptions/${id}/extend`, { days }),
   cancelSubscription: (id: string) =>
     api.patch(`/admin/subscriptions/${id}/cancel`),
+  refundSubscription: (id: string) =>
+    api.post(`/admin/subscriptions/${id}/refund`),
 
   // Logs
   getAuditLogs: (q?: Record<string, string | number>) =>

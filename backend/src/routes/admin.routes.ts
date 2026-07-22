@@ -6,7 +6,7 @@ import {
   grantSubscription, revokeSubscription, verifyUserEmail, resetUserPassword, impersonateUser,
   getMessages, deleteMessage,
   getAuditLogs, getActivityLogs,
-  getSubscriptions, getRevenue, getTrials, extendSubscription, cancelSubscriptionAdmin,
+  getSubscriptions, getRevenue, getTrials, extendSubscription, cancelSubscriptionAdmin, refundSubscription,
   getDietPlans, deleteDietPlan,
   getUserSocialStats, getSocialPosts, deleteSocialPost,
   getAnalytics,
@@ -63,6 +63,7 @@ router.delete('/social/posts/:id',    deleteSocialPost)
 router.get('/subscriptions/trials',           getTrials)
 router.patch('/subscriptions/:id/extend',     extendSubscription)
 router.patch('/subscriptions/:id/cancel',     cancelSubscriptionAdmin)
+router.post('/subscriptions/:id/refund',      refundSubscription)
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 router.get('/analytics',              getAnalytics)
