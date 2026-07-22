@@ -9,7 +9,9 @@ import {
   getSubscriptions, getRevenue, getTrials, extendSubscription, cancelSubscriptionAdmin, refundSubscription,
   getDietPlans, deleteDietPlan,
   getUserSocialStats, getSocialPosts, deleteSocialPost,
-  getAnalytics,
+  getAnalytics, getCohorts,
+  addUserNote, getUserNotes,
+  getFeatureFlags, updateFeatureFlag,
   sendNotificationToUser, sendNotificationToAll,
   exportUsers,
   streamEvents,
@@ -67,6 +69,15 @@ router.post('/subscriptions/:id/refund',      refundSubscription)
 
 // ── Analytics ─────────────────────────────────────────────────────────────────
 router.get('/analytics',              getAnalytics)
+router.get('/analytics/cohorts',      getCohorts)
+
+// ── Notas internas ────────────────────────────────────────────────────────────
+router.get('/users/:id/notes',        getUserNotes)
+router.post('/users/:id/note',        addUserNote)
+
+// ── Feature flags ─────────────────────────────────────────────────────────────
+router.get('/flags',                  getFeatureFlags)
+router.patch('/flags/:key',           updateFeatureFlag)
 
 // ── Notifications ──────────────────────────────────────────────────────────────
 router.post('/notify/user/:id',       sendNotificationToUser)

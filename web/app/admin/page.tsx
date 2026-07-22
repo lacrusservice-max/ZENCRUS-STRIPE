@@ -82,7 +82,10 @@ interface UserDetail {
 
 interface Social { followers: number; following: number; postsTotal: number; }
 
-type Tab = "dashboard" | "users" | "subs" | "retention" | "analytics" | "logs";
+interface Cohort { week: string; size: number; retention: number[] }
+interface Flag { key: string; enabled: boolean; description?: string }
+
+type Tab = "dashboard" | "users" | "subs" | "retention" | "analytics" | "logs" | "system";
 
 // ── UI helpers ──────────────────────────────────────────────────────────────
 
@@ -191,6 +194,9 @@ export default function AdminPage() {
   const [logs, setLogs] = useState<AuditRow[]>([]);
   const [trials, setTrials] = useState<SubRow[]>([]);
   const [health, setHealth] = useState<Health | null>(null);
+  const [cohorts, setCohorts] = useState<Cohort[]>([]);
+  const [flags, setFlags] = useState<Flag[]>([]);
+  const [flagsTableExists, setFlagsTableExists] = useState(true);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [live, setLive] = useState(false);
@@ -219,10 +225,10 @@ export default function AdminPage() {
     if (!token) return;
     setLoading(true);
     try {
-      const [d, r, a, u, s, l, t, h] = await Promise.allSettled([
+      const [d, r, a, u, s, l, t, h, co, fl] = await Promise.allSettled([
         admin.dashboard(), admin.getRevenue(), admin.analytics(),
         admin.getUsers({ limit: 100 }), admin.getSubscriptions({ limit: 100 }), admin.getAuditLogs({ limit: 100 }),
-        admin.getTrials({ limit: 100 }), admin.health(),
+        admin.getTrials({ limit: 100 }), admin.health(), admin.getCohorts(), admin.getFlags(),
       ]);
       if (d.status === "fulfilled") setDash(d.value.data?.data ?? null);
       if (r.status === "fulfilled") setRevenue(r.value.data?.data ?? null);
@@ -232,6 +238,8 @@ export default function AdminPage() {
       if (l.status === "fulfilled") setLogs(l.value.data?.data ?? []);
       if (t.status === "fulfilled") setTrials(t.value.data?.data ?? []);
       if (h.status === "fulfilled") setHealth(h.value.data?.data ?? null);
+      if (co.status === "fulfilled") setCohorts(co.value.data?.data?.cohorts ?? []);
+      if (fl.status === "fulfilled") { setFlags(fl.value.data?.data ?? []); setFlagsTableExists(fl.value.data?.tableExists !== false); }
     } catch {
       toast.error("Error cargando datos");
     } finally {
@@ -339,7 +347,16 @@ export default function AdminPage() {
     { id: "subs", label: "Suscripciones", icon: <CreditCard size={16} /> },
     { id: "retention", label: "Retención", icon: <HeartPulse size={16} /> },
     { id: "analytics", label: "Analíticas", icon: <BarChart3 size={16} /> },
+    { id: "system", label: "Sistema", icon: <Server size={16} /> },
     { id: "logs", label: "Registro", icon: <ScrollText size={16} /> },
+  ];
+
+  const FLAG_CATALOG: { key: string; label: string; description: string }[] = [
+    { key: "maintenance_mode", label: "Modo mantenimiento", description: "Muestra pantalla de mantenimiento en la app" },
+    { key: "signups_enabled", label: "Registros abiertos", description: "Permite crear nuevas cuentas" },
+    { key: "ai_chat_enabled", label: "Coach IA activo", description: "Habilita el chat con IA" },
+    { key: "social_enabled", label: "Comunidad activa", description: "Habilita el feed social" },
+    { key: "payments_enabled", label: "Pagos activos", description: "Permite comprar suscripciones" },
   ];
 
   return (
@@ -614,6 +631,34 @@ export default function AdminPage() {
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }} className="grid-2">
             <BarChart data={analytics.registrationsPerDay} color={C.blue} label="Registros por día (30d)" />
             <BarChart data={analytics.subsPerDay} color={C.gold} label="Suscripciones por día (30d)" />
+            {/* Cohortes de retención */}
+            {cohorts.length > 0 && (
+              <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.border}`, padding: 20, gridColumn: "1 / -1", overflowX: "auto" }}>
+                <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 4 }}>Cohortes de retención (semanal)</div>
+                <div style={{ fontSize: 11, color: C.dim2, marginBottom: 16 }}>% de usuarios de cada semana que siguieron activos en semanas posteriores</div>
+                <table style={{ borderCollapse: "collapse", fontSize: 11, minWidth: 640 }}>
+                  <thead><tr>
+                    <th style={{ padding: "6px 10px", textAlign: "left", color: C.dim2, fontWeight: 700 }}>Cohorte</th>
+                    <th style={{ padding: "6px 10px", textAlign: "left", color: C.dim2, fontWeight: 700 }}>Usuarios</th>
+                    {Array.from({ length: Math.max(...cohorts.map(c => c.retention.length)) }).map((_, i) => (
+                      <th key={i} style={{ padding: "6px 10px", color: C.dim2, fontWeight: 700 }}>S{i}</th>
+                    ))}
+                  </tr></thead>
+                  <tbody>
+                    {cohorts.map(c => (
+                      <tr key={c.week}>
+                        <td style={{ padding: "6px 10px", color: C.dim, whiteSpace: "nowrap" }}>{c.week.slice(5)}</td>
+                        <td style={{ padding: "6px 10px", fontWeight: 700 }}>{c.size}</td>
+                        {c.retention.map((r, i) => (
+                          <td key={i} style={{ padding: "6px 10px", textAlign: "center", fontWeight: 700,
+                            background: `rgba(37,99,235,${(r / 100) * 0.65 + 0.05})`, color: r > 40 ? "#fff" : C.dim, borderRadius: 4 }}>{r}%</td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
             {revenue && <div style={{ background: C.card, borderRadius: 16, border: `1px solid ${C.border}`, padding: 20, gridColumn: "1 / -1" }}>
               <div style={{ fontSize: 13, fontWeight: 700, marginBottom: 16 }}>Distribución por plan</div>
               {Object.entries(revenue.byTier).map(([tier, count]) => {
@@ -630,6 +675,69 @@ export default function AdminPage() {
                 );
               })}
             </div>}
+          </div>
+        )}
+
+        {/* ═══ SYSTEM ═══ */}
+        {tab === "system" && (
+          <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+            {/* Feature flags */}
+            <div style={{ background: C.card, borderRadius: 20, border: `1px solid ${C.border}` }}>
+              <div style={{ padding: "18px 22px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 8 }}>
+                <Server size={16} color={C.blue} />
+                <span style={{ fontSize: 15, fontWeight: 800 }}>Feature flags & mantenimiento</span>
+              </div>
+              {!flagsTableExists && (
+                <div style={{ margin: 18, padding: 14, background: "rgba(245,158,11,0.08)", border: "1px solid rgba(245,158,11,0.25)", borderRadius: 12, display: "flex", gap: 12 }}>
+                  <AlertTriangle size={18} color={C.amber} style={{ flexShrink: 0, marginTop: 2 }} />
+                  <div style={{ fontSize: 12, color: "#fcd34d", lineHeight: 1.5 }}>La tabla <b>feature_flags</b> aún no existe en Supabase. Los toggles se guardarán en cuanto la crees (SQL provisto por tu admin).</div>
+                </div>
+              )}
+              <div style={{ padding: "8px 0" }}>
+                {FLAG_CATALOG.map(f => {
+                  const current = flags.find(fl => fl.key === f.key);
+                  const on = current?.enabled ?? (f.key === "maintenance_mode" ? false : true);
+                  const danger = f.key === "maintenance_mode";
+                  return (
+                    <div key={f.key} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16, padding: "14px 22px", borderBottom: `1px solid ${C.border}` }}>
+                      <div style={{ minWidth: 0 }}>
+                        <div style={{ fontSize: 14, fontWeight: 700, color: danger && on ? C.red : C.text }}>{f.label}</div>
+                        <div style={{ fontSize: 12, color: C.dim2 }}>{f.description}</div>
+                      </div>
+                      <button onClick={() => act(() => admin.setFlag(f.key, !on, f.description), `${f.label} ${!on ? "activado" : "desactivado"}`)}
+                        style={{ position: "relative", width: 48, height: 28, borderRadius: 999, border: "none", cursor: "pointer", flexShrink: 0, transition: "background 0.2s",
+                          background: on ? (danger ? C.red : C.green) : "rgba(255,255,255,0.14)" }}>
+                        <span style={{ position: "absolute", top: 3, left: on ? 23 : 3, width: 22, height: 22, borderRadius: "50%", background: "#fff", transition: "left 0.2s" }} />
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            {/* System health detail */}
+            {health && (
+              <div style={{ background: C.card, borderRadius: 20, border: `1px solid ${C.border}`, padding: 22 }}>
+                <div style={{ fontSize: 15, fontWeight: 800, marginBottom: 16 }}>Salud del sistema</div>
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(160px,1fr))", gap: 12 }}>
+                  <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+                    <div style={{ fontSize: 11, color: C.dim2, marginBottom: 6 }}>Estado API</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: health.status === "ok" ? C.green : C.red }}>{health.status === "ok" ? "Operativo" : "Degradado"}</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+                    <div style={{ fontSize: 11, color: C.dim2, marginBottom: 6 }}>Base de datos</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: health.checks?.database === "ok" ? C.green : C.red }}>{health.checks?.database === "ok" ? "Conectada" : "Error"}</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+                    <div style={{ fontSize: 11, color: C.dim2, marginBottom: 6 }}>Latencia</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>{health.latencyMs} ms</div>
+                  </div>
+                  <div style={{ background: "rgba(255,255,255,0.03)", border: `1px solid ${C.border}`, borderRadius: 12, padding: 14 }}>
+                    <div style={{ fontSize: 11, color: C.dim2, marginBottom: 6 }}>Versión</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: C.text }}>v{health.version}</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -818,6 +926,13 @@ function UserDetailView({ u, onEdit, onNotify }: { u: UserRow; onAction: () => v
   const [detail, setDetail] = useState<UserDetail | null>(null);
   const [social, setSocial] = useState<Social | null>(null);
   const [loading, setLoading] = useState(true);
+  const [notes, setNotes] = useState<{ id: string; metadata?: { note?: string; admin_email?: string }; created_at: string }[]>([]);
+  const [noteText, setNoteText] = useState("");
+  const [savingNote, setSavingNote] = useState(false);
+
+  const loadNotes = async () => {
+    try { const r = await admin.getUserNotes(u.id); setNotes(r.data?.data ?? []); } catch { /* ignore */ }
+  };
 
   useEffect(() => {
     (async () => {
@@ -826,9 +941,18 @@ function UserDetailView({ u, onEdit, onNotify }: { u: UserRow; onAction: () => v
         const [d, s] = await Promise.allSettled([admin.getUserDetail(u.id), admin.getUserSocial(u.id)]);
         if (d.status === "fulfilled") setDetail(d.value.data?.data ?? null);
         if (s.status === "fulfilled") setSocial(s.value.data?.data ?? null);
+        await loadNotes();
       } finally { setLoading(false); }
     })();
   }, [u.id]);
+
+  const saveNote = async () => {
+    if (!noteText.trim()) return;
+    setSavingNote(true);
+    try { await admin.addUserNote(u.id, noteText); setNoteText(""); await loadNotes(); toast.success("Nota guardada"); }
+    catch { toast.error("Error guardando nota"); }
+    finally { setSavingNote(false); }
+  };
 
   if (loading) return <div style={{ padding: 30, textAlign: "center", color: C.dim2 }}>Cargando perfil...</div>;
 
@@ -886,6 +1010,25 @@ function UserDetailView({ u, onEdit, onNotify }: { u: UserRow; onAction: () => v
           ))}
         </div>
       )}
+
+      {/* Notas internas */}
+      <div style={{ marginTop: 18 }}>
+        <div style={{ fontSize: 12, fontWeight: 700, color: C.dim, marginBottom: 8 }}>NOTAS INTERNAS ({notes.length})</div>
+        <div style={{ display: "flex", gap: 8, marginBottom: 10 }}>
+          <input value={noteText} onChange={e => setNoteText(e.target.value)} onKeyDown={e => e.key === "Enter" && saveNote()} placeholder="Agregar nota privada de admin..." style={{ ...inputStyle, flex: 1 }} />
+          <button onClick={saveNote} disabled={savingNote || !noteText.trim()} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(245,158,11,0.12)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 10, padding: "0 16px", color: C.amber, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", opacity: !noteText.trim() ? 0.4 : 1 }}>Guardar</button>
+        </div>
+        {notes.length > 0 && (
+          <div style={{ maxHeight: 140, overflowY: "auto", display: "flex", flexDirection: "column", gap: 6 }}>
+            {notes.map(n => (
+              <div key={n.id} style={{ background: "rgba(245,158,11,0.06)", border: "1px solid rgba(245,158,11,0.15)", borderRadius: 10, padding: "8px 12px" }}>
+                <div style={{ fontSize: 13, color: C.text }}>{n.metadata?.note}</div>
+                <div style={{ fontSize: 10, color: C.dim2, marginTop: 3 }}>{n.metadata?.admin_email ?? "admin"} · {new Date(n.created_at).toLocaleDateString("es-MX", { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit" })}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Actions */}
       <div style={{ display: "flex", gap: 10, marginTop: 20 }}>

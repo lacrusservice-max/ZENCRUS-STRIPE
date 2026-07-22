@@ -884,6 +884,122 @@ export async function getAnalytics(_req: Request, res: Response): Promise<void> 
   }
 }
 
+// ── Cohortes de retención (semanales) ──────────────────────────────────────────
+
+export async function getCohorts(_req: Request, res: Response): Promise<void> {
+  try {
+    const weeks = 8
+    const now = Date.now()
+    const msWeek = 7 * 864e5
+
+    const { data: users } = await supabase
+      .from('users')
+      .select('created_at,last_login')
+      .gte('created_at', new Date(now - weeks * msWeek).toISOString())
+
+    // Cada cohorte = semana de registro. Retención = % con last_login posterior a N semanas
+    const cohorts: { week: string; size: number; retention: number[] }[] = []
+    for (let w = 0; w < weeks; w++) {
+      const start = now - (weeks - w) * msWeek
+      const end = start + msWeek
+      const members = (users ?? []).filter((u: any) => {
+        const c = new Date(u.created_at).getTime()
+        return c >= start && c < end
+      })
+      const size = members.length
+      const weeksSince = Math.floor((now - start) / msWeek)
+      const retention: number[] = []
+      for (let r = 0; r <= weeksSince; r++) {
+        const cutoff = start + r * msWeek
+        const active = members.filter((u: any) => u.last_login && new Date(u.last_login).getTime() >= cutoff).length
+        retention.push(size ? Math.round((active / size) * 100) : 0)
+      }
+      cohorts.push({
+        week: new Date(start).toISOString().slice(0, 10),
+        size,
+        retention,
+      })
+    }
+
+    res.json({ success: true, data: { cohorts, weeks } })
+  } catch (err) {
+    logger.error('Admin getCohorts error:', err)
+    res.status(500).json({ success: false, message: 'Error calculando cohortes' })
+  }
+}
+
+// ── Notas internas (almacenadas en audit_logs) ─────────────────────────────────
+
+export async function addUserNote(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params
+    const { note } = req.body as { note: string }
+    if (!note?.trim()) { res.status(400).json({ success: false, message: 'Nota vacía' }); return }
+    await supabase.from('audit_logs').insert({
+      user_id: id,
+      action: 'admin_note',
+      metadata: { note: note.trim(), admin_id: req.user?.id, admin_email: req.user?.email },
+    })
+    res.json({ success: true, message: 'Nota guardada' })
+  } catch (err) {
+    logger.error('Admin addUserNote error:', err)
+    res.status(500).json({ success: false, message: 'Error guardando nota' })
+  }
+}
+
+export async function getUserNotes(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params
+    const { data } = await supabase
+      .from('audit_logs')
+      .select('id,metadata,created_at')
+      .eq('user_id', id).eq('action', 'admin_note')
+      .order('created_at', { ascending: false }).limit(50)
+    res.json({ success: true, data: data ?? [] })
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Error obteniendo notas' })
+  }
+}
+
+// ── Feature flags / modo mantenimiento ─────────────────────────────────────────
+
+export async function getFeatureFlags(_req: Request, res: Response): Promise<void> {
+  try {
+    const { data, error } = await supabase.from('feature_flags').select('*').order('key')
+    if (error && error.code === '42P01') {
+      res.json({ success: true, data: [], tableExists: false })
+      return
+    }
+    if (error) throw error
+    res.json({ success: true, data: data ?? [], tableExists: true })
+  } catch (err) {
+    logger.error('Admin getFeatureFlags error:', err)
+    res.status(500).json({ success: false, message: 'Error obteniendo flags' })
+  }
+}
+
+export async function updateFeatureFlag(req: Request, res: Response): Promise<void> {
+  try {
+    const { key } = req.params
+    const { enabled, description } = req.body as { enabled: boolean; description?: string }
+    const { error } = await supabase.from('feature_flags').upsert({
+      key,
+      enabled: !!enabled,
+      ...(description !== undefined ? { description } : {}),
+      updated_at: new Date().toISOString(),
+    }, { onConflict: 'key' })
+    if (error) {
+      if (error.code === '42P01') { res.status(400).json({ success: false, message: 'La tabla feature_flags no existe todavía' }); return }
+      throw error
+    }
+    await supabase.from('audit_logs').insert({ action: 'admin_toggle_flag', metadata: { key, enabled, admin_id: req.user?.id } })
+    res.json({ success: true, message: `Flag "${key}" ${enabled ? 'activado' : 'desactivado'}` })
+  } catch (err) {
+    logger.error('Admin updateFeatureFlag error:', err)
+    res.status(500).json({ success: false, message: 'Error actualizando flag' })
+  }
+}
+
 // ── Notifications ──────────────────────────────────────────────────────────────
 
 export async function sendNotificationToUser(req: Request, res: Response): Promise<void> {
@@ -894,27 +1010,29 @@ export async function sendNotificationToUser(req: Request, res: Response): Promi
     const { data: user } = await supabase.from('users').select('email,full_name').eq('id', id).single()
     if (!user) { res.status(404).json({ success: false, message: 'Usuario no encontrado' }); return }
 
-    if (!resend) {
-      logger.warn('Resend no configurado — notificación simulada')
-      res.json({ success: true, message: 'Notificación simulada (Resend no configurado)' })
-      return
+    // 1) Notificación in-app (siempre — no depende de Resend)
+    await supabase.from('notifications').insert({
+      user_id: id, type: 'system', title: subject, body: message, is_read: false, sent_at: new Date().toISOString(),
+    })
+
+    // 2) Email (si Resend está configurado)
+    let emailSent = false
+    if (resend) {
+      const name = (user as any).full_name || 'Usuario'
+      const html = `
+        <div style="background:#0a0a0a;padding:32px;font-family:sans-serif;color:#e2e8f0;max-width:600px;margin:0 auto;border-radius:12px">
+          <div style="font-size:22px;font-weight:800;color:#a78bfa;margin-bottom:16px">ZENCRUS</div>
+          <h2 style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:12px">${subject}</h2>
+          <p style="font-size:15px;line-height:1.7;color:#94a3b8">Hola ${name},</p>
+          <div style="font-size:15px;line-height:1.7;color:#cbd5e1;margin:16px 0;white-space:pre-line">${message}</div>
+          <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:24px 0"/>
+          <p style="font-size:12px;color:#475569">El equipo de ZENCRUS — noreply@zencrus.com</p>
+        </div>`
+      try { await resend.emails.send({ from: FROM_EMAIL, to: (user as any).email, subject, html }); emailSent = true } catch { /* in-app ya enviada */ }
     }
 
-    const name = (user as any).full_name || 'Usuario'
-    const html = `
-      <div style="background:#0a0a0a;padding:32px;font-family:sans-serif;color:#e2e8f0;max-width:600px;margin:0 auto;border-radius:12px">
-        <div style="font-size:22px;font-weight:800;color:#a78bfa;margin-bottom:16px">ZENCRUS</div>
-        <h2 style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:12px">${subject}</h2>
-        <p style="font-size:15px;line-height:1.7;color:#94a3b8">Hola ${name},</p>
-        <div style="font-size:15px;line-height:1.7;color:#cbd5e1;margin:16px 0;white-space:pre-line">${message}</div>
-        <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:24px 0"/>
-        <p style="font-size:12px;color:#475569">El equipo de ZENCRUS — noreply@zencrus.com</p>
-      </div>`
-
-    await resend.emails.send({ from: FROM_EMAIL, to: (user as any).email, subject, html })
-    await supabase.from('audit_logs').insert({ action: 'admin_send_notification', user_id: id, metadata: { subject, admin_id: req.user?.id } })
-
-    res.json({ success: true, message: `Notificación enviada a ${(user as any).email}` })
+    await supabase.from('audit_logs').insert({ action: 'admin_send_notification', user_id: id, metadata: { subject, emailSent, admin_id: req.user?.id } })
+    res.json({ success: true, message: emailSent ? `Notificación in-app + email enviados a ${(user as any).email}` : `Notificación in-app enviada (email no configurado)` })
   } catch (err) {
     logger.error('Admin sendNotification error:', err)
     res.status(500).json({ success: false, message: 'Error enviando notificación' })
@@ -929,33 +1047,38 @@ export async function sendNotificationToAll(req: Request, res: Response): Promis
     if (tierFilter) q = q.eq('subscription_tier', tierFilter)
 
     const { data: users } = await q
+    const list = users ?? []
 
-    if (!resend) {
-      logger.warn(`Resend no configurado — notificación masiva simulada para ${users?.length ?? 0} usuarios`)
-      res.json({ success: true, message: `Notificación masiva simulada (${users?.length ?? 0} usuarios)` })
-      return
+    // 1) Notificaciones in-app en lote (siempre)
+    if (list.length) {
+      await supabase.from('notifications').insert(
+        list.map((u: any) => ({ user_id: u.id, type: 'system', title: subject, body: message, is_read: false, sent_at: new Date().toISOString() }))
+      )
     }
 
-    let sent = 0
-    for (const user of users ?? []) {
-      try {
-        const name = (user as any).full_name || 'Usuario'
-        const html = `
-          <div style="background:#0a0a0a;padding:32px;font-family:sans-serif;color:#e2e8f0;max-width:600px;margin:0 auto;border-radius:12px">
-            <div style="font-size:22px;font-weight:800;color:#a78bfa;margin-bottom:16px">ZENCRUS</div>
-            <h2 style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:12px">${subject}</h2>
-            <p style="font-size:15px;line-height:1.7;color:#94a3b8">Hola ${name},</p>
-            <div style="font-size:15px;line-height:1.7;color:#cbd5e1;margin:16px 0;white-space:pre-line">${message}</div>
-            <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:24px 0"/>
-            <p style="font-size:12px;color:#475569">El equipo de ZENCRUS</p>
-          </div>`
-        await resend.emails.send({ from: FROM_EMAIL, to: (user as any).email, subject, html })
-        sent++
-      } catch { /* continue */ }
+    // 2) Emails (si Resend configurado)
+    let emailsSent = 0
+    if (resend) {
+      for (const user of list) {
+        try {
+          const name = (user as any).full_name || 'Usuario'
+          const html = `
+            <div style="background:#0a0a0a;padding:32px;font-family:sans-serif;color:#e2e8f0;max-width:600px;margin:0 auto;border-radius:12px">
+              <div style="font-size:22px;font-weight:800;color:#a78bfa;margin-bottom:16px">ZENCRUS</div>
+              <h2 style="font-size:18px;font-weight:700;color:#f1f5f9;margin-bottom:12px">${subject}</h2>
+              <p style="font-size:15px;line-height:1.7;color:#94a3b8">Hola ${name},</p>
+              <div style="font-size:15px;line-height:1.7;color:#cbd5e1;margin:16px 0;white-space:pre-line">${message}</div>
+              <hr style="border:none;border-top:1px solid rgba(255,255,255,.08);margin:24px 0"/>
+              <p style="font-size:12px;color:#475569">El equipo de ZENCRUS</p>
+            </div>`
+          await resend.emails.send({ from: FROM_EMAIL, to: (user as any).email, subject, html })
+          emailsSent++
+        } catch { /* continue */ }
+      }
     }
 
-    await supabase.from('audit_logs').insert({ action: 'admin_send_mass_notification', metadata: { subject, sent, total: users?.length ?? 0, admin_id: req.user?.id } })
-    res.json({ success: true, message: `Notificación enviada a ${sent} usuarios` })
+    await supabase.from('audit_logs').insert({ action: 'admin_send_mass_notification', metadata: { subject, inApp: list.length, emailsSent, admin_id: req.user?.id } })
+    res.json({ success: true, message: `In-app: ${list.length} · Emails: ${emailsSent}${resend ? '' : ' (email no configurado)'}` })
   } catch (err) {
     logger.error('Admin sendNotificationToAll error:', err)
     res.status(500).json({ success: false, message: 'Error enviando notificación masiva' })

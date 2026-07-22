@@ -157,6 +157,18 @@ export const admin = {
   getTrials: (q?: Record<string, string | number>) =>
     api.get("/admin/subscriptions/trials", { params: q }),
 
+  // Cohortes
+  getCohorts: () => api.get("/admin/analytics/cohorts"),
+
+  // Notas internas
+  getUserNotes: (id: string) => api.get(`/admin/users/${id}/notes`),
+  addUserNote: (id: string, note: string) => api.post(`/admin/users/${id}/note`, { note }),
+
+  // Feature flags
+  getFlags: () => api.get("/admin/flags"),
+  setFlag: (key: string, enabled: boolean, description?: string) =>
+    api.patch(`/admin/flags/${key}`, { enabled, description }),
+
   // System health
   health: () => api.get("/health"),
 
