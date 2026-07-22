@@ -8,6 +8,7 @@ import { useAuthStore } from "@/store/authStore";
 import {
   LayoutDashboard, Bot, Apple, Users, User, Dumbbell, TrendingUp,
   LogOut, ShieldCheck, CalendarDays, BookOpen, ShoppingCart,
+  Ruler, HeartPulse, Repeat, CalendarHeart, Trophy, Swords, BarChart3,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -21,6 +22,16 @@ const NAV_ITEMS = [
   { href: "/progress",     label: "Progreso",     icon: TrendingUp },
   { href: "/social",       label: "Comunidad",    icon: Users },
   { href: "/profile",      label: "Perfil",       icon: User },
+];
+
+const MORE_ITEMS = [
+  { href: "/measurements",  label: "Medidas",       icon: Ruler },
+  { href: "/health-tracker",label: "Salud diaria",  icon: HeartPulse },
+  { href: "/macro-cycling", label: "Ciclo de macros", icon: Repeat },
+  { href: "/menstrual",     label: "Ciclo menstrual", icon: CalendarHeart },
+  { href: "/achievements",  label: "Logros",        icon: Trophy },
+  { href: "/duels",         label: "Duelos",        icon: Swords },
+  { href: "/leaderboard",   label: "Leaderboard",   icon: BarChart3 },
 ];
 
 function LoadingScreen() {
@@ -104,6 +115,23 @@ function Sidebar({ pathname }: { pathname: string }) {
               fontSize: 14,
               transition: "all 0.15s",
               cursor: "pointer",
+            }}>
+              <Icon size={18} style={{ flexShrink: 0 }} />
+              {label}
+            </Link>
+          );
+        })}
+
+        {/* Secondary features */}
+        <div style={{ fontSize: 10, fontWeight: 800, color: "rgba(255,255,255,0.28)", letterSpacing: 1.5, padding: "14px 14px 6px" }}>MÁS</div>
+        {MORE_ITEMS.map(({ href, label, icon: Icon }) => {
+          const active = pathname === href || pathname.startsWith(href);
+          return (
+            <Link key={href} href={href} style={{
+              display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 12,
+              background: active ? "#2563EB" : "transparent",
+              color: active ? "#fff" : "rgba(255,255,255,0.55)",
+              fontWeight: active ? 700 : 500, fontSize: 14, transition: "all 0.15s", cursor: "pointer",
             }}>
               <Icon size={18} style={{ flexShrink: 0 }} />
               {label}
