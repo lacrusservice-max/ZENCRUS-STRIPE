@@ -5,6 +5,7 @@ import { supabase } from '../config/supabase'
 import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
 import { signAccessToken, signRefreshToken } from '../utils/jwt'
+import { sendPushToTokens } from '../config/firebase'
 import { Resend } from 'resend'
 import { env } from '../config/env'
 
@@ -1036,7 +1037,7 @@ export async function sendNotificationToUser(req: Request, res: Response): Promi
     const { id } = req.params
     const { subject, message } = req.body as { subject: string; message: string }
 
-    const { data: user } = await supabase.from('users').select('email,full_name').eq('id', id).single()
+    const { data: user } = await supabase.from('users').select('email,full_name,fcm_token').eq('id', id).single()
     if (!user) { res.status(404).json({ success: false, message: 'Usuario no encontrado' }); return }
 
     // 1) Notificación in-app (siempre — no depende de Resend)
@@ -1044,7 +1045,16 @@ export async function sendNotificationToUser(req: Request, res: Response): Promi
       user_id: id, type: 'system', title: subject, body: message, is_read: false, sent_at: new Date().toISOString(),
     })
 
-    // 2) Email (si Resend está configurado)
+    // 2) Push nativo (si el usuario tiene token FCM y Firebase está configurado)
+    let pushSent = false
+    const fcmToken = (user as any).fcm_token
+    if (fcmToken) {
+      const push = await sendPushToTokens([fcmToken], subject, message)
+      pushSent = push.sent > 0
+      if (push.invalidTokens.length) await supabase.from('users').update({ fcm_token: null }).eq('id', id)
+    }
+
+    // 3) Email (si Resend está configurado)
     let emailSent = false
     if (resend) {
       const name = (user as any).full_name || 'Usuario'
@@ -1060,8 +1070,9 @@ export async function sendNotificationToUser(req: Request, res: Response): Promi
       try { await resend.emails.send({ from: FROM_EMAIL, to: (user as any).email, subject, html }); emailSent = true } catch { /* in-app ya enviada */ }
     }
 
-    await supabase.from('audit_logs').insert({ action: 'admin_send_notification', user_id: id, metadata: { subject, emailSent, admin_id: req.user?.id } })
-    res.json({ success: true, message: emailSent ? `Notificación in-app + email enviados a ${(user as any).email}` : `Notificación in-app enviada (email no configurado)` })
+    await supabase.from('audit_logs').insert({ action: 'admin_send_notification', user_id: id, metadata: { subject, emailSent, pushSent, admin_id: req.user?.id } })
+    const parts = ['in-app', pushSent && 'push', emailSent && 'email'].filter(Boolean)
+    res.json({ success: true, message: `Enviado por: ${parts.join(' + ')} a ${(user as any).email}` })
   } catch (err) {
     logger.error('Admin sendNotification error:', err)
     res.status(500).json({ success: false, message: 'Error enviando notificación' })
@@ -1072,7 +1083,7 @@ export async function sendNotificationToAll(req: Request, res: Response): Promis
   try {
     const { subject, message, tierFilter } = req.body as { subject: string; message: string; tierFilter?: string }
 
-    let q = supabase.from('users').select('id,email,full_name').eq('is_active', true)
+    let q = supabase.from('users').select('id,email,full_name,fcm_token').eq('is_active', true)
     if (tierFilter) q = q.eq('subscription_tier', tierFilter)
 
     const { data: users } = await q
@@ -1085,7 +1096,17 @@ export async function sendNotificationToAll(req: Request, res: Response): Promis
       )
     }
 
-    // 2) Emails (si Resend configurado)
+    // 2) Push nativo en lote (Firebase multicast, máx 500 tokens por llamada)
+    const tokens = list.map((u: any) => u.fcm_token).filter(Boolean)
+    let pushSent = 0
+    for (let i = 0; i < tokens.length; i += 500) {
+      const batch = tokens.slice(i, i + 500)
+      const push = await sendPushToTokens(batch, subject, message)
+      pushSent += push.sent
+      if (push.invalidTokens.length) await supabase.from('users').update({ fcm_token: null }).in('fcm_token', push.invalidTokens)
+    }
+
+    // 3) Emails (si Resend configurado)
     let emailsSent = 0
     if (resend) {
       for (const user of list) {
@@ -1106,8 +1127,8 @@ export async function sendNotificationToAll(req: Request, res: Response): Promis
       }
     }
 
-    await supabase.from('audit_logs').insert({ action: 'admin_send_mass_notification', metadata: { subject, inApp: list.length, emailsSent, admin_id: req.user?.id } })
-    res.json({ success: true, message: `In-app: ${list.length} · Emails: ${emailsSent}${resend ? '' : ' (email no configurado)'}` })
+    await supabase.from('audit_logs').insert({ action: 'admin_send_mass_notification', metadata: { subject, inApp: list.length, pushSent, emailsSent, admin_id: req.user?.id } })
+    res.json({ success: true, message: `In-app: ${list.length} · Push: ${pushSent} · Emails: ${emailsSent}` })
   } catch (err) {
     logger.error('Admin sendNotificationToAll error:', err)
     res.status(500).json({ success: false, message: 'Error enviando notificación masiva' })

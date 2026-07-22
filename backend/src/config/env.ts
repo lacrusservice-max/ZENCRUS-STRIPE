@@ -40,6 +40,10 @@ const envSchema = z.object({
   MERCADOPAGO_ACCESS_TOKEN: z.string().optional(),
   MERCADOPAGO_WEBHOOK_SECRET: z.string().optional(),
 
+  FIREBASE_PROJECT_ID: z.string().optional(),
+  FIREBASE_CLIENT_EMAIL: z.string().optional(),
+  FIREBASE_PRIVATE_KEY: z.string().optional(),
+
   REDIS_URL: z.string().default('redis://localhost:6379'),
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
