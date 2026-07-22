@@ -88,9 +88,12 @@ export const social = {
 // Subscriptions
 export const subscriptions = {
   getPlans: () => api.get("/subscriptions/plans"),
-  getStatus: () => api.get("/subscriptions/status"),
-  createSession: (priceId: string) =>
-    api.post("/subscriptions/create-session", { priceId }),
+  getStatus: () => api.get("/subscriptions/current"),
+  startTrial: () => api.post("/subscriptions/start-trial"),
+  checkout: (tier: string, extraMembers = 0, provider: "stripe" | "mercadopago" = "stripe") =>
+    api.post("/subscriptions/checkout", { tier, provider, extraMembers }),
+  checkoutWeb: (tier: string, extraMembers = 0) =>
+    api.post("/subscriptions/checkout-web", { tier, extraMembers }),
   cancel: () => api.post("/subscriptions/cancel"),
 };
 

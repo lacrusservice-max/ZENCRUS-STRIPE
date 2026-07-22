@@ -2,7 +2,7 @@ import { Router, raw } from 'express'
 import {
   getCurrentSubscription, createCheckoutSession, cancelSubscription,
   handleStripeWebhook, handleMercadoPagoWebhook, getPlans, createCheckoutSchema,
-  startTrial,
+  startTrial, createWebCheckout,
 } from '../controllers/subscriptionController'
 import { authenticate } from '../middleware/auth'
 import { validate } from '../middleware/validate'
@@ -20,6 +20,7 @@ router.use(authenticate)
 router.get('/current', getCurrentSubscription)
 router.post('/start-trial', startTrial)
 router.post('/checkout', validate(createCheckoutSchema), createCheckoutSession)
+router.post('/checkout-web', createWebCheckout)
 router.post('/cancel', cancelSubscription)
 
 export default router

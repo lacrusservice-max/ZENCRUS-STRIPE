@@ -216,6 +216,58 @@ export async function createCheckoutSession(req: Request, res: Response): Promis
   res.status(400).json({ success: false, message: 'Proveedor de pago no válido' } satisfies ApiResponse)
 }
 
+// ── Web checkout (Stripe Checkout Session con redirección) ──────────────────────
+export async function createWebCheckout(req: Request, res: Response): Promise<void> {
+  const userId = req.user!.userId
+  const userEmail = req.user!.email
+  const { tier, extraMembers = 0 } = req.body as { tier: Exclude<SubscriptionTier, 'free'>; extraMembers?: number }
+
+  const plan = SUBSCRIPTION_PLANS[tier]
+  if (!plan) { res.status(400).json({ success: false, message: 'Plan no válido' } satisfies ApiResponse); return }
+  if (extraMembers > 0 && tier !== 'annual_familiar') {
+    res.status(400).json({ success: false, message: 'Los integrantes extra solo aplican al plan Anual Familiar' } satisfies ApiResponse); return
+  }
+  if (!stripe || !plan.priceId) {
+    res.status(503).json({ success: false, message: 'Pagos con Stripe no disponibles temporalmente' } satisfies ApiResponse); return
+  }
+
+  try {
+    // Reutilizar Customer existente
+    const { data: sub } = await supabase
+      .from('subscriptions').select('stripe_customer_id').eq('user_id', userId)
+      .not('stripe_customer_id', 'is', null).limit(1).maybeSingle()
+    let customerId = sub?.stripe_customer_id as string | undefined
+    if (!customerId) {
+      const customer = await stripe.customers.create({ email: userEmail, metadata: { userId } })
+      customerId = customer.id
+    }
+
+    const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: plan.priceId, quantity: 1 }]
+    if (extraMembers > 0 && EXTRA_MEMBER_PRICE_ID) {
+      line_items.push({ price: EXTRA_MEMBER_PRICE_ID, quantity: extraMembers })
+    }
+
+    const base = env.FRONTEND_URL || 'https://zencrus.com'
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId,
+      mode: 'subscription',
+      line_items,
+      success_url: `${base}/checkout/success?tier=${tier}`,
+      cancel_url: `${base}/subscription?canceled=1`,
+      locale: 'es',
+      subscription_data: { metadata: { userId, tier, extraMembers: String(extraMembers) } },
+      metadata: { userId, tier, extraMembers: String(extraMembers) },
+      allow_promotion_codes: true,
+    })
+
+    logger.info(`Checkout web Stripe: ${userId} → ${tier}`)
+    res.status(200).json({ success: true, data: { url: session.url, tier } } satisfies ApiResponse)
+  } catch (err) {
+    logger.error('createWebCheckout error:', err)
+    res.status(502).json({ success: false, message: 'No se pudo iniciar el pago' } satisfies ApiResponse)
+  }
+}
+
 export async function handleStripeWebhook(req: Request, res: Response): Promise<void> {
   if (!stripe || !env.STRIPE_WEBHOOK_SECRET) {
     logger.error('Webhook de Stripe recibido pero STRIPE_SECRET_KEY o STRIPE_WEBHOOK_SECRET no están configurados')
