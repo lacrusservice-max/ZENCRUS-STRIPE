@@ -21,8 +21,9 @@ router.post('/complete', async (req: Request, res: Response): Promise<void> => {
 
     const num = (v: unknown) => (typeof v === 'number' && !isNaN(v) ? v : (typeof v === 'string' && v !== '' ? Number(v) : undefined))
 
-    // Datos extendidos que no tienen columna propia se guardan en JSONB "onboarding_data"
-    const extended = {
+    // Datos extendidos (sin columna propia) → JSONB "goals"
+    const goalsJson = {
+      primary: goal,
       goal_weight: num(b.goalWeight),
       training_type: b.trainingType,
       training_types: b.trainingTypes,
@@ -30,8 +31,8 @@ router.post('/complete', async (req: Request, res: Response): Promise<void> => {
     }
 
     const core: Record<string, unknown> = {
-      onboarding_completed: true,
       profile_completed: true,
+      goals: goalsJson,
       updated_at: new Date().toISOString(),
     }
     if (num(b.weight) !== undefined) core.weight = num(b.weight)
@@ -42,18 +43,13 @@ router.post('/complete', async (req: Request, res: Response): Promise<void> => {
     if (goal) core.fitness_goals = [goal]
     if (dietary.length) core.dietary_restrictions = dietary
 
-    // Intento 1: con columnas extendidas (onboarding_data jsonb si existe)
-    let { error } = await supabase.from('users').update({ ...core, onboarding_data: extended }).eq('id', userId)
+    // Intento 1: perfil completo
+    let { error } = await supabase.from('users').update(core).eq('id', userId)
 
-    // Intento 2 (fallback): si algo falla (p.ej. onboarding_data no existe), guardar solo core
+    // Intento 2 (mínimo garantizado): marcar perfil completado
     if (error) {
-      const retry = await supabase.from('users').update(core).eq('id', userId)
-      error = retry.error
-    }
-
-    // Intento 3 (mínimo garantizado): solo marcar onboarding completado
-    if (error) {
-      const retry = await supabase.from('users').update({ onboarding_completed: true, updated_at: new Date().toISOString() }).eq('id', userId)
+      logger.warn('Onboarding update completo falló, reintentando mínimo:', error.message)
+      const retry = await supabase.from('users').update({ profile_completed: true, updated_at: new Date().toISOString() }).eq('id', userId)
       error = retry.error
     }
 
