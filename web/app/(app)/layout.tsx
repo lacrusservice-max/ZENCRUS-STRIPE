@@ -7,17 +7,20 @@ import Image from "next/image";
 import { useAuthStore } from "@/store/authStore";
 import {
   LayoutDashboard, Bot, Apple, Users, User, Dumbbell, TrendingUp,
-  LogOut, ShieldCheck,
+  LogOut, ShieldCheck, CalendarDays, BookOpen, ShoppingCart,
 } from "lucide-react";
 
 const NAV_ITEMS = [
-  { href: "/home",      label: "Inicio",    icon: LayoutDashboard },
-  { href: "/chat",      label: "Coach IA",  icon: Bot },
-  { href: "/nutrition", label: "Nutrición", icon: Apple },
-  { href: "/social",    label: "Comunidad", icon: Users },
-  { href: "/profile",   label: "Perfil",    icon: User },
-  { href: "/workout",   label: "Entreno",   icon: Dumbbell },
-  { href: "/progress",  label: "Progreso",  icon: TrendingUp },
+  { href: "/home",         label: "Inicio",       icon: LayoutDashboard },
+  { href: "/chat",         label: "Coach IA",     icon: Bot },
+  { href: "/nutrition",    label: "Nutrición",    icon: Apple },
+  { href: "/meal-planner", label: "Planificador", icon: CalendarDays },
+  { href: "/recipes",      label: "Recetas",      icon: BookOpen },
+  { href: "/grocery",      label: "Compras",      icon: ShoppingCart },
+  { href: "/workout",      label: "Entreno",      icon: Dumbbell },
+  { href: "/progress",     label: "Progreso",     icon: TrendingUp },
+  { href: "/social",       label: "Comunidad",    icon: Users },
+  { href: "/profile",      label: "Perfil",       icon: User },
 ];
 
 function LoadingScreen() {
