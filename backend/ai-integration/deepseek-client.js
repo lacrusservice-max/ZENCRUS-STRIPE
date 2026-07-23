@@ -70,10 +70,10 @@ class DeepSeekClient {
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,
-      max_tokens: 4096,
+      max_tokens: 8000,
     })
 
-    return result
+    return this._extractJson(result)
   }
 
   /**
@@ -100,10 +100,30 @@ class DeepSeekClient {
       ],
       response_format: { type: 'json_object' },
       temperature: 0.7,
-      max_tokens: 4096,
+      max_tokens: 8000,
     })
 
-    return result
+    return this._extractJson(result)
+  }
+
+  /**
+   * Extrae y parsea el JSON de la respuesta de chat completions.
+   * DeepSeek devuelve el texto en choices[0].message.content como STRING JSON —
+   * nunca se debe devolver el sobre crudo de la API a los controllers.
+   */
+  _extractJson(result) {
+    // Modo mock (sin API key): _mockResponse ya devuelve el objeto plano, sin .choices
+    if (!result?.choices) return result
+
+    const content = result.choices[0]?.message?.content
+    if (!content) {
+      throw new Error('DeepSeek no devolvió contenido en la respuesta')
+    }
+    try {
+      return JSON.parse(content)
+    } catch (err) {
+      throw new Error(`No se pudo parsear la respuesta JSON de DeepSeek: ${err.message}`)
+    }
   }
 
   /**
