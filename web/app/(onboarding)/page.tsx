@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { onboarding as onboardingApi } from "@/lib/api";
+import { onboarding as onboardingApi, diet as dietApi, workout as workoutApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import { ChevronLeft, ChevronRight, Zap } from "lucide-react";
 
@@ -157,6 +157,19 @@ export default function OnboardingPage() {
         trainingType: trainingTypes[0] ?? "gym", trainingTypes,
         dietaryRestrictions: [diet], mealsPerDay,
       });
+
+      // Genera automáticamente el plan de nutrición + rutina personalizados con IA
+      const workoutLevel = ["sedentary", "lightly_active"].includes(activity) ? "beginner"
+        : activity === "moderately_active" ? "intermediate" : "advanced";
+      const workoutGoal = goal === "lose_fat" ? "endurance" : goal === "gain_muscle" ? "hypertrophy" : "functional";
+      const daysPerWeek = { sedentary: 2, lightly_active: 3, moderately_active: 4, very_active: 5, extremely_active: 6 }[activity] ?? 3;
+      const equipment = trainingTypes.includes("calisthenics") || trainingTypes.includes("none") ? ["bodyweight"] : ["bodyweight", "dumbbells", "barbell"];
+
+      await Promise.allSettled([
+        dietApi.generate({ durationDays: 7 }),
+        workoutApi.generate({ level: workoutLevel, goal: workoutGoal, daysPerWeek, equipment }),
+      ]);
+
       router.replace("/welcome");
     } catch {
       toast.error("Error al guardar el perfil. Inténtalo de nuevo.");

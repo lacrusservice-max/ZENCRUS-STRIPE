@@ -73,8 +73,11 @@ export const nutrition = {
 
 // AI Chat
 export const chat = {
-  send: (message: string, history: { role: string; content: string }[]) =>
-    api.post("/ai/chat", { message, history }),
+  createSession: (title?: string) => api.post("/chat/sessions", { title: title ?? "Chat con ZENA" }),
+  getSessions: () => api.get("/chat/sessions"),
+  getSession: (id: string) => api.get(`/chat/sessions/${id}`),
+  sendMessage: (sessionId: string, content: string) =>
+    api.post(`/chat/sessions/${sessionId}/messages`, { content }),
 };
 
 // Social
@@ -100,6 +103,20 @@ export const subscriptions = {
 // Onboarding
 export const onboarding = {
   complete: (data: Record<string, unknown>) => api.post("/onboarding/complete", data),
+};
+
+// Diet & Workout — AI-generated, personalized plans
+export const diet = {
+  generate: (opts?: { durationDays?: number }) => api.post("/diet/generate", { durationDays: opts?.durationDays ?? 7 }),
+  getActive: () => api.get("/diet/active"),
+  getAll: () => api.get("/diet"),
+};
+
+export const workout = {
+  generate: (opts: { level?: string; goal?: string; daysPerWeek?: number; equipment?: string[] }) =>
+    api.post("/workout/generate", opts),
+  getActive: () => api.get("/workout/active"),
+  getAll: () => api.get("/workout"),
 };
 
 // Admin — control total

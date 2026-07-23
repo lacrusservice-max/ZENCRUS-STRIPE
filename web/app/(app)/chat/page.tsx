@@ -45,6 +45,7 @@ export default function ChatPage() {
   const [input, setInput] = useState("");
   const [sending, setSending] = useState(false);
   const [aiMessagesToday, setAiMessagesToday] = useState(0);
+  const [sessionId, setSessionId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const DAILY_LIMIT = 5;
 
@@ -59,14 +60,35 @@ export default function ChatPage() {
     } else {
       setAiMessagesToday(saved);
     }
-    const firstName = user?.fullName?.split(" ")[0] ?? "Atleta";
-    const welcome: Message = {
-      id: "welcome",
-      role: "assistant",
-      content: `¡Hola${firstName ? ", " + firstName : ""}! Soy tu Coach ZENCRUS ⚡. Estoy aquí para ayudarte con nutrición, fitness y todo lo que necesites para alcanzar tus metas. ¿En qué te puedo ayudar hoy?`,
-      timestamp: new Date(),
-    };
-    setMessages([welcome]);
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const existingId = localStorage.getItem("zencrus_chat_session_id");
+        if (existingId) {
+          const res = await chatApi.getSession(existingId);
+          const rows = res.data?.data?.messages ?? [];
+          if (rows.length && !cancelled) {
+            setSessionId(existingId);
+            setMessages(rows.map((m: { id: string; sender_type: string; content: string; created_at: string }) => ({
+              id: m.id, role: m.sender_type === "user" ? "user" : "assistant", content: m.content, timestamp: new Date(m.created_at),
+            })));
+            return;
+          }
+        }
+        const res = await chatApi.createSession(`Chat ${new Date().toLocaleDateString("es-MX")}`);
+        const session = res.data?.data?.session;
+        const rows = res.data?.data?.messages ?? [];
+        if (cancelled) return;
+        if (session?.id) { setSessionId(session.id); localStorage.setItem("zencrus_chat_session_id", session.id); }
+        setMessages(rows.length
+          ? rows.map((m: { id: string; sender_type: string; content: string; created_at: string }) => ({ id: m.id, role: m.sender_type === "user" ? "user" : "assistant", content: m.content, timestamp: new Date(m.created_at) }))
+          : [{ id: "welcome", role: "assistant", content: `¡Hola${user?.fullName ? ", " + user.fullName.split(" ")[0] : ""}! Soy tu Coach ZENCRUS ⚡. ¿En qué te puedo ayudar hoy?`, timestamp: new Date() }]);
+      } catch {
+        if (!cancelled) setMessages([{ id: "welcome", role: "assistant", content: "¡Hola! Soy tu Coach ZENCRUS ⚡. ¿En qué te puedo ayudar hoy?", timestamp: new Date() }]);
+      }
+    })();
+    return () => { cancelled = true; };
   }, [user]);
 
   useEffect(() => {
@@ -88,9 +110,15 @@ export default function ChatPage() {
     setAiMessagesToday(newCount);
     localStorage.setItem("zencrus_ai_today", newCount.toString());
     try {
-      const history = messages.map(m => ({ role: m.role, content: m.content }));
-      const res = await chatApi.send(content, history);
-      const reply = res.data?.data?.message ?? res.data?.message ?? "Lo siento, no pude procesar tu mensaje.";
+      let sid = sessionId;
+      if (!sid) {
+        const created = await chatApi.createSession();
+        sid = created.data?.data?.session?.id;
+        if (sid) { setSessionId(sid); localStorage.setItem("zencrus_chat_session_id", sid); }
+      }
+      if (!sid) throw new Error("no session");
+      const res = await chatApi.sendMessage(sid, content);
+      const reply = res.data?.data?.aiMessage?.content ?? "Lo siento, no pude procesar tu mensaje.";
       const assistantMsg: Message = { id: (Date.now() + 1).toString(), role: "assistant", content: reply, timestamp: new Date() };
       setMessages(prev => [...prev, assistantMsg]);
     } catch {
@@ -99,7 +127,7 @@ export default function ChatPage() {
     } finally {
       setSending(false);
     }
-  }, [input, sending, messages, aiMessagesToday]);
+  }, [input, sending, messages, aiMessagesToday, sessionId]);
 
   const atLimit = aiMessagesToday >= DAILY_LIMIT;
   const remaining = DAILY_LIMIT - aiMessagesToday;

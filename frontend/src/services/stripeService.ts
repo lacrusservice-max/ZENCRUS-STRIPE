@@ -40,17 +40,19 @@ export const STRIPE_PLANS: Record<CheckoutTier, { label: string; price: string; 
 
 export async function startStripePaymentSheet(tier: CheckoutTier, extraMembers = 0): Promise<void> {
   const { data } = await api.post('/subscriptions/checkout', { tier, provider: 'stripe', extraMembers })
-  const { paymentIntent, ephemeralKey, customerId } = data?.data ?? {}
+  const { mode, clientSecret, ephemeralKey, customerId } = data?.data ?? {}
 
-  if (!paymentIntent || !ephemeralKey || !customerId) {
+  if (!clientSecret || !ephemeralKey || !customerId) {
     throw new Error('No se pudo iniciar el pago. Intenta de nuevo.')
   }
 
+  // mode 'setup': trial de 5 días — solo se guarda la tarjeta, sin cobro inmediato.
+  // mode 'payment': cobro inmediato (sin trial, ej. renovación).
   const { error: initError } = await initPaymentSheet({
     merchantDisplayName: 'ZENCRUS',
     customerId,
     customerEphemeralKeySecret: ephemeralKey,
-    paymentIntentClientSecret: paymentIntent,
+    ...(mode === 'setup' ? { setupIntentClientSecret: clientSecret } : { paymentIntentClientSecret: clientSecret }),
     allowsDelayedPaymentMethods: false,
     appearance: {
       colors: {

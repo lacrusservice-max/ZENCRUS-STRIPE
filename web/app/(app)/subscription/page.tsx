@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Check, Crown, Users, User, Sparkles } from "lucide-react";
+import { Check, Crown, Users, User, ShieldCheck } from "lucide-react";
 import toast from "react-hot-toast";
 import { subscriptions } from "@/lib/api";
 import { useAuthStore } from "@/store/authStore";
@@ -15,7 +15,7 @@ const C = {
 
 interface Plan {
   id: string; name: string; price: number; period?: string; currency: string;
-  features: string[]; limitations?: string[]; popular?: boolean;
+  features: string[]; popular?: boolean;
 }
 
 export default function SubscriptionPage() {
@@ -26,24 +26,13 @@ export default function SubscriptionPage() {
   const [extra, setExtra] = useState(0);
 
   useEffect(() => {
-    subscriptions.getPlans().then((r) => setPlans(r.data?.data ?? [])).catch(() => {});
+    subscriptions.getPlans().then((r) => setPlans((r.data?.data ?? []).filter((p: Plan) => p.id !== "free"))).catch(() => {});
     subscriptions.getStatus()
       .then((r) => setStatus(r.data?.data ?? r.data))
       .catch(() => setStatus({ tier: user?.subscriptionTier || "free" }));
   }, [user]);
 
   const currentTier = status?.tier || user?.subscriptionTier || "free";
-
-  const startTrial = async () => {
-    setLoading("trial");
-    try {
-      await subscriptions.startTrial();
-      toast.success("¡Prueba de 5 días activada!");
-      setTimeout(() => (window.location.href = "/home"), 900);
-    } catch (e: unknown) {
-      toast.error((e as { response?: { data?: { message?: string } } })?.response?.data?.message ?? "No se pudo iniciar la prueba");
-    } finally { setLoading(null); }
-  };
 
   const checkout = async (tier: string) => {
     setLoading(tier);
@@ -58,10 +47,11 @@ export default function SubscriptionPage() {
   };
 
   const iconFor = (id: string) =>
-    id === "free" ? <Sparkles size={18} /> :
     id === "monthly" ? <Crown size={18} /> :
     id === "annual_individual" ? <User size={18} /> :
     <Users size={18} />;
+
+  const monthlyEquivalent = (p: Plan) => p.period === "año" ? Math.round(p.price / 12) : p.price;
 
   return (
     <div style={{ minHeight: "100vh", background: C.bg, color: C.text, padding: "40px 24px 100px" }}>
@@ -70,26 +60,27 @@ export default function SubscriptionPage() {
         <div style={{ textAlign: "center", marginBottom: 8 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: "#6b8cce", letterSpacing: 3, textTransform: "uppercase", marginBottom: 12 }}>Planes ZENCRUS</div>
           <h1 style={{ fontSize: "clamp(1.8rem,4vw,2.6rem)", fontWeight: 900, letterSpacing: "-0.03em", marginBottom: 10 }}>
-            {currentTier !== "free" ? "Tu suscripción" : "Elige tu plan"}
+            {currentTier !== "free" ? "Tu suscripción" : "Elige tu plan y empieza gratis"}
           </h1>
-          <p style={{ fontSize: 15, color: C.dim, maxWidth: 480, margin: "0 auto" }}>
-            Ciencia real aplicada a tu biología. Cancela cuando quieras. Precios en MXN, IVA incluido.
+          <p style={{ fontSize: 15, color: C.dim, maxWidth: 560, margin: "0 auto" }}>
+            Ciencia real aplicada a tu biología. Cancela cuando quieras.
           </p>
         </div>
 
+        {/* Trial banner — clear for every plan */}
         {currentTier === "free" && (
-          <div style={{ textAlign: "center", marginTop: 20, marginBottom: 32 }}>
-            <button onClick={startTrial} disabled={loading === "trial"} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.text, borderRadius: 12, padding: "10px 20px", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
-              {loading === "trial" ? "Activando…" : "✨ Probar Premium gratis 5 días"}
-            </button>
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, margin: "24px auto 0", maxWidth: 640, background: C.navySoft, border: `1px solid ${C.navyLine}`, borderRadius: 14, padding: "14px 20px" }}>
+            <ShieldCheck size={18} color="#8fa9dd" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: 13, color: "#c3d0f0", lineHeight: 1.5, margin: 0 }}>
+              Elige cualquier plan y prueba <b>5 días gratis</b>. Pedimos tus datos bancarios para activar la prueba; si no cancelas antes de que termine, se cobra automáticamente la mensualidad o anualidad de tu plan.
+            </p>
           </div>
         )}
 
         {/* Plans grid */}
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 16, marginTop: 32 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 16, marginTop: 28 }}>
           {plans.map((p) => {
             const active = currentTier === p.id;
-            const isPaid = p.id !== "free";
             return (
               <div key={p.id} style={{
                 position: "relative", display: "flex", flexDirection: "column",
@@ -109,7 +100,12 @@ export default function SubscriptionPage() {
                   <span style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-0.03em" }}>${p.price.toLocaleString("es-MX")}</span>
                   {p.period && <span style={{ fontSize: 13, color: C.dim2 }}>/{p.period}</span>}
                 </div>
-                <div style={{ fontSize: 11, color: C.dim2, marginBottom: 20 }}>{p.price === 0 ? "Para siempre" : `${p.currency} · ${p.period === "año" ? "facturado anual" : "facturado mensual"}`}</div>
+                <div style={{ fontSize: 11, color: C.dim2, marginBottom: 6 }}>
+                  {p.currency} · {p.period === "año" ? `equivale a $${monthlyEquivalent(p).toLocaleString("es-MX")}/mes` : "facturado mensual"}
+                </div>
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(143,169,221,0.1)", borderRadius: 999, padding: "3px 10px", marginBottom: 18, alignSelf: "flex-start" }}>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: "#8fa9dd" }}>5 días gratis</span>
+                </div>
 
                 {/* Extra members selector for familiar */}
                 {p.id === "annual_familiar" && (
@@ -125,14 +121,13 @@ export default function SubscriptionPage() {
 
                 {/* CTA */}
                 {active ? (
-                  <div style={{ textAlign: "center", padding: 11, borderRadius: 11, border: `1px solid ${C.border}`, color: C.dim, fontSize: 13, fontWeight: 700, marginBottom: 20 }}>Plan actual</div>
-                ) : isPaid ? (
-                  <button onClick={() => checkout(p.id)} disabled={loading === p.id} style={{ padding: 11, borderRadius: 11, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 800, marginBottom: 20, color: "#fff", background: p.popular ? C.navy : "#161b26", boxShadow: p.popular ? "0 8px 24px rgba(30,58,138,0.4)" : "none" }}>
-                    {loading === p.id ? "Redirigiendo…" : p.id === "annual_familiar" && extra > 0 ? `Contratar (+$${(extra * 850).toLocaleString("es-MX")})` : "Contratar"}
-                  </button>
+                  <div style={{ textAlign: "center", padding: 11, borderRadius: 11, border: `1px solid ${C.border}`, color: C.dim, fontSize: 13, fontWeight: 700, marginBottom: 8 }}>Plan actual</div>
                 ) : (
-                  <div style={{ textAlign: "center", padding: 11, borderRadius: 11, border: `1px solid ${C.border}`, color: C.dim2, fontSize: 13, fontWeight: 700, marginBottom: 20 }}>Gratis</div>
+                  <button onClick={() => checkout(p.id)} disabled={loading === p.id} style={{ padding: 11, borderRadius: 11, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 800, marginBottom: 8, color: "#fff", background: p.popular ? C.navy : "#161b26", boxShadow: p.popular ? "0 8px 24px rgba(30,58,138,0.4)" : "none" }}>
+                    {loading === p.id ? "Redirigiendo…" : p.id === "annual_familiar" && extra > 0 ? `Empezar prueba (+$${(extra * 850).toLocaleString("es-MX")})` : "Empezar prueba de 5 días"}
+                  </button>
                 )}
+                <div style={{ fontSize: 10.5, color: C.dim2, textAlign: "center", marginBottom: 20 }}>Requiere tarjeta · cancela antes del día 5 y no se te cobra</div>
 
                 {/* Features */}
                 <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
@@ -140,12 +135,6 @@ export default function SubscriptionPage() {
                     <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
                       <Check size={14} style={{ color: p.popular ? "#8fa9dd" : C.dim, flexShrink: 0, marginTop: 2 }} />
                       <span style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>{f}</span>
-                    </div>
-                  ))}
-                  {p.limitations?.map((f) => (
-                    <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 8, opacity: 0.6 }}>
-                      <span style={{ color: C.dim2, flexShrink: 0, fontSize: 13, lineHeight: 1.4 }}>✕</span>
-                      <span style={{ fontSize: 12.5, color: C.dim2, lineHeight: 1.5 }}>{f}</span>
                     </div>
                   ))}
                 </div>

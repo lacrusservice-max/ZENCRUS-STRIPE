@@ -169,31 +169,44 @@ export async function createCheckoutSession(req: Request, res: Response): Promis
         items.push({ price: EXTRA_MEMBER_PRICE_ID, quantity: extraMembers })
       }
 
-      // Crear suscripción con pago pendiente para obtener el PaymentIntent
+      // Suscripción con 5 días de prueba gratis — como no hay cobro inmediato (invoice $0),
+      // Stripe genera un SetupIntent (no PaymentIntent) para capturar la tarjeta.
+      // Al terminar el trial, Stripe cobra automáticamente con esa tarjeta guardada.
       const subscription = await stripe.subscriptions.create({
         customer: customerId,
         items,
+        trial_period_days: 5,
+        trial_settings: { end_behavior: { missing_payment_method: 'cancel' } },
         payment_behavior: 'default_incomplete',
         payment_settings: { save_default_payment_method: 'on_subscription' },
-        expand: ['latest_invoice.payment_intent'],
+        expand: ['pending_setup_intent', 'latest_invoice.payment_intent'],
         metadata: { userId, tier, extraMembers: String(extraMembers) },
       })
 
-      const invoice = subscription.latest_invoice as Stripe.Invoice & { payment_intent: Stripe.PaymentIntent }
-      const paymentIntent = invoice.payment_intent
+      const setupIntent = subscription.pending_setup_intent as Stripe.SetupIntent | null
+      const invoice = subscription.latest_invoice as (Stripe.Invoice & { payment_intent: Stripe.PaymentIntent | null }) | null
+      const clientSecret = setupIntent?.client_secret ?? invoice?.payment_intent?.client_secret
 
-      logger.info(`PaymentSheet Stripe creado: ${userId} → ${tier}`)
+      if (!clientSecret) {
+        logger.error(`Stripe no devolvió setupIntent ni paymentIntent para ${userId} → ${tier}`)
+        res.status(502).json({ success: false, message: 'No se pudo iniciar el pago' } satisfies ApiResponse)
+        return
+      }
+
+      logger.info(`PaymentSheet Stripe creado (trial 5 días): ${userId} → ${tier}`)
       res.status(200).json({
         success: true,
         data: {
           provider: 'stripe',
-          paymentIntent: paymentIntent.client_secret,
+          mode: setupIntent ? 'setup' : 'payment',
+          clientSecret,
           ephemeralKey: ephemeralKey.secret,
           customerId,
           subscriptionId: subscription.id,
           tier,
           price: plan.price,
           currency: 'MXN',
+          trialDays: 5,
         },
       } satisfies ApiResponse)
     } catch (error) {
@@ -255,7 +268,13 @@ export async function createWebCheckout(req: Request, res: Response): Promise<vo
       success_url: `${base}/checkout/success?tier=${tier}`,
       cancel_url: `${base}/subscription?canceled=1`,
       locale: 'es',
-      subscription_data: { metadata: { userId, tier, extraMembers: String(extraMembers) } },
+      // Tarjeta obligatoria desde el inicio + 5 días de prueba gratis, cobro automático al terminar
+      payment_method_collection: 'always',
+      subscription_data: {
+        trial_period_days: 5,
+        trial_settings: { end_behavior: { missing_payment_method: 'cancel' } },
+        metadata: { userId, tier, extraMembers: String(extraMembers) },
+      },
       metadata: { userId, tier, extraMembers: String(extraMembers) },
       allow_promotion_codes: true,
     })
@@ -286,57 +305,71 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
     return
   }
 
-  switch (event.type) {
-    case 'customer.subscription.updated': {
-      const subscription = event.data.object as Stripe.Subscription
-      if (subscription.status !== 'active') break
+  // Trialing y active dan acceso Premium completo — el trial de 5 días requiere tarjeta,
+  // y Stripe cobra automáticamente al terminar (o cancela si el método de pago falla).
+  const upsertSubscription = async (subscription: Stripe.Subscription) => {
+    if (subscription.status !== 'active' && subscription.status !== 'trialing') return
 
-      const userId = subscription.metadata?.userId
-      const tier = subscription.metadata?.tier as SubscriptionTier | undefined
-      const extraMembers = Number(subscription.metadata?.extraMembers ?? 0)
+    const userId = subscription.metadata?.userId
+    const tier = subscription.metadata?.tier as SubscriptionTier | undefined
+    const extraMembers = Number(subscription.metadata?.extraMembers ?? 0)
 
-      if (!userId || !tier) {
-        logger.error('customer.subscription.updated sin metadata.userId/tier', subscription.id)
-        break
-      }
+    if (!userId || !tier) {
+      logger.error(`Stripe subscription sin metadata.userId/tier: ${subscription.id}`)
+      return
+    }
 
-      const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id
-      const plan = SUBSCRIPTION_PLANS[tier as Exclude<SubscriptionTier, 'free'>]
+    const customerId = typeof subscription.customer === 'string' ? subscription.customer : subscription.customer.id
+    const plan = SUBSCRIPTION_PLANS[tier as Exclude<SubscriptionTier, 'free'>]
 
-      const now = new Date()
-      const endDate = new Date(now)
-      if (plan?.recurring === 'year') endDate.setFullYear(endDate.getFullYear() + 1)
-      else endDate.setMonth(endDate.getMonth() + 1)
+    const now = new Date()
+    // end_date real: fin de la prueba si está en trial, o fin del periodo pagado
+    const periodEndTs = subscription.trial_end ?? (subscription as unknown as { current_period_end?: number }).current_period_end
+    const endDate = periodEndTs ? new Date(periodEndTs * 1000) : (() => {
+      const d = new Date(now)
+      if (plan?.recurring === 'year') d.setFullYear(d.getFullYear() + 1)
+      else d.setMonth(d.getMonth() + 1)
+      return d
+    })()
 
-      // Upsert: actualizar si ya existe, insertar si no
-      const { data: existing } = await supabase
-        .from('subscriptions')
-        .select('id')
+    // DB enum de status no incluye 'trialing' — trial y active se guardan como 'active'
+    // (el usuario tiene acceso Premium real durante la prueba; end_date marca cuándo se cobra o expira)
+    const dbStatus = 'active'
+
+    const { data: existing } = await supabase
+      .from('subscriptions')
+      .select('id')
+      .eq('stripe_subscription_id', subscription.id)
+      .maybeSingle()
+
+    if (existing) {
+      await supabase.from('subscriptions')
+        .update({ status: dbStatus, stripe_customer_id: customerId, end_date: endDate.toISOString() })
         .eq('stripe_subscription_id', subscription.id)
-        .maybeSingle()
+    } else {
+      await supabase.from('subscriptions').insert({
+        user_id: userId,
+        tier,
+        status: dbStatus,
+        payment_provider: 'stripe',
+        stripe_customer_id: customerId,
+        stripe_subscription_id: subscription.id,
+        stripe_price_id: plan?.priceId,
+        extra_members: extraMembers,
+        start_date: now.toISOString(),
+        end_date: endDate.toISOString(),
+        auto_renew: true,
+      })
+    }
 
-      if (existing) {
-        await supabase.from('subscriptions')
-          .update({ status: 'active', stripe_customer_id: customerId, end_date: endDate.toISOString() })
-          .eq('stripe_subscription_id', subscription.id)
-      } else {
-        await supabase.from('subscriptions').insert({
-          user_id: userId,
-          tier,
-          status: 'active',
-          payment_provider: 'stripe',
-          stripe_customer_id: customerId,
-          stripe_subscription_id: subscription.id,
-          stripe_price_id: plan?.priceId,
-          extra_members: extraMembers,
-          start_date: now.toISOString(),
-          end_date: endDate.toISOString(),
-          auto_renew: true,
-        })
-      }
+    await supabase.from('users').update({ subscription_tier: tier, subscription_expires_at: endDate.toISOString() }).eq('id', userId)
+    logger.info(`Suscripción Stripe ${subscription.status}: ${userId} → ${tier}`)
+  }
 
-      await supabase.from('users').update({ subscription_tier: tier }).eq('id', userId)
-      logger.info(`Suscripción activada/actualizada vía Stripe: ${userId} → ${tier}`)
+  switch (event.type) {
+    case 'customer.subscription.created':
+    case 'customer.subscription.updated': {
+      await upsertSubscription(event.data.object as Stripe.Subscription)
       break
     }
     case 'customer.subscription.deleted': {
@@ -363,7 +396,9 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
           : invoice.parent.subscription_details.subscription.id
         : undefined
       if (subscriptionId) {
+        const { data: sub } = await supabase.from('subscriptions').select('user_id').eq('stripe_subscription_id', subscriptionId).maybeSingle()
         await supabase.from('subscriptions').update({ status: 'expired' }).eq('stripe_subscription_id', subscriptionId)
+        if (sub?.user_id) await supabase.from('users').update({ subscription_tier: 'free' }).eq('id', sub.user_id)
       }
       logger.info(`Pago de Stripe fallido para suscripción: ${subscriptionId}`)
       break

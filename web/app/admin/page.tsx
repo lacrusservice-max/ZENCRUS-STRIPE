@@ -12,7 +12,7 @@ import {
   Download, CreditCard, ScrollText, LayoutDashboard, BarChart3, X,
   Zap, Ban, Play, Calendar, DollarSign, Send, AlertTriangle, Radio,
   Activity, Clock, Server, Percent, HeartPulse, Dumbbell, MessageSquare,
-  UserX, Eye, TrendingDown, RotateCcw,
+  UserX, Eye, TrendingDown, RotateCcw, Target, Flag, Menu,
 } from "lucide-react";
 
 const BACKEND = "https://web-production-1d2e22.up.railway.app/api";
@@ -85,7 +85,7 @@ interface Social { followers: number; following: number; postsTotal: number; }
 interface Cohort { week: string; size: number; retention: number[] }
 interface Flag { key: string; enabled: boolean; description?: string }
 
-type Tab = "dashboard" | "users" | "subs" | "retention" | "analytics" | "logs" | "system";
+type Tab = "dashboard" | "users" | "subs" | "retention" | "goals" | "analytics" | "logs" | "system";
 
 // ── UI helpers ──────────────────────────────────────────────────────────────
 
@@ -346,6 +346,7 @@ export default function AdminPage() {
     { id: "users", label: "Usuarios", icon: <Users size={16} /> },
     { id: "subs", label: "Suscripciones", icon: <CreditCard size={16} /> },
     { id: "retention", label: "Retención", icon: <HeartPulse size={16} /> },
+    { id: "goals", label: "Metas", icon: <Target size={16} /> },
     { id: "analytics", label: "Analíticas", icon: <BarChart3 size={16} /> },
     { id: "system", label: "Sistema", icon: <Server size={16} /> },
     { id: "logs", label: "Registro", icon: <ScrollText size={16} /> },
@@ -360,52 +361,50 @@ export default function AdminPage() {
   ];
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, color: C.text }}>
-      {/* Header */}
-      <header style={{ borderBottom: `1px solid ${C.border}`, padding: "0 24px", position: "sticky", top: 0, background: "rgba(8,8,8,0.9)", backdropFilter: "blur(12px)", zIndex: 50 }}>
-        <div style={{ maxWidth: 1360, margin: "0 auto", display: "flex", alignItems: "center", justifyContent: "space-between", height: 60 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-            <Image src="/logo-blanco.png" alt="ZENCRUS" width={100} height={30} style={{ objectFit: "contain" }} />
-            <div style={{ width: 1, height: 20, background: C.border }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 999, padding: "4px 12px" }}>
-              <Shield size={13} color="#60a5fa" />
-              <span style={{ fontSize: 11, fontWeight: 800, color: "#60a5fa", letterSpacing: 1 }}>PANEL ADMIN</span>
-            </div>
-            {/* Live indicator */}
-            <div style={{ display: "flex", alignItems: "center", gap: 6, background: live ? "rgba(48,209,88,0.1)" : "rgba(255,255,255,0.04)", border: `1px solid ${live ? "rgba(48,209,88,0.3)" : C.border}`, borderRadius: 999, padding: "4px 10px" }}>
-              <Radio size={12} color={live ? C.green : C.dim2} style={{ animation: live ? "pulse 1.5s infinite" : "none" }} />
-              <span style={{ fontSize: 10, fontWeight: 700, color: live ? C.green : C.dim2 }}>{live ? "EN VIVO" : "OFFLINE"}</span>
-            </div>
-            {/* System health */}
-            {health && (
-              <div title={`DB: ${health.checks?.database} · ${health.latencyMs}ms · v${health.version}`} style={{ display: "flex", alignItems: "center", gap: 6, background: health.status === "ok" ? "rgba(48,209,88,0.1)" : "rgba(255,59,48,0.1)", border: `1px solid ${health.status === "ok" ? "rgba(48,209,88,0.3)" : "rgba(255,59,48,0.3)"}`, borderRadius: 999, padding: "4px 10px" }}>
-                <Server size={12} color={health.status === "ok" ? C.green : C.red} />
-                <span style={{ fontSize: 10, fontWeight: 700, color: health.status === "ok" ? C.green : C.red }}>{health.status === "ok" ? "SISTEMA OK" : "DEGRADADO"} · {health.latencyMs}ms</span>
-              </div>
-            )}
-          </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-            <button onClick={() => router.push("/home")} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.05)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "8px 14px", cursor: "pointer", color: C.dim, fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
-              <Zap size={13} /> App
-            </button>
-            <button onClick={handleLogout} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,59,48,0.08)", border: "1px solid rgba(255,59,48,0.2)", borderRadius: 10, padding: "8px 14px", cursor: "pointer", color: C.red, fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}>
-              <LogOut size={14} /> Salir
-            </button>
+    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, display: "flex" }} className="admin-shell">
+      {/* Sidebar — vertical, fija a la izquierda, como una app web */}
+      <aside className="admin-sidebar" style={{ width: 240, flexShrink: 0, borderRight: `1px solid ${C.border}`, position: "sticky", top: 0, height: "100vh", overflowY: "auto", background: "rgba(10,10,12,0.98)", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "22px 20px 16px" }}>
+          <Image src="/logo-blanco.png" alt="ZENCRUS" width={110} height={32} style={{ objectFit: "contain" }} />
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 999, padding: "4px 10px", marginTop: 12, width: "fit-content" }}>
+            <Shield size={12} color="#60a5fa" />
+            <span style={{ fontSize: 10, fontWeight: 800, color: "#60a5fa", letterSpacing: 1 }}>PANEL ADMIN</span>
           </div>
         </div>
-        {/* Tabs */}
-        <div style={{ maxWidth: 1360, margin: "0 auto", display: "flex", gap: 4, overflowX: "auto" }}>
+
+        {/* Nav vertical */}
+        <nav style={{ flex: 1, padding: "8px 12px", display: "flex", flexDirection: "column", gap: 2 }}>
           {TABS.map(t => (
             <button key={t.id} onClick={() => setTab(t.id)} style={{
-              display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", background: "none", border: "none",
-              borderBottom: `2px solid ${tab === t.id ? C.blue : "transparent"}`, cursor: "pointer",
-              color: tab === t.id ? C.text : C.dim, fontSize: 13, fontWeight: tab === t.id ? 700 : 500, fontFamily: "inherit", whiteSpace: "nowrap",
+              display: "flex", alignItems: "center", gap: 11, padding: "10px 14px", borderRadius: 11, border: "none", cursor: "pointer",
+              background: tab === t.id ? C.blue : "transparent",
+              color: tab === t.id ? "#fff" : C.dim, fontSize: 13.5, fontWeight: tab === t.id ? 700 : 500, fontFamily: "inherit", textAlign: "left",
             }}>{t.icon}{t.label}</button>
           ))}
-        </div>
-      </header>
+        </nav>
 
-      <main style={{ maxWidth: 1360, margin: "0 auto", padding: "28px 24px" }}>
+        {/* Status + actions */}
+        <div style={{ padding: 14, display: "flex", flexDirection: "column", gap: 8, borderTop: `1px solid ${C.border}` }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: live ? "rgba(48,209,88,0.1)" : "rgba(255,255,255,0.04)", border: `1px solid ${live ? "rgba(48,209,88,0.3)" : C.border}`, borderRadius: 10, padding: "6px 10px" }}>
+            <Radio size={12} color={live ? C.green : C.dim2} style={{ animation: live ? "pulse 1.5s infinite" : "none", flexShrink: 0 }} />
+            <span style={{ fontSize: 10.5, fontWeight: 700, color: live ? C.green : C.dim2 }}>{live ? "EN VIVO" : "OFFLINE"}</span>
+          </div>
+          {health && (
+            <div title={`DB: ${health.checks?.database} · ${health.latencyMs}ms · v${health.version}`} style={{ display: "flex", alignItems: "center", gap: 6, background: health.status === "ok" ? "rgba(48,209,88,0.1)" : "rgba(255,59,48,0.1)", border: `1px solid ${health.status === "ok" ? "rgba(48,209,88,0.3)" : "rgba(255,59,48,0.3)"}`, borderRadius: 10, padding: "6px 10px" }}>
+              <Server size={12} color={health.status === "ok" ? C.green : C.red} style={{ flexShrink: 0 }} />
+              <span style={{ fontSize: 10.5, fontWeight: 700, color: health.status === "ok" ? C.green : C.red }}>{health.status === "ok" ? "SISTEMA OK" : "DEGRADADO"}</span>
+            </div>
+          )}
+          <button onClick={() => router.push("/home")} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,255,255,0.05)", border: `1px solid ${C.border}`, borderRadius: 10, padding: "9px 12px", cursor: "pointer", color: C.dim, fontSize: 12.5, fontWeight: 600, fontFamily: "inherit" }}>
+            <Zap size={13} /> Ir a la app
+          </button>
+          <button onClick={handleLogout} style={{ display: "flex", alignItems: "center", gap: 8, background: "rgba(255,59,48,0.08)", border: "1px solid rgba(255,59,48,0.2)", borderRadius: 10, padding: "9px 12px", cursor: "pointer", color: C.red, fontSize: 12.5, fontWeight: 600, fontFamily: "inherit" }}>
+            <LogOut size={14} /> Salir
+          </button>
+        </div>
+      </aside>
+
+      <main style={{ flex: 1, minWidth: 0, padding: "28px 24px 60px" }}>
         {/* Toolbar */}
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 24, gap: 12, flexWrap: "wrap" }}>
           <h1 style={{ fontSize: 24, fontWeight: 900 }}>{TABS.find(t => t.id === tab)?.label}</h1>
@@ -736,6 +735,11 @@ export default function AdminPage() {
           </div>
         )}
 
+        {/* ═══ GOALS ═══ */}
+        {tab === "goals" && (
+          <GoalsTab totalUsers={dash?.users.total ?? users.length} new7d={dash?.users.new7d ?? 0} new30d={dash?.users.new30d ?? 0} />
+        )}
+
         {/* ═══ LOGS ═══ */}
         {tab === "logs" && (
           <div style={{ background: C.card, borderRadius: 20, border: `1px solid ${C.border}` }}>
@@ -808,7 +812,99 @@ export default function AdminPage() {
         @keyframes spin { to { transform: rotate(360deg); } }
         @keyframes pulse { 0%,100% { opacity: 1; } 50% { opacity: 0.4; } }
         @media (max-width: 860px) { .grid-2 { grid-template-columns: 1fr !important; } }
+        @media (max-width: 900px) {
+          .admin-shell { flex-direction: column; }
+          .admin-sidebar { width: 100% !important; height: auto !important; position: relative !important; flex-direction: row !important; overflow-x: auto; }
+          .admin-sidebar nav { flex-direction: row !important; padding: 8px !important; overflow-x: auto; }
+          .admin-sidebar > div:last-child { display: none !important; }
+        }
       `}</style>
+    </div>
+  );
+}
+
+// ── Goals / Metas ─────────────────────────────────────────────────────────────
+
+const MILESTONES = [
+  { target: 500, label: "Lanzamiento", note: "Meta de los primeros 6–12 meses" },
+  { target: 1000, label: "Tracción" },
+  { target: 2000, label: "Crecimiento" },
+  { target: 3000, label: "Escala" },
+  { target: 5000, label: "Consolidación" },
+  { target: 10000, label: "Referente" },
+];
+
+function GoalsTab({ totalUsers, new7d, new30d }: { totalUsers: number; new7d: number; new30d: number }) {
+  const nextMilestone = MILESTONES.find(m => totalUsers < m.target) ?? MILESTONES[MILESTONES.length - 1];
+  const prevTarget = MILESTONES[MILESTONES.indexOf(nextMilestone) - 1]?.target ?? 0;
+  const segmentPct = Math.min(100, Math.round(((totalUsers - prevTarget) / (nextMilestone.target - prevTarget)) * 100));
+  const remaining = Math.max(0, nextMilestone.target - totalUsers);
+  const dailyPace = new30d / 30;
+  const etaDays = dailyPace > 0 ? Math.ceil(remaining / dailyPace) : null;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* Hero: current progress to next milestone */}
+      <div style={{ background: `linear-gradient(160deg, rgba(37,99,235,0.14), ${C.card})`, border: `1px solid ${C.blue}55`, borderRadius: 20, padding: 28 }}>
+        <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
+          <div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#8fa9dd", letterSpacing: 1.5, marginBottom: 6 }}>PRÓXIMA META</div>
+            <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-0.02em" }}>{nextMilestone.target.toLocaleString("es-MX")} usuarios</div>
+            <div style={{ fontSize: 13, color: C.dim, marginTop: 4 }}>{nextMilestone.label}{nextMilestone.note ? ` · ${nextMilestone.note}` : ""}</div>
+          </div>
+          <div style={{ textAlign: "right" }}>
+            <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-0.02em", color: C.blue }}>{totalUsers.toLocaleString("es-MX")}</div>
+            <div style={{ fontSize: 12, color: C.dim2 }}>usuarios actuales</div>
+          </div>
+        </div>
+        <div style={{ height: 14, background: "rgba(255,255,255,0.06)", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
+          <div style={{ height: "100%", width: `${segmentPct}%`, background: `linear-gradient(90deg, ${C.blue}, #60a5fa)`, transition: "width 0.5s", boxShadow: "0 0 12px rgba(37,99,235,0.5)" }} />
+        </div>
+        <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11.5, color: C.dim2 }}>
+          <span>{prevTarget.toLocaleString("es-MX")}</span>
+          <span style={{ fontWeight: 700, color: C.text }}>{segmentPct}% completado</span>
+          <span>{nextMilestone.target.toLocaleString("es-MX")}</span>
+        </div>
+        <div style={{ display: "flex", gap: 24, marginTop: 20, flexWrap: "wrap" }}>
+          <div><div style={{ fontSize: 20, fontWeight: 800 }}>{remaining.toLocaleString("es-MX")}</div><div style={{ fontSize: 11, color: C.dim2 }}>usuarios restantes</div></div>
+          <div><div style={{ fontSize: 20, fontWeight: 800 }}>+{new7d}</div><div style={{ fontSize: 11, color: C.dim2 }}>últimos 7 días</div></div>
+          <div><div style={{ fontSize: 20, fontWeight: 800 }}>{dailyPace.toFixed(1)}/día</div><div style={{ fontSize: 11, color: C.dim2 }}>ritmo promedio (30d)</div></div>
+          <div><div style={{ fontSize: 20, fontWeight: 800 }}>{etaDays ? `~${etaDays}d` : "—"}</div><div style={{ fontSize: 11, color: C.dim2 }}>ETA al ritmo actual</div></div>
+        </div>
+      </div>
+
+      {/* Roadmap of all milestones */}
+      <div style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: 20, padding: "20px 24px" }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 18 }}>
+          <Flag size={16} color={C.blue} />
+          <span style={{ fontSize: 15, fontWeight: 800 }}>Ruta de crecimiento</span>
+        </div>
+        <div style={{ position: "relative", paddingLeft: 8 }}>
+          <div style={{ position: "absolute", left: 19, top: 6, bottom: 6, width: 2, background: C.border }} />
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {MILESTONES.map((m) => {
+              const done = totalUsers >= m.target;
+              const isNext = m.target === nextMilestone.target;
+              return (
+                <div key={m.target} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 8px", borderRadius: 12, background: isNext ? "rgba(37,99,235,0.08)" : "transparent" }}>
+                  <div style={{
+                    width: 24, height: 24, borderRadius: "50%", flexShrink: 0, zIndex: 1,
+                    background: done ? C.blue : C.card, border: `2px solid ${done ? C.blue : isNext ? C.blue : C.border}`,
+                    display: "flex", alignItems: "center", justifyContent: "center",
+                  }}>
+                    {done ? <CheckCircle size={14} color="#fff" /> : <Target size={11} color={isNext ? C.blue : C.dim2} />}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 160 }}>
+                    <div style={{ fontSize: 14, fontWeight: 800, color: done ? C.text : isNext ? C.text : C.dim }}>{m.target.toLocaleString("es-MX")} usuarios</div>
+                    <div style={{ fontSize: 11.5, color: C.dim2 }}>{m.label}{m.note ? ` · ${m.note}` : ""}</div>
+                  </div>
+                  <Badge text={done ? "CUMPLIDA" : isNext ? "EN CURSO" : "PENDIENTE"} color={done ? C.green : isNext ? C.blue : "#8899a6"} />
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

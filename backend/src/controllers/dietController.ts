@@ -35,13 +35,14 @@ export async function generateDietPlan(req: Request, res: Response): Promise<voi
 
   const { data: profile } = await supabase
     .from('users')
-    .select('weight, height, gender, activity_level, goals, dietary_preferences, health_conditions, birth_date')
+    .select('weight, height, gender, age, activity_level, goals, dietary_preferences, dietary_restrictions, health_conditions, birth_date')
     .eq('id', userId)
     .maybeSingle()
 
-  const age = profile?.birth_date
-    ? Math.floor((Date.now() - new Date(profile.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
-    : 30
+  const age = profile?.age
+    ?? (profile?.birth_date
+      ? Math.floor((Date.now() - new Date(profile.birth_date).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+      : 30)
 
   const userProfile = {
     age,
@@ -50,7 +51,7 @@ export async function generateDietPlan(req: Request, res: Response): Promise<voi
     gender: profile?.gender || 'male',
     goal: (profile?.goals as any)?.primary || 'maintenance',
     activityLevel: profile?.activity_level || 'moderate',
-    restrictions: JSON.stringify(profile?.dietary_preferences || {}),
+    restrictions: JSON.stringify(profile?.dietary_restrictions ?? profile?.dietary_preferences ?? {}),
     healthConditions: JSON.stringify(profile?.health_conditions || {}),
   }
 

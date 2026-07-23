@@ -360,56 +360,58 @@ function Diferenciadores() {
 }
 
 function Precios() {
-  const [anual, setAnual] = useState(false);
-  const FREE = ["Plan nutricional básico (IA)", "5 chats con ZENA al día", "Tracking de calorías y macros", "Rutinas básicas", "Feed social y comunidad", "Logros y racha diaria", "Health tracker básico"];
-  const PREMIUM = ["Todo lo de Free", "Chat ilimitado con ZENA IA", "Plan nutricional completo (todos los módulos)", "Ajuste por ciclo menstrual (Módulo 04)", "Crononutrición activa (Módulo 05)", "Eje hormonal personalizado (Módulo 03)", "Ciclo de macros avanzado", "Planificador semanal de comidas", "Lista de compras automática", "Rutinas personalizadas completas", "Duelos premium y leaderboard", "Health tracker avanzado", "Soporte prioritario"];
+  const PLANS = [
+    { id: "monthly", name: "Mensual", price: 200, period: "mes", popular: false },
+    { id: "annual_individual", name: "Anual Individual", price: 1999, period: "año", popular: true },
+    { id: "annual_duo", name: "Anual Dúo", price: 3399, period: "año", popular: false },
+    { id: "annual_familiar", name: "Anual Familiar", price: 5799, period: "año", popular: false },
+  ];
+  const FEATURES = ["Chat ilimitado con ZENA IA", "Plan nutricional completo (todos los módulos)", "Ajuste por ciclo menstrual", "Crononutrición activa", "Eje hormonal personalizado", "Ciclo de macros avanzado", "Planificador semanal + lista de compras", "Rutinas personalizadas completas", "Duelos premium y leaderboard"];
   return (
     <section id="precios" style={{ padding: "120px 24px", position: "relative", zIndex: 2 }}>
-      <div style={{ maxWidth: 980, margin: "0 auto" }}>
-        <Reveal style={{ textAlign: "center", marginBottom: 52 }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <Reveal style={{ textAlign: "center", marginBottom: 40 }}>
           <div style={{ fontSize: 11, fontWeight: 800, color: "#7d8ba8", letterSpacing: 4, textTransform: "uppercase", marginBottom: 14 }}>Precios</div>
-          <h2 style={{ fontSize: "clamp(2rem,5vw,3.4rem)", fontWeight: 900, color: "#f4f4f5", marginBottom: 16, letterSpacing: "-0.03em" }}>Elige tu plan</h2>
-          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.48)", maxWidth: 400, margin: "0 auto 28px" }}>Empieza gratis. Sube a Premium cuando estés listo para el sistema completo.</p>
-          <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.1)", borderRadius: 12, padding: 4, gap: 4 }}>
-            <button onClick={() => setAnual(false)} style={{ padding: "8px 20px", borderRadius: 9, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700, background: !anual ? "#1e3a8a" : "transparent", color: !anual ? "#fff" : "rgba(255,255,255,0.4)", transition: "all 0.2s" }}>Mensual</button>
-            <button onClick={() => setAnual(true)} style={{ padding: "8px 20px", borderRadius: 9, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700, background: anual ? "#1e3a8a" : "transparent", color: anual ? "#fff" : "rgba(255,255,255,0.4)", transition: "all 0.2s", display: "flex", alignItems: "center", gap: 6 }}>
-              Anual <span style={{ background: "#5f6875", color: "#fff", fontSize: 10, fontWeight: 800, padding: "2px 6px", borderRadius: 6 }}>−37%</span>
-            </button>
+          <h2 style={{ fontSize: "clamp(2rem,5vw,3.4rem)", fontWeight: 900, color: "#f4f4f5", marginBottom: 16, letterSpacing: "-0.03em" }}>Elige tu plan y empieza gratis</h2>
+          <p style={{ fontSize: 16, color: "rgba(255,255,255,0.48)", maxWidth: 520, margin: "0 auto" }}>Todos los planes incluyen el sistema completo. Prueba cualquiera 5 días sin costo.</p>
+        </Reveal>
+        <Reveal style={{ maxWidth: 640, margin: "0 auto 36px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(30,58,138,0.10)", border: "1px solid rgba(30,58,138,0.3)", borderRadius: 14, padding: "13px 18px" }}>
+            <Shield size={16} color="#8fa9dd" style={{ flexShrink: 0 }} />
+            <p style={{ fontSize: 12.5, color: "rgba(200,210,235,0.9)", lineHeight: 1.5, margin: 0 }}>Pedimos tus datos bancarios para activar la prueba de <b>5 días gratis</b>. Si no cancelas antes, se cobra automáticamente tu plan.</p>
           </div>
         </Reveal>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(300px,1fr))", gap: 24 }}>
-          <Reveal x={-24} y={0}>
-            <div style={{ background: "linear-gradient(160deg, rgba(255,255,255,0.045), rgba(255,255,255,0.01))", borderRadius: 22, border: "1px solid rgba(255,255,255,0.09)", padding: 34, height: "100%" }}>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.45)", marginBottom: 8 }}>GRATIS</div>
-              <div style={{ fontSize: 46, fontWeight: 900, color: "#f4f4f5", marginBottom: 4, letterSpacing: "-0.03em" }}>$0</div>
-              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.3)", marginBottom: 28 }}>Para siempre</div>
-              <Link href="/register" style={{ display: "block", textAlign: "center", padding: 13, color: "#f4f4f5", textDecoration: "none", borderRadius: 12, border: "1px solid rgba(255,255,255,0.15)", fontWeight: 700, fontSize: 14, marginBottom: 28 }}>Empezar gratis</Link>
-              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                {FREE.map((f) => (
-                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}><Check size={14} color="#5f6875" /><span style={{ fontSize: 13, color: "rgba(255,255,255,0.55)" }}>{f}</span></div>
-                ))}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(230px,1fr))", gap: 16 }}>
+          {PLANS.map((p, i) => (
+            <Reveal key={p.id} delay={i * 60} y={30}>
+              <div className={p.popular ? "premium-card" : undefined} style={{
+                borderRadius: 20, height: "100%", position: "relative", overflow: "hidden", padding: 28,
+                background: p.popular ? "linear-gradient(160deg, rgba(30,58,138,0.12), rgba(95,123,196,0.03))" : "linear-gradient(160deg, rgba(255,255,255,0.045), rgba(255,255,255,0.01))",
+                border: p.popular ? "1px solid rgba(30,58,138,0.45)" : "1px solid rgba(255,255,255,0.09)",
+                boxShadow: p.popular ? "0 0 50px rgba(30,58,138,0.15)" : "none",
+              }}>
+                {p.popular && <div style={{ position: "absolute", top: 14, right: 16, background: "linear-gradient(135deg,#1e3a8a,#5f7bc4)", color: "#fff", fontSize: 9.5, fontWeight: 800, padding: "4px 10px", borderRadius: 999 }}>POPULAR</div>}
+                <div style={{ fontSize: 12, fontWeight: 700, color: p.popular ? "#8fa9dd" : "rgba(255,255,255,0.5)", marginBottom: 10 }}>{p.name.toUpperCase()}</div>
+                <div style={{ fontSize: 36, fontWeight: 900, color: "#f4f4f5", marginBottom: 2, letterSpacing: "-0.03em" }}>${p.price.toLocaleString("es-MX")}<span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>/{p.period}</span></div>
+                <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 16 }}>MXN{p.period === "año" ? ` · $${Math.round(p.price / 12).toLocaleString("es-MX")}/mes` : ""}</div>
+                <Magnetic strength={0.2} style={{ display: "block" }}>
+                  <Link href="/register" className={p.popular ? "cta-shine" : undefined} style={{ display: "block", textAlign: "center", padding: 12, color: p.popular ? "#fff" : "#f4f4f5", textDecoration: "none", borderRadius: 11, background: p.popular ? "linear-gradient(135deg,#1e3a8a,#16296b)" : "transparent", border: p.popular ? "none" : "1px solid rgba(255,255,255,0.15)", fontWeight: 700, fontSize: 13 }}>5 días gratis</Link>
+                </Magnetic>
               </div>
-            </div>
-          </Reveal>
-          <Reveal x={24} y={0} delay={80}>
-            <div className="premium-card" style={{ borderRadius: 22, background: "linear-gradient(160deg, rgba(30,58,138,0.10), rgba(95,123,196,0.03))", border: "1px solid rgba(30,58,138,0.4)", padding: 34, position: "relative", overflow: "hidden", height: "100%", boxShadow: "0 0 60px rgba(30,58,138,0.15)" }}>
-              <div style={{ position: "absolute", top: -60, right: -60, width: 200, height: 200, borderRadius: "50%", background: "rgba(95,123,196,0.14)", filter: "blur(50px)" }} />
-              <div style={{ position: "absolute", top: 16, right: 20, background: "linear-gradient(135deg,#1e3a8a,#5f7bc4)", color: "#fff", fontSize: 10, fontWeight: 800, padding: "5px 12px", borderRadius: 999, letterSpacing: 0.5 }}>MÁS POPULAR</div>
-              <div style={{ fontSize: 12, fontWeight: 700, color: "#8fa9dd", marginBottom: 8 }}>PREMIUM</div>
-              <div style={{ fontSize: 46, fontWeight: 900, color: "#f4f4f5", marginBottom: 4, letterSpacing: "-0.03em" }}>{anual ? "$1,499" : "$199"}<span style={{ fontSize: 16, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>/{anual ? "año" : "mes"}</span></div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginBottom: 28 }}>{anual ? "= $125/mes · Ahorra $888 al año" : "Cancela cuando quieras"} MXN</div>
-              <Magnetic strength={0.25} style={{ display: "block" }}>
-                <Link href="/register" className="cta-shine" style={{ display: "block", textAlign: "center", padding: 14, color: "#fff", textDecoration: "none", borderRadius: 12, background: "linear-gradient(135deg,#1e3a8a,#16296b)", fontWeight: 700, fontSize: 14, marginBottom: 28, boxShadow: "0 8px 30px rgba(30,58,138,0.4)" }}>Probar 7 días gratis</Link>
-              </Magnetic>
-              <div style={{ display: "flex", flexDirection: "column", gap: 11 }}>
-                {PREMIUM.map((f) => (
-                  <div key={f} style={{ display: "flex", alignItems: "center", gap: 10 }}><Check size={14} color="#5f7bc4" /><span style={{ fontSize: 13, color: "rgba(255,255,255,0.68)" }}>{f}</span></div>
-                ))}
-              </div>
-            </div>
-          </Reveal>
+            </Reveal>
+          ))}
         </div>
-        <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 24 }}>Precios en pesos mexicanos (MXN) · IVA incluido · Pagos seguros con Stripe</p>
+        <Reveal style={{ marginTop: 28 }}>
+          <div style={{ maxWidth: 560, margin: "0 auto", background: "rgba(255,255,255,0.03)", border: "1px solid rgba(255,255,255,0.08)", borderRadius: 16, padding: "20px 24px" }}>
+            <div style={{ fontSize: 12, fontWeight: 800, color: "rgba(255,255,255,0.5)", marginBottom: 12, letterSpacing: 0.5 }}>TODO PLAN INCLUYE</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(200px,1fr))", gap: "8px 16px" }}>
+              {FEATURES.map((f) => (
+                <div key={f} style={{ display: "flex", alignItems: "center", gap: 8 }}><Check size={13} color="#5f7bc4" /><span style={{ fontSize: 12.5, color: "rgba(255,255,255,0.6)" }}>{f}</span></div>
+              ))}
+            </div>
+          </div>
+        </Reveal>
+        <p style={{ textAlign: "center", fontSize: 12, color: "rgba(255,255,255,0.25)", marginTop: 24 }}>Precios en pesos mexicanos (MXN) · Pagos seguros con Stripe</p>
       </div>
     </section>
   );
