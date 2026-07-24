@@ -8,6 +8,7 @@ import subscriptionRoutes from './subscription.routes'
 import adminRoutes from './admin.routes'
 import setupRoutes from './setup.routes'
 import onboardingRoutes from './onboarding.routes'
+import communityRoutes from './community.routes'
 import { getPublicFlags } from '../controllers/adminController'
 import { ApiResponse } from '../models/types'
 import { supabase } from '../config/supabase'
@@ -57,5 +58,6 @@ router.use('/subscriptions', subscriptionRoutes)
 router.use('/admin', adminRoutes)
 router.use('/setup', setupRoutes)
 router.use('/onboarding', onboardingRoutes)
+router.use('/community', communityRoutes)
 
 export default router
