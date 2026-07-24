@@ -120,10 +120,17 @@ export const chat = {
 
 // Social
 export const social = {
-  getFeed: (page = 1) => api.get(`/social/feed?page=${page}`),
+  getFeed: (scope: "all" | "following" = "all", before?: string) =>
+    api.get(`/community/feed`, { params: { scope, before, limit: 20 } }),
   createPost: (content: string, imageUrl?: string) =>
-    api.post("/social/posts", { content, imageUrl }),
-  likePost: (id: string) => api.post(`/social/posts/${id}/like`),
+    api.post("/community/posts", { content, imageUrl, kind: "post" }),
+  deletePost: (id: string) => api.delete(`/community/posts/${id}`),
+  likePost: (id: string) => api.post(`/community/posts/${id}/like`),
+  unlikePost: (id: string) => api.delete(`/community/posts/${id}/like`),
+  getComments: (id: string) => api.get(`/community/posts/${id}/comments`),
+  addComment: (id: string, content: string) => api.post(`/community/posts/${id}/comments`, { content }),
+  followUser: (id: string) => api.post(`/community/users/${id}/follow`),
+  unfollowUser: (id: string) => api.delete(`/community/users/${id}/follow`),
 };
 
 // Subscriptions
