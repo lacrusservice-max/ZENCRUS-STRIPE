@@ -4,7 +4,7 @@ import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
 import { generateVerificationCode, generateSecureToken } from '../utils/crypto'
-import { sendVerificationEmail, sendPasswordResetEmail, sendWelcomeEmail } from '../services/emailService'
+import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService'
 import { AppError } from '../middleware/errorHandler'
 import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
@@ -202,7 +202,8 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
     refresh_token_family: tokenFamily,
   }).eq('id', user.id)
 
-  sendWelcomeEmail(email, user.full_name).catch(()=>{})
+  // El correo de bienvenida/activación se envía solo tras contratar un plan y pagar
+  // (ver subscriptionController: se dispara en el webhook de Stripe, no aquí).
 
   const accessToken = signAccessToken({
     userId: user.id,

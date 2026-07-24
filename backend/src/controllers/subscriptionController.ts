@@ -5,6 +5,7 @@ import { ApiResponse, SubscriptionTier } from '../models/types'
 import { logger } from '../config/logger'
 import { env } from '../config/env'
 import { supabase } from '../config/supabase'
+import { sendWelcomeEmail, sendInvoiceEmail } from '../services/emailService'
 
 const stripe = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null
 
@@ -360,6 +361,14 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
         end_date: endDate.toISOString(),
         auto_renew: true,
       })
+
+      // Primera vez que se crea esta suscripción → correo de bienvenida/activación
+      // (nunca al registrarse ni al verificar el correo — solo al contratar un plan)
+      const { data: u } = await supabase.from('users').select('email,full_name').eq('id', userId).maybeSingle()
+      if (u?.email) {
+        const trialEndFmt = endDate.toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' })
+        sendWelcomeEmail(u.email, u.full_name || 'Atleta', plan?.label ?? tier, trialEndFmt).catch((err) => logger.error('sendWelcomeEmail error:', err))
+      }
     }
 
     await supabase.from('users').update({ subscription_tier: tier, subscription_expires_at: endDate.toISOString() }).eq('id', userId)
@@ -401,6 +410,40 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
         if (sub?.user_id) await supabase.from('users').update({ subscription_tier: 'free' }).eq('id', sub.user_id)
       }
       logger.info(`Pago de Stripe fallido para suscripción: ${subscriptionId}`)
+      break
+    }
+    case 'invoice.paid': {
+      // Se dispara con cada cobro real: fin del trial de 5 días o cada renovación.
+      // Aquí (y solo aquí) se manda el correo de factura/recibo.
+      const invoice = event.data.object as Stripe.Invoice
+      const amountPaid = (invoice.amount_paid ?? 0) / 100
+      if (amountPaid <= 0) break // facturas de $0 (ej. la del propio trial) no generan recibo
+
+      const subscriptionId = invoice.parent?.subscription_details?.subscription
+        ? typeof invoice.parent.subscription_details.subscription === 'string'
+          ? invoice.parent.subscription_details.subscription
+          : invoice.parent.subscription_details.subscription.id
+        : undefined
+      if (!subscriptionId) break
+
+      const { data: sub } = await supabase.from('subscriptions').select('user_id,tier').eq('stripe_subscription_id', subscriptionId).maybeSingle()
+      if (!sub?.user_id) break
+
+      const { data: u } = await supabase.from('users').select('email,full_name').eq('id', sub.user_id).maybeSingle()
+      if (!u?.email) break
+
+      const plan = SUBSCRIPTION_PLANS[sub.tier as Exclude<SubscriptionTier, 'free'>]
+      const periodEnd = invoice.period_end ? new Date(invoice.period_end * 1000).toLocaleDateString('es-MX', { day: 'numeric', month: 'long', year: 'numeric' }) : undefined
+
+      sendInvoiceEmail(u.email, u.full_name || 'Atleta', {
+        planLabel: plan?.label ?? sub.tier,
+        amount: amountPaid,
+        currency: invoice.currency ?? 'mxn',
+        invoiceUrl: invoice.hosted_invoice_url ?? undefined,
+        periodEnd,
+      }).catch((err) => logger.error('sendInvoiceEmail error:', err))
+
+      logger.info(`Factura pagada — recibo enviado: ${u.email} · $${amountPaid} ${invoice.currency}`)
       break
     }
     default:

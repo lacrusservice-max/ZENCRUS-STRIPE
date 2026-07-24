@@ -119,7 +119,9 @@ export async function sendVerificationEmail(email: string, name: string, code: s
 
 // ── Bienvenida ────────────────────────────────────────────────────────────────
 
-export async function sendWelcomeEmail(email: string, name: string): Promise<void> {
+// Se envía únicamente cuando se activa un plan (checkout con tarjeta completado) —
+// nunca al registrarse ni al verificar el correo.
+export async function sendWelcomeEmail(email: string, name: string, planLabel: string, trialEndDate: string): Promise<void> {
   const firstName = name.split(' ')[0]
 
   const item = (icon: string, text: string) =>
@@ -136,9 +138,17 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<voi
     <h1 style="margin:0 0 10px;color:#ffffff;font-size:26px;font-weight:700;line-height:1.3;">
       ¡Bienvenido a ZENCRUS, ${firstName}!
     </h1>
-    <p style="margin:0 0 36px;color:rgba(255,255,255,0.45);font-size:15px;line-height:1.7;">
-      Tu cuenta está activa y tu plan personalizado con inteligencia artificial está siendo generado según tu perfil.
+    <p style="margin:0 0 20px;color:rgba(255,255,255,0.45);font-size:15px;line-height:1.7;">
+      Activaste el plan <strong style="color:#fff;">${planLabel}</strong>. Tu prueba de 5 días gratis ya está en marcha y tu plan personalizado con inteligencia artificial está siendo generado según tu perfil.
     </p>
+
+    <!-- Trial notice -->
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+      style="background:rgba(37,99,235,0.08);border:1px solid rgba(37,99,235,0.25);border-radius:14px;padding:18px 20px;margin-bottom:28px;">
+      <tr><td style="color:#93b4ff;font-size:13px;line-height:1.6;">
+        ⏳ Tu prueba gratuita termina el <strong>${trialEndDate}</strong>. Si no cancelas antes, se cobrará automáticamente con la tarjeta que registraste. Puedes cancelar en cualquier momento desde tu perfil.
+      </td></tr>
+    </table>
 
     <!-- Features -->
     <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
@@ -165,7 +175,47 @@ export async function sendWelcomeEmail(email: string, name: string): Promise<voi
     </table>
   `)
 
-  await sendEmail(email, `¡Bienvenido a ZENCRUS, ${firstName}! Tu plan está listo 🚀`, html)
+  await sendEmail(email, `¡Bienvenido a ZENCRUS, ${firstName}! Tu plan ${planLabel} está activo 🚀`, html)
+}
+
+// ── Factura / recibo de pago ──────────────────────────────────────────────────
+// Se envía cada vez que Stripe cobra exitosamente (fin del trial o renovación).
+
+export async function sendInvoiceEmail(email: string, name: string, opts: { planLabel: string; amount: number; currency: string; invoiceUrl?: string; periodEnd?: string }): Promise<void> {
+  const firstName = name.split(' ')[0]
+  const amountFmt = new Intl.NumberFormat('es-MX', { style: 'currency', currency: opts.currency.toUpperCase() }).format(opts.amount)
+
+  const html = base(`
+    <h1 style="margin:0 0 10px;color:#ffffff;font-size:24px;font-weight:700;line-height:1.3;">
+      Recibo de pago — ZENCRUS
+    </h1>
+    <p style="margin:0 0 28px;color:rgba(255,255,255,0.45);font-size:15px;line-height:1.7;">
+      Hola ${firstName}, confirmamos el cobro de tu suscripción a ZENCRUS.
+    </p>
+
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0"
+      style="background:#1a1a1a;border-radius:14px;padding:22px 24px;margin-bottom:28px;border:1px solid rgba(255,255,255,0.06);">
+      <tr><td style="padding:6px 0;color:rgba(255,255,255,0.4);font-size:13px;">Plan</td><td align="right" style="padding:6px 0;color:#fff;font-size:13px;font-weight:600;">${opts.planLabel}</td></tr>
+      <tr><td style="padding:6px 0;color:rgba(255,255,255,0.4);font-size:13px;">Monto cobrado</td><td align="right" style="padding:6px 0;color:#fff;font-size:13px;font-weight:600;">${amountFmt}</td></tr>
+      ${opts.periodEnd ? `<tr><td style="padding:6px 0;color:rgba(255,255,255,0.4);font-size:13px;">Próxima renovación</td><td align="right" style="padding:6px 0;color:#fff;font-size:13px;font-weight:600;">${opts.periodEnd}</td></tr>` : ''}
+    </table>
+
+    ${opts.invoiceUrl ? `
+    <table role="presentation" width="100%" cellspacing="0" cellpadding="0" border="0">
+      <tr><td align="center">
+        <a href="${opts.invoiceUrl}"
+          style="display:inline-block;background:#ffffff;color:#0a0a0a;text-decoration:none;padding:14px 36px;border-radius:12px;font-size:14px;font-weight:700;">
+          Ver factura completa →
+        </a>
+      </td></tr>
+    </table>` : ''}
+
+    <p style="margin:28px 0 0;color:rgba(255,255,255,0.3);font-size:12px;line-height:1.6;">
+      Puedes cancelar tu suscripción en cualquier momento desde tu perfil en ZENCRUS.
+    </p>
+  `)
+
+  await sendEmail(email, `Recibo de pago — ${opts.planLabel} ZENCRUS`, html)
 }
 
 // ── Reset de contraseña ───────────────────────────────────────────────────────
