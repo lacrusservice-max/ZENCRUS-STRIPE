@@ -1,797 +1,374 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
-  View, Text, ScrollView, FlatList, StyleSheet,
-  TouchableOpacity, TextInput, Modal, Image,
-  KeyboardAvoidingView, Platform, ActivityIndicator,
-  RefreshControl, Dimensions,
+  View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput,
+  Modal, KeyboardAvoidingView, Platform, ActivityIndicator, RefreshControl, Alert,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
-import { useSocialStore, SocialPost, SocialComment } from '@/store/socialStore'
-import { useStreakStore } from '@/store/streakStore'
-import { useHealthStore } from '@/store/healthStore'
 import { useAuthStore } from '@/store/authStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
-import { GlassCard, SectionLabel } from '@/components/ui/Glass'
-
-const { width: SW } = Dimensions.get('window')
+import {
+  fetchFeed, createPost, deletePost, likePost, unlikePost,
+  fetchComments, addComment, CommunityPost, CommunityComment, FeedScope,
+} from '@/services/communityService'
 
 function timeAgo(iso: string): string {
   const d = (Date.now() - new Date(iso).getTime()) / 1000
-  if (d < 60)    return 'ahora'
-  if (d < 3600)  return `${Math.floor(d / 60)}m`
+  if (d < 60) return 'ahora'
+  if (d < 3600) return `${Math.floor(d / 60)}m`
   if (d < 86400) return `${Math.floor(d / 3600)}h`
   return `${Math.floor(d / 86400)}d`
 }
 
-function levelColor(level: number): string {
-  if (level >= 8) return Colors.accent.yellow
-  if (level >= 6) return Colors.accent.orange
-  if (level >= 4) return Colors.primary[400]
-  return 'rgba(255,255,255,0.35)'
-}
+const initials = (name?: string | null) => (name?.trim()?.[0] ?? 'Z').toUpperCase()
 
-// ── Pick image helper ─────────────────────────────────────────────────────────
-
-async function pickImage(): Promise<string | null> {
-  const perm = await ImagePicker.requestMediaLibraryPermissionsAsync()
-  if (!perm.granted) return null
-  const result = await ImagePicker.launchImageLibraryAsync({
-    mediaTypes: ImagePicker.MediaTypeOptions.Images,
-    allowsEditing: true,
-    quality: 0.85,
-  })
-  if (result.canceled) return null
-  return result.assets[0].uri
-}
-
-// ── Story Bubble ──────────────────────────────────────────────────────────────
-
-function StoryBubble({ story, onPress, viewed }: { story: SocialPost; onPress: () => void; viewed: boolean }) {
-  const imgUri = story.media?.[0]?.uri ?? story.userAvatar
-
+// ── Avatar ──────────────────────────────────────────────────────────────────
+function Avatar({ name, size = 40 }: { name?: string | null; size?: number }) {
   return (
-    <TouchableOpacity style={sb.wrap} onPress={onPress} activeOpacity={0.82}>
-      <View style={[sb.ring, viewed && sb.ringViewed]}>
-        {imgUri ? (
-          <Image source={{ uri: imgUri }} style={sb.avatarImg} />
-        ) : (
-          <View style={sb.avatarFill}>
-            <Text style={sb.emoji}>{story.streak ? '🔥' : story.achievement ? '🏆' : '✨'}</Text>
-          </View>
-        )}
-      </View>
-      <Text style={sb.name} numberOfLines={1}>{story.userName.split(' ')[0]}</Text>
-    </TouchableOpacity>
+    <View style={[av.wrap, { width: size, height: size, borderRadius: size / 2 }]}>
+      <Text style={[av.txt, { fontSize: size * 0.4 }]}>{initials(name)}</Text>
+    </View>
   )
 }
-
-const sb = StyleSheet.create({
-  wrap: { alignItems: 'center', marginRight: Spacing[4], width: 68 },
-  ring: {
-    width: 68, height: 68, borderRadius: 34,
-    borderWidth: 2.5, borderColor: Colors.primary[500],
-    padding: 2.5, marginBottom: 5,
-    shadowColor: Colors.primary[500],
-    shadowOpacity: 0.4, shadowRadius: 8,
-  },
-  ringViewed: { borderColor: 'rgba(255,255,255,0.18)' },
-  avatarImg:  { flex: 1, borderRadius: 29, backgroundColor: Glass.elevated },
-  avatarFill: { flex: 1, borderRadius: 29, backgroundColor: Glass.elevated, alignItems: 'center', justifyContent: 'center' },
-  emoji: { fontSize: 24 },
-  name: { fontSize: 10, color: 'rgba(255,255,255,0.5)', textAlign: 'center', fontWeight: '600' },
+const av = StyleSheet.create({
+  wrap: { backgroundColor: Colors.primary[600], alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: `${Colors.primary[400]}55` },
+  txt: { color: '#fff', fontWeight: '800' },
 })
 
-// ── Story Viewer ───────────────────────────────────────────────────────────────
-
-function StoryViewer({ stories, initialIndex, onClose }: { stories: SocialPost[]; initialIndex: number; onClose: () => void }) {
-  const [idx, setIdx] = useState(initialIndex)
-  const { markStoryViewed } = useSocialStore()
-  const story = stories[idx]
-
-  useEffect(() => { if (story) markStoryViewed(story.id) }, [idx])
-  if (!story) return null
-
-  const timeLeft = story.expiresAt
-    ? Math.max(0, Math.round((new Date(story.expiresAt).getTime() - Date.now()) / 3600000))
-    : null
+// ── Post Card ───────────────────────────────────────────────────────────────
+function PostCard({ post, onLike, onComment, onDelete, isMine }: {
+  post: CommunityPost
+  onLike: (p: CommunityPost) => void
+  onComment: (p: CommunityPost) => void
+  onDelete: (p: CommunityPost) => void
+  isMine: boolean
+}) {
+  const name = post.author?.full_name ?? 'Usuario ZENCRUS'
+  const streak = post.metadata?.streak
+  const achievement = post.metadata?.achievement
 
   return (
-    <Modal visible animationType="fade" onRequestClose={onClose} statusBarTranslucent>
-      <View style={sv.bg}>
-        {/* Background image if present */}
-        {story.media?.[0]?.uri && (
-          <Image source={{ uri: story.media[0].uri }} style={StyleSheet.absoluteFillObject} resizeMode="cover" />
-        )}
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(0,0,0,0.55)' }]} />
-
-        {/* Progress bars */}
-        <View style={sv.progress}>
-          {stories.map((_, i) => (
-            <View key={i} style={[sv.bar, i <= idx && sv.barFilled]} />
-          ))}
-        </View>
-
-        {/* Close */}
-        <TouchableOpacity style={sv.close} onPress={onClose}>
-          <Ionicons name="close" size={24} color="#fff" />
-        </TouchableOpacity>
-
-        <View style={sv.content}>
-          <View style={sv.header}>
-            <View style={sv.avatarCircle}>
-              <Text style={{ fontSize: 20 }}>⚡</Text>
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={sv.name}>{story.userName}</Text>
-              <Text style={sv.meta}>{story.userHandle} · {timeLeft != null ? `${timeLeft}h restantes` : timeAgo(story.createdAt)}</Text>
-            </View>
-          </View>
-          <View style={sv.card}>
-            {story.streak && (
-              <View style={sv.badge}>
-                <Text style={sv.badgeTxt}>🔥 {story.streak} días de racha</Text>
-              </View>
-            )}
-            {story.achievement && (
-              <View style={[sv.badge, { backgroundColor: Colors.accent.yellow + '25' }]}>
-                <Text style={[sv.badgeTxt, { color: Colors.accent.yellow }]}>🏆 {story.achievement}</Text>
-              </View>
-            )}
-            <Text style={sv.txt}>{story.content}</Text>
-            {story.healthScore != null && (
-              <Text style={sv.score}>Health Score: {story.healthScore} ⭐</Text>
-            )}
-          </View>
-        </View>
-
-        {/* Tap areas */}
-        <View style={sv.nav}>
-          <TouchableOpacity style={{ flex: 1 }} onPress={() => setIdx(i => Math.max(0, i - 1))} />
-          <TouchableOpacity style={{ flex: 1 }} onPress={() => {
-            if (idx < stories.length - 1) setIdx(i => i + 1)
-            else onClose()
-          }} />
-        </View>
-      </View>
-    </Modal>
-  )
-}
-
-const sv = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#000' },
-  progress: { flexDirection: 'row', gap: 4, paddingHorizontal: Spacing[4], paddingTop: 60, paddingBottom: Spacing[3] },
-  bar: { flex: 1, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.3)' },
-  barFilled: { backgroundColor: '#fff' },
-  close: { position: 'absolute', top: 56, right: Spacing[5], zIndex: 10, padding: Spacing[2] },
-  content: { flex: 1, padding: Spacing[5], paddingTop: Spacing[4] },
-  header: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], marginBottom: Spacing[6] },
-  avatarCircle: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Colors.primary[900],
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: Colors.primary[500],
-  },
-  name: { fontSize: Typography.fontSize.base, fontWeight: '700', color: '#fff' },
-  meta: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
-  card: { backgroundColor: 'rgba(0,0,0,0.4)', borderRadius: 20, padding: Spacing[5], borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  badge: {
-    backgroundColor: Colors.primary[900] + '80', borderRadius: BorderRadius.full,
-    paddingHorizontal: Spacing[4], paddingVertical: 5,
-    alignSelf: 'flex-start', marginBottom: Spacing[3],
-  },
-  badgeTxt: { fontSize: Typography.fontSize.xs, color: Colors.primary[300], fontWeight: '700' },
-  txt: { fontSize: Typography.fontSize.base, color: '#fff', lineHeight: 24 },
-  score: { fontSize: Typography.fontSize.sm, color: Colors.accent.yellow, marginTop: Spacing[3], fontWeight: '600' },
-  nav: { position: 'absolute', top: 0, left: 0, right: 0, bottom: 0, flexDirection: 'row' },
-})
-
-// ── Post Card ──────────────────────────────────────────────────────────────────
-
-function PostCard({ post, onLike, onComment }: { post: SocialPost; onLike: () => void; onComment: () => void }) {
-  const { user } = useAuthStore()
-  const myId   = user?.id ?? 'me'
-  const myName = user?.full_name ?? 'Tú'
-  const liked = post.likes.includes(myId)
-  const isMe  = post.userId === myId
-  const [showComments, setShowComments] = useState(false)
-  const [commentInput, setCommentInput] = useState('')
-  const { addComment, friends, followUser, unfollowUser } = useSocialStore()
-  const isFollowing = friends.includes(post.userId)
-
-  const handleComment = () => {
-    if (!commentInput.trim()) return
-    addComment(post.id, { userId: myId, userName: myName, content: commentInput.trim() })
-    setCommentInput('')
-  }
-
-  return (
-    <View style={pc.wrap}>
-      {/* Top highlight */}
-      <View style={pc.highlight} pointerEvents="none" />
-
-      {/* Header */}
-      <View style={pc.header}>
-        <View style={pc.avatarCircle}>
-          {post.userAvatar
-            ? <Image source={{ uri: post.userAvatar }} style={{ flex: 1, borderRadius: 20 }} />
-            : <Ionicons name="person" size={18} color={Colors.primary[400]} />
-          }
-        </View>
+    <View style={pc.card}>
+      <View style={pc.head}>
+        <Avatar name={name} />
         <View style={{ flex: 1 }}>
-          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 7 }}>
-            <Text style={pc.name}>{post.userName}</Text>
-            <View style={[pc.levelPill, { borderColor: levelColor(post.userLevel) }]}>
-              <Text style={[pc.levelTxt, { color: levelColor(post.userLevel) }]}>Nv.{post.userLevel}</Text>
-            </View>
-          </View>
-          <Text style={pc.meta}>{post.userHandle} · {timeAgo(post.createdAt)}</Text>
+          <Text style={pc.name}>{name}</Text>
+          <Text style={pc.time}>{timeAgo(post.created_at)}</Text>
         </View>
-        {!isMe && (
-          <TouchableOpacity
-            style={[pc.followBtn, isFollowing && pc.followBtnActive]}
-            onPress={() => isFollowing ? unfollowUser(post.userId) : followUser(post.userId)}
-            activeOpacity={0.78}
-          >
-            <Text style={[pc.followTxt, isFollowing && pc.followTxtActive]}>
-              {isFollowing ? 'Siguiendo' : 'Seguir'}
-            </Text>
+        {isMine && (
+          <TouchableOpacity onPress={() => onDelete(post)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
+            <Ionicons name="ellipsis-horizontal" size={18} color="rgba(255,255,255,0.4)" />
           </TouchableOpacity>
         )}
       </View>
 
-      {/* Badges */}
-      {post.streak != null && (
-        <View style={pc.badge}>
-          <Text style={pc.badgeTxt}>🔥 Racha de {post.streak} días</Text>
-        </View>
-      )}
-      {post.achievement && (
-        <View style={[pc.badge, { backgroundColor: Colors.accent.yellow + '12', borderColor: Colors.accent.yellow + '35' }]}>
-          <Text style={[pc.badgeTxt, { color: Colors.accent.yellow }]}>🏆 {post.achievement}</Text>
-        </View>
-      )}
+      {!!post.content && <Text style={pc.content}>{post.content}</Text>}
 
-      {/* Content */}
-      <Text style={pc.content}>{post.content}</Text>
-
-      {/* Media */}
-      {post.media && post.media.length > 0 && (
-        <View style={pc.mediaWrap}>
-          {post.media.map((m, i) => (
-            <Image key={i} source={{ uri: m.uri }} style={pc.mediaImg} resizeMode="cover" />
-          ))}
+      {(streak || achievement) && (
+        <View style={pc.badges}>
+          {streak ? (
+            <View style={pc.badge}><Ionicons name="flame" size={13} color={Colors.accent.orange} /><Text style={pc.badgeTxt}>Racha de {streak} días</Text></View>
+          ) : null}
+          {achievement ? (
+            <View style={pc.badge}><Ionicons name="trophy" size={13} color={Colors.accent.yellow} /><Text style={[pc.badgeTxt, { color: Colors.accent.yellow }]}>{achievement}</Text></View>
+          ) : null}
         </View>
       )}
 
-      {/* Tags */}
-      {post.tags.length > 0 && (
-        <View style={pc.tags}>
-          {post.tags.map(t => <Text key={t} style={pc.tag}>{t}</Text>)}
-        </View>
-      )}
-
-      {/* Actions */}
       <View style={pc.actions}>
-        <TouchableOpacity style={pc.action} onPress={onLike}>
-          <Ionicons
-            name={liked ? 'heart' : 'heart-outline'}
-            size={19}
-            color={liked ? Colors.accent.pink : 'rgba(255,255,255,0.45)'}
-          />
-          <Text style={[pc.actionTxt, liked && { color: Colors.accent.pink }]}>{post.likes.length}</Text>
+        <TouchableOpacity style={pc.action} onPress={() => onLike(post)} activeOpacity={0.7}>
+          <Ionicons name={post.liked ? 'heart' : 'heart-outline'} size={20} color={post.liked ? Colors.accent.red : 'rgba(255,255,255,0.6)'} />
+          <Text style={[pc.actionTxt, post.liked && { color: Colors.accent.red }]}>{post.likes_count}</Text>
         </TouchableOpacity>
-        <TouchableOpacity style={pc.action} onPress={() => { setShowComments(v => !v); onComment() }}>
-          <Ionicons name="chatbubble-outline" size={17} color="rgba(255,255,255,0.45)" />
-          <Text style={pc.actionTxt}>{post.comments.length}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={pc.action}>
-          <Ionicons name="arrow-redo-outline" size={18} color="rgba(255,255,255,0.45)" />
-          <Text style={pc.actionTxt}>Compartir</Text>
+        <TouchableOpacity style={pc.action} onPress={() => onComment(post)} activeOpacity={0.7}>
+          <Ionicons name="chatbubble-outline" size={19} color="rgba(255,255,255,0.6)" />
+          <Text style={pc.actionTxt}>{post.comments_count}</Text>
         </TouchableOpacity>
       </View>
-
-      {/* Comments */}
-      {showComments && (
-        <View style={pc.commentsWrap}>
-          {post.comments.map(c => (
-            <View key={c.id} style={pc.commentRow}>
-              <Text style={pc.commentName}>{c.userName} </Text>
-              <Text style={pc.commentTxt}>{c.content}</Text>
-            </View>
-          ))}
-          <View style={pc.commentField}>
-            <Ionicons name="person-circle-outline" size={22} color="rgba(255,255,255,0.3)" />
-            <TextInput
-              style={pc.commentInput}
-              value={commentInput}
-              onChangeText={setCommentInput}
-              placeholder="Añade un comentario..."
-              placeholderTextColor="rgba(255,255,255,0.22)"
-              onSubmitEditing={handleComment}
-              returnKeyType="send"
-            />
-            {commentInput.trim().length > 0 && (
-              <TouchableOpacity onPress={handleComment}>
-                <Ionicons name="send" size={18} color={Colors.primary[400]} />
-              </TouchableOpacity>
-            )}
-          </View>
-        </View>
-      )}
     </View>
   )
 }
 
-const pc = StyleSheet.create({
-  wrap: {
-    backgroundColor: Glass.card,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: Glass.cardBorder,
-    padding: Spacing[4],
-    overflow: 'hidden',
-  },
-  highlight: {
-    position: 'absolute',
-    top: 0, left: 0, right: 0,
-    height: 1,
-    backgroundColor: Glass.cardHighlight,
-  },
-  header: { flexDirection: 'row', alignItems: 'center', gap: 12, marginBottom: Spacing[3] },
-  avatarCircle: {
-    width: 42, height: 42, borderRadius: 21,
-    backgroundColor: Glass.elevated,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: `${Colors.primary[500]}55`,
-    overflow: 'hidden',
-  },
-  name: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#fff' },
-  meta: { fontSize: 10, color: 'rgba(255,255,255,0.38)', marginTop: 1 },
-  levelPill: {
-    borderWidth: 1, borderRadius: BorderRadius.full,
-    paddingHorizontal: 6, paddingVertical: 1,
-  },
-  levelTxt: { fontSize: 9, fontWeight: '800' },
-  followBtn: {
-    borderWidth: 1, borderColor: Colors.primary[500],
-    borderRadius: BorderRadius.full,
-    paddingHorizontal: 13, paddingVertical: 5,
-  },
-  followBtnActive: {
-    backgroundColor: Glass.elevated,
-    borderColor: 'rgba(255,255,255,0.2)',
-  },
-  followTxt: { fontSize: 11, fontWeight: '700', color: Colors.primary[400] },
-  followTxtActive: { color: 'rgba(255,255,255,0.5)' },
-  badge: {
-    backgroundColor: Glass.purpleTint,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: 10, paddingVertical: 5,
-    alignSelf: 'flex-start', marginBottom: 7,
-    borderWidth: 1, borderColor: Glass.purpleBorder,
-  },
-  badgeTxt: { fontSize: 11, color: Colors.primary[300], fontWeight: '600' },
-  content: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.88)', lineHeight: 21, marginBottom: Spacing[3] },
-  mediaWrap: { borderRadius: 12, overflow: 'hidden', marginBottom: Spacing[3] },
-  mediaImg: { width: '100%', height: 200, borderRadius: 12 },
-  tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginBottom: Spacing[3] },
-  tag: { fontSize: 11, color: Colors.primary[400], fontWeight: '600' },
-  actions: {
-    flexDirection: 'row', gap: Spacing[5], paddingTop: Spacing[3],
-    borderTopWidth: 1, borderTopColor: Glass.cardBorder,
-  },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 5, paddingVertical: 2 },
-  actionTxt: { fontSize: 11, color: 'rgba(255,255,255,0.42)', fontWeight: '600' },
-  commentsWrap: {
-    marginTop: Spacing[3], paddingTop: Spacing[3],
-    borderTopWidth: 1, borderTopColor: Glass.cardBorder,
-  },
-  commentRow: { flexDirection: 'row', marginBottom: 6, flexWrap: 'wrap' },
-  commentName: { fontSize: 11, fontWeight: '700', color: '#fff' },
-  commentTxt: { fontSize: 11, color: 'rgba(255,255,255,0.62)' },
-  commentField: {
-    flexDirection: 'row', alignItems: 'center', gap: 10,
-    backgroundColor: Glass.elevated, borderRadius: 30,
-    paddingHorizontal: Spacing[3], paddingVertical: 8,
-    borderWidth: 1, borderColor: Glass.cardBorder, marginTop: Spacing[2],
-  },
-  commentInput: {
-    flex: 1, fontSize: 12, color: '#fff', padding: 0,
-  },
-})
-
-// ── Create Post Modal ─────────────────────────────────────────────────────────
-
-function CreatePostModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const [type, setType]       = useState<'post' | 'story'>('post')
-  const [content, setContent] = useState('')
-  const [tags, setTags]       = useState('')
-  const [mediaUri, setMediaUri] = useState<string | null>(null)
-  const [picking, setPicking]   = useState(false)
-
+// ── Screen ──────────────────────────────────────────────────────────────────
+export default function SocialScreen() {
   const { user } = useAuthStore()
-  const myId     = user?.id ?? 'me'
-  const myName   = user?.full_name ?? 'Tú'
-  const myHandle = user?.email ? `@${user.email.split('@')[0]}` : '@zencrus_user'
-  const { addPost, addStory } = useSocialStore()
-  const { currentStreak }     = useStreakStore()
-  const { scoreHistory }      = useHealthStore()
-  const healthScore = scoreHistory[0]?.total ?? 0
+  const [scope, setScope] = useState<FeedScope>('all')
+  const [posts, setPosts] = useState<CommunityPost[]>([])
+  const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
 
-  const handlePickImage = async () => {
-    setPicking(true)
+  const [composerOpen, setComposerOpen] = useState(false)
+  const [draft, setDraft] = useState('')
+  const [posting, setPosting] = useState(false)
+
+  const [commentsFor, setCommentsFor] = useState<CommunityPost | null>(null)
+
+  const load = useCallback(async (s: FeedScope) => {
     try {
-      const uri = await pickImage()
-      if (uri) setMediaUri(uri)
+      const data = await fetchFeed(s)
+      setPosts(data)
+    } catch {
+      // feed vacío ante error
     } finally {
-      setPicking(false)
+      setLoading(false)
+      setRefreshing(false)
+    }
+  }, [])
+
+  useEffect(() => { setLoading(true); load(scope) }, [scope, load])
+
+  const onRefresh = () => { setRefreshing(true); load(scope) }
+
+  const handleLike = async (p: CommunityPost) => {
+    const liked = !p.liked
+    setPosts(prev => prev.map(x => x.id === p.id ? { ...x, liked, likes_count: x.likes_count + (liked ? 1 : -1) } : x))
+    try { liked ? await likePost(p.id) : await unlikePost(p.id) }
+    catch { setPosts(prev => prev.map(x => x.id === p.id ? { ...x, liked: !liked, likes_count: x.likes_count + (liked ? -1 : 1) } : x)) }
+  }
+
+  const handlePost = async () => {
+    const content = draft.trim()
+    if (!content || posting) return
+    setPosting(true)
+    try {
+      const created = await createPost({ content, kind: 'post' })
+      setPosts(prev => [created, ...prev])
+      setDraft('')
+      setComposerOpen(false)
+    } catch {
+      Alert.alert('Error', 'No se pudo publicar. Intenta de nuevo.')
+    } finally {
+      setPosting(false)
     }
   }
 
-  const handlePublish = () => {
-    if (!content.trim()) return
-    const tagList = tags.split(/[\s,]+/).filter(t => t.startsWith('#'))
-    const base = {
-      userId:      myId,
-      userName:    myName,
-      userHandle:  myHandle,
-      userLevel:   1,
-      type,
-      content:     content.trim(),
-      tags:        tagList,
-      media:       mediaUri ? [{ uri: mediaUri, type: 'image' as const }] : undefined,
-      streak:      currentStreak > 0 ? currentStreak : undefined,
-      healthScore: healthScore > 0 ? healthScore : undefined,
-      isPublic:    true,
-    }
-    if (type === 'story') addStory(base as any)
-    else addPost(base as any)
-    setContent('')
-    setTags('')
-    setMediaUri(null)
-    onClose()
+  const handleDelete = (p: CommunityPost) => {
+    Alert.alert('Eliminar publicación', '¿Seguro que quieres eliminarla?', [
+      { text: 'Cancelar', style: 'cancel' },
+      { text: 'Eliminar', style: 'destructive', onPress: async () => {
+        setPosts(prev => prev.filter(x => x.id !== p.id))
+        try { await deletePost(p.id) } catch { load(scope) }
+      } },
+    ])
   }
-
-  const reset = () => { setContent(''); setTags(''); setMediaUri(null); onClose() }
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={reset}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <View style={cm.container}>
-          {/* Header */}
-          <View style={cm.header}>
-            <TouchableOpacity onPress={reset}>
-              <Text style={cm.cancel}>Cancelar</Text>
-            </TouchableOpacity>
-            <Text style={cm.title}>Compartir</Text>
-            <TouchableOpacity
-              style={[cm.publishBtn, !content.trim() && { opacity: 0.35 }]}
-              onPress={handlePublish}
-              disabled={!content.trim()}
-            >
-              <Text style={cm.publishTxt}>Publicar</Text>
-            </TouchableOpacity>
-          </View>
+    <SafeAreaView style={s.container} edges={['top']}>
+      {/* Header */}
+      <View style={s.header}>
+        <Text style={s.headerTitle}>Comunidad</Text>
+        <TouchableOpacity style={s.newBtn} onPress={() => setComposerOpen(true)} activeOpacity={0.85}>
+          <Ionicons name="add" size={20} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
-          {/* Type tabs */}
-          <View style={cm.typeTabs}>
-            {(['post', 'story'] as const).map(t => (
-              <TouchableOpacity
-                key={t}
-                style={[cm.typeTab, type === t && cm.typeTabActive]}
-                onPress={() => setType(t)}
-              >
-                <Ionicons
-                  name={t === 'post' ? 'create-outline' : 'time-outline'}
-                  size={15}
-                  color={type === t ? Colors.primary[400] : 'rgba(255,255,255,0.4)'}
-                />
-                <Text style={[cm.typeTabTxt, type === t && cm.typeTabTxtActive]}>
-                  {t === 'post' ? 'Publicación' : 'Historia (24h)'}
-                </Text>
+      {/* Scope tabs */}
+      <View style={s.tabs}>
+        {(['all', 'following'] as FeedScope[]).map(sc => (
+          <TouchableOpacity key={sc} style={[s.tab, scope === sc && s.tabOn]} onPress={() => setScope(sc)}>
+            <Text style={[s.tabTxt, scope === sc && s.tabTxtOn]}>{sc === 'all' ? 'Explorar' : 'Siguiendo'}</Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+
+      {loading ? (
+        <View style={s.center}><ActivityIndicator color={Colors.primary[400]} size="large" /></View>
+      ) : (
+        <FlatList
+          data={posts}
+          keyExtractor={p => p.id}
+          contentContainerStyle={{ padding: Spacing[4], paddingBottom: 120 }}
+          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary[400]} />}
+          renderItem={({ item }) => (
+            <PostCard
+              post={item}
+              isMine={item.user_id === user?.id}
+              onLike={handleLike}
+              onComment={setCommentsFor}
+              onDelete={handleDelete}
+            />
+          )}
+          ListEmptyComponent={
+            <View style={s.empty}>
+              <Ionicons name="people-outline" size={48} color="rgba(255,255,255,0.25)" />
+              <Text style={s.emptyTitle}>{scope === 'following' ? 'Aún no sigues a nadie' : 'Sé el primero en publicar'}</Text>
+              <Text style={s.emptyBody}>{scope === 'following' ? 'Sigue cuentas para ver su progreso aquí.' : 'Comparte tu progreso y motiva a la comunidad ZENCRUS.'}</Text>
+              <TouchableOpacity style={s.emptyBtn} onPress={() => setComposerOpen(true)}>
+                <Text style={s.emptyBtnTxt}>Crear publicación</Text>
               </TouchableOpacity>
-            ))}
-          </View>
+            </View>
+          }
+        />
+      )}
 
-          <ScrollView style={{ flex: 1 }} keyboardShouldPersistTaps="handled">
-            {/* Compose area */}
+      {/* Composer */}
+      <Modal visible={composerOpen} animationType="slide" transparent onRequestClose={() => setComposerOpen(false)}>
+        <KeyboardAvoidingView style={cm.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <View style={cm.sheet}>
+            <View style={cm.head}>
+              <TouchableOpacity onPress={() => setComposerOpen(false)}><Text style={cm.cancel}>Cancelar</Text></TouchableOpacity>
+              <Text style={cm.title}>Nueva publicación</Text>
+              <TouchableOpacity onPress={handlePost} disabled={!draft.trim() || posting}>
+                {posting ? <ActivityIndicator color={Colors.primary[400]} /> : <Text style={[cm.post, (!draft.trim()) && { opacity: 0.4 }]}>Publicar</Text>}
+              </TouchableOpacity>
+            </View>
             <View style={cm.body}>
-              <View style={cm.avatarCircle}>
-                <Ionicons name="person" size={20} color={Colors.primary[400]} />
-              </View>
+              <Avatar name={user?.full_name ?? user?.email} size={38} />
               <TextInput
                 style={cm.input}
-                value={content}
-                onChangeText={setContent}
-                placeholder="¿Qué quieres compartir hoy?"
-                placeholderTextColor="rgba(255,255,255,0.28)"
+                placeholder="¿Qué quieres compartir con la comunidad?"
+                placeholderTextColor="rgba(255,255,255,0.35)"
+                value={draft}
+                onChangeText={setDraft}
                 multiline
                 autoFocus
-                maxLength={500}
+                maxLength={2000}
               />
             </View>
+          </View>
+        </KeyboardAvoidingView>
+      </Modal>
 
-            {/* Selected image preview */}
-            {mediaUri && (
-              <View style={cm.imgPreviewWrap}>
-                <Image source={{ uri: mediaUri }} style={cm.imgPreview} resizeMode="cover" />
-                <TouchableOpacity style={cm.removeImg} onPress={() => setMediaUri(null)}>
-                  <Ionicons name="close-circle" size={24} color="#fff" />
-                </TouchableOpacity>
-              </View>
-            )}
+      {/* Comments */}
+      {commentsFor && (
+        <CommentsModal post={commentsFor} onClose={() => setCommentsFor(null)} onAdded={() => {
+          setPosts(prev => prev.map(x => x.id === commentsFor.id ? { ...x, comments_count: x.comments_count + 1 } : x))
+        }} me={user} />
+      )}
+    </SafeAreaView>
+  )
+}
 
-            {/* Action toolbar */}
-            <View style={cm.toolbar}>
-              <TouchableOpacity style={cm.toolBtn} onPress={handlePickImage} disabled={picking}>
-                {picking
-                  ? <ActivityIndicator size="small" color={Colors.primary[400]} />
-                  : <Ionicons name="image-outline" size={22} color={Colors.primary[400]} />
-                }
-                <Text style={cm.toolTxt}>Imagen</Text>
-              </TouchableOpacity>
-              {currentStreak > 0 && (
-                <View style={cm.autoChip}>
-                  <Text style={cm.autoChipTxt}>🔥 Racha {currentStreak}d</Text>
+// ── Comments Modal ──────────────────────────────────────────────────────────
+function CommentsModal({ post, onClose, onAdded, me }: {
+  post: CommunityPost; onClose: () => void; onAdded: () => void; me: any
+}) {
+  const [comments, setComments] = useState<CommunityComment[]>([])
+  const [loading, setLoading] = useState(true)
+  const [draft, setDraft] = useState('')
+  const [sending, setSending] = useState(false)
+
+  useEffect(() => {
+    fetchComments(post.id).then(setComments).catch(() => {}).finally(() => setLoading(false))
+  }, [post.id])
+
+  const send = async () => {
+    const content = draft.trim()
+    if (!content || sending) return
+    setSending(true)
+    try {
+      const c = await addComment(post.id, content)
+      setComments(prev => [...prev, c])
+      setDraft('')
+      onAdded()
+    } catch {
+      Alert.alert('Error', 'No se pudo comentar.')
+    } finally {
+      setSending(false)
+    }
+  }
+
+  return (
+    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
+      <KeyboardAvoidingView style={cm.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <View style={[cm.sheet, { maxHeight: '80%' }]}>
+          <View style={cm.head}>
+            <View style={{ width: 60 }} />
+            <Text style={cm.title}>Comentarios</Text>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" /></TouchableOpacity>
+          </View>
+
+          {loading ? (
+            <View style={{ padding: Spacing[8] }}><ActivityIndicator color={Colors.primary[400]} /></View>
+          ) : (
+            <FlatList
+              data={comments}
+              keyExtractor={c => c.id}
+              style={{ maxHeight: 380 }}
+              contentContainerStyle={{ padding: Spacing[4], gap: Spacing[4] }}
+              renderItem={({ item }) => (
+                <View style={cx.row}>
+                  <Avatar name={item.author?.full_name} size={32} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={cx.name}>{item.author?.full_name ?? 'Usuario'} <Text style={cx.time}>· {timeAgo(item.created_at)}</Text></Text>
+                    <Text style={cx.content}>{item.content}</Text>
+                  </View>
                 </View>
               )}
-            </View>
+              ListEmptyComponent={<Text style={cx.emptyTxt}>Sé el primero en comentar.</Text>}
+            />
+          )}
 
-            {/* Tags */}
-            <View style={cm.tagSection}>
-              <Text style={cm.tagLabel}>Etiquetas</Text>
-              <View style={cm.tagInput}>
-                <Ionicons name="pricetag-outline" size={15} color="rgba(255,255,255,0.35)" />
-                <TextInput
-                  style={{ flex: 1, fontSize: Typography.fontSize.sm, color: '#fff', padding: 0, marginLeft: 8 }}
-                  value={tags}
-                  onChangeText={setTags}
-                  placeholder="#racha #progreso #nutricion"
-                  placeholderTextColor="rgba(255,255,255,0.25)"
-                />
-              </View>
-            </View>
-          </ScrollView>
+          <View style={cx.inputRow}>
+            <TextInput
+              style={cx.input}
+              placeholder="Escribe un comentario…"
+              placeholderTextColor="rgba(255,255,255,0.35)"
+              value={draft}
+              onChangeText={setDraft}
+              maxLength={1000}
+            />
+            <TouchableOpacity onPress={send} disabled={!draft.trim() || sending} style={cx.sendBtn}>
+              {sending ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send" size={18} color={draft.trim() ? '#fff' : 'rgba(255,255,255,0.4)'} />}
+            </TouchableOpacity>
+          </View>
         </View>
       </KeyboardAvoidingView>
     </Modal>
   )
 }
 
-const cm = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing[5], paddingVertical: Spacing[4],
-    borderBottomWidth: 1, borderBottomColor: Glass.cardBorder,
-  },
-  cancel: { fontSize: Typography.fontSize.base, color: 'rgba(255,255,255,0.5)', fontWeight: '500' },
-  title: { fontSize: Typography.fontSize.base, fontWeight: '700', color: '#fff' },
-  publishBtn: {
-    backgroundColor: Colors.primary[500], borderRadius: BorderRadius.full,
-    paddingHorizontal: Spacing[5], paddingVertical: 7,
-  },
-  publishTxt: { color: '#fff', fontWeight: '700', fontSize: Typography.fontSize.sm },
-  typeTabs: { flexDirection: 'row', padding: Spacing[4], gap: Spacing[3] },
-  typeTab: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
-    gap: 6, paddingVertical: Spacing[3], borderRadius: BorderRadius.md,
-    borderWidth: 1, borderColor: Glass.cardBorder,
-    backgroundColor: Glass.card,
-  },
-  typeTabActive: { backgroundColor: Glass.purpleTint, borderColor: Glass.purpleBorder },
-  typeTabTxt: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.42)', fontWeight: '600' },
-  typeTabTxtActive: { color: Colors.primary[400] },
-  body: { flexDirection: 'row', gap: Spacing[3], padding: Spacing[5] },
-  avatarCircle: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Glass.elevated,
-    alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: `${Colors.primary[500]}55`,
-  },
-  input: {
-    flex: 1, fontSize: Typography.fontSize.base, color: '#fff',
-    lineHeight: 24, minHeight: 120,
-  },
-  imgPreviewWrap: { marginHorizontal: Spacing[5], borderRadius: 14, overflow: 'hidden', marginBottom: Spacing[3] },
-  imgPreview: { width: '100%', height: 200 },
-  removeImg: { position: 'absolute', top: 8, right: 8 },
-  toolbar: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
-    paddingHorizontal: Spacing[5], paddingBottom: Spacing[3],
-    borderTopWidth: 1, borderTopColor: Glass.cardBorder, paddingTop: Spacing[3],
-  },
-  toolBtn: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  toolTxt: { fontSize: Typography.fontSize.xs, color: Colors.primary[400], fontWeight: '600' },
-  autoChip: {
-    backgroundColor: Glass.card, borderRadius: BorderRadius.full,
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderWidth: 1, borderColor: Glass.cardBorder,
-  },
-  autoChipTxt: { fontSize: 11, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
-  tagSection: { paddingHorizontal: Spacing[5], paddingBottom: Spacing[8] },
-  tagLabel: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.38)', letterSpacing: 1.2, textTransform: 'uppercase', marginBottom: 8 },
-  tagInput: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: Glass.card, borderRadius: 12,
-    borderWidth: 1, borderColor: Glass.cardBorder,
-    paddingHorizontal: Spacing[4], paddingVertical: 12,
-  },
+// ── Styles ──────────────────────────────────────────────────────────────────
+const s = StyleSheet.create({
+  container: { flex: 1, backgroundColor: '#080808' },
+  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing[5], paddingVertical: Spacing[3] },
+  headerTitle: { fontSize: Typography.fontSize['2xl'], fontWeight: '900', color: '#fff' },
+  newBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: Colors.primary[500], alignItems: 'center', justifyContent: 'center' },
+  tabs: { flexDirection: 'row', gap: Spacing[2], paddingHorizontal: Spacing[5], paddingBottom: Spacing[3] },
+  tab: { paddingHorizontal: Spacing[4], paddingVertical: Spacing[2], borderRadius: BorderRadius.full, backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder },
+  tabOn: { backgroundColor: Glass.purpleTint, borderColor: Glass.purpleBorder },
+  tabTxt: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.55)', fontWeight: '700' },
+  tabTxtOn: { color: Colors.primary[400] },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  empty: { alignItems: 'center', paddingVertical: Spacing[16], paddingHorizontal: Spacing[6], gap: Spacing[3] },
+  emptyTitle: { fontSize: Typography.fontSize.lg, fontWeight: '800', color: '#fff', marginTop: Spacing[2] },
+  emptyBody: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.45)', textAlign: 'center', lineHeight: 20 },
+  emptyBtn: { marginTop: Spacing[3], backgroundColor: Colors.primary[500], borderRadius: BorderRadius.full, paddingHorizontal: Spacing[6], paddingVertical: Spacing[3] },
+  emptyBtnTxt: { color: '#fff', fontWeight: '800', fontSize: Typography.fontSize.sm },
 })
 
-// ── Main Screen ───────────────────────────────────────────────────────────────
+const pc = StyleSheet.create({
+  card: { backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder, borderRadius: BorderRadius.lg, padding: Spacing[4], marginBottom: Spacing[3] },
+  head: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], marginBottom: Spacing[3] },
+  name: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
+  time: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.4)', marginTop: 1 },
+  content: { fontSize: Typography.fontSize.base, color: 'rgba(255,255,255,0.9)', lineHeight: 22, marginBottom: Spacing[3] },
+  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2], marginBottom: Spacing[3] },
+  badge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Glass.elevated, borderRadius: BorderRadius.full, paddingHorizontal: Spacing[3], paddingVertical: 5 },
+  badgeTxt: { fontSize: Typography.fontSize.xs, color: Colors.accent.orange, fontWeight: '700' },
+  actions: { flexDirection: 'row', gap: Spacing[5], borderTopWidth: 1, borderTopColor: Glass.cardBorder, paddingTop: Spacing[3] },
+  action: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  actionTxt: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.6)', fontWeight: '700' },
+})
 
-export default function SocialScreen() {
-  const { getFeed, getActiveStories, likePost, unlikePost, pruneExpiredStories, viewedStories } = useSocialStore()
-  const { user } = useAuthStore()
-  const MY_USER_ID   = user?.id ?? 'me'
-  const MY_USER_NAME = user?.full_name ?? 'Tú'
-  const [refreshing, setRefreshing] = useState(false)
-  const [showCreate, setShowCreate] = useState(false)
-  const [storyViewer, setStoryViewer] = useState<{ stories: SocialPost[]; index: number } | null>(null)
-  const [tab, setTab] = useState<'feed' | 'discover'>('feed')
+const cm = StyleSheet.create({
+  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderColor: Glass.cardBorder, paddingBottom: Spacing[8] },
+  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing[4], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
+  cancel: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
+  title: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
+  post: { fontSize: Typography.fontSize.sm, color: Colors.primary[400], fontWeight: '800' },
+  body: { flexDirection: 'row', gap: Spacing[3], padding: Spacing[4] },
+  input: { flex: 1, fontSize: Typography.fontSize.base, color: '#fff', minHeight: 100, textAlignVertical: 'top' },
+})
 
-  useEffect(() => { pruneExpiredStories() }, [])
-
-  const onRefresh = useCallback(async () => {
-    setRefreshing(true)
-    pruneExpiredStories()
-    await new Promise(r => setTimeout(r, 700))
-    setRefreshing(false)
-  }, [])
-
-  const feed    = getFeed()
-  const stories = getActiveStories()
-
-  const handleLike = (post: SocialPost) => {
-    if (post.likes.includes(MY_USER_ID)) unlikePost(post.id, MY_USER_ID)
-    else likePost(post.id, MY_USER_ID)
-  }
-
-  return (
-    <View style={s.bg}>
-      {/* Header */}
-      <SafeAreaView edges={['top']}>
-        <View style={s.header}>
-          <View>
-            <Text style={s.title}>Comunidad</Text>
-            <Text style={s.subtitle}>Conecta, comparte y crece</Text>
-          </View>
-          <TouchableOpacity style={s.createBtn} onPress={() => setShowCreate(true)} activeOpacity={0.82}>
-            <View style={s.createBtnShine} pointerEvents="none" />
-            <Ionicons name="add" size={18} color="#fff" />
-            <Text style={s.createTxt}>Compartir</Text>
-          </TouchableOpacity>
-        </View>
-      </SafeAreaView>
-
-      {/* Stories */}
-      <View style={s.storiesWrap}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.storiesRow}>
-          {/* My story */}
-          <TouchableOpacity style={[sb.wrap, { marginRight: Spacing[4] }]} onPress={() => setShowCreate(true)}>
-            <View style={[sb.ring, { borderStyle: 'dashed', borderColor: 'rgba(255,255,255,0.22)' }]}>
-              <View style={sb.avatarFill}>
-                <Ionicons name="add" size={26} color={Colors.primary[400]} />
-              </View>
-            </View>
-            <Text style={sb.name}>Mi historia</Text>
-          </TouchableOpacity>
-          {stories.map((story, i) => (
-            <StoryBubble
-              key={story.id}
-              story={story}
-              viewed={viewedStories.includes(story.id)}
-              onPress={() => setStoryViewer({ stories, index: i })}
-            />
-          ))}
-        </ScrollView>
-      </View>
-
-      {/* Tabs */}
-      <View style={s.tabs}>
-        {(['feed', 'discover'] as const).map(t => (
-          <TouchableOpacity key={t} style={[s.tab, tab === t && s.tabActive]} onPress={() => setTab(t)}>
-            <Ionicons
-              name={t === 'feed' ? 'people-outline' : 'compass-outline'}
-              size={15}
-              color={tab === t ? Colors.primary[400] : 'rgba(255,255,255,0.38)'}
-            />
-            <Text style={[s.tabTxt, tab === t && s.tabTxtActive]}>
-              {t === 'feed' ? 'Siguiendo' : 'Descubrir'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Feed */}
-      <FlatList
-        data={feed}
-        keyExtractor={p => p.id}
-        renderItem={({ item }) => (
-          <PostCard post={item} onLike={() => handleLike(item)} onComment={() => {}} />
-        )}
-        refreshControl={
-          <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary[400]} />
-        }
-        contentContainerStyle={[s.feedContent, feed.length === 0 && { flex: 1 }]}
-        ListEmptyComponent={
-          <View style={s.empty}>
-            <View style={s.emptyIcon}>
-              <Ionicons name="people-outline" size={38} color={Colors.primary[400]} />
-            </View>
-            <Text style={s.emptyTitle}>Sé el primero en compartir</Text>
-            <Text style={s.emptySub}>Comparte tu progreso, comidas o logros con la comunidad ZENCRUS.</Text>
-            <TouchableOpacity style={s.emptyBtn} onPress={() => setShowCreate(true)} activeOpacity={0.82}>
-              <Text style={s.emptyBtnTxt}>Crear publicación</Text>
-            </TouchableOpacity>
-          </View>
-        }
-      />
-
-      <CreatePostModal visible={showCreate} onClose={() => setShowCreate(false)} />
-
-      {storyViewer && (
-        <StoryViewer
-          stories={storyViewer.stories}
-          initialIndex={storyViewer.index}
-          onClose={() => setStoryViewer(null)}
-        />
-      )}
-    </View>
-  )
-}
-
-const s = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#080808' },
-  header: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: Spacing[5], paddingTop: Spacing[3], paddingBottom: Spacing[4],
-    borderBottomWidth: 1, borderBottomColor: Glass.cardBorder,
-  },
-  title: { fontSize: Typography.fontSize.xl, fontWeight: '800', color: '#fff', letterSpacing: -0.3 },
-  subtitle: { fontSize: 11, color: 'rgba(255,255,255,0.35)', marginTop: 2 },
-  createBtn: {
-    flexDirection: 'row', alignItems: 'center', gap: 5,
-    backgroundColor: Colors.primary[500], borderRadius: 20,
-    paddingHorizontal: 14, paddingVertical: 8,
-    overflow: 'hidden',
-    shadowColor: Colors.primary[500], shadowOpacity: 0.4, shadowRadius: 10, shadowOffset: { width: 0, height: 4 },
-  },
-  createBtnShine: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-    backgroundColor: 'rgba(255,255,255,0.28)',
-  },
-  createTxt: { color: '#fff', fontWeight: '700', fontSize: Typography.fontSize.xs },
-  storiesWrap: { borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
-  storiesRow: { paddingHorizontal: Spacing[4], paddingVertical: Spacing[4] },
-  tabs: {
-    flexDirection: 'row',
-    borderBottomWidth: 1, borderBottomColor: Glass.cardBorder,
-  },
-  tab: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: Spacing[3] },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: Colors.primary[500] },
-  tabTxt: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.38)', fontWeight: '600' },
-  tabTxtActive: { color: Colors.primary[400] },
-  feedContent: { paddingTop: Spacing[4], paddingBottom: 160 },
-  empty: { flex: 1, alignItems: 'center', justifyContent: 'center', padding: Spacing[8] },
-  emptyIcon: {
-    width: 80, height: 80, borderRadius: 40,
-    backgroundColor: Glass.purpleTint,
-    borderWidth: 1, borderColor: Glass.purpleBorder,
-    alignItems: 'center', justifyContent: 'center',
-    marginBottom: Spacing[5],
-  },
-  emptyTitle: { fontSize: Typography.fontSize.lg, fontWeight: '700', color: '#fff', marginBottom: Spacing[2], textAlign: 'center' },
-  emptySub: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.42)', textAlign: 'center', lineHeight: 20, marginBottom: Spacing[6] },
-  emptyBtn: {
-    backgroundColor: Colors.primary[500], borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing[6], paddingVertical: Spacing[3],
-    shadowColor: Colors.primary[500], shadowOpacity: 0.35, shadowRadius: 12,
-  },
-  emptyBtnTxt: { color: '#fff', fontWeight: '700', fontSize: Typography.fontSize.sm },
+const cx = StyleSheet.create({
+  row: { flexDirection: 'row', gap: Spacing[3], alignItems: 'flex-start' },
+  name: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#fff' },
+  time: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.4)', fontWeight: '400' },
+  content: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.85)', lineHeight: 19, marginTop: 2 },
+  emptyTxt: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.4)', textAlign: 'center', paddingVertical: Spacing[6] },
+  inputRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], padding: Spacing[4], borderTopWidth: 1, borderTopColor: Glass.cardBorder },
+  input: { flex: 1, backgroundColor: Glass.card, borderRadius: BorderRadius.full, paddingHorizontal: Spacing[4], paddingVertical: Spacing[3], color: '#fff', fontSize: Typography.fontSize.sm },
+  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.primary[500], alignItems: 'center', justifyContent: 'center' },
 })
