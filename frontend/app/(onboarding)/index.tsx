@@ -271,20 +271,31 @@ export default function OnboardingScreen() {
       })
 
       const profilePayload = {
-        peso: weight,
-        talla: height,
-        edad: age,
-        sexo: gender,
-        objetivo: goal,
-        pesoObjetivo: targetWeight,
-        nivelActividad: activityLevel,
-        tipoEntrenamiento: trainingTypes.join(','),
-        diasEntrenamiento: trainingDays,
-        comidasPorDia: mealsPerDay,
-        restriccionesDieteticas: dietRestrictions,
+        goal,
+        gender,
+        weight,
+        height,
+        age,
+        goalWeight: targetWeight,
+        activityLevel,
+        trainingType: trainingTypes[0] ?? 'gym',
+        trainingTypes,
+        trainingDays,
+        dietaryRestrictions: dietRestrictions,
+        mealsPerDay,
       }
 
-      const { data } = await api.put('/users/profile', profilePayload)
+      const { data } = await api.post('/onboarding/complete', profilePayload)
+
+      // Genera automáticamente el plan de nutrición + rutina personalizados con IA
+      const workoutLevel = ['sedentary', 'lightly_active'].includes(activityLevel) ? 'beginner'
+        : activityLevel === 'moderately_active' ? 'intermediate' : 'advanced'
+      const workoutGoal = goal === 'lose_fat' ? 'endurance' : goal === 'gain_muscle' ? 'hypertrophy' : 'functional'
+      const equipment = trainingTypes.includes('calisthenics') || trainingTypes.includes('none') ? ['bodyweight'] : ['bodyweight', 'dumbbells', 'barbell']
+      await Promise.allSettled([
+        api.post('/diet/generate', { durationDays: 7 }),
+        api.post('/workout/generate', { level: workoutLevel, goal: workoutGoal, daysPerWeek: trainingDays, equipment }),
+      ])
 
       // Update local user with fresh goals
       setUser({

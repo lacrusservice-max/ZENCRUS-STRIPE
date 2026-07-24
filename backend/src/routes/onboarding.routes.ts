@@ -21,6 +21,16 @@ router.post('/complete', async (req: Request, res: Response): Promise<void> => {
 
     const num = (v: unknown) => (typeof v === 'number' && !isNaN(v) ? v : (typeof v === 'string' && v !== '' ? Number(v) : undefined))
 
+    // Compatibilidad: dos formularios de onboarding distintos mandan campos con nombres diferentes
+    // (gender/age vs. sex/birthDate). Aceptamos ambos.
+    const gender = (typeof b.gender === 'string' ? b.gender : typeof b.sex === 'string' ? b.sex : undefined)
+    let age = num(b.age)
+    if (age === undefined && typeof b.birthDate === 'string' && b.birthDate) {
+      const parsed = Math.floor((Date.now() - new Date(b.birthDate).getTime()) / (365.25 * 24 * 60 * 60 * 1000))
+      if (!isNaN(parsed) && parsed > 0 && parsed < 120) age = parsed
+    }
+    const activityLevel = (typeof b.activityLevel === 'string' ? b.activityLevel : undefined)
+
     // Datos extendidos (sin columna propia) → JSONB "goals"
     const goalsJson = {
       primary: goal,
@@ -37,9 +47,9 @@ router.post('/complete', async (req: Request, res: Response): Promise<void> => {
     }
     if (num(b.weight) !== undefined) core.weight = num(b.weight)
     if (num(b.height) !== undefined) core.height = num(b.height)
-    if (num(b.age) !== undefined) core.age = num(b.age)
-    if (typeof b.gender === 'string') core.gender = b.gender
-    if (typeof b.activityLevel === 'string') core.activity_level = b.activityLevel
+    if (age !== undefined) core.age = age
+    if (gender) core.gender = gender
+    if (activityLevel) core.activity_level = activityLevel
     if (goal) core.fitness_goals = [goal]
     if (dietary.length) core.dietary_restrictions = dietary
 

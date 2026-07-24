@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { Target, Venus, Mars, Calendar, Weight, Activity, Salad, Zap } from "lucide-react";
 import toast from "react-hot-toast";
 import { Button } from "@/components/ui/Button";
-import { onboarding } from "@/lib/api";
+import { onboarding, diet as dietApi, workout as workoutApi } from "@/lib/api";
 
 const TOTAL_STEPS = 7;
 
@@ -76,15 +76,27 @@ export default function OnboardingPage() {
     try {
       await onboarding.complete({
         goal: data.goal,
-        sex: data.sex,
+        gender: data.sex,
         birthDate: data.birthDate,
         weight: parseFloat(data.weight),
         height: parseFloat(data.height),
         activityLevel: data.activityLevel,
         dietaryRestrictions: data.restrictions,
       });
+
+      // Genera automáticamente el plan de nutrición + rutina personalizados con IA
+      const workoutLevel = ["sedentary", "light"].includes(data.activityLevel) ? "beginner"
+        : data.activityLevel === "moderate" ? "intermediate" : "advanced";
+      const workoutGoal = data.goal === "lose_weight" ? "endurance" : data.goal === "gain_muscle" ? "hypertrophy" : "functional";
+      const daysPerWeek = { sedentary: 2, light: 3, moderate: 4, active: 5, very_active: 6 }[data.activityLevel] ?? 3;
+
+      await Promise.allSettled([
+        dietApi.generate({ durationDays: 7 }),
+        workoutApi.generate({ level: workoutLevel, goal: workoutGoal, daysPerWeek, equipment: ["bodyweight", "dumbbells"] }),
+      ]);
+
       toast.success("¡Plan generado con IA!");
-      router.push("/app/dashboard");
+      router.push("/welcome");
     } catch {
       toast.error("Error al guardar. Intenta de nuevo.");
     } finally {
