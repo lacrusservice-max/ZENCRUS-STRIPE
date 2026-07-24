@@ -1,7 +1,7 @@
-import { Router, raw } from 'express'
+import { Router } from 'express'
 import {
   getCurrentSubscription, createCheckoutSession, cancelSubscription,
-  handleStripeWebhook, handleMercadoPagoWebhook, getPlans, createCheckoutSchema,
+  handleMercadoPagoWebhook, getPlans, createCheckoutSchema,
   startTrial, createWebCheckout,
 } from '../controllers/subscriptionController'
 import { authenticate } from '../middleware/auth'
@@ -11,8 +11,8 @@ const router = Router()
 
 router.get('/plans', getPlans)
 
-// Webhooks — sin autenticación JWT, verifican firma propia
-router.post('/webhooks/stripe', raw({ type: 'application/json' }), handleStripeWebhook)
+// El webhook de Stripe se registra en server.ts (antes de express.json()),
+// porque necesita el body crudo para verificar la firma HMAC.
 router.post('/webhooks/mercadopago', handleMercadoPagoWebhook)
 
 router.use(authenticate)

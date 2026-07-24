@@ -13,6 +13,8 @@ import { errorHandler, notFound } from './middleware/errorHandler'
 import routes from './routes'
 import { initializeFirebase } from './services/notificationService'
 import { testConnection } from './config/supabase'
+import { raw } from 'express'
+import { handleStripeWebhook } from './controllers/subscriptionController'
 
 const app = express()
 
@@ -47,6 +49,10 @@ app.use(cors({
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'x-device-fingerprint'],
 }))
+
+// ── Webhook de Stripe — necesita el body crudo para verificar la firma HMAC,
+// por eso se registra ANTES de express.json() (que si no, ya lo habría parseado).
+app.post('/api/subscriptions/webhooks/stripe', raw({ type: 'application/json' }), handleStripeWebhook)
 
 // ── Middleware base ───────────────────────────────────────────────────────────
 app.use(compression())

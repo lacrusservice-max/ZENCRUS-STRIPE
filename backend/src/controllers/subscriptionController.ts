@@ -33,6 +33,17 @@ const SUBSCRIPTION_PLANS: Record<Exclude<SubscriptionTier, 'free'>, PlanInfo> = 
 
 const EXTRA_MEMBER_PRICE_ID = env.STRIPE_PRICE_EXTRA_MEMBER
 
+// El ENUM de Postgres (subscription_tier) solo acepta free/basic/premium/corporate —
+// no conoce los planes reales de ZENCRUS (monthly/annual_*). El plan exacto se
+// determina siempre desde Stripe (metadata.tier vía stripe_subscription_id);
+// aquí solo se mapea al bucket más cercano para que el ENUM lo acepte.
+const DB_TIER_BUCKET: Record<Exclude<SubscriptionTier, 'free'>, 'basic' | 'premium' | 'corporate'> = {
+  monthly: 'basic',
+  annual_individual: 'premium',
+  annual_duo: 'premium',
+  annual_familiar: 'corporate',
+}
+
 export async function getCurrentSubscription(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
 
@@ -45,9 +56,29 @@ export async function getCurrentSubscription(req: Request, res: Response): Promi
     .limit(1)
     .maybeSingle()
 
+  if (!subscription) {
+    res.status(200).json({
+      success: true,
+      data: { tier: 'free', status: 'active', payment_provider: 'none' },
+    } satisfies ApiResponse)
+    return
+  }
+
+  // La columna `tier` solo guarda el bucket del ENUM (basic/premium/corporate) —
+  // el plan real de ZENCRUS vive en el metadata de la suscripción de Stripe.
+  let realTier: string = subscription.tier
+  if (stripe && subscription.stripe_subscription_id) {
+    try {
+      const stripeSub = await stripe.subscriptions.retrieve(subscription.stripe_subscription_id)
+      if (stripeSub.metadata?.tier) realTier = stripeSub.metadata.tier
+    } catch (err) {
+      logger.error(`No se pudo obtener el tier real desde Stripe (${subscription.stripe_subscription_id}):`, err)
+    }
+  }
+
   res.status(200).json({
     success: true,
-    data: subscription || { tier: 'free', status: 'active', payment_provider: 'none' },
+    data: { ...subscription, tier: realTier },
   } satisfies ApiResponse)
 }
 
@@ -313,7 +344,6 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
 
     const userId = subscription.metadata?.userId
     const tier = subscription.metadata?.tier as SubscriptionTier | undefined
-    const extraMembers = Number(subscription.metadata?.extraMembers ?? 0)
 
     if (!userId || !tier) {
       logger.error(`Stripe subscription sin metadata.userId/tier: ${subscription.id}`)
@@ -336,6 +366,7 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
     // DB enum de status no incluye 'trialing' — trial y active se guardan como 'active'
     // (el usuario tiene acceso Premium real durante la prueba; end_date marca cuándo se cobra o expira)
     const dbStatus = 'active'
+    const dbTier = DB_TIER_BUCKET[tier as Exclude<SubscriptionTier, 'free'>]
 
     const { data: existing } = await supabase
       .from('subscriptions')
@@ -344,23 +375,23 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
       .maybeSingle()
 
     if (existing) {
-      await supabase.from('subscriptions')
+      const { error: updateErr } = await supabase.from('subscriptions')
         .update({ status: dbStatus, stripe_customer_id: customerId, end_date: endDate.toISOString() })
         .eq('stripe_subscription_id', subscription.id)
+      if (updateErr) logger.error(`Error actualizando subscriptions (${subscription.id}):`, updateErr)
     } else {
-      await supabase.from('subscriptions').insert({
+      const { error: insertErr } = await supabase.from('subscriptions').insert({
         user_id: userId,
-        tier,
+        tier: dbTier,
         status: dbStatus,
         payment_provider: 'stripe',
         stripe_customer_id: customerId,
         stripe_subscription_id: subscription.id,
-        stripe_price_id: plan?.priceId,
-        extra_members: extraMembers,
         start_date: now.toISOString(),
         end_date: endDate.toISOString(),
         auto_renew: true,
       })
+      if (insertErr) logger.error(`Error insertando subscriptions (${subscription.id}):`, insertErr)
 
       // Primera vez que se crea esta suscripción → correo de bienvenida/activación
       // (nunca al registrarse ni al verificar el correo — solo al contratar un plan)
@@ -371,7 +402,7 @@ export async function handleStripeWebhook(req: Request, res: Response): Promise<
       }
     }
 
-    await supabase.from('users').update({ subscription_tier: tier, subscription_expires_at: endDate.toISOString() }).eq('id', userId)
+    await supabase.from('users').update({ subscription_tier: dbTier, subscription_expires_at: endDate.toISOString() }).eq('id', userId)
     logger.info(`Suscripción Stripe ${subscription.status}: ${userId} → ${tier}`)
   }
 
