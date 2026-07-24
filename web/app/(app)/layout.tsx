@@ -230,7 +230,9 @@ function MobileBottomNav({ pathname }: { pathname: string }) {
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const pathname = usePathname();
-  const { token, isLoading, loadFromStorage } = useAuthStore();
+  const { token, user, isLoading, loadFromStorage } = useAuthStore();
+  const [checkingPlan, setCheckingPlan] = useState(true);
+  const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
     loadFromStorage();
@@ -242,9 +244,30 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     }
   }, [isLoading, token, router]);
 
+  // Nadie usa la app sin un plan activo (o prueba de 5 días con tarjeta ya registrada) — excepto admins
+  useEffect(() => {
+    if (isLoading || !token) return;
+    if (pathname === "/subscription" || user?.role === "admin") { setCheckingPlan(false); setHasAccess(true); return; }
+    let cancelled = false;
+    import("@/lib/api").then(({ subscriptions }) =>
+      subscriptions.getStatus()
+        .then((r) => { if (!cancelled) setHasAccess(r.data?.data?.tier && r.data.data.tier !== "free"); })
+        .catch(() => { if (!cancelled) setHasAccess(false); })
+        .finally(() => { if (!cancelled) setCheckingPlan(false); })
+    );
+    return () => { cancelled = true; };
+  }, [isLoading, token, pathname, user?.role]);
+
+  useEffect(() => {
+    if (!checkingPlan && !hasAccess && pathname !== "/subscription") {
+      router.replace("/subscription");
+    }
+  }, [checkingPlan, hasAccess, pathname, router]);
 
   if (isLoading) return <LoadingScreen />;
   if (!token) return null;
+  if (checkingPlan) return <LoadingScreen />;
+  if (!hasAccess && pathname !== "/subscription") return null;
 
   return (
     <div style={{ display: "flex", minHeight: "100vh", background: "#0a0a0a" }}>

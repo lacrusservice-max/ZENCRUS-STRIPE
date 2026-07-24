@@ -200,13 +200,10 @@ export default function WelcomeScreen() {
           <Animated.View style={{ opacity: btnOpacity, marginTop: Spacing[6] }}>
             <TouchableOpacity style={s.ctaBtn} onPress={() => router.replace('/subscription-intro')} activeOpacity={0.85}>
               <View style={s.ctaShine} pointerEvents="none" />
-              <Text style={s.ctaText}>Ver mis planes</Text>
+              <Text style={s.ctaText}>Elegir mi plan y empezar gratis</Text>
               <Ionicons name="arrow-forward" size={20} color="#fff" />
             </TouchableOpacity>
-
-            <TouchableOpacity style={s.skipBtn} onPress={() => router.replace('/(tabs)')}>
-              <Text style={s.skipText}>Explorar la app primero</Text>
-            </TouchableOpacity>
+            <Text style={s.skipText}>5 días gratis en cualquier plan · después se cobra automáticamente</Text>
           </Animated.View>
         </ScrollView>
       </SafeAreaView>

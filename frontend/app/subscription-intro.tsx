@@ -8,9 +8,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '@/store/authStore'
-import { usePremiumStore, PRICING } from '@/store/premiumStore'
+import { PRICING } from '@/store/premiumStore'
 import { Colors, Spacing, Typography } from '@/constants/theme'
-import api from '@/services/api'
 
 const { width } = Dimensions.get('window')
 
@@ -75,16 +74,6 @@ const PLANS: PlanConfig[] = [
     color: Colors.accent.green,
     features: ['Todo Dúo', '4 cuentas premium', 'Panel familiar', 'Estadísticas grupales'],
   },
-]
-
-// ── Features comparadas (trial vs premium) ────────────────────────────────────
-
-const TRIAL_FEATURES = [
-  { icon: 'flash' as const,        label: 'Coach IA',          trial: '5 días ilimitado',  free: '5 msgs/día' },
-  { icon: 'barcode' as const,      label: 'Escáner',           trial: '5 días ilimitado',  free: '5 scans/día' },
-  { icon: 'stats-chart' as const,  label: 'Reportes PDF',      trial: 'Incluido',          free: 'Solo básico' },
-  { icon: 'trophy' as const,       label: 'Todos los retos',   trial: 'Incluido',          free: '4 básicos' },
-  { icon: 'restaurant' as const,   label: 'Meal Planner',      trial: 'Incluido',          free: 'Solo ver' },
 ]
 
 // ── Plan Card ─────────────────────────────────────────────────────────────────
@@ -155,10 +144,8 @@ function PlanCard({
 
 export default function SubscriptionIntroScreen() {
   const { user } = useAuthStore()
-  const { setPremium } = usePremiumStore()
   const colorScheme = useColorScheme()
   const [selected, setSelected] = useState<PlanKey>('annual_individual')
-  const [startingTrial, setStartingTrial] = useState(false)
   const [choosingPlan, setChoosingPlan] = useState(false)
 
   const headerOpacity = useRef(new Animated.Value(0)).current
@@ -176,22 +163,6 @@ export default function SubscriptionIntroScreen() {
       Animated.timing(trialOpacity, { toValue: 1, duration: 500, useNativeDriver: true }),
     ]).start()
   }, [])
-
-  const handleStartTrial = async () => {
-    setStartingTrial(true)
-    try {
-      await api.post('/subscriptions/start-trial')
-      const trialEnds = new Date()
-      trialEnds.setDate(trialEnds.getDate() + 5)
-      await setPremium('monthly', trialEnds.toISOString().slice(0, 10))
-      router.replace('/(tabs)')
-    } catch (err: any) {
-      const msg = err?.response?.data?.message ?? 'No se pudo iniciar la prueba. Intenta de nuevo.'
-      Alert.alert('Error', msg)
-    } finally {
-      setStartingTrial(false)
-    }
-  }
 
   const handleChoosePlan = async () => {
     setChoosingPlan(true)
@@ -224,54 +195,18 @@ export default function SubscriptionIntroScreen() {
             </Text>
           </Animated.View>
 
-          {/* Trial CTA — más prominente */}
+          {/* Aviso de prueba gratis — requiere tarjeta */}
           <Animated.View style={[s.trialCard, { opacity: trialOpacity }]}>
             <View style={s.trialHeader}>
               <View style={s.trialIconWrap}>
-                <Ionicons name="gift" size={22} color={Colors.accent.green} />
+                <Ionicons name="shield-checkmark" size={22} color={Colors.accent.green} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={s.trialTitle}>5 días gratis — sin tarjeta</Text>
-                <Text style={s.trialSubtitle}>Prueba Premium completo sin compromiso</Text>
+                <Text style={s.trialTitle}>5 días gratis en cualquier plan</Text>
+                <Text style={s.trialSubtitle}>Pedimos tu tarjeta para activarla. Si no cancelas antes del día 5, se cobra automáticamente.</Text>
               </View>
             </View>
-
-            {/* Mini feature table */}
-            <View style={s.featureTable}>
-              {TRIAL_FEATURES.map((f, i) => (
-                <View key={i} style={s.featureRow}>
-                  <Ionicons name={f.icon} size={14} color={Colors.primary[400]} style={{ width: 18 }} />
-                  <Text style={s.featureName}>{f.label}</Text>
-                  <Text style={s.featureTrial}>{f.trial}</Text>
-                </View>
-              ))}
-            </View>
-
-            <TouchableOpacity
-              style={[s.trialBtn, startingTrial && { opacity: 0.7 }]}
-              onPress={handleStartTrial}
-              disabled={startingTrial}
-              activeOpacity={0.85}
-            >
-              {startingTrial
-                ? <ActivityIndicator color="#000" />
-                : (
-                  <>
-                    <Ionicons name="flash" size={18} color="#000" />
-                    <Text style={s.trialBtnText}>Empezar 5 días gratis</Text>
-                  </>
-                )
-              }
-            </TouchableOpacity>
-            <Text style={s.trialNote}>Sin tarjeta requerida · Al terminar los 5 días se te ofrecerá suscribirte al plan de tu elección</Text>
           </Animated.View>
-
-          {/* Divider */}
-          <View style={s.divider}>
-            <View style={s.dividerLine} />
-            <Text style={s.dividerText}>o elige un plan ahora</Text>
-            <View style={s.dividerLine} />
-          </View>
 
           {/* Plans */}
           {PLANS.map((plan, i) => (
@@ -303,10 +238,6 @@ export default function SubscriptionIntroScreen() {
                 </>
               )
             }
-          </TouchableOpacity>
-
-          <TouchableOpacity style={s.skipBtn} onPress={() => router.replace('/(tabs)')}>
-            <Text style={s.skipText}>Continuar con cuenta gratuita</Text>
           </TouchableOpacity>
 
           <Text style={s.legal}>

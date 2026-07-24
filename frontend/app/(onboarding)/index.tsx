@@ -287,15 +287,13 @@ export default function OnboardingScreen() {
 
       const { data } = await api.post('/onboarding/complete', profilePayload)
 
-      // Genera automáticamente el plan de nutrición + rutina personalizados con IA
+      // Dispara la generación de dieta + rutina en segundo plano — no bloquea la navegación
       const workoutLevel = ['sedentary', 'lightly_active'].includes(activityLevel) ? 'beginner'
         : activityLevel === 'moderately_active' ? 'intermediate' : 'advanced'
       const workoutGoal = goal === 'lose_fat' ? 'endurance' : goal === 'gain_muscle' ? 'hypertrophy' : 'functional'
       const equipment = trainingTypes.includes('calisthenics') || trainingTypes.includes('none') ? ['bodyweight'] : ['bodyweight', 'dumbbells', 'barbell']
-      await Promise.allSettled([
-        api.post('/diet/generate', { durationDays: 7 }),
-        api.post('/workout/generate', { level: workoutLevel, goal: workoutGoal, daysPerWeek: trainingDays, equipment }),
-      ])
+      api.post('/diet/generate', { durationDays: 7 }).catch(() => {})
+      api.post('/workout/generate', { level: workoutLevel, goal: workoutGoal, daysPerWeek: trainingDays, equipment }).catch(() => {})
 
       // Update local user with fresh goals
       setUser({

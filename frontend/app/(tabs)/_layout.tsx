@@ -1,5 +1,5 @@
-import { useEffect, useRef } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Animated } from 'react-native'
+import { useEffect, useRef, useState } from 'react'
+import { View, Text, TouchableOpacity, StyleSheet, Animated, ActivityIndicator } from 'react-native'
 import { Tabs, Redirect } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
@@ -7,6 +7,7 @@ import { BlurView } from 'expo-blur'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { useAuthStore } from '@/store/authStore'
 import { Colors, Glass } from '@/constants/theme'
+import { getCurrentSubscription } from '@/services/stripeService'
 
 type IconName = React.ComponentProps<typeof Ionicons>['name']
 
@@ -201,7 +202,36 @@ const tb = StyleSheet.create({
 
 export default function TabsLayout() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
+  const user = useAuthStore(s => s.user)
+  const [checking, setChecking] = useState(true)
+  const [hasAccess, setHasAccess] = useState(false)
+
+  useEffect(() => {
+    if (!isAuthenticated) { setChecking(false); return }
+    if (user?.role === 'admin') { setHasAccess(true); setChecking(false); return }
+    let cancelled = false
+    getCurrentSubscription()
+      .then((sub) => {
+        if (cancelled) return
+        const tier = sub?.tier
+        setHasAccess(!!tier && tier !== 'free')
+      })
+      .catch(() => { if (!cancelled) setHasAccess(false) })
+      .finally(() => { if (!cancelled) setChecking(false) })
+    return () => { cancelled = true }
+  }, [isAuthenticated, user?.role])
+
   if (!isAuthenticated) return <Redirect href="/(auth)/login" />
+
+  // Nadie accede a la app sin un plan activo (o prueba de 5 días con tarjeta ya registrada)
+  if (checking) {
+    return (
+      <View style={{ flex: 1, backgroundColor: '#080808', alignItems: 'center', justifyContent: 'center' }}>
+        <ActivityIndicator color={Colors.primary[400]} size="large" />
+      </View>
+    )
+  }
+  if (!hasAccess) return <Redirect href="/subscription-intro" />
 
   return (
     <Tabs

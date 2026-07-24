@@ -84,18 +84,17 @@ export default function OnboardingPage() {
         dietaryRestrictions: data.restrictions,
       });
 
-      // Genera automáticamente el plan de nutrición + rutina personalizados con IA
+      // Dispara la generación de dieta + rutina en segundo plano — NO bloquea la navegación.
+      // El usuario avanza de inmediato a elegir plan; el plan de IA estará listo para cuando termine el checkout.
       const workoutLevel = ["sedentary", "light"].includes(data.activityLevel) ? "beginner"
         : data.activityLevel === "moderate" ? "intermediate" : "advanced";
       const workoutGoal = data.goal === "lose_weight" ? "endurance" : data.goal === "gain_muscle" ? "hypertrophy" : "functional";
       const daysPerWeek = { sedentary: 2, light: 3, moderate: 4, active: 5, very_active: 6 }[data.activityLevel] ?? 3;
 
-      await Promise.allSettled([
-        dietApi.generate({ durationDays: 7 }),
-        workoutApi.generate({ level: workoutLevel, goal: workoutGoal, daysPerWeek, equipment: ["bodyweight", "dumbbells"] }),
-      ]);
+      dietApi.generate({ durationDays: 7 }).catch(() => {});
+      workoutApi.generate({ level: workoutLevel, goal: workoutGoal, daysPerWeek, equipment: ["bodyweight", "dumbbells"] }).catch(() => {});
 
-      toast.success("¡Plan generado con IA!");
+      toast.success("¡Perfil guardado! Generando tu plan con IA…");
       router.push("/welcome");
     } catch {
       toast.error("Error al guardar. Intenta de nuevo.");
