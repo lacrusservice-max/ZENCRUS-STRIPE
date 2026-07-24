@@ -29,6 +29,7 @@ export default function LoginPage() {
       const res = await authApi.login(email.trim().toLowerCase(), password);
       const data = res.data?.data ?? res.data;
       const token = data?.accessToken ?? data?.token ?? data?.access_token;
+      const refreshToken = data?.refreshToken;
       if (!token) throw new Error("No token received");
 
       // Decode JWT payload to get user info (no extra API call needed)
@@ -42,7 +43,7 @@ export default function LoginPage() {
         role: payload.role ?? "user",
         subscriptionTier: payload.subscriptionTier ?? payload.subscription_tier ?? "free",
         isEmailVerified: true,
-      }, token);
+      }, token, refreshToken);
       router.replace("/home");
     } catch (err: unknown) {
       const msg = (err as any)?.response?.data?.message ?? "Error al iniciar sesión";

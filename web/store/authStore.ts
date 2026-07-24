@@ -23,8 +23,10 @@ function decodeJWT(token: string): Record<string, unknown> | null {
 interface AuthState {
   user: User | null;
   token: string | null;
+  refreshToken: string | null;
   isLoading: boolean;
-  setAuth: (user: User, token: string) => void;
+  setAuth: (user: User, token: string, refreshToken?: string) => void;
+  setTokens: (token: string, refreshToken: string) => void;
   clearAuth: () => void;
   loadFromStorage: () => void;
 }
@@ -32,9 +34,10 @@ interface AuthState {
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   token: null,
+  refreshToken: null,
   isLoading: true,
 
-  setAuth: (user, token) => {
+  setAuth: (user, token, refreshToken) => {
     // Always trust JWT for role — override stored user role with JWT role
     const payload = decodeJWT(token);
     if (payload) {
@@ -48,16 +51,27 @@ export const useAuthStore = create<AuthState>((set) => ({
     if (typeof window !== "undefined") {
       localStorage.setItem("zencrus_token", token);
       localStorage.setItem("zencrus_user", JSON.stringify(user));
+      if (refreshToken) localStorage.setItem("zencrus_refresh_token", refreshToken);
     }
-    set({ user, token, isLoading: false });
+    set({ user, token, refreshToken: refreshToken ?? null, isLoading: false });
+  },
+
+  // Actualiza solo los tokens (usado tras un refresh silencioso en segundo plano)
+  setTokens: (token, refreshToken) => {
+    if (typeof window !== "undefined") {
+      localStorage.setItem("zencrus_token", token);
+      localStorage.setItem("zencrus_refresh_token", refreshToken);
+    }
+    set({ token, refreshToken });
   },
 
   clearAuth: () => {
     if (typeof window !== "undefined") {
       localStorage.removeItem("zencrus_token");
       localStorage.removeItem("zencrus_user");
+      localStorage.removeItem("zencrus_refresh_token");
     }
-    set({ user: null, token: null, isLoading: false });
+    set({ user: null, token: null, refreshToken: null, isLoading: false });
   },
 
   loadFromStorage: () => {
@@ -68,6 +82,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       const token = localStorage.getItem("zencrus_token");
       const userStr = localStorage.getItem("zencrus_user");
+      const refreshToken = localStorage.getItem("zencrus_refresh_token");
       if (token && userStr) {
         const user = JSON.parse(userStr) as User;
         // Always sync role from JWT — fixes stale role in stored user
@@ -78,7 +93,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         if (payload?.userId) {
           user.id = payload.userId as string;
         }
-        set({ user, token, isLoading: false });
+        set({ user, token, refreshToken, isLoading: false });
       } else {
         set({ isLoading: false });
       }

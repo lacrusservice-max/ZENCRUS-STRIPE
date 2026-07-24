@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   ActivityIndicator, Alert,
@@ -8,7 +8,7 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '@/store/authStore'
 import { usePremiumStore } from '@/store/premiumStore'
-import { startStripePaymentSheet, cancelSubscription, STRIPE_PLANS, CheckoutTier } from '@/services/stripeService'
+import { startStripePaymentSheet, cancelSubscription, getCurrentSubscription, STRIPE_PLANS, CheckoutTier } from '@/services/stripeService'
 import { Colors, Typography, Spacing, BorderRadius, Glass } from '@/constants/theme'
 
 const FEATURES = [
@@ -25,10 +25,28 @@ const PLAN_ORDER: CheckoutTier[] = ['monthly', 'annual_individual', 'annual_duo'
 
 export default function SubscriptionScreen() {
   const { user } = useAuthStore()
-  const { isPremium, plan, expiresAt, setFree, setPremium } = usePremiumStore()
+  const { setFree } = usePremiumStore()
   const [selected, setSelected] = useState<CheckoutTier>('annual_individual')
   const [loading, setLoading] = useState(false)
   const [cancelling, setCancelling] = useState(false)
+  const [checkingStatus, setCheckingStatus] = useState(true)
+  const [realStatus, setRealStatus] = useState<{ tier: string; end_date?: string } | null>(null)
+
+  const refreshStatus = async () => {
+    try {
+      const sub = await getCurrentSubscription()
+      setRealStatus(sub)
+    } catch {
+      setRealStatus(null)
+    } finally {
+      setCheckingStatus(false)
+    }
+  }
+
+  useEffect(() => { refreshStatus() }, [])
+
+  const activePlan = !!realStatus?.tier && realStatus.tier !== 'free'
+  const planLabelMap: Record<string, string> = { monthly: 'Mensual', annual_individual: 'Anual Individual', annual_duo: 'Anual Dúo', annual_familiar: 'Anual Familiar' }
 
   const handleCheckout = async () => {
     if (!user) {
@@ -38,13 +56,12 @@ export default function SubscriptionScreen() {
 
     setLoading(true)
     try {
+      // Requiere tarjeta SIEMPRE — startStripePaymentSheet solo resuelve si el usuario
+      // completó el PaymentSheet de Stripe (SetupIntent con tarjeta real registrada).
       await startStripePaymentSheet(selected)
-      // Pago exitoso — activar premium localmente
-      const isAnnual = selected !== 'monthly'
-      const expiryDate = new Date()
-      expiryDate.setMonth(expiryDate.getMonth() + (isAnnual ? 12 : 1))
-      await setPremium(selected as any, expiryDate.toISOString().slice(0, 10))
-      router.replace('/checkout/success')
+      // No asumimos éxito local: /checkout/success confirma contra el backend real
+      // (el webhook de Stripe tarda unos segundos en procesar la suscripción).
+      router.replace({ pathname: '/checkout/success', params: { plan: selected } })
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? err?.message ?? 'No se pudo iniciar el pago. Intenta de nuevo.'
       Alert.alert('Error', msg)
@@ -67,6 +84,7 @@ export default function SubscriptionScreen() {
             try {
               await cancelSubscription()
               await setFree()
+              await refreshStatus()
               Alert.alert('Cancelado', 'Tu suscripción fue cancelada. Sigues con acceso hasta que expire.')
             } catch {
               Alert.alert('Error', 'No se pudo cancelar. Contacta a soporte.')
@@ -79,7 +97,13 @@ export default function SubscriptionScreen() {
     )
   }
 
-  const activePlan = isPremium()
+  if (checkingStatus) {
+    return (
+      <SafeAreaView style={[s.container, { alignItems: 'center', justifyContent: 'center' }]}>
+        <ActivityIndicator color={Colors.primary[400]} size="large" />
+      </SafeAreaView>
+    )
+  }
 
   return (
     <SafeAreaView style={s.container}>
@@ -101,8 +125,8 @@ export default function SubscriptionScreen() {
             <View style={{ flex: 1 }}>
               <Text style={s.activeTitle}>Plan activo</Text>
               <Text style={s.activeSub}>
-                {plan === 'monthly' ? 'Mensual' : plan === 'annual_individual' ? 'Anual Individual' : plan === 'annual_duo' ? 'Anual Dúo' : 'Anual Familiar'}
-                {expiresAt ? ` · vence ${new Date(expiresAt).toLocaleDateString('es-MX')}` : ''}
+                {planLabelMap[realStatus?.tier ?? ''] ?? realStatus?.tier}
+                {realStatus?.end_date ? ` · vence ${new Date(realStatus.end_date).toLocaleDateString('es-MX')}` : ''}
               </Text>
             </View>
           </View>

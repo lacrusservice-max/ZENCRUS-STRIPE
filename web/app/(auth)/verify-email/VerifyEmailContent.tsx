@@ -62,6 +62,7 @@ export default function VerifyEmailContent() {
       const data = res.data?.data ?? res.data;
       // Backend returns accessToken (camelCase)
       const token = data?.accessToken ?? data?.token ?? data?.access_token;
+      const refreshToken = data?.refreshToken;
       if (token) {
         // Fetch full user profile
         const meRes = await api.get("/users/me", { headers: { Authorization: `Bearer ${token}` } });
@@ -74,7 +75,7 @@ export default function VerifyEmailContent() {
           role: u.role ?? "user",
           subscriptionTier: u.subscription_tier ?? u.subscriptionTier ?? "free",
           isEmailVerified: true,
-        }, token);
+        }, token, refreshToken);
         toast.success("¡Email verificado! Bienvenido a ZENCRUS");
         router.replace("/onboarding");
       } else {

@@ -20,13 +20,51 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// Response interceptor — handle 401
+// Response interceptor — 401 dispara un refresh silencioso antes de cerrar sesión.
+// La sesión NUNCA se cierra sola por expiración del access token (15 min) — solo
+// se cierra si el refresh token también falla (o el usuario pulsa "Cerrar sesión").
+let refreshing: Promise<string | null> | null = null;
+
+async function silentRefresh(): Promise<string | null> {
+  if (refreshing) return refreshing;
+  refreshing = (async () => {
+    try {
+      const rt = localStorage.getItem("zencrus_refresh_token");
+      if (!rt) return null;
+      const { data } = await axios.post(`${BASE_URL}/auth/refresh`, { refreshToken: rt });
+      const newToken = data?.data?.accessToken;
+      const newRefresh = data?.data?.refreshToken;
+      if (!newToken) return null;
+      localStorage.setItem("zencrus_token", newToken);
+      if (newRefresh) localStorage.setItem("zencrus_refresh_token", newRefresh);
+      return newToken;
+    } catch {
+      return null;
+    } finally {
+      refreshing = null;
+    }
+  })();
+  return refreshing;
+}
+
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401 && typeof window !== "undefined") {
+  async (error) => {
+    const original = error.config;
+    const isAuthEndpoint = original?.url?.includes("/auth/login") || original?.url?.includes("/auth/register") || original?.url?.includes("/auth/refresh");
+
+    if (error.response?.status === 401 && typeof window !== "undefined" && !isAuthEndpoint && !original?._retry) {
+      original._retry = true;
+      const newToken = await silentRefresh();
+      if (newToken) {
+        original.headers = original.headers ?? {};
+        original.headers.Authorization = `Bearer ${newToken}`;
+        return api(original);
+      }
+      // El refresh token también falló (o no existe) — ahí sí cerramos sesión
       localStorage.removeItem("zencrus_token");
       localStorage.removeItem("zencrus_user");
+      localStorage.removeItem("zencrus_refresh_token");
       window.location.href = "/login";
     }
     return Promise.reject(error);
