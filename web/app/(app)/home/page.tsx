@@ -5,7 +5,11 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { nutrition as nutritionApi } from "@/lib/api";
 import toast from "react-hot-toast";
-import { Flame, Droplets, Zap, TrendingUp, Dumbbell, Plus, Minus, Sun, CheckCircle } from "lucide-react";
+import {
+  Flame, Droplets, Zap, TrendingUp, Dumbbell, Plus, Minus, Sun, CheckCircle,
+  BookOpen, CalendarDays, ShoppingCart, Camera, Ruler, Repeat, HeartPulse,
+  Trophy, Swords, Bot, Award, Sunrise, Moon, Apple, Check, type LucideIcon,
+} from "lucide-react";
 
 // ── Health Score Ring ────────────────────────────────────────────────────────
 
@@ -96,32 +100,32 @@ const TIPS = [
 
 // ── Quick Access ──────────────────────────────────────────────────────────────
 
-const QUICK_SECTIONS = [
+const QUICK_SECTIONS: { category: string; items: { label: string; icon: LucideIcon; href: string }[] }[] = [
   {
     category: "Nutrición",
     items: [
-      { label: "Recetas", emoji: "🍳", href: "/nutrition" },
-      { label: "Planificador", emoji: "📅", href: "/nutrition" },
-      { label: "Compras", emoji: "🛒", href: "/nutrition" },
-      { label: "Foto IA", emoji: "📷", href: "/nutrition" },
+      { label: "Recetas", icon: BookOpen, href: "/recipes" },
+      { label: "Planificador", icon: CalendarDays, href: "/meal-planner" },
+      { label: "Compras", icon: ShoppingCart, href: "/grocery" },
+      { label: "Foto IA", icon: Camera, href: "/nutrition" },
     ],
   },
   {
     category: "Fitness",
     items: [
-      { label: "Medidas", emoji: "📏", href: "/progress" },
-      { label: "Macro Cycling", emoji: "🔄", href: "/nutrition" },
-      { label: "Progreso", emoji: "📈", href: "/progress" },
-      { label: "Salud", emoji: "❤️", href: "/progress" },
+      { label: "Medidas", icon: Ruler, href: "/measurements" },
+      { label: "Macro Cycling", icon: Repeat, href: "/macro-cycling" },
+      { label: "Progreso", icon: TrendingUp, href: "/progress" },
+      { label: "Salud", icon: HeartPulse, href: "/health-tracker" },
     ],
   },
   {
     category: "Comunidad",
     items: [
-      { label: "Ranking", emoji: "🏆", href: "/social" },
-      { label: "Duelos", emoji: "⚡", href: "/social" },
-      { label: "Coach IA", emoji: "🤖", href: "/chat" },
-      { label: "Logros", emoji: "🎖️", href: "/progress" },
+      { label: "Ranking", icon: Trophy, href: "/leaderboard" },
+      { label: "Duelos", icon: Swords, href: "/duels" },
+      { label: "Coach IA", icon: Bot, href: "/chat" },
+      { label: "Logros", icon: Award, href: "/achievements" },
     ],
   },
 ];
@@ -289,9 +293,9 @@ export default function HomePage() {
             </div>
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12, borderTop: "1px solid rgba(255,255,255,0.09)", padding: "12px 20px" }}>
-            {["🌅", "☀️", "🌙", "🍎"].map((e, i) => (
+            {[Sunrise, Sun, Moon, Apple].map((MealIcon, i) => (
               <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
-                <span style={{ fontSize: 18 }}>{e}</span>
+                <MealIcon size={17} color={i === 0 ? "#60a5fa" : "rgba(255,255,255,0.4)"} />
                 <div style={{ width: 5, height: 5, borderRadius: "50%", background: i === 0 ? "#30D158" : "rgba(255,255,255,0.12)" }} />
               </div>
             ))}
@@ -325,7 +329,7 @@ export default function HomePage() {
           {/* Water card */}
           <div className="glass-card" style={{ minWidth: 148, padding: 14, flexShrink: 0 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 6 }}>
-              <span style={{ fontSize: 20 }}>💧</span>
+              <Droplets size={19} color="#38BDF8" />
               <span style={{ fontSize: 26, fontWeight: 900, color: "#f4f4f5" }}>{waterGlasses}<span style={{ fontSize: 13, color: "rgba(255,255,255,0.35)", fontWeight: 500 }}>/8</span></span>
             </div>
             <div style={{ fontSize: 10, color: "rgba(255,255,255,0.4)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 8 }}>Hidratación</div>
@@ -399,7 +403,7 @@ export default function HomePage() {
                       border: isToday ? "1.5px solid #2563EB" : "none",
                       display: "flex", alignItems: "center", justifyContent: "center",
                     }}>
-                      {active && <span style={{ fontSize: 12, color: "#fff" }}>✓</span>}
+                      {active && <Check size={14} color="#fff" strokeWidth={3} />}
                     </div>
                     <span style={{ fontSize: 9, color: isToday ? "#60a5fa" : "rgba(255,255,255,0.3)", fontWeight: 700 }}>{day}</span>
                   </div>
@@ -428,8 +432,8 @@ export default function HomePage() {
                     cursor: "pointer", position: "relative", overflow: "hidden",
                   }}
                 >
-                  <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(37,99,235,0.14)", border: "1px solid rgba(37,99,235,0.22)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18 }}>
-                    {item.emoji}
+                  <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(37,99,235,0.14)", border: "1px solid rgba(37,99,235,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    <item.icon size={18} color="#60a5fa" />
                   </div>
                   <span style={{ fontSize: 9, color: "rgba(255,255,255,0.5)", fontWeight: 700, textAlign: "center", letterSpacing: 0.2 }}>{item.label}</span>
                 </button>

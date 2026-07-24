@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  ActivityIndicator, Alert,
+  ActivityIndicator, Alert, Modal, Image,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
@@ -10,6 +10,8 @@ import { useAuthStore } from '@/store/authStore'
 import { usePremiumStore } from '@/store/premiumStore'
 import { startStripePaymentSheet, cancelSubscription, getCurrentSubscription, STRIPE_PLANS, CheckoutTier } from '@/services/stripeService'
 import { Colors, Typography, Spacing, BorderRadius, Glass } from '@/constants/theme'
+
+const logoBlanco = require('@/assets/images/logo-blanco.png')
 
 const FEATURES = [
   { icon: 'flash',            label: 'Coach IA',         free: '5 msgs/día',   premium: 'Ilimitado' },
@@ -27,6 +29,7 @@ export default function SubscriptionScreen() {
   const { user } = useAuthStore()
   const { setFree } = usePremiumStore()
   const [selected, setSelected] = useState<CheckoutTier>('annual_individual')
+  const [confirmVisible, setConfirmVisible] = useState(false)
   const [loading, setLoading] = useState(false)
   const [cancelling, setCancelling] = useState(false)
   const [checkingStatus, setCheckingStatus] = useState(true)
@@ -54,6 +57,7 @@ export default function SubscriptionScreen() {
       return
     }
 
+    setConfirmVisible(false)
     setLoading(true)
     try {
       // Requiere tarjeta SIEMPRE — startStripePaymentSheet solo resuelve si el usuario
@@ -200,7 +204,7 @@ export default function SubscriptionScreen() {
             {/* Checkout button */}
             <TouchableOpacity
               style={[s.checkoutBtn, loading && s.checkoutBtnOff]}
-              onPress={handleCheckout}
+              onPress={() => setConfirmVisible(true)}
               disabled={loading}
               activeOpacity={0.85}
             >
@@ -236,6 +240,40 @@ export default function SubscriptionScreen() {
         )}
 
       </ScrollView>
+
+      {/* Confirmación previa al pago — refuerza confianza con el logo real de ZENCRUS,
+          ya que el PaymentSheet nativo de Stripe solo admite texto, no imágenes. */}
+      <Modal visible={confirmVisible} transparent animationType="fade" onRequestClose={() => setConfirmVisible(false)}>
+        <View style={s.modalOverlay}>
+          <View style={s.modalCard}>
+            <TouchableOpacity style={s.modalClose} onPress={() => setConfirmVisible(false)}>
+              <Ionicons name="close" size={22} color={Colors.dark.textSecondary} />
+            </TouchableOpacity>
+
+            <Image source={logoBlanco} style={s.modalLogo} resizeMode="contain" />
+
+            <Text style={s.modalPlanLabel}>{STRIPE_PLANS[selected].label}</Text>
+            <Text style={s.modalPlanPrice}>
+              {STRIPE_PLANS[selected].price} <Text style={s.modalPlanPeriod}>MXN{STRIPE_PLANS[selected].period}</Text>
+            </Text>
+            <Text style={s.modalTrial}>5 días gratis · después se cobra automáticamente</Text>
+
+            <View style={s.modalSecureRow}>
+              <Ionicons name="lock-closed" size={14} color={Colors.dark.textSecondary} />
+              <Text style={s.modalSecureTxt}>Pago protegido y cifrado por Stripe</Text>
+            </View>
+
+            <TouchableOpacity style={s.modalConfirmBtn} onPress={handleCheckout} activeOpacity={0.85}>
+              <Text style={s.modalConfirmBtnTxt}>Continuar con el pago seguro</Text>
+              <Ionicons name="arrow-forward" size={18} color="#fff" />
+            </TouchableOpacity>
+
+            <TouchableOpacity onPress={() => setConfirmVisible(false)}>
+              <Text style={s.modalCancelTxt}>Cancelar</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   )
 }
@@ -297,4 +335,19 @@ const s = StyleSheet.create({
   // Cancel
   cancelBtn:          { backgroundColor: Glass.errorTint, borderWidth: 1, borderColor: 'rgba(255,59,48,0.22)', borderRadius: BorderRadius.lg, paddingVertical: Spacing[4], alignItems: 'center', marginTop: Spacing[4] },
   cancelBtnTxt:       { color: Colors.accent.red, fontSize: Typography.fontSize.sm, fontWeight: '700' },
+
+  // Modal de confirmación previa al pago
+  modalOverlay:       { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', padding: Spacing[6] },
+  modalCard:          { width: '100%', maxWidth: 380, backgroundColor: Colors.dark.surface, borderWidth: 1, borderColor: Colors.dark.border, borderRadius: BorderRadius['2xl'], padding: Spacing[6], alignItems: 'center' },
+  modalClose:         { position: 'absolute', top: Spacing[3], right: Spacing[3], width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
+  modalLogo:          { width: 96, height: 40, marginTop: Spacing[2], marginBottom: Spacing[5] },
+  modalPlanLabel:     { fontSize: Typography.fontSize.sm, color: Colors.dark.textSecondary, fontWeight: '700' },
+  modalPlanPrice:     { fontSize: Typography.fontSize['3xl'], color: Colors.dark.text, fontWeight: '900', marginTop: 4 },
+  modalPlanPeriod:    { fontSize: Typography.fontSize.sm, color: Colors.dark.textTertiary, fontWeight: '600' },
+  modalTrial:         { fontSize: Typography.fontSize.xs, color: Colors.primary[400], fontWeight: '700', marginTop: Spacing[2], textAlign: 'center' },
+  modalSecureRow:     { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: Spacing[5], marginBottom: Spacing[5] },
+  modalSecureTxt:     { fontSize: 11, color: Colors.dark.textSecondary },
+  modalConfirmBtn:    { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing[2], backgroundColor: Colors.primary[500], borderRadius: BorderRadius.xl, paddingVertical: Spacing[4], width: '100%', marginBottom: Spacing[3] },
+  modalConfirmBtnTxt: { color: '#fff', fontSize: Typography.fontSize.base, fontWeight: '800' },
+  modalCancelTxt:     { color: Colors.dark.textTertiary, fontSize: Typography.fontSize.sm, fontWeight: '600', paddingVertical: Spacing[2] },
 })

@@ -8,7 +8,7 @@ import { useAuthStore } from "@/store/authStore";
 import {
   LayoutDashboard, Bot, Apple, Users, User, Dumbbell, TrendingUp,
   LogOut, ShieldCheck, CalendarDays, BookOpen, ShoppingCart,
-  Ruler, HeartPulse, Repeat, CalendarHeart, Trophy, Swords, BarChart3,
+  Ruler, HeartPulse, Repeat, CalendarHeart, Trophy, Swords, BarChart3, BookMarked,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -32,6 +32,7 @@ const MORE_ITEMS = [
   { href: "/achievements",  label: "Logros",        icon: Trophy },
   { href: "/duels",         label: "Duelos",        icon: Swords },
   { href: "/leaderboard",   label: "Leaderboard",   icon: BarChart3 },
+  { href: "/guide",         label: "Guía de uso",   icon: BookMarked },
 ];
 
 function LoadingScreen() {

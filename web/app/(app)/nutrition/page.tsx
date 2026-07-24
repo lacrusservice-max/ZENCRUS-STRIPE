@@ -4,7 +4,9 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { nutrition as nutritionApi } from "@/lib/api";
 import toast from "react-hot-toast";
-import { Plus, CheckCircle, RefreshCw, ChevronLeft, ChevronRight, Zap } from "lucide-react";
+import { Plus, CheckCircle, RefreshCw, ChevronLeft, ChevronRight, Zap, Sunrise, Sun, Moon, Apple, type LucideIcon } from "lucide-react";
+
+const MEAL_ICONS: Record<string, LucideIcon> = { breakfast: Sunrise, lunch: Sun, dinner: Moon, snack: Apple };
 
 interface MealEntry {
   id: string;
@@ -150,7 +152,7 @@ export default function NutritionPage() {
             {/* Meal header */}
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                <span style={{ fontSize: 22 }}>{meal.emoji}</span>
+                {(() => { const MealIcon = MEAL_ICONS[meal.id] ?? Apple; return <MealIcon size={20} color="#60a5fa" />; })()}
                 <div>
                   <div style={{ fontSize: 14, fontWeight: 700, color: "#f4f4f5" }}>{meal.label}</div>
                   <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>

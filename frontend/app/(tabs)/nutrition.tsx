@@ -407,24 +407,23 @@ function AddFoodModal({ visible, mealId, mealLabel, onClose, onAdd }: AddFoodMod
           <View style={m.header}>
             <Text style={m.title}>Agregar a {mealLabel}</Text>
             <TouchableOpacity onPress={() => { reset(); onClose() }}>
-              <Text style={m.closeBtn}>✕</Text>
+              <Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" />
             </TouchableOpacity>
           </View>
 
           {/* Tabs */}
           <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={m.tabsScroll}>
-            <TouchableOpacity style={[m.tab, tab === 'search' && m.tabOn]} onPress={() => setTab('search')}>
-              <Text style={[m.tabTxt, tab === 'search' && m.tabTxtOn]}>🔍 Buscar</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[m.tab, tab === 'scanner' && m.tabOn]} onPress={() => setTab('scanner')}>
-              <Text style={[m.tabTxt, tab === 'scanner' && m.tabTxtOn]}>📷 Escanear</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[m.tab, tab === 'foto' && m.tabOn]} onPress={() => setTab('foto')}>
-              <Text style={[m.tabTxt, tab === 'foto' && m.tabTxtOn]}>🍽️ Foto IA</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[m.tab, tab === 'manual' && m.tabOn]} onPress={() => setTab('manual')}>
-              <Text style={[m.tabTxt, tab === 'manual' && m.tabTxtOn]}>✏️ Manual</Text>
-            </TouchableOpacity>
+            {([
+              { id: 'search',  icon: 'search',       label: 'Buscar' },
+              { id: 'scanner', icon: 'barcode',      label: 'Escanear' },
+              { id: 'foto',    icon: 'camera',       label: 'Foto IA' },
+              { id: 'manual',  icon: 'create',       label: 'Manual' },
+            ] as const).map(t => (
+              <TouchableOpacity key={t.id} style={[m.tab, tab === t.id && m.tabOn]} onPress={() => setTab(t.id)}>
+                <Ionicons name={t.icon} size={14} color={tab === t.id ? Colors.primary[400] : 'rgba(255,255,255,0.55)'} />
+                <Text style={[m.tabTxt, tab === t.id && m.tabTxtOn]}>{t.label}</Text>
+              </TouchableOpacity>
+            ))}
           </ScrollView>
 
           {tab === 'search' && (
@@ -538,7 +537,7 @@ const m = StyleSheet.create({
   closeBtn: { fontSize: 22, color: Colors.dark.textSecondary, padding: Spacing[2] },
   tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
   tabsScroll: { borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
-  tab: { paddingVertical: Spacing[3], paddingHorizontal: Spacing[4], alignItems: 'center' },
+  tab: { flexDirection: 'row', gap: 6, paddingVertical: Spacing[3], paddingHorizontal: Spacing[4], alignItems: 'center' },
   tabOn: { borderBottomWidth: 2, borderBottomColor: Colors.primary[500] },
   tabTxt: { fontSize: Typography.fontSize.sm, color: Colors.dark.textSecondary, fontWeight: '600' },
   tabTxtOn: { color: Colors.primary[400] },
@@ -746,8 +745,9 @@ export default function NutritionScreen() {
         </View>
 
         {/* Quick tip */}
-        <View style={ns.tip}>
-          <Text style={ns.tipTxt}>💡 Registra tus comidas para ver tu progreso en tiempo real. La IA Coach puede analizar tu dieta de hoy.</Text>
+        <View style={[ns.tip, { flexDirection: 'row', alignItems: 'flex-start', gap: 8 }]}>
+          <Ionicons name="bulb" size={15} color={Colors.accent.yellow} style={{ marginTop: 1 }} />
+          <Text style={[ns.tipTxt, { flex: 1 }]}>Registra tus comidas para ver tu progreso en tiempo real. El Coach IA puede analizar tu dieta de hoy.</Text>
         </View>
       </ScrollView>
 

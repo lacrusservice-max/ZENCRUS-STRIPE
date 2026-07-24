@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { chat as chatApi } from "@/lib/api";
 import toast from "react-hot-toast";
-import { Send } from "lucide-react";
+import { Send, Zap } from "lucide-react";
 
 interface Message {
   id: string;
@@ -26,7 +26,7 @@ function TypingIndicator() {
   return (
     <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 12 }}>
       <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(30,40,80,0.9)", border: "1.5px solid rgba(37,99,235,0.6)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <span style={{ fontSize: 14 }}>⚡</span>
+        <Zap size={15} color="#60a5fa" />
       </div>
       <div style={{ background: "#141414", border: "1px solid #2c2c2e", borderRadius: "18px 18px 18px 4px", padding: "14px 18px" }}>
         <div style={{ display: "flex", gap: 4 }}>
@@ -139,7 +139,7 @@ export default function ChatPage() {
       <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #2c2c2e", flexShrink: 0, background: "rgba(10,10,10,0.98)" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(30,40,80,0.9)", border: "1.5px solid #2563EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <span style={{ fontSize: 20 }}>⚡</span>
+            <Zap size={20} color="#60a5fa" />
           </div>
           <div>
             <div style={{ fontSize: 15, fontWeight: 800, color: "#f4f4f5" }}>Coach ZENCRUS</div>
@@ -169,7 +169,7 @@ export default function ChatPage() {
             <div key={msg.id} style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, marginBottom: 12 }}>
               {!isUser && (
                 <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(30,40,80,0.9)", border: "1.5px solid rgba(37,99,235,0.6)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <span style={{ fontSize: 14 }}>⚡</span>
+                  <Zap size={15} color="#60a5fa" />
                 </div>
               )}
               <div style={{ maxWidth: "80%", background: isUser ? "#2563EB" : "#141414", border: isUser ? "none" : "1px solid #2c2c2e", borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px", padding: "12px 16px" }}>
@@ -194,7 +194,7 @@ export default function ChatPage() {
 
         {atLimit && (
           <div style={{ margin: "16px 0", background: "#141414", border: "1px solid rgba(37,99,235,0.5)", borderRadius: 16, padding: 20, textAlign: "center" }}>
-            <div style={{ fontSize: 36, marginBottom: 8 }}>⚡</div>
+            <Zap size={36} color="#60a5fa" style={{ marginBottom: 8 }} />
             <div style={{ fontSize: 15, fontWeight: 800, color: "#f4f4f5", marginBottom: 8 }}>Límite diario alcanzado</div>
             <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 16 }}>Usaste {aiMessagesToday}/{DAILY_LIMIT} mensajes gratis.</div>
             <button className="btn-primary" style={{ fontSize: 13 }}>Ver Premium →</button>

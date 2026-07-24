@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/authStore";
 import { user as userApi } from "@/lib/api";
 import toast from "react-hot-toast";
-import { Edit2, Save, X, Crown, TrendingUp, Flame, Trophy, LogOut } from "lucide-react";
+import { Edit2, Save, X, Crown, TrendingUp, Flame, Trophy, LogOut, Check, Zap } from "lucide-react";
 
 type TabId = "profile" | "progress" | "subscription";
 
@@ -195,7 +195,7 @@ export default function ProfilePage() {
               {["L","M","X","J","V","S","D"].map((d, i) => (
                 <div key={d} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
                   <div style={{ width: 28, height: 28, borderRadius: "50%", background: i < 3 ? "#30D158" : "rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                    {i < 3 && <span style={{ fontSize: 12, color: "#fff" }}>✓</span>}
+                    {i < 3 && <Check size={13} color="#fff" strokeWidth={3} />}
                   </div>
                   <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", fontWeight: 700 }}>{d}</span>
                 </div>
@@ -218,14 +218,14 @@ export default function ProfilePage() {
           ) : (
             <div className="glass-card" style={{ padding: 20, border: "1px solid rgba(37,99,235,0.3)" }}>
               <div style={{ textAlign: "center", marginBottom: 24 }}>
-                <div style={{ fontSize: 36, marginBottom: 8 }}>⚡</div>
+                <Zap size={36} color="#60a5fa" style={{ marginBottom: 8 }} />
                 <div style={{ fontSize: 20, fontWeight: 800, color: "#f4f4f5", marginBottom: 8 }}>Actualiza a Premium</div>
                 <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", lineHeight: 1.6 }}>Desbloquea chat ilimitado, planes personalizados y mucho más</div>
               </div>
               {["Chat IA ilimitado", "Planes personalizados diarios", "Análisis de progreso avanzado", "Recetas exclusivas", "Soporte prioritario"].map(f => (
                 <div key={f} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 12 }}>
                   <div style={{ width: 18, height: 18, borderRadius: "50%", background: "#30D158", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                    <span style={{ fontSize: 11, color: "#fff" }}>✓</span>
+                    <Check size={11} color="#fff" strokeWidth={3} />
                   </div>
                   <span style={{ fontSize: 13, color: "#f4f4f5" }}>{f}</span>
                 </div>

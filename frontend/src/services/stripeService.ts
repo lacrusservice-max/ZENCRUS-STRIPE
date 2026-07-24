@@ -56,19 +56,30 @@ export async function startStripePaymentSheet(tier: CheckoutTier, extraMembers =
     allowsDelayedPaymentMethods: false,
     // El PaymentSheet nativo de Stripe exige colores en hex (#RRGGBB o #RRGGBBAA) —
     // rgba(...) causa "Failed to set Payment Sheet appearance" y bloquea el pago.
+    // Paleta ZENCRUS: azul eléctrico + negro. Sin morados ni amarillos.
     appearance: {
       colors: {
-        primary: '#5B4FFF',
-        background: '#0F0F14',
-        componentBackground: '#1A1A2E',
+        primary: '#2563EB',
+        background: '#0a0a0a',
+        componentBackground: '#141414',
         componentBorder: '#FFFFFF1F', // rgba(255,255,255,0.12)
         componentDivider: '#FFFFFF14', // rgba(255,255,255,0.08)
-        primaryText: '#F0F0F5',
-        secondaryText: '#A8A8B8',
-        componentText: '#F0F0F5',
+        primaryText: '#f4f4f5',
+        secondaryText: '#a1a1aa',
+        componentText: '#f4f4f5',
         placeholderText: '#FFFFFF4D', // rgba(255,255,255,0.3)
-        icon: '#A78BFA',
-        error: '#EF4444',
+        icon: '#2563EB',
+        error: '#FF3B30',
+      },
+      shapes: {
+        borderRadius: 14,
+        borderWidth: 1,
+      },
+      primaryButton: {
+        colors: {
+          background: '#2563EB',
+          text: '#ffffff',
+        },
       },
     },
   })

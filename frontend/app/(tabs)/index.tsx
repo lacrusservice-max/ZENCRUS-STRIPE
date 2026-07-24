@@ -779,7 +779,7 @@ export default function Dashboard() {
             <View style={act.card}>
               <View style={act.highlight} pointerEvents="none" />
               <View style={act.top}>
-                <Text style={{ fontSize: 20 }}>💧</Text>
+                <Ionicons name="water" size={20} color="#38BDF8" />
                 <Text style={act.bigVal}>{waterGlasses}<Text style={act.bigSub}>/8</Text></Text>
               </View>
               <Text style={act.label}>Hidratación</Text>

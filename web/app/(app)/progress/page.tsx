@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { TrendingUp, Award, Target, Calendar, Flame } from "lucide-react";
+import { TrendingUp, Award, Target, Calendar, Flame, Check } from "lucide-react";
 import toast from "react-hot-toast";
 
 type ProgressTab = "overview" | "challenges" | "achievements";
@@ -160,7 +160,9 @@ export default function ProgressPage() {
               <div style={{ fontSize: 13, fontWeight: 700, color: "#f4f4f5", marginBottom: 4 }}>{ach.title}</div>
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.5 }}>{ach.desc}</div>
               {ach.unlocked && (
-                <div style={{ marginTop: 8, fontSize: 10, fontWeight: 700, color: "#30D158" }}>✓ Desbloqueado</div>
+                <div style={{ marginTop: 8, fontSize: 10, fontWeight: 700, color: "#30D158", display: "flex", alignItems: "center", gap: 4 }}>
+                  <Check size={12} strokeWidth={3} /> Desbloqueado
+                </div>
               )}
             </div>
           ))}

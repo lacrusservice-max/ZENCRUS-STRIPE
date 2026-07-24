@@ -565,8 +565,20 @@ export default function ProfileScreen() {
               </View>
             )}
 
+            {/* Guía de uso */}
+            <TouchableOpacity style={gd.card} onPress={() => router.push('/guide')} activeOpacity={0.85}>
+              <View style={gd.iconWrap}>
+                <Ionicons name="book" size={22} color={Colors.primary[400]} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={gd.title}>Guía de uso</Text>
+                <Text style={gd.sub}>Aprende a usar cada sección de ZENCRUS paso a paso</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
+            </TouchableOpacity>
+
             {/* Notificaciones */}
-            <Text style={[s.sectionTitle, { marginTop: Spacing[6] }]}>🔔 Notificaciones</Text>
+            <Text style={[s.sectionTitle, { marginTop: Spacing[6] }]}>Notificaciones</Text>
             <Text style={s.sectionSub}>Recordatorios inteligentes para mantener tu racha</Text>
 
             <View style={nt.wrap}>
@@ -610,10 +622,10 @@ export default function ProfileScreen() {
 
             {/* Cuenta */}
             <Text style={[s.sectionTitle, { marginTop: Spacing[6] }]}>Cuenta</Text>
-            <SettingRow icon="🔒" label="Cambiar contraseña" onPress={() => Alert.alert('Próximamente')} />
-            <SettingRow icon="📧" label="Cambiar correo" onPress={() => Alert.alert('Próximamente')} />
-            <SettingRow icon="📏" label="Unidades (kg / cm)" onPress={() => Alert.alert('Próximamente')} />
-            <SettingRow icon="🌙" label="Tema oscuro" value={<Switch value={isDarkMode} onValueChange={toggleTheme} trackColor={{ true: Colors.primary[500], false: 'rgba(255,255,255,0.18)' }} thumbColor="#fff" />} />
+            <SettingRow icon="lock-closed" label="Cambiar contraseña" onPress={() => Alert.alert('Próximamente')} />
+            <SettingRow icon="mail" label="Cambiar correo" onPress={() => Alert.alert('Próximamente')} />
+            <SettingRow icon="resize" label="Unidades (kg / cm)" onPress={() => Alert.alert('Próximamente')} />
+            <SettingRow icon="moon" label="Tema oscuro" value={<Switch value={isDarkMode} onValueChange={toggleTheme} trackColor={{ true: Colors.primary[500], false: 'rgba(255,255,255,0.18)' }} thumbColor="#fff" />} />
 
             <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
               <Text style={s.logoutTxt}>Cerrar sesión</Text>
@@ -722,17 +734,25 @@ const pm = StyleSheet.create({
 function SettingRow({ icon, label, onPress, value, accent }: any) {
   return (
     <TouchableOpacity style={sr.row} onPress={onPress} activeOpacity={0.7}>
-      <Text style={sr.icon}>{icon}</Text>
+      <View style={sr.iconWrap}>
+        <Ionicons name={icon} size={17} color={accent ? Colors.primary[400] : 'rgba(255,255,255,0.7)'} />
+      </View>
       <Text style={[sr.label, accent && { color: Colors.primary[400] }]}>{label}</Text>
-      {value ?? <Text style={sr.arrow}>›</Text>}
+      {value ?? <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />}
     </TouchableOpacity>
   )
 }
 const sr = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing[4], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder, gap: Spacing[3] },
-  icon: { fontSize: 20, width: 28 },
+  iconWrap: { width: 28, alignItems: 'center' },
   label: { flex: 1, fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.78)', fontWeight: '500' },
-  arrow: { fontSize: 20, color: 'rgba(255,255,255,0.25)' },
+})
+
+const gd = StyleSheet.create({
+  card: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: Glass.purpleTint, borderWidth: 1, borderColor: Glass.purpleBorder, borderRadius: BorderRadius.lg, padding: Spacing[4], marginTop: Spacing[6] },
+  iconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(37,99,235,0.18)', alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
+  sub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.5)', marginTop: 2, lineHeight: 16 },
 })
 
 // ── Allergen styles ───────────────────────────────────────────────────────────

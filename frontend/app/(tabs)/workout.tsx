@@ -93,15 +93,17 @@ function AddExerciseModal({ visible, trainingType, onClose, onAdd, initial }: Ad
         <SafeAreaView style={ae.container}>
           <View style={ae.header}>
             <Text style={ae.title}>{initial ? 'Editar ejercicio' : 'Agregar ejercicio'}</Text>
-            <TouchableOpacity onPress={onClose}><Text style={ae.close}>✕</Text></TouchableOpacity>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" /></TouchableOpacity>
           </View>
 
           <View style={ae.tabs}>
-            <TouchableOpacity style={[ae.tab, tab === 'search' && ae.tabOn]} onPress={() => setTab('search')}>
-              <Text style={[ae.tabTxt, tab === 'search' && ae.tabTxtOn]}>🔍 Ejercicios frecuentes</Text>
+            <TouchableOpacity style={[ae.tab, { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }, tab === 'search' && ae.tabOn]} onPress={() => setTab('search')}>
+              <Ionicons name="search" size={14} color={tab === 'search' ? Colors.primary[400] : Colors.dark.textSecondary} />
+              <Text style={[ae.tabTxt, tab === 'search' && ae.tabTxtOn]}>Ejercicios frecuentes</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={[ae.tab, tab === 'manual' && ae.tabOn]} onPress={() => setTab('manual')}>
-              <Text style={[ae.tabTxt, tab === 'manual' && ae.tabTxtOn]}>✏️ Personalizar</Text>
+            <TouchableOpacity style={[ae.tab, { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }, tab === 'manual' && ae.tabOn]} onPress={() => setTab('manual')}>
+              <Ionicons name="create" size={14} color={tab === 'manual' ? Colors.primary[400] : Colors.dark.textSecondary} />
+              <Text style={[ae.tabTxt, tab === 'manual' && ae.tabTxtOn]}>Personalizar</Text>
             </TouchableOpacity>
           </View>
 
@@ -309,10 +311,10 @@ function RoutineEditorModal({ visible, initial, onClose, onSave }: RoutineEditor
                     {ex.notes ? <Text style={re.exNotes}>{ex.notes}</Text> : null}
                   </View>
                   <TouchableOpacity style={re.exEdit} onPress={() => { setEditEx(ex); setAddExOpen(true) }}>
-                    <Text style={re.exEditTxt}>✏️</Text>
+                    <Ionicons name="create-outline" size={17} color={Colors.primary[400]} />
                   </TouchableOpacity>
                   <TouchableOpacity style={re.exDel} onPress={() => removeEx(ex.id)}>
-                    <Text style={re.exDelTxt}>✕</Text>
+                    <Ionicons name="close" size={17} color={Colors.accent.red} />
                   </TouchableOpacity>
                 </View>
               ))
@@ -417,14 +419,16 @@ function RoutineCard({ routine, onEdit, onDelete, onStart }: {
           ))}
 
           <View style={rc.actions}>
-            <TouchableOpacity style={rc.editBtn} onPress={onEdit}>
-              <Text style={rc.editBtnTxt}>✏️ Editar rutina</Text>
+            <TouchableOpacity style={[rc.editBtn, { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }]} onPress={onEdit}>
+              <Ionicons name="create-outline" size={15} color={Colors.primary[400]} />
+              <Text style={rc.editBtnTxt}>Editar rutina</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={rc.delBtn} onPress={() => Alert.alert('Eliminar rutina', `¿Eliminar "${routine.name}"?`, [
+            <TouchableOpacity style={[rc.delBtn, { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }]} onPress={() => Alert.alert('Eliminar rutina', `¿Eliminar "${routine.name}"?`, [
               { text: 'Cancelar', style: 'cancel' },
               { text: 'Eliminar', style: 'destructive', onPress: onDelete },
             ])}>
-              <Text style={rc.delBtnTxt}>🗑️ Eliminar</Text>
+              <Ionicons name="trash-outline" size={15} color={Colors.accent.red} />
+              <Text style={rc.delBtnTxt}>Eliminar</Text>
             </TouchableOpacity>
           </View>
         </View>
@@ -470,7 +474,7 @@ export default function WorkoutScreen() {
   const handleSave = async (r: Routine) => {
     await saveRoutine(r)
     setEditorVisible(false)
-    Alert.alert('✅ Rutina guardada', r.name)
+    Alert.alert('Rutina guardada', r.name)
   }
 
   const handleStart = (r: Routine) => {
@@ -516,7 +520,7 @@ export default function WorkoutScreen() {
       {/* Today status */}
       {todayLogs.length > 0 && (
         <View style={ws.todayBanner}>
-          <Text style={ws.todayEmoji}>🔥</Text>
+          <Ionicons name="flame" size={20} color={Colors.accent.orange} style={ws.todayEmoji} />
           <Text style={ws.todayTxt}>
             {todayLogs.length} sesión{todayLogs.length > 1 ? 'es' : ''} hoy: {todayLogs.map(l => l.routineName).join(', ')}
           </Text>
@@ -539,7 +543,7 @@ export default function WorkoutScreen() {
           <>
             {routines.length === 0 ? (
               <View style={ws.empty}>
-                <Text style={ws.emptyEmoji}>💪</Text>
+                <Ionicons name="barbell" size={44} color="rgba(255,255,255,0.25)" style={ws.emptyEmoji} />
                 <Text style={ws.emptyTitle}>Sin rutinas todavía</Text>
                 <Text style={ws.emptyBody}>Crea tu primera rutina de entrenamiento. Tú decides los ejercicios, series, repeticiones y descansos.</Text>
                 <TouchableOpacity style={ws.emptyBtn} onPress={openCreate}>
@@ -564,7 +568,7 @@ export default function WorkoutScreen() {
           <>
             {recentLogs.length === 0 ? (
               <View style={ws.empty}>
-                <Text style={ws.emptyEmoji}>📋</Text>
+                <Ionicons name="clipboard-outline" size={44} color="rgba(255,255,255,0.25)" style={ws.emptyEmoji} />
                 <Text style={ws.emptyTitle}>Sin sesiones registradas</Text>
                 <Text style={ws.emptyBody}>Cuando completes una rutina, aparecerá aquí tu historial de entrenamientos.</Text>
               </View>
@@ -578,7 +582,7 @@ export default function WorkoutScreen() {
                     <Text style={ws.logName}>{log.routineName}</Text>
                     <Text style={ws.logSub}>{log.exercises.length} ejercicios{log.durationMinutes ? ` · ${log.durationMinutes} min` : ''}</Text>
                   </View>
-                  <Text style={ws.logCheck}>✅</Text>
+                  <Ionicons name="checkmark-circle" size={22} color={Colors.accent.green} />
                 </View>
               ))
             )}

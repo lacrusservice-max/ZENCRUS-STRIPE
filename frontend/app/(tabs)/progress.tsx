@@ -4,6 +4,7 @@ import {
   Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useProgressStore } from '@/store/progressStore'
 import { useAchievementStore, XP_LEVELS } from '@/store/achievementStore'
@@ -123,7 +124,7 @@ function WeightModal({ visible, onClose }: { visible: boolean; onClose: () => vo
         <SafeAreaView style={wm.container}>
           <View style={wm.header}>
             <Text style={wm.title}>Registrar peso</Text>
-            <TouchableOpacity onPress={onClose}><Text style={wm.close}>✕</Text></TouchableOpacity>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" /></TouchableOpacity>
           </View>
           <View style={wm.body}>
             <Text style={wm.fieldLabel}>Peso actual (kg)</Text>
@@ -205,7 +206,7 @@ function MeasurementsModal({ visible, onClose }: { visible: boolean; onClose: ()
         <SafeAreaView style={mm.container}>
           <View style={mm.header}>
             <Text style={mm.title}>Medidas corporales</Text>
-            <TouchableOpacity onPress={onClose}><Text style={mm.close}>✕</Text></TouchableOpacity>
+            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" /></TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={mm.body}>
             <Text style={mm.subtitle}>Llena las que tengas disponibles (cm / %)</Text>
@@ -333,7 +334,7 @@ function HealthTab({ onGoToTracker }: { onGoToTracker: () => void }) {
       <View style={s.section}>
         <View style={ht.grid}>
           <View style={ht.cell}>
-            <Text style={ht.cellEmoji}>👟</Text>
+            <Ionicons name="walk" size={22} color={Colors.accent.green} style={ht.cellEmoji} />
             <Text style={ht.cellVal}>{(today?.steps ?? 0).toLocaleString()}</Text>
             <Text style={ht.cellLabel}>pasos hoy</Text>
             <View style={ht.miniBarBg}>
@@ -341,7 +342,7 @@ function HealthTab({ onGoToTracker }: { onGoToTracker: () => void }) {
             </View>
           </View>
           <View style={ht.cell}>
-            <Text style={ht.cellEmoji}>❤️</Text>
+            <Ionicons name="heart" size={22} color={Colors.accent.red} style={ht.cellEmoji} />
             <Text style={ht.cellVal}>{restingHR > 0 ? `${restingHR}` : '—'}</Text>
             <Text style={ht.cellLabel}>FC reposo bpm</Text>
             <View style={ht.miniBarBg}>
@@ -349,7 +350,7 @@ function HealthTab({ onGoToTracker }: { onGoToTracker: () => void }) {
             </View>
           </View>
           <View style={ht.cell}>
-            <Text style={ht.cellEmoji}>🌙</Text>
+            <Ionicons name="moon" size={22} color={Colors.secondary[400]} style={ht.cellEmoji} />
             <Text style={ht.cellVal}>{sleepH > 0 ? `${sleepH.toFixed(1)}h` : '—'}</Text>
             <Text style={ht.cellLabel}>{today?.sleepQuality ? SLEEP_QUALITY[today.sleepQuality] : 'sin registro'}</Text>
             <View style={ht.miniBarBg}>
@@ -357,7 +358,7 @@ function HealthTab({ onGoToTracker }: { onGoToTracker: () => void }) {
             </View>
           </View>
           <View style={ht.cell}>
-            <Text style={ht.cellEmoji}>🔥</Text>
+            <Ionicons name="flame" size={22} color={Colors.accent.orange} style={ht.cellEmoji} />
             <Text style={ht.cellVal}>{today?.caloriesBurned ?? 0}</Text>
             <Text style={ht.cellLabel}>cal quemadas</Text>
             <View style={ht.miniBarBg}>
@@ -444,7 +445,7 @@ function MedidasTab({ onGoToMeasurements }: { onGoToMeasurements: () => void }) 
       {latest ? (
         <View style={s.section}>
           <View style={s.cardHeader}>
-            <Text style={s.cardTitle}>📅 Último registro</Text>
+            <Text style={s.cardTitle}>Último registro</Text>
             <Text style={s.sub}>{new Date(latest.date).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' })}</Text>
           </View>
           <View style={[s.card, { gap: Spacing[2] }]}>
@@ -542,7 +543,7 @@ function LogrosTab({ onGoToAchievements, onGoToLeaderboard }: {
       {unlocked.length > 0 ? (
         <View style={s.section}>
           <Text style={[s.cardTitle, { marginBottom: Spacing[3] }]}>
-            🏆 Desbloqueados ({unlocked.length})
+            Desbloqueados ({unlocked.length})
           </Text>
           <View style={{ gap: Spacing[2] }}>
             {unlocked.slice().reverse().slice(0, 6).map(a => (
@@ -558,7 +559,8 @@ function LogrosTab({ onGoToAchievements, onGoToLeaderboard }: {
           </View>
           {unlocked.length > 6 && (
             <TouchableOpacity style={lt.seeAll} onPress={onGoToAchievements}>
-              <Text style={lt.seeAllTxt}>Ver todos los {unlocked.length} logros →</Text>
+              <Text style={lt.seeAllTxt}>Ver todos los {unlocked.length} logros</Text>
+              <Ionicons name="arrow-forward" size={14} color={Colors.primary[400]} />
             </TouchableOpacity>
           )}
         </View>
@@ -625,7 +627,7 @@ const lt = StyleSheet.create({
   xpTotal: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.6)' },
   xpBadge: { backgroundColor: Colors.accent.yellow + '20', borderRadius: BorderRadius.base, paddingHorizontal: Spacing[3], paddingVertical: Spacing[1] },
   xpBadgeTxt: { fontSize: Typography.fontSize.xs, fontWeight: '800', color: Colors.accent.yellow },
-  seeAll: { marginTop: Spacing[3], alignItems: 'center', padding: Spacing[3] },
+  seeAll: { marginTop: Spacing[3], flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center', padding: Spacing[3] },
   seeAllTxt: { fontSize: Typography.fontSize.sm, color: Colors.primary[400], fontWeight: '700' },
   toggleBtn: { padding: Spacing[3], backgroundColor: Glass.card, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Glass.cardBorder },
   toggleTxt: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
@@ -640,11 +642,11 @@ const lt = StyleSheet.create({
 
 type ProgressTab = 'body' | 'salud' | 'medidas' | 'logros'
 
-const TAB_LABELS: Record<ProgressTab, string> = {
-  body: '📊 Cuerpo',
-  salud: '❤️ Salud',
-  medidas: '📏 Medidas',
-  logros: '🏆 Logros',
+const TAB_LABELS: Record<ProgressTab, { icon: keyof typeof Ionicons.glyphMap; label: string }> = {
+  body: { icon: 'body', label: 'Cuerpo' },
+  salud: { icon: 'heart', label: 'Salud' },
+  medidas: { icon: 'resize', label: 'Medidas' },
+  logros: { icon: 'trophy', label: 'Logros' },
 }
 
 export default function ProgressScreen() {
@@ -697,11 +699,12 @@ export default function ProgressScreen() {
           {(Object.keys(TAB_LABELS) as ProgressTab[]).map(t => (
             <TouchableOpacity
               key={t}
-              style={[s.tab, tab === t && s.tabActive]}
+              style={[s.tab, { flexDirection: 'row', gap: 6, alignItems: 'center' }, tab === t && s.tabActive]}
               onPress={() => setTab(t)}
             >
+              <Ionicons name={TAB_LABELS[t].icon} size={14} color={tab === t ? Colors.primary[400] : Colors.dark.textSecondary} />
               <Text style={[s.tabTxt, tab === t && s.tabTxtActive]}>
-                {TAB_LABELS[t]}
+                {TAB_LABELS[t].label}
               </Text>
             </TouchableOpacity>
           ))}
@@ -713,7 +716,7 @@ export default function ProgressScreen() {
             {/* Peso */}
             <View style={s.section}>
               <View style={s.cardHeader}>
-                <Text style={s.cardTitle}>⚖️ Peso corporal</Text>
+                <Text style={s.cardTitle}>Peso corporal</Text>
                 <TouchableOpacity style={s.addBtn} onPress={() => setWeightModal(true)}>
                   <Text style={s.addBtnTxt}>+ Registrar</Text>
                 </TouchableOpacity>
@@ -754,7 +757,7 @@ export default function ProgressScreen() {
             {/* Medidas rápidas */}
             <View style={s.section}>
               <View style={s.cardHeader}>
-                <Text style={s.cardTitle}>📏 Medidas rápidas</Text>
+                <Text style={s.cardTitle}>Medidas rápidas</Text>
                 <TouchableOpacity style={s.addBtn} onPress={() => setMeasureModal(true)}>
                   <Text style={s.addBtnTxt}>+ Registrar</Text>
                 </TouchableOpacity>

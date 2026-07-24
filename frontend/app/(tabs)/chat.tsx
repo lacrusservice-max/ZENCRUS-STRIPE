@@ -5,6 +5,7 @@ import {
   ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useNutritionStore } from '@/store/nutritionStore'
 import { useWorkoutStore } from '@/store/workoutStore'
@@ -39,7 +40,7 @@ function MessageBubble({ msg }: { msg: CoachMessage }) {
     <View style={[b.wrap, isUser ? b.wrapRight : b.wrapLeft]}>
       {!isUser && (
         <View style={b.avatar}>
-          <Text style={b.avatarEmoji}>⚡</Text>
+          <Ionicons name="flash" size={16} color="#fff" />
         </View>
       )}
       <View style={[b.bubble, isUser ? b.bubbleUser : b.bubbleAssistant]}>
@@ -70,7 +71,7 @@ const b = StyleSheet.create({
 function TypingIndicator() {
   return (
     <View style={[b.wrap, b.wrapLeft]}>
-      <View style={b.avatar}><Text style={b.avatarEmoji}>⚡</Text></View>
+      <View style={b.avatar}><Ionicons name="flash" size={16} color="#fff" /></View>
       <View style={[b.bubble, b.bubbleAssistant, { paddingVertical: Spacing[4], paddingHorizontal: Spacing[5] }]}>
         <ActivityIndicator size="small" color={Colors.primary[400]} />
       </View>
@@ -83,7 +84,7 @@ function TypingIndicator() {
 function PremiumGate({ used, limit }: { used: number; limit: number }) {
   return (
     <View style={pg.wrap}>
-      <Text style={pg.emoji}>⚡</Text>
+      <Ionicons name="flash" size={40} color={Colors.primary[400]} style={pg.emoji} />
       <Text style={pg.title}>Límite diario alcanzado</Text>
       <Text style={pg.sub}>
         Usaste {used}/{limit} mensajes gratis de hoy.
@@ -185,7 +186,7 @@ export default function ChatScreen() {
       <View style={s.header}>
         <View style={s.headerLeft}>
           <View style={s.headerIcon}>
-            <Text style={s.headerIconTxt}>⚡</Text>
+            <Ionicons name="flash" size={18} color="#fff" />
           </View>
           <View>
             <Text style={s.headerTitle}>Coach ZENCRUS</Text>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Dumbbell, Play, CheckCircle, Clock, Zap, Plus } from "lucide-react";
+import { Dumbbell, Play, CheckCircle, Clock, Zap, Plus, Check } from "lucide-react";
 
 interface Exercise {
   id: string;
@@ -125,7 +125,7 @@ export default function WorkoutPage() {
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: 16, background: "none", border: "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}
               >
                 <div style={{ width: 32, height: 32, borderRadius: "50%", background: ex.completed ? "#30D158" : "rgba(255,255,255,0.07)", border: ex.completed ? "none" : "1px solid rgba(255,255,255,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, transition: "all 0.2s" }}>
-                  {ex.completed ? <span style={{ fontSize: 14, color: "#fff" }}>✓</span> : <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>{i + 1}</span>}
+                  {ex.completed ? <Check size={15} color="#fff" strokeWidth={3} /> : <span style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", fontWeight: 700 }}>{i + 1}</span>}
                 </div>
                 <div style={{ flex: 1 }}>
                   <div style={{ fontSize: 14, fontWeight: 700, color: ex.completed ? "rgba(255,255,255,0.4)" : "#f4f4f5", textDecoration: ex.completed ? "line-through" : "none" }}>{ex.name}</div>
