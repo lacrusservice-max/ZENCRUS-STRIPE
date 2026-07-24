@@ -6,6 +6,7 @@ import { logger } from '../config/logger'
 import { supabase } from '../config/supabase'
 import { construirSystemPrompt } from '../services/aiSystemPrompt'
 import { calcularNutricion, PerfilUsuario } from '../services/nutritionCalculator'
+import { AI_TOOLS, executeAiTool } from '../services/aiTools'
 
 const aiClient = new DeepSeekClient(process.env.DEEPSEEK_API_KEY || '')
 
@@ -206,20 +207,51 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
   const resultadoNutricional = perfil ? calcularNutricion(perfil) : null
   const systemPrompt = construirSystemPrompt(perfil, resultadoNutricional, nombre ?? undefined)
 
-  const context = {
-    userId,
-    systemPrompt,
-    messageHistory: (previousMessages || []).reverse().map((m: any) => ({
-      role: m.sender_type === 'ai' ? 'assistant' : 'user',
-      content: m.content,
-    })),
-  }
+  const history = (previousMessages || []).reverse().map((m: any) => ({
+    role: m.sender_type === 'ai' ? 'assistant' : 'user',
+    content: m.content,
+  }))
 
-  const aiResponse = await aiClient.chat(content, context)
+  // System prompt + aviso de que ZENA puede ejecutar cambios reales con herramientas.
+  const toolsHint = `\n\nPUEDES EJECUTAR CAMBIOS REALES en la app del usuario mediante herramientas: cambiar su objetivo, actualizar su peso/actividad, ajustar sus targets nutricionales (calorías/macros/comidas) y regenerar su plan. Cuando el usuario pida un cambio de este tipo, USA la herramienta correspondiente en lugar de solo describirlo. Después confirma con lenguaje natural y cálido lo que hiciste.`
+
+  const messages = [
+    { role: 'system', content: systemPrompt + toolsHint },
+    ...history,
+    { role: 'user', content },
+  ]
+
+  let finalText: string
+
+  try {
+    const first = await aiClient.chatWithTools(messages, AI_TOOLS as any)
+
+    if (first.toolCalls?.length) {
+      // La IA pidió ejecutar acciones — las corremos y le devolvemos los resultados.
+      const toolResultMessages: any[] = []
+      for (const call of first.toolCalls) {
+        let args: Record<string, any> = {}
+        try { args = JSON.parse(call.function?.arguments || '{}') } catch { /* args vacíos */ }
+        const result = await executeAiTool(call.function?.name, args, userId)
+        toolResultMessages.push({ role: 'tool', tool_call_id: call.id, content: result })
+      }
+      const followup = await aiClient.chatContinuation([
+        ...messages,
+        first.assistantMessage ?? { role: 'assistant', content: first.content ?? '', tool_calls: first.toolCalls },
+        ...toolResultMessages,
+      ])
+      finalText = followup.content
+    } else {
+      finalText = first.content
+    }
+  } catch (err) {
+    logger.error('sendMessage IA error:', err)
+    finalText = 'Tuve un problema procesando tu mensaje. Intenta de nuevo en un momento.'
+  }
 
   const { data: aiMessage } = await supabase
     .from('messages')
-    .insert({ session_id: id, sender_type: 'ai', content: aiResponse.response })
+    .insert({ session_id: id, sender_type: 'ai', content: finalText })
     .select()
     .single()
 

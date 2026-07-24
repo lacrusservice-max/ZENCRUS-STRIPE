@@ -155,6 +155,48 @@ No sustituyes a un profesional de la salud.`
   }
 
   /**
+   * Chat con soporte de herramientas (tool-calling). Permite que la IA ejecute
+   * acciones reales (editar plan, targets, objetivo). Devuelve:
+   *   { toolCalls: [...] } si la IA pide ejecutar una acción, o
+   *   { content: '...' } si es una respuesta de texto normal.
+   */
+  async chatWithTools(messages, tools) {
+    if (!this.isConnected) {
+      // Sin API key: no hay tool-calling, respuesta simulada de texto.
+      const last = messages?.at(-1)?.content || ''
+      return { content: this._mockResponse('/chat/completions', { messages }).response, toolCalls: null }
+    }
+    const result = await this._call('/chat/completions', {
+      messages,
+      tools,
+      tool_choice: 'auto',
+      temperature: 0.4,
+      max_tokens: 1200,
+    })
+    const msg = result?.choices?.[0]?.message
+    if (msg?.tool_calls?.length) {
+      return { content: msg.content || '', toolCalls: msg.tool_calls, assistantMessage: msg }
+    }
+    return { content: msg?.content || 'Lo siento, no pude procesar tu mensaje.', toolCalls: null }
+  }
+
+  /**
+   * Continúa la conversación tras ejecutar herramientas, para que la IA
+   * redacte una confirmación natural con los resultados.
+   */
+  async chatContinuation(messages) {
+    if (!this.isConnected) {
+      return { content: 'Listo, apliqué los cambios que me pediste. ✅' }
+    }
+    const result = await this._call('/chat/completions', {
+      messages,
+      temperature: 0.6,
+      max_tokens: 800,
+    })
+    return { content: result?.choices?.[0]?.message?.content || 'Listo, apliqué los cambios. ✅' }
+  }
+
+  /**
    * Respuestas simuladas (modo sin API key)
    */
   _mockResponse(endpoint, payload) {
