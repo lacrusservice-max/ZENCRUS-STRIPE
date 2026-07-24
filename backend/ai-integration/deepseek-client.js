@@ -10,7 +10,8 @@ class DeepSeekClient {
   constructor(apiKey) {
     this.apiKey = apiKey
     this.baseURL = 'https://api.deepseek.com/v1'
-    this.model = process.env.DEEPSEEK_MODEL || 'deepseek-chat'
+    // deepseek-chat fue retirado; los modelos válidos son deepseek-v4-flash / -pro.
+    this.model = process.env.DEEPSEEK_MODEL || 'deepseek-v4-flash'
     this.isConnected = Boolean(apiKey && apiKey !== 'your_deepseek_api_key')
   }
 
