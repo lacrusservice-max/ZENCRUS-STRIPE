@@ -54,17 +54,19 @@ export async function startStripePaymentSheet(tier: CheckoutTier, extraMembers =
     customerEphemeralKeySecret: ephemeralKey,
     ...(mode === 'setup' ? { setupIntentClientSecret: clientSecret } : { paymentIntentClientSecret: clientSecret }),
     allowsDelayedPaymentMethods: false,
+    // El PaymentSheet nativo de Stripe exige colores en hex (#RRGGBB o #RRGGBBAA) —
+    // rgba(...) causa "Failed to set Payment Sheet appearance" y bloquea el pago.
     appearance: {
       colors: {
         primary: '#5B4FFF',
         background: '#0F0F14',
         componentBackground: '#1A1A2E',
-        componentBorder: 'rgba(255,255,255,0.12)',
-        componentDivider: 'rgba(255,255,255,0.08)',
+        componentBorder: '#FFFFFF1F', // rgba(255,255,255,0.12)
+        componentDivider: '#FFFFFF14', // rgba(255,255,255,0.08)
         primaryText: '#F0F0F5',
         secondaryText: '#A8A8B8',
         componentText: '#F0F0F5',
-        placeholderText: 'rgba(255,255,255,0.3)',
+        placeholderText: '#FFFFFF4D', // rgba(255,255,255,0.3)
         icon: '#A78BFA',
         error: '#EF4444',
       },
