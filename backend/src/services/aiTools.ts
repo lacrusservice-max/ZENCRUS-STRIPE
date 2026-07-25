@@ -66,12 +66,22 @@ export const AI_TOOLS = [
   },
 ] as const
 
+// Dos campos paralelos leen el objetivo con vocabularios distintos:
+// goals.primary (generación de dieta con IA) y goals.main_goal (pantalla de Perfil).
+// Se escriben ambos siempre para que ningún lado quede desactualizado.
 const OBJETIVO_MAP: Record<string, string> = {
   perder_grasa: 'weight_loss',
   ganar_musculo: 'muscle_gain',
   mantener: 'maintenance',
   recomposicion: 'recomposicion',
   rendimiento: 'performance',
+}
+const OBJETIVO_MAIN_GOAL_MAP: Record<string, string> = {
+  perder_grasa: 'lose_fat',
+  ganar_musculo: 'gain_muscle',
+  mantener: 'maintain',
+  recomposicion: 'maintain',
+  rendimiento: 'maintain',
 }
 const ACTIVIDAD_MAP: Record<string, string> = {
   sedentario: 'sedentary',
@@ -93,6 +103,7 @@ export async function executeAiTool(name: string, args: Record<string, any>, use
       case 'actualizar_objetivo': {
         const goals = await getGoals(userId)
         goals.primary = OBJETIVO_MAP[args.objetivo] ?? goals.primary ?? 'maintenance'
+        goals.main_goal = OBJETIVO_MAIN_GOAL_MAP[args.objetivo] ?? goals.main_goal ?? 'maintain'
         if (typeof args.peso_objetivo === 'number') goals.goal_weight = args.peso_objetivo
         const { error } = await supabase.from('users').update({ goals, updated_at: new Date().toISOString() }).eq('id', userId)
         if (error) throw error
@@ -111,17 +122,26 @@ export async function executeAiTool(name: string, args: Record<string, any>, use
         return `Datos físicos actualizados: ${partes.join(' y ')}.`
       }
       case 'actualizar_targets_nutricionales': {
+        // IMPORTANTE: estos son los mismos nombres planos que usa el editor de
+        // targets en Perfil y que lee la pantalla de Nutrición (goals.calories_target,
+        // goals.protein_g, etc.) — nunca anidar en goals.custom_targets, esa ruta
+        // no la lee ninguna pantalla y el cambio de la IA quedaría invisible.
         const goals = await getGoals(userId)
-        const t = (goals.custom_targets && typeof goals.custom_targets === 'object') ? goals.custom_targets : {}
-        if (typeof args.calorias === 'number') t.calories = args.calorias
-        if (typeof args.proteina === 'number') t.protein = args.proteina
-        if (typeof args.carbohidratos === 'number') t.carbs = args.carbohidratos
-        if (typeof args.grasa === 'number') t.fat = args.grasa
+        if (typeof args.calorias === 'number') goals.calories_target = args.calorias
+        if (typeof args.proteina === 'number') goals.protein_g = args.proteina
+        if (typeof args.carbohidratos === 'number') goals.carbs_g = args.carbohidratos
+        if (typeof args.grasa === 'number') goals.fat_g = args.grasa
         if (typeof args.comidas_por_dia === 'number') goals.meals_per_day = args.comidas_por_dia
-        goals.custom_targets = t
         const { error } = await supabase.from('users').update({ goals, updated_at: new Date().toISOString() }).eq('id', userId)
         if (error) throw error
-        return `Objetivos nutricionales ajustados: ${JSON.stringify({ ...t, comidas: goals.meals_per_day })}.`
+        const cambios = [
+          typeof args.calorias === 'number' ? `${args.calorias} kcal` : null,
+          typeof args.proteina === 'number' ? `${args.proteina}g proteína` : null,
+          typeof args.carbohidratos === 'number' ? `${args.carbohidratos}g carbos` : null,
+          typeof args.grasa === 'number' ? `${args.grasa}g grasa` : null,
+          typeof args.comidas_por_dia === 'number' ? `${args.comidas_por_dia} comidas/día` : null,
+        ].filter(Boolean).join(', ')
+        return `Objetivos nutricionales ajustados: ${cambios}.`
       }
       case 'regenerar_plan': {
         const goals = await getGoals(userId)
