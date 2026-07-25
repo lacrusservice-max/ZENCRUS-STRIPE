@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { useAchievementStore } from './achievementStore'
+import { evaluateStreakContinuity } from '@/utils/streakLogic'
 
 export interface DailyActivity {
   date: string
@@ -9,18 +11,25 @@ export interface DailyActivity {
   drank8Glasses: boolean
 }
 
+export type DayStatus = 'completed' | 'protected' | 'missed' | 'future' | 'empty'
+
 interface StreakState {
   currentStreak: number
   longestStreak: number
   lastActiveDate: string | null
   weekActivity: DailyActivity[]   // últimos 7 días
   totalDaysActive: number
+  protectedDates: string[]        // días salvados con un protector de racha
+  justProtected: boolean          // true justo después de que un protector salvó la racha (para avisar, una vez)
 
   load: () => Promise<void>
   markActivity: (date: string, updates: Partial<Omit<DailyActivity, 'date'>>) => Promise<void>
   isActive: (date: string) => boolean
   getTodayActivity: () => DailyActivity
   getStreakMessage: () => string
+  acknowledgeProtection: () => void
+  /** Historial para el calendario — más días que weekActivity (por defecto 84 = 12 semanas). */
+  getHistory: (days?: number) => Promise<{ date: string; status: DayStatus }[]>
 }
 
 function todayKey() { return new Date().toISOString().slice(0, 10) }
@@ -59,23 +68,38 @@ export const useStreakStore = create<StreakState>((set, get) => ({
   lastActiveDate: null,
   weekActivity: [],
   totalDaysActive: 0,
+  protectedDates: [],
+  justProtected: false,
 
   load: async () => {
     try {
       const raw = await AsyncStorage.getItem('streak_data')
+      const protectedRaw = await AsyncStorage.getItem('streak_protected_dates')
+      const protectedDates: string[] = protectedRaw ? JSON.parse(protectedRaw) : []
+
       if (raw) {
         const data = JSON.parse(raw)
-        // Re-verificar racha (puede haberse roto si no entró ayer)
         const today = todayKey()
-        const last = data.lastActiveDate
-        if (last && last !== today) {
-          const da = new Date(last), db = new Date(today)
-          const diff = (db.getTime() - da.getTime()) / (1000 * 60 * 60 * 24)
-          if (diff > 1) {
-            data.currentStreak = 0  // Racha rota
+        const shieldsAvailable = useAchievementStore.getState().streakShields
+        const decision = evaluateStreakContinuity(data.lastActiveDate, today, shieldsAvailable)
+
+        if (decision.action === 'protect') {
+          const shieldUsed = useAchievementStore.getState().useStreakShield()
+          if (shieldUsed) {
+            protectedDates.push(decision.missedDate)
+            await AsyncStorage.setItem('streak_protected_dates', JSON.stringify(protectedDates))
+            data.lastActiveDate = decision.missedDate // se considera "cubierto", la racha sigue viva
+            set({ justProtected: true })
+          } else {
+            data.currentStreak = 0 // shield reportado disponible pero no se pudo consumir
           }
+        } else if (decision.action === 'break' || decision.action === 'break_multi') {
+          data.currentStreak = 0
         }
-        set(data)
+
+        set({ ...data, protectedDates })
+      } else {
+        set({ protectedDates })
       }
 
       // Cargar actividad de la semana
@@ -88,6 +112,32 @@ export const useStreakStore = create<StreakState>((set, get) => ({
       }
       set({ weekActivity: week })
     } catch {}
+  },
+
+  acknowledgeProtection: () => set({ justProtected: false }),
+
+  getHistory: async (days = 84) => {
+    const { protectedDates } = get()
+    const protectedSet = new Set(protectedDates)
+    const out: { date: string; status: DayStatus }[] = []
+    for (let i = days - 1; i >= 0; i--) {
+      const d = new Date(); d.setDate(d.getDate() - i)
+      const key = d.toISOString().slice(0, 10)
+      if (protectedSet.has(key)) {
+        out.push({ date: key, status: 'protected' })
+        continue
+      }
+      const raw = await AsyncStorage.getItem(`activity_${key}`)
+      const activity: DailyActivity | null = raw ? JSON.parse(raw) : null
+      if (activity && isDayComplete(activity)) {
+        out.push({ date: key, status: 'completed' })
+      } else if (i === 0) {
+        out.push({ date: key, status: 'empty' }) // hoy, aún sin actividad
+      } else {
+        out.push({ date: key, status: 'missed' })
+      }
+    }
+    return out
   },
 
   markActivity: async (date, updates) => {

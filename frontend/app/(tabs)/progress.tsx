@@ -15,13 +15,14 @@ import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/th
 // ── Level Badge (new XP system from achievementStore) ─────────────────────────
 
 function LevelBadge() {
+  const router = useRouter()
   const { getCurrentLevel, getNextLevel, getLevelProgress, totalXP, streakShields } = useAchievementStore()
   const current = getCurrentLevel()
   const next = getNextLevel()
   const pct = getLevelProgress()
 
   return (
-    <View style={lb.wrap}>
+    <TouchableOpacity style={lb.wrap} onPress={() => router.push('/streaks')} activeOpacity={0.85}>
       <View style={[lb.badge, { borderColor: Colors.primary[500] }]}>
         <Text style={lb.emoji}>{current.emoji}</Text>
       </View>
@@ -42,7 +43,7 @@ function LevelBadge() {
           <Text style={lb.next}>{totalXP - current.minXP} / {next.minXP - current.minXP} XP para {next.name} {next.emoji}</Text>
         )}
       </View>
-    </View>
+    </TouchableOpacity>
   )
 }
 

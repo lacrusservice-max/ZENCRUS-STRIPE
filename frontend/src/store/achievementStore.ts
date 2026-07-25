@@ -56,6 +56,8 @@ const ACHIEVEMENTS: Achievement[] = [
   { id: 'streak_30', title: 'Mes de hierro', description: '30 días consecutivos activo', emoji: '🏆', category: 'streak', xpReward: 750, condition: s => s.streak >= 30 },
   { id: 'streak_60', title: 'Dos meses imparable', description: '60 días consecutivos activo', emoji: '💎', category: 'streak', xpReward: 1500, condition: s => s.streak >= 60 },
   { id: 'streak_100', title: 'Centurión', description: '100 días consecutivos activo', emoji: '👑', category: 'streak', xpReward: 3000, condition: s => s.streak >= 100 },
+  { id: 'streak_180', title: 'Medio año de hierro', description: '180 días consecutivos activo', emoji: '🛡️', category: 'streak', xpReward: 6000, condition: s => s.streak >= 180 },
+  { id: 'streak_365', title: 'Un año ZENCRUS', description: '365 días consecutivos activo — élite absoluta', emoji: '🌟', category: 'streak', xpReward: 15000, condition: s => s.streak >= 365 },
   { id: 'workouts_10', title: '10 entrenamientos', description: 'Completa 10 rutinas', emoji: '💪', category: 'workout', xpReward: 200, condition: s => s.totalWorkouts >= 10 },
   { id: 'workouts_50', title: '50 entrenamientos', description: 'Completa 50 rutinas', emoji: '🥇', category: 'workout', xpReward: 500, condition: s => s.totalWorkouts >= 50 },
   { id: 'pr_first', title: 'Récord personal', description: 'Rompe tu primer PR', emoji: '📈', category: 'workout', xpReward: 150, condition: s => s.prBroken >= 1 },
