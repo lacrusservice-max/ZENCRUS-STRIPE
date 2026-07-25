@@ -85,12 +85,16 @@ export const Colors = {
 }
 
 export const Typography = {
+  // Rajdhani (geométrica, mayúsculas fuertes) para headlines/marca;
+  // Inter para cuerpo de texto largo — nunca la misma fuente para ambos usos.
   fontFamily: {
-    regular: 'Inter-Regular',
-    medium: 'Inter-Medium',
-    semiBold: 'Inter-SemiBold',
-    bold: 'Inter-Bold',
-    mono: 'JetBrainsMono-Regular',
+    display: 'Rajdhani_700Bold',
+    displaySemiBold: 'Rajdhani_600SemiBold',
+    displayMedium: 'Rajdhani_500Medium',
+    regular: 'Inter_400Regular',
+    medium: 'Inter_500Medium',
+    semiBold: 'Inter_600SemiBold',
+    bold: 'Inter_700Bold',
   },
 
   fontSize: {

@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, useCallback } from 'react'
 import { View } from 'react-native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
@@ -6,6 +6,16 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { StripeProvider } from '@stripe/stripe-react-native'
 import Constants from 'expo-constants'
+import * as SplashScreen from 'expo-splash-screen'
+import { useFonts } from 'expo-font'
+import {
+  Rajdhani_500Medium, Rajdhani_600SemiBold, Rajdhani_700Bold,
+} from '@expo-google-fonts/rajdhani'
+import {
+  Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
+} from '@expo-google-fonts/inter'
+
+SplashScreen.preventAutoHideAsync().catch(() => {})
 import { useAuthStore } from '@/store/authStore'
 import { useChallengeStore } from '@/store/challengeStore'
 import { usePremiumStore } from '@/store/premiumStore'
@@ -37,6 +47,11 @@ export default function RootLayout() {
   const loadMenstrual = useMenstrualStore(s => s.load)
   const loadMacroCycling = useMacroCyclingStore(s => s.load)
 
+  const [fontsLoaded] = useFonts({
+    Rajdhani_500Medium, Rajdhani_600SemiBold, Rajdhani_700Bold,
+    Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
+  })
+
   useEffect(() => {
     initialize()
     loadChallenges()
@@ -52,12 +67,18 @@ export default function RootLayout() {
     loadMacroCycling()
   }, [])
 
+  const onRootLayout = useCallback(() => {
+    if (fontsLoaded) SplashScreen.hideAsync().catch(() => {})
+  }, [fontsLoaded])
+
+  if (!fontsLoaded) return null
+
   return (
     <ErrorBoundary>
       <StripeProvider publishableKey={STRIPE_PK} merchantIdentifier="merchant.com.lacruss.zencrus">
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <View style={{ flex: 1 }}>
+          <View style={{ flex: 1 }} onLayout={onRootLayout}>
             <StatusBar style="light" backgroundColor="#0a0a0a" />
             <Stack screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />

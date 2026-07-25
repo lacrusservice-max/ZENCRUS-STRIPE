@@ -265,11 +265,11 @@ const s = StyleSheet.create({
   // Hero
   hero: { alignItems: 'center', paddingVertical: Spacing[6], marginBottom: Spacing[4] },
   heroLogo: { width: 120, height: 44, marginBottom: Spacing[5] },
-  heroTitle: { fontSize: Typography.fontSize['2xl'], fontWeight: '900', color: '#fff', textAlign: 'center', marginBottom: Spacing[3] },
+  heroTitle: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize['2xl'] + 4, letterSpacing: 0.3, color: '#fff', textAlign: 'center', marginBottom: Spacing[3] },
   heroSub: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.55)', textAlign: 'center', lineHeight: 21, paddingHorizontal: Spacing[2] },
 
   // Groups
-  groupTitle: { fontSize: Typography.fontSize.lg, fontWeight: '800', color: '#fff', marginBottom: Spacing[1] },
+  groupTitle: { fontFamily: Typography.fontFamily.displaySemiBold, fontSize: Typography.fontSize.lg + 2, letterSpacing: 0.2, color: '#fff', marginBottom: Spacing[1] },
   groupSub: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.45)', marginBottom: Spacing[4] },
 
   // Accordion

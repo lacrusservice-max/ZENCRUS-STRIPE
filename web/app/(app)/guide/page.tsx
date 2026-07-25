@@ -105,7 +105,7 @@ export default function GuidePage() {
       {/* Hero */}
       <div style={{ textAlign: "center", padding: "40px 20px 32px" }}>
         <Image src="/logo-blanco.png" alt="ZENCRUS" width={140} height={50} style={{ objectFit: "contain", margin: "0 auto 20px", display: "block" }} />
-        <h1 style={{ fontSize: 30, fontWeight: 900, color: C.text, letterSpacing: "-0.03em", marginBottom: 12 }}>Guía de uso</h1>
+        <h1 style={{ fontFamily: "var(--font-rajdhani)", fontSize: 36, fontWeight: 700, color: C.text, letterSpacing: "0.01em", marginBottom: 12 }}>Guía de uso</h1>
         <p style={{ fontSize: 15, color: C.dim, lineHeight: 1.6, maxWidth: 560, margin: "0 auto" }}>
           Tu ecosistema completo de nutrición y fitness con inteligencia artificial.
           Aquí te explicamos cómo aprovechar cada sección al máximo.

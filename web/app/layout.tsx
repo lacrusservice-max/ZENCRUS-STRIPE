@@ -1,9 +1,11 @@
 import type { Metadata, Viewport } from "next";
-import { Inter } from "next/font/google";
+import { Inter, Rajdhani } from "next/font/google";
 import "./globals.css";
 import { Toaster } from "react-hot-toast";
 
-const inter = Inter({ subsets: ["latin"] });
+const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
+// Fuente de marca ZENCRUS: geométrica, para headlines — nunca para cuerpo de texto largo.
+const rajdhani = Rajdhani({ subsets: ["latin"], weight: ["500", "600", "700"], variable: "--font-rajdhani" });
 
 export const metadata: Metadata = {
   title: "ZENCRUS — Nutrición + Fitness con IA",
@@ -29,7 +31,7 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className={inter.className}>
+    <html lang="es" className={`${inter.className} ${inter.variable} ${rajdhani.variable}`}>
       <body style={{ background: "#0a0a0a", color: "#f4f4f5", minHeight: "100vh" }}>
         {children}
         <Toaster
