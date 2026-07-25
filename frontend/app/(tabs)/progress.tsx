@@ -691,6 +691,18 @@ export default function ProgressScreen() {
           <LevelBadge />
         </View>
 
+        {/* Acceso a Metas */}
+        <TouchableOpacity style={s.goalsLink} onPress={() => router.push('/goals')} activeOpacity={0.85}>
+          <View style={s.goalsLinkIcon}>
+            <Ionicons name="flag" size={18} color={Colors.primary[400]} />
+          </View>
+          <View style={{ flex: 1 }}>
+            <Text style={s.goalsLinkTitle}>Mis metas</Text>
+            <Text style={s.goalsLinkSub}>Objetivos con fecha y seguimiento real</Text>
+          </View>
+          <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
+        </TouchableOpacity>
+
         {/* Tabs — horizontal scroll for 4 tabs */}
         <ScrollView
           horizontal
@@ -849,8 +861,12 @@ export default function ProgressScreen() {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#080808' },
   header: { paddingHorizontal: Spacing[5], paddingTop: Spacing[4], paddingBottom: Spacing[2] },
-  title: { fontSize: Typography.fontSize['2xl'], fontWeight: '900', color: '#fff' },
+  title: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize['2xl'] + 4, letterSpacing: 0.2, color: '#fff' },
   subHeader: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
+  goalsLink: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder, borderRadius: BorderRadius.lg, padding: Spacing[4], marginTop: Spacing[3], marginBottom: Spacing[2] },
+  goalsLinkIcon: { width: 40, height: 40, borderRadius: 12, backgroundColor: Glass.purpleTint, alignItems: 'center', justifyContent: 'center' },
+  goalsLinkTitle: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
+  goalsLinkSub: { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
   sub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.6)' },
   section: { marginHorizontal: Spacing[5], marginBottom: Spacing[4] },
   tabsScroll: { paddingHorizontal: Spacing[5], paddingBottom: Spacing[4], gap: Spacing[2] },
