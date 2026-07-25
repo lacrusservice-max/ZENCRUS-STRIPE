@@ -322,7 +322,7 @@ function CommentsModal({ post, onClose, onAdded, me }: {
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#080808' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing[5], paddingVertical: Spacing[3] },
-  headerTitle: { fontSize: Typography.fontSize['2xl'], fontWeight: '900', color: '#fff' },
+  headerTitle: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize['2xl'] + 4, letterSpacing: 0.2, color: '#fff' },
   newBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: Colors.primary[500], alignItems: 'center', justifyContent: 'center' },
   tabs: { flexDirection: 'row', gap: Spacing[2], paddingHorizontal: Spacing[5], paddingBottom: Spacing[3] },
   tab: { paddingHorizontal: Spacing[4], paddingVertical: Spacing[2], borderRadius: BorderRadius.full, backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder },

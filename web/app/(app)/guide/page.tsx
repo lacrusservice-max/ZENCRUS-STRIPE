@@ -10,7 +10,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 
-const C = { bg: "#08090c", panel: "#0f1218", panel2: "#12161d", border: "#1e2430", navy: "#1e3a8a", navySoft: "rgba(30,58,138,0.16)", navyBorder: "rgba(37,99,235,0.3)", blue: "#3b82f6", text: "#f4f5f7", dim: "#9aa3b2", dim2: "#5f6875", amber: "#f5b544" };
+import { Colors as C } from "@/lib/theme";
 
 interface Section {
   id: string; icon: LucideIcon; title: string; tagline: string;

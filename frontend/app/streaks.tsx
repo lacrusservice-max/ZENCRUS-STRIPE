@@ -147,7 +147,7 @@ const s = StyleSheet.create({
   protectedTxt: { flex: 1, fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.85)', lineHeight: 17 },
 
   hero: { alignItems: 'center', paddingVertical: Spacing[6] },
-  heroNum: { fontSize: 56, fontWeight: '900', color: '#fff', marginTop: Spacing[2] },
+  heroNum: { fontFamily: Typography.fontFamily.display, fontSize: 64, color: '#fff', marginTop: Spacing[2] },
   heroLabel: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.5)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 1 },
   heroNext: { fontSize: Typography.fontSize.xs, color: Colors.primary[400], marginTop: Spacing[3], fontWeight: '600' },
 

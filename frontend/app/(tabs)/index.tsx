@@ -948,8 +948,8 @@ const s = StyleSheet.create({
     paddingTop: Spacing[3],
     paddingBottom: Spacing[4],
   },
-  brand: { fontSize: 9, fontWeight: '900', color: Colors.primary[500], letterSpacing: 3.5, marginBottom: 4 },
-  greeting: { fontSize: Typography.fontSize['2xl'], fontWeight: '800', color: '#f4f4f5' },
+  brand: { fontFamily: Typography.fontFamily.displaySemiBold, fontSize: 11, color: Colors.primary[500], letterSpacing: 3.5, marginBottom: 4 },
+  greeting: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize['2xl'] + 4, letterSpacing: 0.2, color: '#f4f4f5' },
   date: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.35)', marginTop: 3, textTransform: 'capitalize' },
   checkInBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,

@@ -5,8 +5,7 @@ import { useAuthStore } from "@/store/authStore";
 import { social as socialApi } from "@/lib/api";
 import toast from "react-hot-toast";
 import { Heart, MessageCircle, Send, Users, Plus, X, Flame, Trophy, MoreHorizontal } from "lucide-react";
-
-const C = { bg: "#08090c", panel: "#0f1218", panel2: "#12161d", border: "#1e2430", navy: "#1e3a8a", navySoft: "rgba(30,58,138,0.16)", navyBorder: "rgba(37,99,235,0.3)", blue: "#3b82f6", blue2: "#60a5fa", text: "#f4f5f7", dim: "#9aa3b2", dim2: "#5f6875", red: "#e0576b", amber: "#f5b544", orange: "#f08a4b" };
+import { Colors as C } from "@/lib/theme";
 
 interface Author { id: string; full_name: string | null; username: string | null; profile_picture: string | null }
 interface Post {
