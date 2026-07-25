@@ -11,6 +11,7 @@ import { useWorkoutStore, Exercise, Routine } from '@/store/workoutStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 const FITNESS_TOOLS = [
+  { icon: 'trending-up-outline' as const,   label: 'Progreso',      sub: '1RM y PRs',       route: '/workout/progress' },
   { icon: 'body-outline' as const,          label: 'Medidas',       sub: 'Cuerpo completo', route: '/measurements' },
   { icon: 'sync-outline' as const,          label: 'Ciclo macro',   sub: 'Periodización',   route: '/macro-cycling' },
   { icon: 'heart-outline' as const,         label: 'Salud',         sub: 'Tracker diario',  route: '/health-tracker' },
