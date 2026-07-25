@@ -9,6 +9,9 @@ import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '@/store/authStore'
 import { useNutritionStore, FoodEntry, MealSlot } from '@/store/nutritionStore'
+import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
+import { suggestCalorieAdjustment, Goal } from '@/utils/calorieAdjustment'
+import api from '@/services/api'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import {
   lookupBarcode,
@@ -647,7 +650,7 @@ const NUTRITION_TOOLS = [
 
 export default function NutritionScreen() {
   const router = useRouter()
-  const { user } = useAuthStore()
+  const { user, setUser } = useAuthStore()
   const {
     meals, totalCalories, totalProtein, totalCarbs, totalFat, totalFiber,
     loadToday, addEntry, removeEntry,
@@ -657,6 +660,32 @@ export default function NutritionScreen() {
   const caloriesTarget = goals.calories_target ?? 2000
   const mealsPerDay    = goals.meals_per_day ?? 3
   const visibleMeals   = meals.slice(0, mealsPerDay)
+
+  const { measurements, load: loadMeasurements } = useBodyMeasurementsStore()
+  const [dismissedAdjustment, setDismissedAdjustment] = useState(false)
+  const [applyingAdjustment, setApplyingAdjustment] = useState(false)
+
+  useEffect(() => { loadMeasurements() }, [])
+
+  const MAIN_GOAL_TO_GOAL: Record<string, Goal> = { lose_fat: 'perder_grasa', gain_muscle: 'ganar_musculo', maintain: 'mantener' }
+  const goal = MAIN_GOAL_TO_GOAL[goals.main_goal] ?? 'mantener'
+  const weighIns = measurements.filter(m => typeof m.weight === 'number').map(m => ({ date: m.date, weightKg: m.weight! }))
+  const adjustment = suggestCalorieAdjustment(weighIns, goal, caloriesTarget)
+  const showAdjustment = adjustment.shouldAdjust && !dismissedAdjustment
+
+  const applyAdjustment = async () => {
+    setApplyingAdjustment(true)
+    try {
+      const updatedGoals = { ...goals, calories_target: caloriesTarget + adjustment.deltaKcal }
+      const { data: res } = await api.put('/users/profile', { goals: updatedGoals })
+      if (res?.data) setUser(res.data)
+      setDismissedAdjustment(true)
+    } catch {
+      Alert.alert('Error', 'No se pudo aplicar el ajuste. Intenta desde Perfil.')
+    } finally {
+      setApplyingAdjustment(false)
+    }
+  }
 
   const [activeMeal, setActiveMeal]   = useState<{ id: string; label: string } | null>(null)
   const [modalVisible, setModalVisible] = useState(false)
@@ -731,6 +760,28 @@ export default function NutritionScreen() {
           </View>
         </View>
 
+        {/* Sugerencia de ajuste automático semanal — nunca silenciosa, siempre explicada */}
+        {showAdjustment && (
+          <View style={ns.adjustCard}>
+            <View style={ns.adjustHead}>
+              <Ionicons name="trending-up" size={18} color={Colors.accent.yellow} />
+              <Text style={ns.adjustTitle}>Ajuste sugerido esta semana</Text>
+            </View>
+            <Text style={ns.adjustReason}>{adjustment.reason}</Text>
+            <View style={ns.adjustActions}>
+              <TouchableOpacity style={ns.adjustDismiss} onPress={() => setDismissedAdjustment(true)}>
+                <Text style={ns.adjustDismissTxt}>Ignorar</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={ns.adjustAccept} onPress={applyAdjustment} disabled={applyingAdjustment}>
+                {applyingAdjustment
+                  ? <ActivityIndicator color="#fff" size="small" />
+                  : <Text style={ns.adjustAcceptTxt}>{adjustment.deltaKcal > 0 ? '+' : ''}{adjustment.deltaKcal} kcal · Aceptar</Text>
+                }
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
         {/* Meal sections */}
         <View style={ns.section}>
           <Text style={ns.sectionTitle}>Registro del día</Text>
@@ -784,6 +835,16 @@ const mc2 = StyleSheet.create({
 const ns = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#080808' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[5] },
+  // Ajuste automático semanal
+  adjustCard: { marginHorizontal: Spacing[4], marginBottom: Spacing[5], backgroundColor: 'rgba(255,214,10,0.08)', borderWidth: 1, borderColor: 'rgba(255,214,10,0.25)', borderRadius: BorderRadius.lg, padding: Spacing[4] },
+  adjustHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2], marginBottom: Spacing[2] },
+  adjustTitle: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: Colors.accent.yellow },
+  adjustReason: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.8)', lineHeight: 20, marginBottom: Spacing[3] },
+  adjustActions: { flexDirection: 'row', gap: Spacing[3] },
+  adjustDismiss: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing[3], borderRadius: BorderRadius.md, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
+  adjustDismissTxt: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: 'rgba(255,255,255,0.6)' },
+  adjustAccept: { flex: 2, alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing[3], borderRadius: BorderRadius.md, backgroundColor: Colors.primary[500] },
+  adjustAcceptTxt: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
   brand: { fontSize: Typography.fontSize.xs, fontWeight: '800', color: Colors.primary[400], letterSpacing: 3 },
   date: { fontSize: Typography.fontSize.base, fontWeight: '700', color: '#fff', marginTop: 2, textTransform: 'capitalize' },
   // Quick tools grid
