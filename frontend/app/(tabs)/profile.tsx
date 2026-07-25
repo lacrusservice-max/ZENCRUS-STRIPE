@@ -369,7 +369,7 @@ export default function ProfileScreen() {
               <InfoRow label="Altura" value={user.height ? `${user.height} cm` : '—'} />
               <InfoRow label="Edad" value={user.age ? `${user.age} años` : '—'} />
               <InfoRow label="Actividad" value={ACTIVITY_LABELS[user.activity_level ?? ''] ?? '—'} />
-              <InfoRow label="Entrenamiento" value={(goals.training_type ?? []).map((t: string) => TRAINING_LABELS[t] ?? t).join(', ') || '—'} />
+              <InfoRow label="Entrenamiento" value={(Array.isArray(goals.training_type) ? goals.training_type : goals.training_type ? [goals.training_type] : []).map((t: string) => TRAINING_LABELS[t] ?? t).join(', ') || '—'} />
               <InfoRow label="TDEE" value={goals.tdee ? `${goals.tdee} kcal` : '—'} />
               <InfoRow label="BMR" value={goals.bmr ? `${goals.bmr} kcal` : '—'} />
             </GlassCard>
