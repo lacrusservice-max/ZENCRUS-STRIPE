@@ -4,7 +4,7 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import { useAuthStore } from "@/store/authStore";
 import { chat as chatApi } from "@/lib/api";
 import toast from "react-hot-toast";
-import { Send, Zap } from "lucide-react";
+import { Send, Zap, Utensils, Droplet, Flame, Star } from "lucide-react";
 
 interface Message {
   id: string;
@@ -22,13 +22,19 @@ const QUICK_QUESTIONS = [
   "¿Cómo puedo mantener mi racha activa?",
 ];
 
+function ZenaAvatar({ size = 32 }: { size?: number }) {
+  return (
+    <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, rgba(37,99,235,0.5), rgba(0,194,192,0.35))", border: "1.5px solid rgba(96,165,250,0.5)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 6px 16px rgba(37,99,235,0.3)" }}>
+      <Zap size={size * 0.46} color="#93c5fd" />
+    </div>
+  );
+}
+
 function TypingIndicator() {
   return (
-    <div style={{ display: "flex", alignItems: "flex-end", gap: 8, marginBottom: 12 }}>
-      <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(30,40,80,0.9)", border: "1.5px solid rgba(37,99,235,0.6)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-        <Zap size={15} color="#60a5fa" />
-      </div>
-      <div style={{ background: "#141414", border: "1px solid #2c2c2e", borderRadius: "18px 18px 18px 4px", padding: "14px 18px" }}>
+    <div style={{ display: "flex", alignItems: "flex-end", gap: 10, marginBottom: 14 }}>
+      <ZenaAvatar />
+      <div className="glass-card" style={{ borderRadius: "18px 18px 18px 4px", padding: "14px 18px" }}>
         <div style={{ display: "flex", gap: 4 }}>
           {[0, 1, 2].map(i => (
             <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "#60a5fa", animation: `typing-dot 1.2s ${i * 0.2}s infinite` }} />
@@ -136,44 +142,52 @@ export default function ChatPage() {
   return (
     <div style={{ display: "flex", flexDirection: "column", height: "100vh" }}>
       {/* Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px", borderBottom: "1px solid #2c2c2e", flexShrink: 0, background: "rgba(10,10,10,0.98)" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <div style={{ width: 40, height: 40, borderRadius: "50%", background: "rgba(30,40,80,0.9)", border: "1.5px solid #2563EB", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <Zap size={20} color="#60a5fa" />
-          </div>
-          <div>
-            <div style={{ fontSize: 15, fontWeight: 800, color: "#f4f4f5" }}>Coach ZENCRUS</div>
-            <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>
-              {atLimit ? "Límite diario alcanzado" : `${remaining} mensajes gratis hoy`}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, background: "rgba(10,10,10,0.9)", backdropFilter: "blur(12px)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
+        <div style={{ width: "100%", maxWidth: 780, display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 20px" }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+            <ZenaAvatar size={42} />
+            <div>
+              <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 19, color: "#f4f4f5" }}>Coach ZENA</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 1 }}>
+                {atLimit ? "Límite diario alcanzado" : `${remaining} mensajes gratis hoy`}
+              </div>
             </div>
           </div>
+          <div style={{ width: 9, height: 9, borderRadius: "50%", background: sending ? "#FF6B35" : "#30D158", boxShadow: `0 0 10px ${sending ? "rgba(255,107,53,0.6)" : "rgba(48,209,88,0.6)"}` }} />
         </div>
-        <div style={{ width: 10, height: 10, borderRadius: "50%", background: sending ? "#FF6B35" : "#30D158" }} />
       </div>
 
       {/* Context chips */}
-      <div style={{ display: "flex", gap: 8, padding: "10px 16px", flexWrap: "wrap", borderBottom: "1px solid #2c2c2e", flexShrink: 0 }}>
-        {[{ emoji: "🍽️", label: "0 kcal" }, { emoji: "💧", label: "0 vasos" }, { emoji: "🔥", label: "0d racha" }, { emoji: "⭐", label: "Score 0" }].map(c => (
-          <div key={c.label} style={{ display: "flex", alignItems: "center", gap: 4, background: "#141414", border: "1px solid #2c2c2e", borderRadius: 999, padding: "4px 10px" }}>
-            <span style={{ fontSize: 12 }}>{c.emoji}</span>
-            <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>{c.label}</span>
-          </div>
-        ))}
+      <div style={{ display: "flex", justifyContent: "center", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
+        <div style={{ width: "100%", maxWidth: 780, display: "flex", gap: 8, padding: "10px 20px", flexWrap: "wrap" }}>
+          {[{ icon: Utensils, c: "#60a5fa", label: "0 kcal" }, { icon: Droplet, c: "#38BDF8", label: "0 vasos" }, { icon: Flame, c: "#FF6B35", label: "0d racha" }, { icon: Star, c: "#FFD60A", label: "Score 0" }].map(c => (
+            <div key={c.label} style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 999, padding: "5px 12px" }}>
+              <c.icon size={12} color={c.c} />
+              <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>{c.label}</span>
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", padding: "16px 16px 8px" }}>
+      <div ref={scrollRef} style={{ flex: 1, overflowY: "auto", display: "flex", justifyContent: "center" }}>
+        <div style={{ width: "100%", maxWidth: 780, padding: "20px 20px 8px" }}>
         {messages.map(msg => {
           const isUser = msg.role === "user";
           return (
-            <div key={msg.id} style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 8, marginBottom: 12 }}>
-              {!isUser && (
-                <div style={{ width: 32, height: 32, borderRadius: "50%", background: "rgba(30,40,80,0.9)", border: "1.5px solid rgba(37,99,235,0.6)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-                  <Zap size={15} color="#60a5fa" />
-                </div>
-              )}
-              <div style={{ maxWidth: "80%", background: isUser ? "#2563EB" : "#141414", border: isUser ? "none" : "1px solid #2c2c2e", borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px", padding: "12px 16px" }}>
-                <p style={{ fontSize: 13, lineHeight: 1.6, color: "#f4f4f5", whiteSpace: "pre-wrap", margin: 0 }}>{msg.content}</p>
+            <div key={msg.id} style={{ display: "flex", justifyContent: isUser ? "flex-end" : "flex-start", alignItems: "flex-end", gap: 10, marginBottom: 14 }}>
+              {!isUser && <ZenaAvatar />}
+              <div
+                className={isUser ? undefined : "glass-card"}
+                style={{
+                  maxWidth: "78%",
+                  background: isUser ? "linear-gradient(135deg, #2563EB, #1d4ed8)" : undefined,
+                  boxShadow: isUser ? "0 8px 20px rgba(37,99,235,0.3)" : undefined,
+                  borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
+                  padding: "12px 16px",
+                }}
+              >
+                <p style={{ fontSize: 14, lineHeight: 1.6, color: "#f4f4f5", whiteSpace: "pre-wrap", margin: 0 }}>{msg.content}</p>
                 <p style={{ fontSize: 10, marginTop: 4, textAlign: "right", color: "rgba(255,255,255,0.4)", margin: "4px 0 0" }}>{formatTime(msg.timestamp)}</p>
               </div>
             </div>
@@ -183,40 +197,53 @@ export default function ChatPage() {
 
         {messages.length <= 1 && !sending && (
           <div style={{ marginTop: 16 }}>
-            <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 12 }}>Preguntas frecuentes</p>
-            {QUICK_QUESTIONS.map(q => (
-              <button key={q} onClick={() => handleSend(q)} disabled={atLimit} style={{ width: "100%", background: "#141414", border: "1px solid #2c2c2e", borderRadius: 14, padding: "12px 14px", marginBottom: 8, textAlign: "left", cursor: "pointer", color: "#60a5fa", fontSize: 13, fontWeight: 500, opacity: atLimit ? 0.4 : 1, fontFamily: "inherit" }}>
-                {q}
-              </button>
-            ))}
+            <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 12 }}>Preguntas frecuentes</p>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }} className="chat-suggestions">
+              {QUICK_QUESTIONS.map(q => (
+                <button key={q} onClick={() => handleSend(q)} disabled={atLimit} className="glass-card" style={{ width: "100%", padding: "13px 16px", textAlign: "left", cursor: "pointer", color: "#93c5fd", fontSize: 13.5, fontWeight: 500, opacity: atLimit ? 0.4 : 1, fontFamily: "inherit", border: "1px solid rgba(96,165,250,0.15)" }}>
+                  {q}
+                </button>
+              ))}
+            </div>
           </div>
         )}
 
         {atLimit && (
-          <div style={{ margin: "16px 0", background: "#141414", border: "1px solid rgba(37,99,235,0.5)", borderRadius: 16, padding: 20, textAlign: "center" }}>
-            <Zap size={36} color="#60a5fa" style={{ marginBottom: 8 }} />
-            <div style={{ fontSize: 15, fontWeight: 800, color: "#f4f4f5", marginBottom: 8 }}>Límite diario alcanzado</div>
-            <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 16 }}>Usaste {aiMessagesToday}/{DAILY_LIMIT} mensajes gratis.</div>
-            <button className="btn-primary" style={{ fontSize: 13 }}>Ver Premium →</button>
+          <div className="glass-card-accent" style={{ margin: "16px 0" }}>
+            <div style={{ padding: 24, textAlign: "center" }}>
+              <Zap size={36} color="#60a5fa" style={{ marginBottom: 8 }} />
+              <div style={{ fontSize: 16, fontWeight: 800, color: "#f4f4f5", marginBottom: 8 }}>Límite diario alcanzado</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 16 }}>Usaste {aiMessagesToday}/{DAILY_LIMIT} mensajes gratis.</div>
+              <button className="btn-primary" style={{ fontSize: 13 }}>Ver Premium →</button>
+            </div>
           </div>
         )}
+        </div>
       </div>
 
       {/* Input */}
-      <div style={{ display: "flex", alignItems: "flex-end", gap: 8, padding: "12px 16px", borderTop: "1px solid #2c2c2e", flexShrink: 0, background: "rgba(10,10,10,0.98)" }}>
-        <textarea
-          value={input}
-          onChange={e => setInput(e.target.value)}
-          onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
-          placeholder={atLimit ? "Límite diario alcanzado" : "Escribe tu pregunta..."}
-          disabled={atLimit}
-          rows={1}
-          style={{ flex: 1, resize: "none", background: "#141414", border: "1.5px solid #2c2c2e", borderRadius: 18, padding: "12px 16px", fontSize: 15, color: "#f4f4f5", outline: "none", fontFamily: "inherit", maxHeight: 100, opacity: atLimit ? 0.4 : 1 }}
-        />
-        <button onClick={() => handleSend()} disabled={!input.trim() || sending || atLimit} style={{ width: 44, height: 44, borderRadius: "50%", background: input.trim() && !atLimit ? "#2563EB" : "#141414", border: input.trim() && !atLimit ? "none" : "1px solid #2c2c2e", cursor: input.trim() && !atLimit ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-          <Send size={18} color={input.trim() && !atLimit ? "#fff" : "rgba(255,255,255,0.3)"} />
-        </button>
+      <div style={{ display: "flex", justifyContent: "center", flexShrink: 0, borderTop: "1px solid rgba(255,255,255,0.08)", background: "rgba(10,10,10,0.9)", backdropFilter: "blur(12px)" }}>
+        <div style={{ width: "100%", maxWidth: 780, display: "flex", alignItems: "flex-end", gap: 10, padding: "14px 20px" }}>
+          <textarea
+            value={input}
+            onChange={e => setInput(e.target.value)}
+            onKeyDown={e => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); handleSend(); } }}
+            placeholder={atLimit ? "Límite diario alcanzado" : "Escribe tu pregunta..."}
+            disabled={atLimit}
+            rows={1}
+            className="glass-input"
+            style={{ flex: 1, resize: "none", borderRadius: 18, fontSize: 15, maxHeight: 100, opacity: atLimit ? 0.4 : 1 }}
+          />
+          <button onClick={() => handleSend()} disabled={!input.trim() || sending || atLimit} style={{ width: 46, height: 46, borderRadius: "50%", background: input.trim() && !atLimit ? "linear-gradient(135deg, #2563EB, #1d4ed8)" : "rgba(255,255,255,0.05)", boxShadow: input.trim() && !atLimit ? "0 8px 20px rgba(37,99,235,0.35)" : "none", border: input.trim() && !atLimit ? "none" : "1px solid rgba(255,255,255,0.09)", cursor: input.trim() && !atLimit ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Send size={18} color={input.trim() && !atLimit ? "#fff" : "rgba(255,255,255,0.3)"} />
+          </button>
+        </div>
       </div>
+      <style>{`
+        @media (min-width: 640px) {
+          .chat-suggestions { grid-template-columns: 1fr 1fr !important; }
+        }
+      `}</style>
     </div>
   );
 }
