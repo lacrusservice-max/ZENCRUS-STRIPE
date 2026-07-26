@@ -150,7 +150,7 @@ export default function WorkoutPage() {
         <div style={{ fontSize: 9, fontWeight: 900, color: "#2563EB", letterSpacing: 3.5, marginBottom: 4 }}>ZENCRUS</div>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
           <Dumbbell size={24} color="#f4f4f5" />
-          <div style={{ fontSize: 24, fontWeight: 800, color: "#f4f4f5" }}>Entrenamiento</div>
+          <div style={{ fontFamily: "var(--font-rajdhani)", fontSize: 30, color: "#f4f4f5" }}>Entrenamiento</div>
         </div>
       </div>
 

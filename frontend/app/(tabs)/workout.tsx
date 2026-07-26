@@ -485,6 +485,8 @@ export default function WorkoutScreen() {
   const todayStr = new Date().toISOString().slice(0, 10)
   const todayLogs = logs.filter(l => l.date === todayStr)
   const recentLogs = logs.slice(-10).reverse()
+  const weekAgoStr = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+  const weekSessions = logs.filter(l => l.date >= weekAgoStr).length
 
   return (
     <SafeAreaView style={ws.container}>
@@ -492,6 +494,7 @@ export default function WorkoutScreen() {
       <View style={ws.header}>
         <View>
           <Text style={ws.brand}>ENTRENAMIENTO</Text>
+          <Text style={ws.mainTitle}>Rutina</Text>
           <Text style={ws.date}>{new Date().toLocaleDateString('es-MX', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
         </View>
         <TouchableOpacity style={ws.createBtn} onPress={openCreate}>
@@ -516,6 +519,17 @@ export default function WorkoutScreen() {
             <Text style={ws.toolSub}>{tool.sub}</Text>
           </TouchableOpacity>
         ))}
+      </View>
+
+      {/* Semana */}
+      <View style={ws.weekStat}>
+        <View style={ws.weekStatNum}>
+          <Text style={ws.weekStatNumTxt}>{weekSessions}</Text>
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={ws.weekStatLabel}>Sesiones esta semana</Text>
+          <Text style={ws.weekStatSub}>{weekSessions === 0 ? 'Aún no entrenas esta semana' : weekSessions >= 4 ? 'Ritmo excelente' : 'Vas bien, sigue así'}</Text>
+        </View>
       </View>
 
       {/* Today status */}
@@ -605,7 +619,13 @@ const ws = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#080808' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[5] },
   brand: { fontSize: Typography.fontSize.xs, fontWeight: '800', color: Colors.primary[400], letterSpacing: 3 },
-  date: { fontSize: Typography.fontSize.base, fontWeight: '700', color: '#fff', marginTop: 2, textTransform: 'capitalize' },
+  mainTitle: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize['2xl'] + 4, letterSpacing: 0.2, color: '#fff', marginTop: 2 },
+  date: { fontSize: Typography.fontSize.sm, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginTop: 2, textTransform: 'capitalize' },
+  weekStat: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder, borderRadius: BorderRadius.lg, padding: Spacing[4], marginHorizontal: Spacing[4], marginBottom: Spacing[4] },
+  weekStatNum: { width: 48, height: 48, borderRadius: 14, backgroundColor: Glass.purpleTint, borderWidth: 1, borderColor: Glass.purpleBorder, alignItems: 'center', justifyContent: 'center' },
+  weekStatNumTxt: { fontFamily: Typography.fontFamily.display, fontSize: 22, color: Colors.primary[400] },
+  weekStatLabel: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
+  weekStatSub: { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
   createBtn: {
     backgroundColor: Colors.primary[500], borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing[4], paddingVertical: Spacing[2],
