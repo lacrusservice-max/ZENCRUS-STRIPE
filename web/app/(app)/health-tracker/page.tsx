@@ -40,59 +40,60 @@ export default function HealthTrackerPage() {
   const maxSteps = Math.max(1, ...days.map((d) => d.steps));
 
   return (
-    <div style={{ minHeight: "100vh", background: C.bg, color: C.text, padding: "36px 24px 100px" }}>
-      <div style={{ maxWidth: 860, margin: "0 auto" }}>
-        <div style={{ marginBottom: 24 }}>
-          <div style={{ fontSize: 11, fontWeight: 800, color: "#6b8cce", letterSpacing: 3, textTransform: "uppercase", marginBottom: 8 }}>Progreso</div>
-          <h1 style={{ fontSize: 28, fontWeight: 900, letterSpacing: "-0.03em" }}>Salud diaria</h1>
+    <div style={{ minHeight: "100vh", color: C.text, padding: "0 20px 120px" }}>
+      <div style={{ maxWidth: 1100, margin: "0 auto" }}>
+        <div style={{ paddingTop: 32, paddingBottom: 28 }}>
+          <div style={{ fontSize: 10, fontWeight: 900, color: "#38BDF8", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · PROGRESO</div>
+          <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 40, letterSpacing: -0.5 }}>Salud diaria</div>
         </div>
 
         {/* Today snapshot */}
         {t && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 28 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 32 }}>
             {[
-              { icon: <Footprints size={18} color="#8fa9dd" />, label: "Pasos", value: t.steps.toLocaleString("es-MX") },
-              { icon: <Flame size={18} color="#8fa9dd" />, label: "Kcal activas", value: stepsToKcal(t.steps) },
-              { icon: <MapPin size={18} color="#8fa9dd" />, label: "Distancia", value: `${stepsToKm(t.steps)} km` },
-              { icon: <Moon size={18} color="#8fa9dd" />, label: "Sueño", value: `${t.sleepHours.toFixed(1)} h` },
-              { icon: <Heart size={18} color="#8fa9dd" />, label: "FC reposo", value: `${t.restingHR} bpm` },
+              { icon: <Footprints size={18} color="#60a5fa" />, glow: "rgba(37,99,235,0.15)", label: "Pasos", value: t.steps.toLocaleString("es-MX") },
+              { icon: <Flame size={18} color="#FF6B35" />, glow: "rgba(255,107,53,0.15)", label: "Kcal activas", value: stepsToKcal(t.steps) },
+              { icon: <MapPin size={18} color="#3fae6b" />, glow: "rgba(63,174,107,0.15)", label: "Distancia", value: `${stepsToKm(t.steps)} km` },
+              { icon: <Moon size={18} color="#c084fc" />, glow: "rgba(192,132,252,0.15)", label: "Sueño", value: `${t.sleepHours.toFixed(1)} h` },
+              { icon: <Heart size={18} color="#e0576b" />, glow: "rgba(224,87,107,0.15)", label: "FC reposo", value: `${t.restingHR} bpm` },
             ].map((s) => (
-              <div key={s.label} style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, padding: 16 }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 8 }}>{s.icon}<span style={{ fontSize: 11, color: C.dim2 }}>{s.label}</span></div>
-                <div style={{ fontSize: 22, fontWeight: 900 }}>{s.value}</div>
+              <div key={s.label} className="glass-card" style={{ padding: 18 }}>
+                <div style={{ width: 36, height: 36, borderRadius: 10, background: s.glow, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 10 }}>{s.icon}</div>
+                <div style={{ fontSize: 11, color: C.dim2, marginBottom: 4 }}>{s.label}</div>
+                <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 24 }}>{s.value}</div>
               </div>
             ))}
           </div>
         )}
 
         {/* Steps week chart */}
-        <div style={{ fontSize: 12, fontWeight: 800, color: C.dim, marginBottom: 12, letterSpacing: 1 }}>PASOS · ÚLTIMOS 7 DÍAS</div>
-        <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20, marginBottom: 28 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: C.dim, marginBottom: 14, letterSpacing: 1 }}>PASOS · ÚLTIMOS 7 DÍAS</div>
+        <div className="glass-card" style={{ padding: 22, marginBottom: 32 }}>
           <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 120 }}>
             {[...days].slice(0, 7).reverse().map((d) => (
               <div key={d.date} title={`${d.steps} pasos`} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%" }}>
-                <div style={{ width: "70%", height: `${(d.steps / maxSteps) * 100}%`, minHeight: 4, background: C.navy, borderRadius: "4px 4px 0 0" }} />
-                <span style={{ fontSize: 9.5, color: C.dim2, marginTop: 6 }}>{new Date(d.date + "T12:00").toLocaleDateString("es-MX", { weekday: "short" }).slice(0, 2)}</span>
+                <div style={{ width: "70%", height: `${(d.steps / maxSteps) * 100}%`, minHeight: 4, background: "linear-gradient(180deg, #60a5fa, #2563EB)", borderRadius: "4px 4px 0 0" }} />
+                <span style={{ fontSize: 9.5, color: C.dim2, marginTop: 8 }}>{new Date(d.date + "T12:00").toLocaleDateString("es-MX", { weekday: "short" }).slice(0, 2)}</span>
               </div>
             ))}
           </div>
         </div>
 
         {/* Log today */}
-        <div style={{ fontSize: 12, fontWeight: 800, color: C.dim, marginBottom: 12, letterSpacing: 1 }}>REGISTRAR HOY</div>
-        <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 20 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginBottom: 14 }}>
+        <div style={{ fontSize: 12, fontWeight: 800, color: C.dim, marginBottom: 14, letterSpacing: 1 }}>REGISTRAR HOY</div>
+        <div className="glass-card" style={{ padding: 24, maxWidth: 620 }}>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 16 }}>
             <Field label="Pasos" value={form.steps} onChange={(v) => setForm((f) => ({ ...f, steps: v }))} />
             <Field label="Horas de sueño" value={form.sleepHours} onChange={(v) => setForm((f) => ({ ...f, sleepHours: v }))} />
             <Field label="FC en reposo (bpm)" value={form.restingHR} onChange={(v) => setForm((f) => ({ ...f, restingHR: v }))} />
             <div>
-              <div style={{ fontSize: 11, color: C.dim2, marginBottom: 5 }}>Calidad de sueño</div>
-              <select value={form.sleepQuality} onChange={(e) => setForm((f) => ({ ...f, sleepQuality: e.target.value as Day["sleepQuality"] }))} style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: "9px 11px", color: C.text, fontSize: 14, outline: "none", fontFamily: "inherit" }}>
+              <div style={{ fontSize: 11, color: C.dim2, marginBottom: 6 }}>Calidad de sueño</div>
+              <select value={form.sleepQuality} onChange={(e) => setForm((f) => ({ ...f, sleepQuality: e.target.value as Day["sleepQuality"] }))} className="glass-input" style={{ padding: "9px 11px", fontSize: 14 }}>
                 {(Object.keys(QUALITY) as Day["sleepQuality"][]).map((q) => <option key={q} value={q}>{QUALITY[q]}</option>)}
               </select>
             </div>
           </div>
-          <button onClick={saveToday} style={{ width: "100%", background: C.navy, border: "none", borderRadius: 11, padding: 13, color: "#fff", fontSize: 14, fontWeight: 800, cursor: "pointer", fontFamily: "inherit" }}>Guardar registro de hoy</button>
+          <button onClick={saveToday} className="btn-primary" style={{ width: "100%" }}>Guardar registro de hoy</button>
         </div>
       </div>
     </div>
@@ -102,8 +103,8 @@ export default function HealthTrackerPage() {
 function Field({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) {
   return (
     <div>
-      <div style={{ fontSize: 11, color: C.dim2, marginBottom: 5 }}>{label}</div>
-      <input type="number" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} style={{ width: "100%", background: C.bg, border: `1px solid ${C.border}`, borderRadius: 9, padding: "9px 11px", color: C.text, fontSize: 14, outline: "none", fontFamily: "inherit" }} />
+      <div style={{ fontSize: 11, color: C.dim2, marginBottom: 6 }}>{label}</div>
+      <input type="number" inputMode="decimal" value={value} onChange={(e) => onChange(e.target.value)} className="glass-input" style={{ padding: "9px 11px", fontSize: 14 }} />
     </div>
   );
 }
