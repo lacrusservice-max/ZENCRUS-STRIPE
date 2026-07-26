@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useHealthTrackerStore, SleepEntry } from '@/store/healthTrackerStore'
 import { useAchievementStore } from '@/store/achievementStore'
+import { detectTrend, Metric } from '@/utils/healthTrends'
+import { Ionicons } from '@expo/vector-icons'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
@@ -260,7 +262,7 @@ function LogHRModal({ visible, onClose }: { visible: boolean; onClose: () => voi
 // ── Main Screen ───────────────────────────────────────────────────────────
 
 export default function HealthTrackerScreen() {
-  const { getTodayProgress, getWeeklySummary, getRestingHeartRate, getAvgHeartRate, getSleepForDate, stepGoal, sleepGoal } = useHealthTrackerStore()
+  const { getTodayProgress, getWeeklySummary, getRestingHeartRate, getAvgHeartRate, getSleepForDate, stepGoal, sleepGoal, stepHistory, sleepHistory, heartRateHistory } = useHealthTrackerStore()
   const [showSteps, setShowSteps] = useState(false)
   const [showSleep, setShowSleep] = useState(false)
   const [showHR, setShowHR] = useState(false)
@@ -271,6 +273,12 @@ export default function HealthTrackerScreen() {
   const restingHR = getRestingHeartRate()
   const avgHR = getAvgHeartRate(today)
   const todaySleep = getSleepForDate(today)
+
+  // Tendencias — hasta 21 días de historial real, más reciente primero
+  const stepsPoints = stepHistory.slice(0, 21).map(e => ({ date: e.date, value: e.steps }))
+  const sleepPoints = sleepHistory.slice(0, 21).map(e => ({ date: e.date, value: e.totalHours }))
+  const stepsTrend = detectTrend(stepsPoints, 'steps')
+  const sleepTrend = detectTrend(sleepPoints, 'sleepHours')
 
   const stepsData = weekly.map(d => ({ date: d.date, value: d.steps }))
   const sleepData = weekly.map(d => ({ date: d.date, value: d.sleepHours }))
@@ -287,6 +295,26 @@ export default function HealthTrackerScreen() {
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing[10] }}>
+        {/* Tendencias — patrones sostenidos, no reacciones a un solo día */}
+        {(stepsTrend.hasEnoughData || sleepTrend.hasEnoughData) && (
+          <View style={s.card}>
+            <Text style={s.cardTitle}>Tendencias</Text>
+            {stepsTrend.hasEnoughData && (
+              <TrendRow icon="walk" trend={stepsTrend} />
+            )}
+            {sleepTrend.hasEnoughData && (
+              <TrendRow icon="moon" trend={sleepTrend} />
+            )}
+          </View>
+        )}
+
+        {/* ID médica de emergencia */}
+        <TouchableOpacity style={s.medicalLink} onPress={() => router.push('/medical-id')} activeOpacity={0.85}>
+          <Ionicons name="medical-outline" size={18} color={Colors.accent.red} />
+          <Text style={s.medicalLinkTxt}>ID médica de emergencia</Text>
+          <Text style={s.medicalLinkArrow}>›</Text>
+        </TouchableOpacity>
+
         {/* Steps */}
         <View style={s.card}>
           <View style={s.cardHeader}>
@@ -400,9 +428,26 @@ export default function HealthTrackerScreen() {
   )
 }
 
+function TrendRow({ icon, trend }: { icon: keyof typeof Ionicons.glyphMap; trend: ReturnType<typeof detectTrend> }) {
+  const color = trend.direction === 'improving' ? Colors.accent.green : trend.direction === 'declining' ? Colors.accent.orange : 'rgba(255,255,255,0.4)'
+  const trendIcon = trend.direction === 'improving' ? 'trending-up' : trend.direction === 'declining' ? 'trending-down' : 'remove'
+  return (
+    <View style={s.trendRow}>
+      <Ionicons name={icon} size={16} color="rgba(255,255,255,0.5)" />
+      <Text style={s.trendTxt}>{trend.message}</Text>
+      <Ionicons name={trendIcon as any} size={16} color={color} />
+    </View>
+  )
+}
+
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.dark.background },
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing[5], paddingVertical: Spacing[3], borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
+  trendRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], paddingVertical: Spacing[3], borderTopWidth: 1, borderTopColor: Colors.dark.border },
+  trendTxt: { flex: 1, fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.65)', lineHeight: 17 },
+  medicalLink: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: 'rgba(255,59,48,0.06)', borderWidth: 1, borderColor: 'rgba(255,59,48,0.2)', borderRadius: BorderRadius.lg, padding: Spacing[4], marginHorizontal: Spacing[5], marginBottom: Spacing[4] },
+  medicalLinkTxt: { flex: 1, fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#fff' },
+  medicalLinkArrow: { fontSize: 20, color: 'rgba(255,255,255,0.3)' },
   back: { fontSize: 28, color: Colors.dark.text, marginRight: Spacing[2] },
   title: { flex: 1, fontSize: Typography.fontSize.lg, fontWeight: '800', color: Colors.dark.text },
   card: { margin: Spacing[4], marginBottom: 0, backgroundColor: Colors.dark.surface, borderRadius: 16, padding: Spacing[5], borderWidth: 1, borderColor: Colors.dark.border },
