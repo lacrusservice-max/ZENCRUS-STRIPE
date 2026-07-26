@@ -12,6 +12,7 @@ import { useNutritionStore, FoodEntry, MealSlot } from '@/store/nutritionStore'
 import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
 import { suggestCalorieAdjustment, Goal } from '@/utils/calorieAdjustment'
 import api from '@/services/api'
+import { MiniRing } from '@/components/ui/MiniRing'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import {
   lookupBarcode,
@@ -817,17 +818,20 @@ export default function NutritionScreen() {
 }
 
 function MacroChip({ label, val, target, color }: { label: string; val: number; target: number; color: string }) {
+  const pct = target > 0 ? val / target : 0
   return (
     <View style={mc2.wrap}>
-      <Text style={[mc2.val, { color }]}>{Math.round(val)}g</Text>
+      <MiniRing value={pct} color={color} size={52} strokeWidth={4.5}>
+        <Text style={[mc2.ringVal, { color }]}>{Math.round(val)}</Text>
+      </MiniRing>
       <Text style={mc2.target}>/ {target}g</Text>
       <Text style={mc2.label}>{label}</Text>
     </View>
   )
 }
 const mc2 = StyleSheet.create({
-  wrap: { flex: 1, alignItems: 'center' },
-  val: { fontSize: Typography.fontSize.base, fontWeight: '800' },
+  wrap: { flex: 1, alignItems: 'center', gap: 3 },
+  ringVal: { fontSize: 14, fontWeight: '800' },
   target: { fontSize: 10, color: 'rgba(255,255,255,0.3)' },
   label: { fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 1 },
 })
@@ -877,7 +881,7 @@ const ns = StyleSheet.create({
   },
   calRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: Spacing[3] },
   calMain: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  calNum: { fontSize: 40, fontWeight: '800', color: '#fff' },
+  calNum: { fontFamily: Typography.fontFamily.display, fontSize: 46, color: '#fff' },
   calLabel: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.5)' },
   calStats: { alignItems: 'flex-end' },
   calStatTxt: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.35)' },

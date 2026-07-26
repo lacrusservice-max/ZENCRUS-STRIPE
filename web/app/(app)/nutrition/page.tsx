@@ -8,6 +8,34 @@ import { Plus, CheckCircle, RefreshCw, ChevronLeft, ChevronRight, Zap, Sunrise, 
 
 const MEAL_ICONS: Record<string, LucideIcon> = { breakfast: Sunrise, lunch: Sun, dinner: Moon, snack: Apple };
 
+function MacroRing({ label, value, max, color }: { label: string; value: number; max: number; color: string }) {
+  const size = 52, stroke = 4.5, r = size / 2 - stroke / 2;
+  const circ = 2 * Math.PI * r;
+  const pct = Math.min(Math.max(max > 0 ? value / max : 0, 0), 1);
+  const offset = circ * (1 - pct);
+  return (
+    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4 }}>
+      <div style={{ position: "relative", width: size, height: size }}>
+        <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+          <circle cx={size / 2} cy={size / 2} r={r} stroke="rgba(255,255,255,0.08)" strokeWidth={stroke} fill="none" />
+          <circle
+            cx={size / 2} cy={size / 2} r={r}
+            stroke={color} strokeWidth={stroke} fill="none"
+            strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+            transform={`rotate(-90 ${size / 2} ${size / 2})`}
+            style={{ transition: "stroke-dashoffset 0.9s cubic-bezier(0.16,1,0.3,1)" }}
+          />
+        </svg>
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color }}>
+          {Math.round(value)}
+        </div>
+      </div>
+      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.3)" }}>/ {max}g</span>
+      <span style={{ fontSize: 10, color: "rgba(255,255,255,0.45)" }}>{label}</span>
+    </div>
+  );
+}
+
 interface MealEntry {
   id: string;
   name: string;
@@ -124,18 +152,12 @@ export default function NutritionPage() {
         <div className="glass-card" style={{ padding: 16 }}>
           <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12 }}>
             <div>
-              <div style={{ fontSize: 36, fontWeight: 900, color: "#f4f4f5", lineHeight: 1 }}>{totalCalories.toLocaleString()}</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 2 }}>/ {caloriesTarget.toLocaleString()} kcal</div>
+              <div style={{ fontFamily: "var(--font-rajdhani)", fontSize: 44, color: "#f4f4f5", lineHeight: 1 }}>{totalCalories.toLocaleString()}</div>
+              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>/ {caloriesTarget.toLocaleString()} kcal</div>
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            <div style={{ display: "flex", gap: 14 }}>
               {[{ l: "Proteína", v: totalProtein, max: 150, c: "#60a5fa" }, { l: "Carbos", v: totalCarbs, max: 200, c: "#00C2C0" }, { l: "Grasa", v: totalFat, max: 65, c: "#FF6B35" }].map(m => (
-                <div key={m.l} style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 140 }}>
-                  <span style={{ fontSize: 10, color: "rgba(255,255,255,0.5)", width: 52 }}>{m.l}</span>
-                  <div style={{ flex: 1, height: 4, background: "rgba(255,255,255,0.07)", borderRadius: 2 }}>
-                    <div style={{ height: 4, background: m.c, borderRadius: 2, width: `${Math.min(m.v / m.max, 1) * 100}%` }} />
-                  </div>
-                  <span style={{ fontSize: 10, color: m.c, fontWeight: 700, width: 36 }}>{Math.round(m.v)}g</span>
-                </div>
+                <MacroRing key={m.l} label={m.l} value={m.v} max={m.max} color={m.c} />
               ))}
             </div>
           </div>
