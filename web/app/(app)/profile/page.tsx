@@ -64,65 +64,82 @@ export default function ProfilePage() {
   ];
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 20px 120px", animation: "fadeIn 0.5s ease" }}>
+    <div style={{ maxWidth: 1360, margin: "0 auto", padding: "0 20px 120px", animation: "fadeIn 0.5s ease" }}>
 
       {/* Header */}
-      <div style={{ paddingTop: 24, paddingBottom: 20 }}>
-        <div style={{ fontSize: 9, fontWeight: 900, color: "#2563EB", letterSpacing: 3.5, marginBottom: 4 }}>ZENCRUS</div>
-        <div style={{ fontSize: 24, fontWeight: 800, color: "#f4f4f5" }}>Mi perfil</div>
+      <div style={{ paddingTop: 32, paddingBottom: 28 }}>
+        <div style={{ fontSize: 10, fontWeight: 900, color: "#60a5fa", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · CUENTA</div>
+        <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 40, color: "#f4f4f5", letterSpacing: -0.5 }}>Mi perfil</div>
       </div>
 
-      {/* Profile card */}
-      <div className="glass-card" style={{ padding: 20, marginBottom: 20, textAlign: "center" }}>
-        <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
-          <Avatar name={user?.fullName ?? "U"} size={88} />
-        </div>
-        <div style={{ fontSize: 22, fontWeight: 800, color: "#f4f4f5", marginBottom: 4 }}>{user?.fullName}</div>
-        <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 12 }}>@{user?.username}</div>
-        {isPremium ? (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.4)", borderRadius: 999, padding: "4px 12px" }}>
-            <Crown size={13} color="#60a5fa" />
-            <span style={{ fontSize: 11, fontWeight: 700, color: "#60a5fa" }}>Premium</span>
-          </div>
-        ) : (
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 999, padding: "4px 12px" }}>
-            <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>Free</span>
-          </div>
-        )}
+      <div className="pf-grid">
+        {/* Sidebar: identity + stats + tabs */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="glass-card-accent">
+            <div style={{ padding: 26, textAlign: "center" }}>
+              <div style={{ display: "flex", justifyContent: "center", marginBottom: 16 }}>
+                <Avatar name={user?.fullName ?? "U"} size={88} />
+              </div>
+              <div style={{ fontSize: 20, fontWeight: 800, color: "#f4f4f5", marginBottom: 4 }}>{user?.fullName}</div>
+              <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginBottom: 14 }}>@{user?.username}</div>
+              {isPremium ? (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.4)", borderRadius: 999, padding: "5px 14px" }}>
+                  <Crown size={13} color="#60a5fa" />
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "#60a5fa" }}>Premium</span>
+                </div>
+              ) : (
+                <div style={{ display: "inline-flex", alignItems: "center", gap: 6, background: "rgba(255,255,255,0.05)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 999, padding: "5px 14px" }}>
+                  <span style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>Free</span>
+                </div>
+              )}
 
-        {/* Stats row */}
-        <div style={{ display: "flex", justifyContent: "space-around", marginTop: 20, paddingTop: 16, borderTop: "1px solid rgba(255,255,255,0.09)" }}>
-          {[
-            { icon: <Flame size={18} color="#FF6B35" />, label: "Racha", value: "0 días" },
-            { icon: <Trophy size={18} color="#FFD60A" />, label: "Logros", value: "0" },
-            { icon: <TrendingUp size={18} color="#30D158" />, label: "Progreso", value: "0%" },
-          ].map(stat => (
-            <div key={stat.label} style={{ textAlign: "center" }}>
-              <div style={{ display: "flex", justifyContent: "center", marginBottom: 6 }}>{stat.icon}</div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#f4f4f5" }}>{stat.value}</div>
-              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 600 }}>{stat.label}</div>
+              {/* Stats row */}
+              <div style={{ display: "flex", justifyContent: "space-around", marginTop: 22, paddingTop: 18, borderTop: "1px solid rgba(255,255,255,0.09)" }}>
+                {[
+                  { icon: <Flame size={18} color="#FF6B35" />, label: "Racha", value: "0 días" },
+                  { icon: <Trophy size={18} color="#FFD60A" />, label: "Logros", value: "0" },
+                  { icon: <TrendingUp size={18} color="#30D158" />, label: "Progreso", value: "0%" },
+                ].map(stat => (
+                  <div key={stat.label} style={{ textAlign: "center" }}>
+                    <div style={{ display: "flex", justifyContent: "center", marginBottom: 6 }}>{stat.icon}</div>
+                    <div style={{ fontSize: 15, fontWeight: 800, color: "#f4f4f5" }}>{stat.value}</div>
+                    <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", fontWeight: 600 }}>{stat.label}</div>
+                  </div>
+                ))}
+              </div>
             </div>
-          ))}
-        </div>
-      </div>
+          </div>
 
-      {/* Tabs */}
-      <div style={{ display: "flex", gap: 4, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: 4, marginBottom: 20 }}>
-        {TABS.map(tab => (
+          {/* Tabs */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 4, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 16, padding: 6 }}>
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                style={{
+                  padding: "12px 16px", borderRadius: 11, border: "none", cursor: "pointer", textAlign: "left",
+                  fontFamily: "inherit", fontSize: 14, fontWeight: 700, transition: "all 0.2s",
+                  background: activeTab === tab.id ? "linear-gradient(135deg, #2563EB, #1d4ed8)" : "transparent",
+                  color: activeTab === tab.id ? "#fff" : "rgba(255,255,255,0.45)",
+                  boxShadow: activeTab === tab.id ? "0 8px 20px rgba(37,99,235,0.35)" : "none",
+                }}
+              >
+                {tab.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Logout */}
           <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id)}
-            style={{
-              flex: 1, padding: "10px", borderRadius: 10, border: "none", cursor: "pointer",
-              fontFamily: "inherit", fontSize: 13, fontWeight: 700, transition: "all 0.2s",
-              background: activeTab === tab.id ? "#2563EB" : "transparent",
-              color: activeTab === tab.id ? "#fff" : "rgba(255,255,255,0.4)",
-            }}
+            onClick={handleLogout}
+            style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", background: "rgba(255,59,48,0.08)", border: "1px solid rgba(255,59,48,0.2)", borderRadius: 14, padding: 16, cursor: "pointer", color: "#FF3B30", fontSize: 14, fontWeight: 600, fontFamily: "inherit", justifyContent: "center" }}
           >
-            {tab.label}
+            <LogOut size={18} /> Cerrar sesión
           </button>
-        ))}
-      </div>
+        </div>
+
+        {/* Main content */}
+        <div>
 
       {/* Tab: Perfil */}
       {activeTab === "profile" && (
@@ -238,13 +255,17 @@ export default function ProfilePage() {
         </div>
       )}
 
-      {/* Logout */}
-      <button
-        onClick={handleLogout}
-        style={{ display: "flex", alignItems: "center", gap: 10, width: "100%", marginTop: 24, background: "rgba(255,59,48,0.08)", border: "1px solid rgba(255,59,48,0.2)", borderRadius: 14, padding: 16, cursor: "pointer", color: "#FF3B30", fontSize: 14, fontWeight: 600, fontFamily: "inherit", justifyContent: "center" }}
-      >
-        <LogOut size={18} /> Cerrar sesión
-      </button>
+        </div>
+      </div>
+
+      <style>{`
+        .pf-grid { display: flex; flex-direction: column; gap: 24px; }
+        @media (min-width: 900px) {
+          .pf-grid { flex-direction: row; align-items: flex-start; }
+          .pf-grid > div:first-child { flex: 0 0 320px; position: sticky; top: 24px; }
+          .pf-grid > div:last-child { flex: 1 1 0; min-width: 0; }
+        }
+      `}</style>
     </div>
   );
 }

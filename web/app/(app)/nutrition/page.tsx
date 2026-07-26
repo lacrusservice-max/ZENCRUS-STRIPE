@@ -119,115 +119,149 @@ export default function NutritionPage() {
   const dateStr = selectedDate.toLocaleDateString("es-MX", { weekday: "long", day: "numeric", month: "long" });
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 20px 120px", animation: "fadeIn 0.5s ease" }}>
+    <div style={{ maxWidth: 1360, margin: "0 auto", padding: "0 20px 120px", animation: "fadeIn 0.5s ease" }}>
 
       {/* Header */}
-      <div style={{ paddingTop: 24, paddingBottom: 20 }}>
-        <div style={{ fontSize: 9, fontWeight: 900, color: "#2563EB", letterSpacing: 3.5, marginBottom: 4 }}>ZENCRUS</div>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-          <div style={{ fontSize: 24, fontWeight: 800, color: "#f4f4f5" }}>Nutrición</div>
-          <button onClick={generatePlan} disabled={generating} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 12, padding: "8px 14px", cursor: "pointer", color: "#60a5fa", fontSize: 12, fontWeight: 700 }}>
-            {generating ? <div style={{ width: 14, height: 14, borderRadius: "50%", border: "2px solid #60a5fa", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} /> : <Zap size={14} />}
-            Generar plan IA
-          </button>
+      <div style={{ paddingTop: 32, paddingBottom: 28, display: "flex", justifyContent: "space-between", alignItems: "flex-end", flexWrap: "wrap", gap: 16 }}>
+        <div>
+          <div style={{ fontSize: 10, fontWeight: 900, color: "#00C2C0", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · NUTRICIÓN</div>
+          <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 40, color: "#f4f4f5", letterSpacing: -0.5 }}>Nutrición</div>
         </div>
-      </div>
-
-      {/* Date selector */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 14, padding: "10px 16px", marginBottom: 20 }}>
-        <button onClick={() => shiftDate(-1)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.5)", display: "flex" }}>
-          <ChevronLeft size={20} />
-        </button>
-        <div style={{ textAlign: "center" }}>
-          <div style={{ fontSize: 13, fontWeight: 700, color: "#f4f4f5", textTransform: "capitalize" }}>{dateStr}</div>
-          {isToday && <div style={{ fontSize: 10, color: "#2563EB", fontWeight: 700, marginTop: 2 }}>HOY</div>}
-        </div>
-        <button onClick={() => shiftDate(1)} disabled={isToday} style={{ background: "none", border: "none", cursor: isToday ? "not-allowed" : "pointer", color: isToday ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.5)", display: "flex" }}>
-          <ChevronRight size={20} />
+        <button onClick={generatePlan} disabled={generating} style={{ display: "flex", alignItems: "center", gap: 8, background: "linear-gradient(135deg, rgba(0,194,192,0.2), rgba(37,99,235,0.15))", border: "1px solid rgba(0,194,192,0.35)", borderRadius: 14, padding: "12px 20px", cursor: "pointer", color: "#5eead4", fontSize: 13, fontWeight: 700 }}>
+          {generating ? <div style={{ width: 15, height: 15, borderRadius: "50%", border: "2px solid #5eead4", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} /> : <Zap size={15} />}
+          Generar plan IA
         </button>
       </div>
 
-      {/* Daily summary */}
-      <div style={{ marginBottom: 20 }}>
-        <div className="glass-card" style={{ padding: 16 }}>
-          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 12 }}>
-            <div>
-              <div style={{ fontFamily: "var(--font-rajdhani)", fontSize: 44, color: "#f4f4f5", lineHeight: 1 }}>{totalCalories.toLocaleString()}</div>
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 4 }}>/ {caloriesTarget.toLocaleString()} kcal</div>
+      <div className="nt-grid">
+        {/* Main column */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+          {/* Date selector */}
+          <div className="glass-card" style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px" }}>
+            <button onClick={() => shiftDate(-1)} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.5)", display: "flex" }}>
+              <ChevronLeft size={20} />
+            </button>
+            <div style={{ textAlign: "center" }}>
+              <div style={{ fontSize: 14, fontWeight: 700, color: "#f4f4f5", textTransform: "capitalize" }}>{dateStr}</div>
+              {isToday && <div style={{ fontSize: 10, color: "#00C2C0", fontWeight: 800, marginTop: 2, letterSpacing: 1 }}>HOY</div>}
             </div>
-            <div style={{ display: "flex", gap: 14 }}>
-              {[{ l: "Proteína", v: totalProtein, max: 150, c: "#60a5fa" }, { l: "Carbos", v: totalCarbs, max: 200, c: "#00C2C0" }, { l: "Grasa", v: totalFat, max: 65, c: "#FF6B35" }].map(m => (
-                <MacroRing key={m.l} label={m.l} value={m.v} max={m.max} color={m.c} />
-              ))}
-            </div>
-          </div>
-          <div className="progress-bar">
-            <div className="progress-fill" style={{ width: `${calPct * 100}%`, background: totalCalories > caloriesTarget * 1.15 ? "#FF3B30" : "#2563EB" }} />
-          </div>
-        </div>
-      </div>
-
-      {/* Meal slots */}
-      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-        {meals.map(meal => (
-          <div key={meal.id} className="glass-card" style={{ padding: 0 }}>
-            {/* Meal header */}
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "14px 16px" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                {(() => { const MealIcon = MEAL_ICONS[meal.id] ?? Apple; return <MealIcon size={20} color="#60a5fa" />; })()}
-                <div>
-                  <div style={{ fontSize: 14, fontWeight: 700, color: "#f4f4f5" }}>{meal.label}</div>
-                  <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
-                    {meal.entries.length > 0 ? `${meal.entries.reduce((a, e) => a + e.calories, 0)} kcal` : "Sin alimentos"}
-                  </div>
-                </div>
-              </div>
-              <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                {meal.entries.length > 0 && <MacroRow protein={meal.entries.reduce((a,e)=>a+e.protein,0)} carbs={meal.entries.reduce((a,e)=>a+e.carbs,0)} fat={meal.entries.reduce((a,e)=>a+e.fat,0)} />}
-                <button
-                  onClick={() => toggleMeal(meal.id)}
-                  style={{ background: "none", border: "none", cursor: "pointer", color: meal.completed ? "#30D158" : "rgba(255,255,255,0.25)", display: "flex" }}
-                >
-                  <CheckCircle size={20} />
-                </button>
-              </div>
-            </div>
-
-            {/* Entries */}
-            {meal.entries.map(entry => (
-              <div key={entry.id} style={{ padding: "10px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div>
-                  <div style={{ fontSize: 13, color: "#f4f4f5" }}>{entry.name}</div>
-                  <MacroRow protein={entry.protein} carbs={entry.carbs} fat={entry.fat} />
-                </div>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.6)" }}>{entry.calories} kcal</span>
-              </div>
-            ))}
-
-            {/* Add button */}
-            <button
-              onClick={() => toast("Función de agregar alimento próximamente")}
-              style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "12px 16px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.35)", fontSize: 13, fontFamily: "inherit" }}
-            >
-              <Plus size={16} color="#2563EB" />
-              <span style={{ color: "#2563EB", fontWeight: 600 }}>Agregar alimento</span>
+            <button onClick={() => shiftDate(1)} disabled={isToday} style={{ background: "none", border: "none", cursor: isToday ? "not-allowed" : "pointer", color: isToday ? "rgba(255,255,255,0.2)" : "rgba(255,255,255,0.5)", display: "flex" }}>
+              <ChevronRight size={20} />
             </button>
           </div>
-        ))}
+
+          {/* Daily summary — accent hero */}
+          <div className="glass-card-accent">
+            <div style={{ padding: 26 }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-end", marginBottom: 18, flexWrap: "wrap", gap: 16 }}>
+                <div>
+                  <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 56, color: "#f4f4f5", lineHeight: 1 }}>{totalCalories.toLocaleString()}</div>
+                  <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 6 }}>de {caloriesTarget.toLocaleString()} kcal objetivo</div>
+                </div>
+                <div style={{ display: "flex", gap: 18 }}>
+                  {[{ l: "Proteína", v: totalProtein, max: 150, c: "#60a5fa" }, { l: "Carbos", v: totalCarbs, max: 200, c: "#00C2C0" }, { l: "Grasa", v: totalFat, max: 65, c: "#FF6B35" }].map(m => (
+                    <MacroRing key={m.l} label={m.l} value={m.v} max={m.max} color={m.c} />
+                  ))}
+                </div>
+              </div>
+              <div className="progress-bar">
+                <div className="progress-fill" style={{ width: `${calPct * 100}%`, background: totalCalories > caloriesTarget * 1.15 ? "#FF3B30" : "linear-gradient(90deg, #2563EB, #00C2C0)" }} />
+              </div>
+            </div>
+          </div>
+
+          {/* Meal slots */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+            {meals.map(meal => (
+              <div key={meal.id} className="glass-card" style={{ padding: 0 }}>
+                {/* Meal header */}
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                    {(() => { const MealIcon = MEAL_ICONS[meal.id] ?? Apple; return (
+                      <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(96,165,250,0.14)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <MealIcon size={19} color="#60a5fa" />
+                      </div>
+                    ); })()}
+                    <div>
+                      <div style={{ fontSize: 15, fontWeight: 700, color: "#f4f4f5" }}>{meal.label}</div>
+                      <div style={{ fontSize: 12, color: "rgba(255,255,255,0.35)", marginTop: 1 }}>
+                        {meal.entries.length > 0 ? `${meal.entries.reduce((a, e) => a + e.calories, 0)} kcal` : "Sin alimentos"}
+                      </div>
+                    </div>
+                  </div>
+                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                    {meal.entries.length > 0 && <MacroRow protein={meal.entries.reduce((a,e)=>a+e.protein,0)} carbs={meal.entries.reduce((a,e)=>a+e.carbs,0)} fat={meal.entries.reduce((a,e)=>a+e.fat,0)} />}
+                    <button
+                      onClick={() => toggleMeal(meal.id)}
+                      style={{ background: "none", border: "none", cursor: "pointer", color: meal.completed ? "#30D158" : "rgba(255,255,255,0.25)", display: "flex" }}
+                    >
+                      <CheckCircle size={20} />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Entries */}
+                {meal.entries.map(entry => (
+                  <div key={entry.id} style={{ padding: "10px 18px", borderTop: "1px solid rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                    <div>
+                      <div style={{ fontSize: 13, color: "#f4f4f5" }}>{entry.name}</div>
+                      <MacroRow protein={entry.protein} carbs={entry.carbs} fat={entry.fat} />
+                    </div>
+                    <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.6)" }}>{entry.calories} kcal</span>
+                  </div>
+                ))}
+
+                {/* Add button */}
+                <button
+                  onClick={() => toast("Función de agregar alimento próximamente")}
+                  style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "12px 18px", borderTop: "1px solid rgba(255,255,255,0.06)", background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.35)", fontSize: 13, fontFamily: "inherit" }}
+                >
+                  <Plus size={16} color="#00C2C0" />
+                  <span style={{ color: "#00C2C0", fontWeight: 600 }}>Agregar alimento</span>
+                </button>
+              </div>
+            ))}
+          </div>
+
+          {/* Regenerate plan */}
+          <button
+            onClick={generatePlan}
+            disabled={generating}
+            className="btn-secondary"
+            style={{ width: "100%" }}
+          >
+            <RefreshCw size={16} />
+            Regenerar plan con IA
+          </button>
+        </div>
+
+        {/* Sidebar */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="section-label">Resumen de macros</div>
+          <div className="glass-card" style={{ padding: 20 }}>
+            {[{ l: "Proteína", v: totalProtein, max: 150, c: "#60a5fa" }, { l: "Carbohidratos", v: totalCarbs, max: 200, c: "#00C2C0" }, { l: "Grasas", v: totalFat, max: 65, c: "#FF6B35" }].map((m, i) => (
+              <div key={m.l} style={{ marginBottom: i < 2 ? 16 : 0 }}>
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 6 }}>
+                  <span style={{ color: "rgba(255,255,255,0.55)", fontWeight: 600 }}>{m.l}</span>
+                  <span style={{ color: m.c, fontWeight: 700 }}>{Math.round(m.v)} / {m.max}g</span>
+                </div>
+                <div className="progress-bar">
+                  <div className="progress-fill" style={{ width: `${Math.min((m.v / m.max) * 100, 100)}%`, background: m.c }} />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
       </div>
 
-      {/* Regenerate plan */}
-      <div style={{ marginTop: 24 }}>
-        <button
-          onClick={generatePlan}
-          disabled={generating}
-          className="btn-secondary"
-          style={{ width: "100%" }}
-        >
-          <RefreshCw size={16} />
-          Regenerar plan con IA
-        </button>
-      </div>
+      <style>{`
+        .nt-grid { display: flex; flex-direction: column; gap: 24px; margin-top: 24px; }
+        @media (min-width: 900px) {
+          .nt-grid { flex-direction: row; align-items: flex-start; }
+          .nt-grid > div:first-child { flex: 1 1 0; min-width: 0; }
+          .nt-grid > div:last-child { flex: 0 0 320px; position: sticky; top: 24px; }
+        }
+      `}</style>
     </div>
   );
 }
