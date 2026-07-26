@@ -11,6 +11,57 @@ import {
   Trophy, Swords, Bot, Award, Sunrise, Moon, Apple, Check, type LucideIcon,
 } from "lucide-react";
 
+// ── Anillos de actividad ZENCRUS (Fase 4.1) ──────────────────────────────────
+// Movimiento / Entrenamiento / Constancia — misma identidad visual que en la
+// app móvil. En web se alimentan de las métricas ya calculadas en esta misma
+// página (calorías, hidratación, constancia diaria) porque el registro de
+// entrenamiento hoy solo vive local en el dispositivo móvil, sin sync a
+// backend — se etiquetan con datos reales, nunca simulados.
+interface RingSpec { label: string; value: number; color: string; display: string }
+
+function ActivityRingsWeb({ rings, size = 132 }: { rings: [RingSpec, RingSpec, RingSpec]; size?: number }) {
+  const stroke = size * 0.072;
+  const gap = stroke * 0.35;
+  const center = size / 2;
+  const radii = [center - stroke / 2, center - stroke * 1.5 - gap, center - stroke * 2.5 - gap * 2];
+
+  return (
+    <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`}>
+      {rings.map((r, i) => (
+        <circle key={`track-${i}`} cx={center} cy={center} r={radii[i]} stroke="rgba(255,255,255,0.06)" strokeWidth={stroke} fill="none" />
+      ))}
+      {rings.map((r, i) => {
+        const circ = 2 * Math.PI * radii[i];
+        const offset = circ * (1 - Math.min(Math.max(r.value, 0), 1));
+        return (
+          <circle
+            key={`ring-${i}`}
+            cx={center} cy={center} r={radii[i]}
+            stroke={r.color} strokeWidth={stroke} fill="none"
+            strokeDasharray={circ} strokeDashoffset={offset} strokeLinecap="round"
+            transform={`rotate(-90 ${center} ${center})`}
+            style={{ transition: 'stroke-dashoffset 1.1s cubic-bezier(0.16, 1, 0.3, 1)' }}
+          />
+        );
+      })}
+    </svg>
+  );
+}
+
+function RingsLegendWeb({ rings }: { rings: RingSpec[] }) {
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+      {rings.map(r => (
+        <div key={r.label} style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
+          <span style={{ width: 8, height: 8, borderRadius: 4, background: r.color, display: 'inline-block' }} />
+          <span style={{ fontFamily: 'var(--font-rajdhani)', fontSize: 17, color: '#fff' }}>{r.display}</span>
+          <span style={{ fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: 600 }}>{r.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 // ── Health Score Ring ────────────────────────────────────────────────────────
 
 function HealthScoreRing({ score }: { score: number }) {
@@ -201,6 +252,33 @@ export default function HomePage() {
           {checkInDone ? <CheckCircle size={14} /> : <Sun size={14} />}
           Check-in
         </button>
+      </div>
+
+      {/* Anillos de actividad */}
+      <div style={{
+        position: 'relative', overflow: 'hidden', display: 'flex', alignItems: 'center', justifyContent: 'space-between',
+        gap: 24, background: 'rgba(255,255,255,0.04)', border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 28, padding: 24, marginBottom: 20,
+      }}>
+        <div style={{
+          position: 'absolute', inset: 0,
+          background: 'radial-gradient(ellipse at 15% 0%, rgba(37,99,235,0.22), transparent 60%)',
+          pointerEvents: 'none',
+        }} />
+        <ActivityRingsWeb
+          rings={[
+            { label: 'Nutrición', value: Math.min(totalCalories / Math.max(caloriesTarget, 1), 1), color: '#FF6B35', display: `${Math.round(Math.min(totalCalories / Math.max(caloriesTarget, 1), 1) * 100)}%` },
+            { label: 'Hidratación', value: waterGlasses / 8, color: '#38BDF8', display: `${waterGlasses}/8` },
+            { label: 'Constancia', value: ((checkInDone ? 1 : 0) + Math.min(waterGlasses / 8, 1) + (currentStreak > 0 ? 1 : 0)) / 3, color: '#60a5fa', display: `${Math.round((((checkInDone ? 1 : 0) + Math.min(waterGlasses / 8, 1) + (currentStreak > 0 ? 1 : 0)) / 3) * 100)}%` },
+          ]}
+        />
+        <RingsLegendWeb
+          rings={[
+            { label: 'Nutrición', value: 0, color: '#FF6B35', display: `${Math.round(Math.min(totalCalories / Math.max(caloriesTarget, 1), 1) * 100)}%` },
+            { label: 'Hidratación', value: 0, color: '#38BDF8', display: `${waterGlasses}/8` },
+            { label: 'Constancia', value: 0, color: '#60a5fa', display: `${Math.round((((checkInDone ? 1 : 0) + Math.min(waterGlasses / 8, 1) + (currentStreak > 0 ? 1 : 0)) / 3) * 100)}%` },
+          ]}
+        />
       </div>
 
       {/* Prompt row */}

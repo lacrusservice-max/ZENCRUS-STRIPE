@@ -7,6 +7,8 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import Svg, { Circle } from 'react-native-svg'
+import { LinearGradient } from 'expo-linear-gradient'
+import { ActivityRings, RingsLegend } from '@/components/ui/ActivityRings'
 import { useAuthStore } from '@/store/authStore'
 import { useNutritionStore } from '@/store/nutritionStore'
 import { useWorkoutStore } from '@/store/workoutStore'
@@ -675,6 +677,33 @@ export default function Dashboard() {
           </TouchableOpacity>
         </View>
 
+        {/* ── Anillos de actividad (Fase 4.1: Movimiento / Entrenamiento / Constancia) ── */}
+        <View style={s.sec}>
+          <View style={s.ringsHero}>
+            <LinearGradient
+              colors={['rgba(37,99,235,0.22)', 'rgba(37,99,235,0.02)', 'transparent']}
+              start={{ x: 0.15, y: 0 }}
+              end={{ x: 0.9, y: 1 }}
+              style={StyleSheet.absoluteFillObject}
+            />
+            <ActivityRings
+              size={128}
+              rings={[
+                { label: 'Movimiento', value: trackerProgress.pct / 100, color: Colors.accent.orange },
+                { label: 'Entrenamiento', value: workedOut ? 1 : 0.08, color: Colors.secondary[400] },
+                { label: 'Constancia', value: ((workedOut ? 1 : 0) + (checkInDone ? 1 : 0) + (waterGlasses >= 8 ? 1 : 0)) / 3, color: Colors.primary[400] },
+              ]}
+            />
+            <RingsLegend
+              rings={[
+                { label: 'Movimiento', display: `${Math.round(trackerProgress.pct)}%`, color: Colors.accent.orange },
+                { label: 'Entrenamiento', display: workedOut ? 'Listo' : 'Pendiente', color: Colors.secondary[400] },
+                { label: 'Constancia', display: `${Math.round((((workedOut ? 1 : 0) + (checkInDone ? 1 : 0) + (waterGlasses >= 8 ? 1 : 0)) / 3) * 100)}%`, color: Colors.primary[400] },
+              ]}
+            />
+          </View>
+        </View>
+
         {/* ── Intention / prompt ── */}
         {checkInDone && todayCheckIn.intention ? (
           <View style={s.intentRow}>
@@ -950,6 +979,11 @@ const s = StyleSheet.create({
   },
   brand: { fontFamily: Typography.fontFamily.displaySemiBold, fontSize: 11, color: Colors.primary[500], letterSpacing: 3.5, marginBottom: 4 },
   greeting: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize['2xl'] + 4, letterSpacing: 0.2, color: '#f4f4f5' },
+  ringsHero: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.04)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.08)',
+    borderRadius: 28, padding: Spacing[5], overflow: 'hidden',
+  },
   date: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.35)', marginTop: 3, textTransform: 'capitalize' },
   checkInBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
