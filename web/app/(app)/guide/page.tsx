@@ -101,26 +101,26 @@ export default function GuidePage() {
   const [open, setOpen] = useState<string | null>("inicio");
 
   return (
-    <div style={{ maxWidth: 860, margin: "0 auto", padding: "0 4px 80px" }}>
+    <div style={{ maxWidth: 900, margin: "0 auto", padding: "0 20px 120px" }}>
       {/* Hero */}
-      <div style={{ textAlign: "center", padding: "40px 20px 32px" }}>
-        <Image src="/logo-blanco.png" alt="ZENCRUS" width={140} height={50} style={{ objectFit: "contain", margin: "0 auto 20px", display: "block" }} />
-        <h1 style={{ fontFamily: "var(--font-rajdhani)", fontSize: 36, fontWeight: 700, color: C.text, letterSpacing: "0.01em", marginBottom: 12 }}>Guía de uso</h1>
-        <p style={{ fontSize: 15, color: C.dim, lineHeight: 1.6, maxWidth: 560, margin: "0 auto" }}>
+      <div style={{ textAlign: "center", padding: "48px 20px 36px" }}>
+        <Image src="/logo-blanco.png" alt="ZENCRUS" width={140} height={50} style={{ objectFit: "contain", margin: "0 auto 24px", display: "block" }} />
+        <h1 style={{ fontFamily: "var(--font-rajdhani)", fontSize: 44, fontWeight: 700, color: C.text, letterSpacing: -0.5, marginBottom: 14 }}>Guía de uso</h1>
+        <p style={{ fontSize: 16, color: C.dim, lineHeight: 1.6, maxWidth: 560, margin: "0 auto" }}>
           Tu ecosistema completo de nutrición y fitness con inteligencia artificial.
           Aquí te explicamos cómo aprovechar cada sección al máximo.
         </p>
       </div>
 
       {/* Secciones principales */}
-      <h2 style={{ fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 16 }}>Secciones principales</h2>
+      <h2 style={{ fontSize: 19, fontWeight: 800, color: C.text, marginBottom: 16 }}>Secciones principales</h2>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 10, marginBottom: 44 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12, marginBottom: 48 }}>
         {SECTIONS.map((sec) => {
           const isOpen = open === sec.id;
           const Icon = sec.icon;
           return (
-            <div key={sec.id} style={{ background: isOpen ? C.navySoft : C.panel, border: `1px solid ${isOpen ? C.navyBorder : C.border}`, borderRadius: 16, overflow: "hidden", transition: "all 0.15s" }}>
+            <div key={sec.id} className="glass-card" style={{ background: isOpen ? "rgba(37,99,235,0.06)" : undefined, borderColor: isOpen ? C.navyBorder : undefined }}>
               <button
                 onClick={() => setOpen(isOpen ? null : sec.id)}
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: 18, background: "none", border: "none", cursor: "pointer", textAlign: "left" }}
@@ -169,16 +169,16 @@ export default function GuidePage() {
       </div>
 
       {/* Herramientas adicionales */}
-      <h2 style={{ fontSize: 18, fontWeight: 800, color: C.text, marginBottom: 4 }}>Herramientas adicionales</h2>
+      <h2 style={{ fontSize: 19, fontWeight: 800, color: C.text, marginBottom: 4 }}>Herramientas adicionales</h2>
       <p style={{ fontSize: 14, color: C.dim2, marginBottom: 18 }}>Todo lo que ZENCRUS pone a tu disposición</p>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 12, marginBottom: 44 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(200px, 1fr))", gap: 14, marginBottom: 48 }}>
         {EXTRAS.map((ex) => {
           const Icon = ex.icon;
           return (
-            <Link key={ex.title} href={ex.route} style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 14, padding: 18, textDecoration: "none", display: "block" }}>
-              <div style={{ width: 36, height: 36, borderRadius: 10, background: C.navySoft, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 12 }}>
-                <Icon size={18} color={C.blue} />
+            <Link key={ex.title} href={ex.route} className="glass-card" style={{ padding: 20, textDecoration: "none", display: "block" }}>
+              <div style={{ width: 40, height: 40, borderRadius: 12, background: C.navySoft, display: "flex", alignItems: "center", justifyContent: "center", marginBottom: 14 }}>
+                <Icon size={19} color={C.blue} />
               </div>
               <div style={{ fontSize: 14.5, fontWeight: 800, color: C.text, marginBottom: 3 }}>{ex.title}</div>
               <div style={{ fontSize: 12.5, color: C.dim2, lineHeight: 1.45 }}>{ex.desc}</div>
@@ -188,15 +188,17 @@ export default function GuidePage() {
       </div>
 
       {/* Cierre */}
-      <div style={{ textAlign: "center", background: C.panel, border: `1px solid ${C.border}`, borderRadius: 20, padding: "36px 28px" }}>
-        <Sparkles size={24} color={C.blue} style={{ margin: "0 auto 14px", display: "block" }} />
-        <h3 style={{ fontSize: 20, fontWeight: 900, color: C.text, marginBottom: 10 }}>¿Aún tienes dudas?</h3>
-        <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.6, maxWidth: 420, margin: "0 auto 22px" }}>
-          Pregúntale directamente a ZENA, tu Coach IA. Está disponible 24/7 para ayudarte con lo que sea.
-        </p>
-        <Link href="/chat" style={{ display: "inline-flex", alignItems: "center", gap: 8, background: C.navy, borderRadius: 999, padding: "13px 28px", color: "#fff", fontSize: 14, fontWeight: 800, textDecoration: "none" }}>
-          <Sparkles size={16} /> Abrir Coach IA
-        </Link>
+      <div className="glass-card-accent">
+        <div style={{ textAlign: "center", padding: "40px 28px" }}>
+          <Sparkles size={26} color={C.blue} style={{ margin: "0 auto 16px", display: "block" }} />
+          <h3 style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 24, color: C.text, marginBottom: 12 }}>¿Aún tienes dudas?</h3>
+          <p style={{ fontSize: 14, color: C.dim, lineHeight: 1.6, maxWidth: 420, margin: "0 auto 24px" }}>
+            Pregúntale directamente a ZENA, tu Coach IA. Está disponible 24/7 para ayudarte con lo que sea.
+          </p>
+          <Link href="/chat" className="btn-primary" style={{ display: "inline-flex", textDecoration: "none" }}>
+            <Sparkles size={16} /> Abrir Coach IA
+          </Link>
+        </div>
       </div>
     </div>
   );
