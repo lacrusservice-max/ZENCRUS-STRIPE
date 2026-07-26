@@ -3,7 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import toast from "react-hot-toast";
-import { Dumbbell, Play, CheckCircle, Clock, Zap, Plus, Check } from "lucide-react";
+import { Dumbbell, Play, CheckCircle, Clock, Zap, Plus, Check, Flame, Footprints, Wind } from "lucide-react";
+
+const ROUTINE_ACCENT: Record<string, { icon: typeof Dumbbell; color: string; glow: string }> = {
+  upper: { icon: Dumbbell, color: "#60a5fa", glow: "rgba(37,99,235,0.28)" },
+  lower: { icon: Footprints, color: "#f08a4b", glow: "rgba(240,138,75,0.28)" },
+  cardio: { icon: Wind, color: "#3fae6b", glow: "rgba(63,174,107,0.28)" },
+};
 
 interface Exercise {
   id: string;
@@ -144,68 +150,109 @@ export default function WorkoutPage() {
   }
 
   return (
-    <div style={{ maxWidth: 680, margin: "0 auto", padding: "0 20px 120px", animation: "fadeIn 0.5s ease" }}>
+    <div style={{ maxWidth: 1360, margin: "0 auto", padding: "0 20px 120px", animation: "fadeIn 0.5s ease" }}>
       {/* Header */}
-      <div style={{ paddingTop: 24, paddingBottom: 20 }}>
-        <div style={{ fontSize: 9, fontWeight: 900, color: "#2563EB", letterSpacing: 3.5, marginBottom: 4 }}>ZENCRUS</div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          <Dumbbell size={24} color="#f4f4f5" />
-          <div style={{ fontFamily: "var(--font-rajdhani)", fontSize: 30, color: "#f4f4f5" }}>Entrenamiento</div>
-        </div>
-      </div>
-
-      {/* Quick start */}
-      <div style={{ marginBottom: 24 }}>
-        <div className="section-label">Inicio rápido</div>
-        <div className="glass-card" style={{ padding: 20, background: "rgba(37,99,235,0.08)", borderColor: "rgba(37,99,235,0.2)" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-            <div style={{ width: 48, height: 48, borderRadius: 14, background: "rgba(37,99,235,0.25)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Zap size={24} color="#60a5fa" />
-            </div>
-            <div>
-              <div style={{ fontSize: 15, fontWeight: 800, color: "#f4f4f5" }}>Rutina recomendada por IA</div>
-              <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)" }}>Basada en tu objetivo y nivel</div>
-            </div>
+      <div style={{ paddingTop: 32, paddingBottom: 28 }}>
+        <div style={{ fontSize: 10, fontWeight: 900, color: "#60a5fa", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · ENTRENAMIENTO</div>
+        <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 14, background: "linear-gradient(135deg, rgba(37,99,235,0.35), rgba(0,194,192,0.2))", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Dumbbell size={22} color="#93c5fd" />
           </div>
-          <button onClick={() => startWorkout(SAMPLE_ROUTINES[0])} className="btn-primary" style={{ width: "100%" }}>
-            <Play size={16} fill="#fff" /> Comenzar ahora
-          </button>
+          <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 40, color: "#f4f4f5", letterSpacing: -0.5 }}>Entrenamiento</div>
         </div>
       </div>
 
-      {/* Routines */}
-      <div style={{ marginBottom: 20 }}>
-        <div className="section-label">Mis rutinas</div>
-        <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {SAMPLE_ROUTINES.map(routine => (
-            <div key={routine.id} className="glass-card" style={{ padding: 0 }}>
-              <div style={{ padding: "16px 20px", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                  <div style={{ width: 44, height: 44, borderRadius: 13, background: "rgba(255,255,255,0.06)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 22 }}>
-                    {routine.emoji}
+      <div className="wk-grid">
+        {/* Main column */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 24 }}>
+          {/* Quick start — accent hero */}
+          <div>
+            <div className="section-label">Inicio rápido</div>
+            <div className="glass-card-accent">
+              <div style={{ padding: 26 }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
+                  <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, rgba(37,99,235,0.4), rgba(0,194,192,0.25))", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 8px 24px rgba(37,99,235,0.35)" }}>
+                    <Zap size={26} color="#93c5fd" />
                   </div>
                   <div>
-                    <div style={{ fontSize: 14, fontWeight: 700, color: "#f4f4f5" }}>{routine.name}</div>
-                    <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", marginTop: 2 }}>
-                      <Clock size={10} style={{ display: "inline", marginRight: 4 }} />{routine.duration} min · {routine.exercises.length} ejercicios
-                    </div>
+                    <div style={{ fontSize: 17, fontWeight: 800, color: "#f4f4f5" }}>Rutina recomendada por IA</div>
+                    <div style={{ fontSize: 13, color: "rgba(255,255,255,0.45)", marginTop: 2 }}>Basada en tu objetivo y nivel actual</div>
                   </div>
                 </div>
-                <button
-                  onClick={() => startWorkout(routine)}
-                  style={{ width: 36, height: 36, borderRadius: "50%", background: "#2563EB", border: "none", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center" }}
-                >
-                  <Play size={14} fill="#fff" color="#fff" />
+                <button onClick={() => startWorkout(SAMPLE_ROUTINES[0])} className="btn-primary" style={{ width: "100%", fontSize: 16, padding: "16px 24px" }}>
+                  <Play size={18} fill="#fff" /> Comenzar ahora
                 </button>
               </div>
             </div>
-          ))}
+          </div>
+
+          {/* Routines */}
+          <div>
+            <div className="section-label">Mis rutinas</div>
+            <div className="wk-routines">
+              {SAMPLE_ROUTINES.map(routine => {
+                const accent = ROUTINE_ACCENT[routine.id] ?? ROUTINE_ACCENT.upper;
+                const Icon = accent.icon;
+                return (
+                  <div key={routine.id} className="glass-card" style={{ padding: 0 }}>
+                    <div style={{ padding: 20, display: "flex", flexDirection: "column", gap: 16 }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                        <div style={{ width: 48, height: 48, borderRadius: 14, background: accent.glow, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                          <Icon size={22} color={accent.color} />
+                        </div>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 15, fontWeight: 700, color: "#f4f4f5" }}>{routine.name}</div>
+                          <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 2, display: "flex", alignItems: "center", gap: 4 }}>
+                            <Clock size={11} />{routine.duration} min · {routine.exercises.length} ejercicios
+                          </div>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => startWorkout(routine)}
+                        className="btn-secondary"
+                        style={{ width: "100%", background: accent.glow, borderColor: "transparent", color: accent.color, fontWeight: 700 }}
+                      >
+                        <Play size={14} fill={accent.color} color={accent.color} /> Comenzar
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <button className="btn-secondary" style={{ width: "100%" }} onClick={() => toast("Creación de rutinas próximamente")}>
+            <Plus size={16} /> Crear rutina personalizada
+          </button>
+        </div>
+
+        {/* Sidebar */}
+        <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+          <div className="section-label">Esta semana</div>
+          <div className="glass-card" style={{ padding: 20 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 14 }}>
+              <Flame size={18} color="#f08a4b" />
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#f4f4f5" }}>Racha de entrenamiento</div>
+            </div>
+            <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 34, color: "#f4f4f5" }}>3 <span style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", fontFamily: "inherit" }}>sesiones</span></div>
+            <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>Meta semanal: 4 sesiones</div>
+            <div className="progress-bar" style={{ marginTop: 14 }}>
+              <div className="progress-fill" style={{ width: "75%", background: "linear-gradient(90deg, #2563EB, #00C2C0)" }} />
+            </div>
+          </div>
         </div>
       </div>
 
-      <button className="btn-secondary" style={{ width: "100%" }} onClick={() => toast("Creación de rutinas próximamente")}>
-        <Plus size={16} /> Crear rutina personalizada
-      </button>
+      <style>{`
+        .wk-grid { display: flex; flex-direction: column; gap: 24px; }
+        .wk-routines { display: grid; grid-template-columns: 1fr; gap: 12px; }
+        @media (min-width: 900px) {
+          .wk-grid { flex-direction: row; align-items: flex-start; }
+          .wk-grid > div:first-child { flex: 1 1 0; min-width: 0; }
+          .wk-grid > div:last-child { flex: 0 0 320px; position: sticky; top: 24px; }
+          .wk-routines { grid-template-columns: repeat(3, 1fr); }
+        }
+      `}</style>
     </div>
   );
 }

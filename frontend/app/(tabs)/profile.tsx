@@ -263,7 +263,7 @@ export default function ProfileScreen() {
         {(['info', 'targets', 'salud', 'settings'] as const).map(t => (
           <TouchableOpacity key={t} style={[s.tabBtn, tab === t && s.tabBtnOn]} onPress={() => setTab(t)}>
             <Text style={[s.tabTxt, tab === t && s.tabTxtOn]}>
-              {t === 'info' ? 'Mi perfil' : t === 'targets' ? 'Targets' : t === 'salud' ? '🌸 Salud' : 'Ajustes'}
+              {t === 'info' ? 'Mi perfil' : t === 'targets' ? 'Targets' : t === 'salud' ? 'Salud' : 'Ajustes'}
             </Text>
           </TouchableOpacity>
         ))}
@@ -387,22 +387,22 @@ export default function ProfileScreen() {
             <Text style={s.sectionTitle}>Targets nutricionales diarios</Text>
             <Text style={s.sectionSub}>Todos los valores son ajustables manualmente</Text>
 
-            <AdjustField label="🎯 Calorías diarias" value={calories} onChange={setCalories} unit="kcal"
+            <AdjustField label="Calorías diarias" value={calories} onChange={setCalories} unit="kcal"
               onDec={() => setCalories(v => String(Math.max(1200, +v - 50)))}
               onInc={() => setCalories(v => String(+v + 50))} />
-            <AdjustField label="💪 Proteína" value={protein} onChange={setProtein} unit="g"
+            <AdjustField label="Proteína" value={protein} onChange={setProtein} unit="g"
               note={`${Math.round(+protein * 4)} kcal`}
               onDec={() => setProtein(v => String(Math.max(30, +v - 5)))}
               onInc={() => setProtein(v => String(+v + 5))} />
-            <AdjustField label="🌾 Carbohidratos" value={carbs} onChange={setCarbs} unit="g"
+            <AdjustField label="Carbohidratos" value={carbs} onChange={setCarbs} unit="g"
               note={`${Math.round(+carbs * 4)} kcal`}
               onDec={() => setCarbs(v => String(Math.max(20, +v - 5)))}
               onInc={() => setCarbs(v => String(+v + 5))} />
-            <AdjustField label="🥑 Grasas" value={fat} onChange={setFat} unit="g"
+            <AdjustField label="Grasas" value={fat} onChange={setFat} unit="g"
               note={`${Math.round(+fat * 9)} kcal`}
               onDec={() => setFat(v => String(Math.max(20, +v - 5)))}
               onInc={() => setFat(v => String(+v + 5))} />
-            <AdjustField label="🥦 Fibra" value={fiber} onChange={setFiber} unit="g"
+            <AdjustField label="Fibra" value={fiber} onChange={setFiber} unit="g"
               onDec={() => setFiber(v => String(Math.max(10, +v - 1)))}
               onInc={() => setFiber(v => String(+v + 1))} />
 
@@ -809,7 +809,7 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
   },
   levelEmoji: { fontSize: 12 },
-  name: { fontSize: Typography.fontSize.lg, fontWeight: '800', color: '#fff' },
+  name: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize.xl + 4, letterSpacing: 0.2, color: '#fff' },
   nickname: { fontSize: Typography.fontSize.xs, color: Colors.primary[400], fontWeight: '600', marginTop: 1 },
   email: { fontSize: 10, color: 'rgba(255,255,255,0.38)', marginTop: 2 },
   headerBadges: { flexDirection: 'row', gap: Spacing[2], marginTop: Spacing[1], flexWrap: 'wrap' },
