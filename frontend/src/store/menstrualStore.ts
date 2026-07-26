@@ -20,6 +20,7 @@ export interface DailyLog {
   mood: MoodLevel
   flow?: FlowLevel
   notes?: string
+  basalTemp?: number   // temperatura basal en °C, manual o desde wearable
 }
 
 export type Symptom =

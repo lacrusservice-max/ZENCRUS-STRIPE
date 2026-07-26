@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
+import { usePrivacyStore } from '@/store/privacyStore'
+import { authenticateWithBiometrics } from '@/services/authService'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Modal, Switch, Alert,
+  Modal, Switch, Alert, TextInput,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
 import {
   useMenstrualStore, SYMPTOM_LABELS, MOOD_LABELS, FLOW_LABELS,
   Symptom, MoodLevel, FlowLevel, CyclePhase,
@@ -74,13 +77,15 @@ function LogDayModal({ visible, onClose }: { visible: boolean; onClose: () => vo
   const [mood, setMood] = useState<MoodLevel>(existing?.mood ?? '')
   const [flow, setFlow] = useState<FlowLevel>(existing?.flow ?? '')
   const [symptoms, setSymptoms] = useState<Symptom[]>(existing?.symptoms ?? [])
+  const [basalTemp, setBasalTemp] = useState(existing?.basalTemp ? String(existing.basalTemp) : '')
 
   const toggleSymptom = (s: Symptom) => {
     setSymptoms(prev => prev.includes(s) ? prev.filter(x => x !== s) : [...prev, s])
   }
 
   const handleSave = async () => {
-    await logDaily({ mood, flow, symptoms })
+    const temp = parseFloat(basalTemp.replace(',', '.'))
+    await logDaily({ mood, flow, symptoms, basalTemp: isNaN(temp) ? undefined : temp })
     onClose()
   }
 
@@ -149,6 +154,19 @@ function LogDayModal({ visible, onClose }: { visible: boolean; onClose: () => vo
             </View>
           </View>
 
+          {/* Temperatura basal (opcional) */}
+          <View>
+            <Text style={ld.sectionLabel}>Temperatura basal (opcional, °C)</Text>
+            <TextInput
+              style={ld.tempInput}
+              value={basalTemp}
+              onChangeText={setBasalTemp}
+              placeholder="Ej. 36.5"
+              placeholderTextColor="rgba(255,255,255,0.3)"
+              keyboardType="decimal-pad"
+            />
+          </View>
+
           <TouchableOpacity style={ld.saveBtn} onPress={handleSave}>
             <Text style={ld.saveTxt}>Guardar registro</Text>
           </TouchableOpacity>
@@ -165,6 +183,7 @@ const ld = StyleSheet.create({
   title: { fontSize: Typography.fontSize.lg, fontWeight: '800', color: Colors.dark.text },
   close: { fontSize: 22, color: Colors.dark.textSecondary },
   sectionLabel: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.dark.text, marginBottom: Spacing[3] },
+  tempInput: { backgroundColor: Colors.dark.surface, borderWidth: 1, borderColor: Colors.dark.border, borderRadius: BorderRadius.md, padding: Spacing[3], fontSize: Typography.fontSize.base, color: Colors.dark.text },
   moodRow: { flexDirection: 'row', gap: Spacing[3] },
   moodChip: { flex: 1, alignItems: 'center', paddingVertical: Spacing[3], borderRadius: BorderRadius.lg, backgroundColor: Colors.dark.surface, borderWidth: 1.5, borderColor: Colors.dark.border },
   moodChipOn: { borderColor: Colors.primary[500], backgroundColor: Colors.primary[900] + '40' },
@@ -185,7 +204,7 @@ const ld = StyleSheet.create({
 
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
-export default function MenstrualScreen() {
+function MenstrualScreenContent() {
   const router = useRouter()
   const {
     cycles, isTracking, cycleLength, periodLength,
@@ -193,6 +212,7 @@ export default function MenstrualScreen() {
     getPrediction, getPhaseNutrition, getLogForDate,
     updateCycleLength, updatePeriodLength,
   } = useMenstrualStore()
+  const { menstrualLockEnabled, setMenstrualLock } = usePrivacyStore()
 
   const [logModal, setLogModal] = useState(false)
   const [tab, setTab] = useState<'cycle' | 'nutrition' | 'history'>('cycle')
@@ -388,6 +408,20 @@ export default function MenstrualScreen() {
                 thumbColor="#fff"
               />
             </View>
+
+            {/* Modo privado */}
+            <View style={[s.section, { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.lg, padding: Spacing[4], borderWidth: 1, borderColor: Colors.dark.border }]}>
+              <View style={{ flex: 1, marginRight: Spacing[3] }}>
+                <Text style={s.settingLabel}>Modo privado</Text>
+                <Text style={{ fontSize: Typography.fontSize.xs, color: Colors.dark.textTertiary, marginTop: 2 }}>Pide tu huella/Face ID cada vez que abras esta sección</Text>
+              </View>
+              <Switch
+                value={menstrualLockEnabled}
+                onValueChange={setMenstrualLock}
+                trackColor={{ true: Colors.primary[500], false: Colors.dark.border }}
+                thumbColor="#fff"
+              />
+            </View>
           </>
         )}
 
@@ -519,6 +553,69 @@ function DateRow({ emoji, label, date, highlight, daysLabel }: {
     </View>
   )
 }
+
+// ── Gate de privacidad reforzada ────────────────────────────────────────────
+// Si el usuario activó el bloqueo, exige autenticación biométrica cada vez
+// que se entra a este módulo — nivel de seguridad más alto de toda la app.
+export default function MenstrualScreen() {
+  const router = useRouter()
+  const { menstrualLockEnabled } = usePrivacyStore()
+  const [unlocked, setUnlocked] = useState(!menstrualLockEnabled)
+  const [authenticating, setAuthenticating] = useState(false)
+  const [authFailed, setAuthFailed] = useState(false)
+
+  useEffect(() => {
+    if (!menstrualLockEnabled) { setUnlocked(true); return }
+    tryUnlock()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  const tryUnlock = async () => {
+    setAuthenticating(true)
+    setAuthFailed(false)
+    const ok = await authenticateWithBiometrics()
+    setAuthenticating(false)
+    if (ok) setUnlocked(true)
+    else setAuthFailed(true)
+  }
+
+  if (unlocked) return <MenstrualScreenContent />
+
+  return (
+    <SafeAreaView style={lg.container}>
+      <TouchableOpacity style={lg.backBtn} onPress={() => router.back()}>
+        <Ionicons name="chevron-back" size={24} color="rgba(255,255,255,0.6)" />
+      </TouchableOpacity>
+      <View style={lg.center}>
+        <View style={lg.iconWrap}>
+          <Ionicons name="lock-closed" size={32} color={Colors.primary[400]} />
+        </View>
+        <Text style={lg.title}>Sección privada</Text>
+        <Text style={lg.body}>
+          Este espacio tiene el nivel de privacidad más alto de ZENCRUS. Confirma tu identidad para continuar.
+        </Text>
+        {authFailed && <Text style={lg.error}>No se pudo verificar tu identidad. Intenta de nuevo.</Text>}
+        <TouchableOpacity style={lg.unlockBtn} onPress={tryUnlock} disabled={authenticating}>
+          <Ionicons name="finger-print" size={18} color="#fff" />
+          <Text style={lg.unlockBtnTxt}>{authenticating ? 'Verificando…' : 'Desbloquear'}</Text>
+        </TouchableOpacity>
+      </View>
+    </SafeAreaView>
+  )
+}
+
+const lg = StyleSheet.create({
+  container: { flex: 1, backgroundColor: Colors.dark.background },
+  backBtn: { padding: Spacing[4] },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingHorizontal: Spacing[8], marginTop: -60 },
+  iconWrap: { width: 72, height: 72, borderRadius: 36, backgroundColor: Colors.primary[900] + '40', borderWidth: 1.5, borderColor: Colors.primary[500] + '50', alignItems: 'center', justifyContent: 'center', marginBottom: Spacing[5] },
+  title: { fontSize: Typography.fontSize.xl, fontWeight: '800', color: Colors.dark.text, marginBottom: Spacing[3] },
+  body: { fontSize: Typography.fontSize.sm, color: Colors.dark.textSecondary, textAlign: 'center', lineHeight: 21, marginBottom: Spacing[6] },
+  error: { fontSize: Typography.fontSize.xs, color: Colors.accent.red, marginBottom: Spacing[4], textAlign: 'center' },
+  unlockBtn: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2], backgroundColor: Colors.primary[500], borderRadius: BorderRadius.full, paddingHorizontal: Spacing[7], paddingVertical: Spacing[4] },
+  unlockBtnTxt: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
+})
+
 const dr = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing[3], borderBottomWidth: 1, borderBottomColor: Colors.dark.border, gap: Spacing[3] },
   emoji: { fontSize: 18, width: 22 },
