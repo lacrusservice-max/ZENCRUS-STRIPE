@@ -11,6 +11,7 @@ import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
 import { useStreakStore } from '@/store/streakStore'
 import { computeGoalProgress, generateMilestones, Goal, GoalDirection, GoalStatus } from '@/utils/goalProgress'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 const STATUS_META: Record<GoalStatus, { label: string; color: string; icon: keyof typeof Ionicons.glyphMap }> = {
   ahead:        { label: 'Vas adelantado',  color: Colors.accent.green,  icon: 'rocket-outline' },
@@ -42,16 +43,19 @@ export default function GoalsScreen() {
   const latestWeight = measurements.find(m => typeof m.weight === 'number')?.weight ?? null
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Mis metas</Text>
-        <TouchableOpacity style={s.backBtn} onPress={() => setComposerOpen(true)}>
-          <Ionicons name="add" size={24} color={Colors.primary[400]} />
-        </TouchableOpacity>
-      </View>
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Progreso"
+        title="Mis metas"
+        subtitle="Objetivos con fecha y seguimiento real"
+        icon="flag"
+        right={
+          <TouchableOpacity style={s.backBtn} onPress={() => setComposerOpen(true)}>
+            <Ionicons name="add" size={24} color={Colors.primary[400]} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView contentContainerStyle={{ padding: Spacing[5], paddingBottom: Spacing[16] }}>
         {goals.length === 0 ? (
@@ -114,7 +118,7 @@ export default function GoalsScreen() {
       </ScrollView>
 
       <GoalComposer visible={composerOpen} onClose={() => setComposerOpen(false)} onSave={addGoal} />
-    </SafeAreaView>
+    </Screen>
   )
 }
 

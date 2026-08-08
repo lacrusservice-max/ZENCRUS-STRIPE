@@ -105,7 +105,7 @@ function Hero() {
       <div style={{ maxWidth: 940, margin: "0 auto", textAlign: "center", position: "relative", zIndex: 2, pointerEvents: "none" }}>
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8, background: "rgba(30,58,138,0.10)", border: "1px solid rgba(30,58,138,0.28)", borderRadius: 999, padding: "6px 16px", marginBottom: 30, backdropFilter: "blur(10px)", opacity: mounted ? 1 : 0, transform: mounted ? "none" : "translateY(16px)", transition: "all 0.8s cubic-bezier(0.16,1,0.3,1)", pointerEvents: "auto" }}>
           <span style={{ width: 6, height: 6, borderRadius: "50%", background: "#5f7bc4", boxShadow: "0 0 8px #5f7bc4", animation: "pulse 1.6s infinite" }} />
-          <span style={{ fontSize: 12, fontWeight: 700, color: "#8fa9dd" }}>IA entrenada en 11 módulos de fisiología deportiva certificada</span>
+          <span style={{ fontSize: 12, fontWeight: 700, color: "#FFB3BE" }}>IA entrenada en 11 módulos de fisiología deportiva certificada</span>
         </div>
         <h1 style={{ fontSize: "clamp(2.6rem,7vw,5.5rem)", fontWeight: 900, color: "#f4f4f5", lineHeight: 1.02, marginBottom: 24, letterSpacing: "-0.03em" }}>
           {words.map((w, i) => (
@@ -127,7 +127,7 @@ function Hero() {
         <div style={{ display: "flex", gap: 48, justifyContent: "center", flexWrap: "wrap", pointerEvents: "auto" }}>
           {[["26", "Variables biométricas"], ["11", "Módulos científicos"], ["100%", "Personalizado a tu biología"]].map(([v, l]) => (
             <div key={l} style={{ textAlign: "center" }}>
-              <Counter value={v} style={{ fontSize: "clamp(1.8rem,3.5vw,2.8rem)", fontWeight: 900, letterSpacing: "-0.03em", background: "linear-gradient(135deg,#8fa9dd,#5f7bc4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", display: "inline-block" }} />
+              <Counter value={v} style={{ fontSize: "clamp(1.8rem,3.5vw,2.8rem)", fontWeight: 900, letterSpacing: "-0.03em", background: "linear-gradient(135deg,#FFB3BE,#5f7bc4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", display: "inline-block" }} />
               <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 600, marginTop: 4, maxWidth: 130 }}>{l}</div>
             </div>
           ))}
@@ -193,7 +193,7 @@ function CienciaIA() {
         </div>
         <Reveal delay={100} style={{ marginTop: 28 }}>
           <div style={{ padding: "22px 28px", background: "linear-gradient(135deg, rgba(30,58,138,0.08), rgba(95,123,196,0.04))", borderRadius: 18, border: "1px solid rgba(30,58,138,0.18)", display: "flex", alignItems: "center", gap: 18, flexWrap: "wrap" }}>
-            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(30,58,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Brain size={20} color="#8fa9dd" /></div>
+            <div style={{ width: 40, height: 40, borderRadius: 12, background: "rgba(30,58,138,0.15)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><Brain size={20} color="#FFB3BE" /></div>
             <div style={{ flex: 1, minWidth: 240 }}>
               <div style={{ fontSize: 14, fontWeight: 700, color: "#f4f4f5", marginBottom: 4 }}>Módulos 06–11 en desarrollo</div>
               <div style={{ fontSize: 12.5, color: "rgba(255,255,255,0.42)", lineHeight: 1.6 }}>Micronutrientes y suplementación · Entrenamiento de fuerza · Cardio y resistencia · Recuperación y sueño · Psiconutrición · Salud a largo plazo</div>
@@ -261,7 +261,7 @@ function FeaturesApp() {
     { icon: <Activity size={24} color="#5f7bc4" />, color: "#5f7bc4", t: "Health tracker completo", d: "Health Score diario, medidas corporales, peso y fotos de progreso. Visualiza tu composición corporal cambiando." },
     { icon: <Heart size={24} color="#707a8c" />, color: "#707a8c", t: "Tracker del ciclo menstrual", d: "Seguimiento de las 4 fases con ajuste automático de calorías, macros y entrenamiento según el Módulo 04." },
     { icon: <Moon size={24} color="#7d8ba8" />, color: "#7d8ba8", t: "Crononutrición activa", d: "Tu horario de comidas sincronizado con tu ritmo circadiano. La ciencia de CUÁNDO comer, no solo QUÉ comer." },
-    { icon: <Calendar size={24} color="#8fa9dd" />, color: "#8fa9dd", t: "Planificador semanal", d: "Plan de comidas para toda la semana con cantidades exactas en gramos y macros por comida, automático." },
+    { icon: <Calendar size={24} color="#FFB3BE" />, color: "#FFB3BE", t: "Planificador semanal", d: "Plan de comidas para toda la semana con cantidades exactas en gramos y macros por comida, automático." },
     { icon: <FlameIcon size={24} color="#707a8c" />, color: "#707a8c", t: "Ciclo de macros avanzado", d: "Periodización de carbohidratos: días altos, moderados y bajos según tu calendario de entrenamiento." },
     { icon: <Users size={24} color="#7d8ba8" />, color: "#7d8ba8", t: "Comunidad + Duelos", d: "Feed social, publicaciones de progreso, duelos de 7 días y leaderboard semanal. Competencia que motiva." },
     { icon: <Trophy size={24} color="#9aa3b2" />, color: "#9aa3b2", t: "Sistema de logros", d: "Más de 30 logros desbloqueables por consistencia, progreso y participación. Cada avance se celebra." },
@@ -338,7 +338,7 @@ function Diferenciadores() {
           <div style={{ background: "linear-gradient(160deg, rgba(255,255,255,0.045), rgba(255,255,255,0.01))", borderRadius: 22, border: "1px solid rgba(255,255,255,0.08)", overflow: "hidden" }}>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 130px 130px", padding: "16px 26px", background: "rgba(255,255,255,0.03)", borderBottom: "1px solid rgba(255,255,255,0.08)" }}>
               <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.4)" }}>Función</div>
-              <div style={{ fontSize: 12, fontWeight: 800, background: "linear-gradient(135deg,#8fa9dd,#5f7bc4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textAlign: "center" }}>ZENCRUS</div>
+              <div style={{ fontSize: 12, fontWeight: 800, background: "linear-gradient(135deg,#FFB3BE,#5f7bc4)", WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent", textAlign: "center" }}>ZENCRUS</div>
               <div style={{ fontSize: 12, fontWeight: 700, color: "rgba(255,255,255,0.4)", textAlign: "center" }}>Otras apps</div>
             </div>
             {rows.map((r, i) => (
@@ -377,7 +377,7 @@ function Precios() {
         </Reveal>
         <Reveal style={{ maxWidth: 640, margin: "0 auto 36px" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 10, background: "rgba(30,58,138,0.10)", border: "1px solid rgba(30,58,138,0.3)", borderRadius: 14, padding: "13px 18px" }}>
-            <Shield size={16} color="#8fa9dd" style={{ flexShrink: 0 }} />
+            <Shield size={16} color="#FFB3BE" style={{ flexShrink: 0 }} />
             <p style={{ fontSize: 12.5, color: "rgba(200,210,235,0.9)", lineHeight: 1.5, margin: 0 }}>Pedimos tus datos bancarios para activar la prueba de <b>5 días gratis</b>. Si no cancelas antes, se cobra automáticamente tu plan.</p>
           </div>
         </Reveal>
@@ -391,7 +391,7 @@ function Precios() {
                 boxShadow: p.popular ? "0 0 50px rgba(30,58,138,0.15)" : "none",
               }}>
                 {p.popular && <div style={{ position: "absolute", top: 14, right: 16, background: "linear-gradient(135deg,#1e3a8a,#5f7bc4)", color: "#fff", fontSize: 9.5, fontWeight: 800, padding: "4px 10px", borderRadius: 999 }}>POPULAR</div>}
-                <div style={{ fontSize: 12, fontWeight: 700, color: p.popular ? "#8fa9dd" : "rgba(255,255,255,0.5)", marginBottom: 10 }}>{p.name.toUpperCase()}</div>
+                <div style={{ fontSize: 12, fontWeight: 700, color: p.popular ? "#FFB3BE" : "rgba(255,255,255,0.5)", marginBottom: 10 }}>{p.name.toUpperCase()}</div>
                 <div style={{ fontSize: 36, fontWeight: 900, color: "#f4f4f5", marginBottom: 2, letterSpacing: "-0.03em" }}>${p.price.toLocaleString("es-MX")}<span style={{ fontSize: 14, fontWeight: 600, color: "rgba(255,255,255,0.4)" }}>/{p.period}</span></div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.3)", marginBottom: 16 }}>MXN{p.period === "año" ? ` · $${Math.round(p.price / 12).toLocaleString("es-MX")}/mes` : ""}</div>
                 <Magnetic strength={0.2} style={{ display: "block" }}>

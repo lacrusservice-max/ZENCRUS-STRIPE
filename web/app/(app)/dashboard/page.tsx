@@ -132,7 +132,7 @@ export default function DashboardPage() {
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 20 }}>
-          <TrendingUp size={18} color="#5b4fff" />
+          <TrendingUp size={18} color="#FF1F3D" />
           <h2 style={{ fontSize: 16, fontWeight: 700 }}>Macros de hoy</h2>
         </div>
         {loading ? (
@@ -143,9 +143,9 @@ export default function DashboardPage() {
           </div>
         ) : data ? (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(80px, 1fr))", gap: 16, justifyItems: "center" }}>
-            <CircleProgress value={data.calories.consumed} max={data.calories.target} color="#5b4fff" label="Calorías" unit="kcal" />
-            <CircleProgress value={data.protein.consumed} max={data.protein.target} color="#2563eb" label="Proteína" unit="g" />
-            <CircleProgress value={data.carbs.consumed} max={data.carbs.target} color="#00c2c0" label="Carbos" unit="g" />
+            <CircleProgress value={data.calories.consumed} max={data.calories.target} color="#FF1F3D" label="Calorías" unit="kcal" />
+            <CircleProgress value={data.protein.consumed} max={data.protein.target} color="#FF1F3D" label="Proteína" unit="g" />
+            <CircleProgress value={data.carbs.consumed} max={data.carbs.target} color="#FFFFFF" label="Carbos" unit="g" />
             <CircleProgress value={data.fat.consumed} max={data.fat.target} color="#f59e0b" label="Grasa" unit="g" />
           </div>
         ) : null}
@@ -155,10 +155,10 @@ export default function DashboardPage() {
           <div style={{ marginTop: 20, paddingTop: 20, borderTop: "1px solid rgba(255,255,255,0.06)" }}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 14, color: "#94a3b8" }}>
-                <Droplets size={15} color="#00c2c0" />
+                <Droplets size={15} color="#FFFFFF" />
                 Agua — {data.water.consumed}L de {data.water.target}L
               </div>
-              <span style={{ fontSize: 13, color: "#00c2c0", fontWeight: 600 }}>
+              <span style={{ fontSize: 13, color: "#FFFFFF", fontWeight: 600 }}>
                 {Math.round((data.water.consumed / data.water.target) * 100)}%
               </span>
             </div>
@@ -167,7 +167,7 @@ export default function DashboardPage() {
                 style={{
                   height: "100%",
                   width: `${Math.min((data.water.consumed / data.water.target) * 100, 100)}%`,
-                  background: "linear-gradient(90deg, #00c2c0, #2563eb)",
+                  background: "linear-gradient(90deg, #FFFFFF, #FF1F3D)",
                   borderRadius: 99,
                   transition: "width 0.8s ease",
                 }}
@@ -195,7 +195,7 @@ export default function DashboardPage() {
               width: 40,
               height: 40,
               borderRadius: "50%",
-              background: "linear-gradient(135deg, #5b4fff, #2563eb)",
+              background: "linear-gradient(135deg, #FF1F3D, #FF1F3D)",
               display: "flex",
               alignItems: "center",
               justifyContent: "center",
@@ -229,7 +229,7 @@ export default function DashboardPage() {
               <Apple size={16} color="#22c55e" /> Registrar comida
             </Button>
             <Button variant="secondary" fullWidth onClick={() => router.push("/app/nutrition")} style={{ justifyContent: "flex-start", gap: 10 }}>
-              <Dumbbell size={16} color="#2563eb" /> Registrar ejercicio
+              <Dumbbell size={16} color="#FF1F3D" /> Registrar ejercicio
             </Button>
             <Button fullWidth onClick={() => router.push("/app/chat")} style={{ justifyContent: "flex-start", gap: 10 }}>
               <Bot size={16} /> Chat con ZENA

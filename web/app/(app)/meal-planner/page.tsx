@@ -21,7 +21,7 @@ export default function MealPlannerPage() {
     <div style={{ minHeight: "100vh", color: C.text, padding: "0 20px 120px" }}>
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <div style={{ paddingTop: 32, paddingBottom: 28 }}>
-          <div style={{ fontSize: 10, fontWeight: 900, color: "#3fae6b", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · NUTRICIÓN</div>
+          <div style={{ fontSize: 10, fontWeight: 900, color: "#FFFFFF", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · NUTRICIÓN</div>
           <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 40, letterSpacing: -0.5 }}>Planificador semanal</div>
         </div>
 
@@ -30,7 +30,7 @@ export default function MealPlannerPage() {
           {DAYS.map((d) => {
             const m = getDayMacros(d);
             return (
-              <button key={d} onClick={() => setActiveDay(d)} style={{ flexShrink: 0, minWidth: 78, padding: "12px 8px", borderRadius: 14, border: "none", background: activeDay === d ? "linear-gradient(135deg, #2563EB, #1d4ed8)" : "rgba(255,255,255,0.04)", cursor: "pointer", fontFamily: "inherit", textAlign: "center", boxShadow: activeDay === d ? "0 8px 20px rgba(37,99,235,0.3)" : "none" }}>
+              <button key={d} onClick={() => setActiveDay(d)} style={{ flexShrink: 0, minWidth: 78, padding: "12px 8px", borderRadius: 14, border: "none", background: activeDay === d ? "linear-gradient(135deg, #FF1F3D, #FF0030)" : "rgba(255,255,255,0.04)", cursor: "pointer", fontFamily: "inherit", textAlign: "center", boxShadow: activeDay === d ? "0 8px 20px rgba(255,31,61,0.3)" : "none" }}>
                 <div style={{ fontSize: 12, fontWeight: 800, color: activeDay === d ? "#fff" : C.text }}>{DAY_LABELS[d].slice(0, 3)}</div>
                 <div style={{ fontSize: 10, color: activeDay === d ? "rgba(255,255,255,0.7)" : C.dim2, marginTop: 4 }}>{m.calories} kcal</div>
               </button>
@@ -65,7 +65,7 @@ export default function MealPlannerPage() {
               <div key={slot.id} className="glass-card" style={{ padding: 20 }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: meals.length ? 14 : 0 }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 14.5, fontWeight: 800 }}><span>{slot.emoji}</span>{slot.label}</div>
-                  <button onClick={() => setPicker(slot.id)} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(37,99,235,0.15)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 10, padding: "7px 14px", color: "#93c5fd", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}><Plus size={14} /> Agregar</button>
+                  <button onClick={() => setPicker(slot.id)} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,31,61,0.15)", border: "1px solid rgba(255,31,61,0.3)", borderRadius: 10, padding: "7px 14px", color: "#FF8FA0", fontSize: 12, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}><Plus size={14} /> Agregar</button>
                 </div>
                 {meals.map((m) => (
                   <div key={m.id} style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "10px 0", borderTop: `1px solid ${C.border}` }}>

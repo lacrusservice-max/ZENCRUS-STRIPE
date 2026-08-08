@@ -8,7 +8,7 @@ const C = { bg: "#08090c", panel: "#0f1218", border: "#1e2430", navy: "#1e3a8a",
 type Phase = "menstrual" | "folicular" | "ovulacion" | "lutea";
 const PHASES: Record<Phase, { label: string; icon: typeof Droplet; color: string; range: string; nutrition: string; training: string }> = {
   menstrual: { label: "Menstrual", icon: Droplet, color: "#e0576b", range: "Días 1–5", nutrition: "Aumenta hierro (carnes rojas, lentejas), magnesio y omega-3. Hidrátate bien.", training: "Intensidad baja-moderada. Escucha a tu cuerpo, prioriza movilidad." },
-  folicular: { label: "Folicular", icon: Sprout, color: "#3fae6b", range: "Días 6–13", nutrition: "Alta sensibilidad a la insulina → aprovecha carbohidratos complejos. Buen momento para superávit.", training: "Alto volumen y fuerza. Tu cuerpo tolera más carga." },
+  folicular: { label: "Folicular", icon: Sprout, color: "#FFFFFF", range: "Días 6–13", nutrition: "Alta sensibilidad a la insulina → aprovecha carbohidratos complejos. Buen momento para superávit.", training: "Alto volumen y fuerza. Tu cuerpo tolera más carga." },
   ovulacion: { label: "Ovulación", icon: Zap, color: "#FFD60A", range: "Días 14–16", nutrition: "Mantén proteína alta y antioxidantes. Pico de energía.", training: "Pico de rendimiento → intenta PRs y alta intensidad." },
   lutea: { label: "Lútea", icon: Moon, color: "#c084fc", range: "Días 17–28", nutrition: "Tu TMR sube hasta +300 kcal/día. Más grasas saludables y magnesio para antojos.", training: "Intensidad moderada. Prioriza recuperación y sueño." },
 };
@@ -71,7 +71,7 @@ export default function MenstrualPage() {
                     <PhaseIcon size={28} color={PHASES[phase].color} />
                   </div>
                   <div>
-                    <div style={{ fontSize: 12, color: "#8fa9dd", fontWeight: 700 }}>Fase actual · Día {currentDay} del ciclo</div>
+                    <div style={{ fontSize: 12, color: "#FFB3BE", fontWeight: 700 }}>Fase actual · Día {currentDay} del ciclo</div>
                     <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 26 }}>{PHASES[phase].label}</div>
                   </div>
                   <div style={{ marginLeft: "auto", textAlign: "right" }}>
@@ -81,11 +81,11 @@ export default function MenstrualPage() {
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: 16, borderLeft: `2px solid ${PHASES[phase].color}` }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, color: "#8fa9dd", marginBottom: 6, letterSpacing: 1 }}><Utensils size={12} /> NUTRICIÓN</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, color: "#FFB3BE", marginBottom: 6, letterSpacing: 1 }}><Utensils size={12} /> NUTRICIÓN</div>
                     <div style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>{PHASES[phase].nutrition}</div>
                   </div>
                   <div style={{ background: "rgba(0,0,0,0.3)", borderRadius: 12, padding: 16, borderLeft: `2px solid ${PHASES[phase].color}` }}>
-                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, color: "#8fa9dd", marginBottom: 6, letterSpacing: 1 }}><Dumbbell size={12} /> ENTRENAMIENTO</div>
+                    <div style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 800, color: "#FFB3BE", marginBottom: 6, letterSpacing: 1 }}><Dumbbell size={12} /> ENTRENAMIENTO</div>
                     <div style={{ fontSize: 13, color: C.dim, lineHeight: 1.6 }}>{PHASES[phase].training}</div>
                   </div>
                 </div>
@@ -98,15 +98,15 @@ export default function MenstrualPage() {
               {(Object.keys(PHASES) as Phase[]).map((p) => {
                 const Icon = PHASES[p].icon;
                 return (
-                  <div key={p} className="glass-card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 16, borderColor: p === phase ? "rgba(37,99,235,0.4)" : undefined }}>
+                  <div key={p} className="glass-card" style={{ display: "flex", alignItems: "center", gap: 16, padding: 16, borderColor: p === phase ? "rgba(255,31,61,0.4)" : undefined }}>
                     <div style={{ width: 44, height: 44, borderRadius: 12, background: `${PHASES[p].color}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                       <Icon size={20} color={PHASES[p].color} />
                     </div>
                     <div style={{ flex: 1 }}>
-                      <div style={{ fontSize: 14.5, fontWeight: 800, color: p === phase ? "#8fa9dd" : C.text }}>{PHASES[p].label}</div>
+                      <div style={{ fontSize: 14.5, fontWeight: 800, color: p === phase ? "#FFB3BE" : C.text }}>{PHASES[p].label}</div>
                       <div style={{ fontSize: 11.5, color: C.dim2 }}>{PHASES[p].range}</div>
                     </div>
-                    {p === phase && <span style={{ fontSize: 10, fontWeight: 800, color: "#8fa9dd", background: C.navySoft, padding: "4px 10px", borderRadius: 999 }}>AHORA</span>}
+                    {p === phase && <span style={{ fontSize: 10, fontWeight: 800, color: "#FFB3BE", background: C.navySoft, padding: "4px 10px", borderRadius: 999 }}>AHORA</span>}
                   </div>
                 );
               })}

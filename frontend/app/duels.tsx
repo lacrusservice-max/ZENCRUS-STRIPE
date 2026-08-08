@@ -8,6 +8,7 @@ import { router } from 'expo-router'
 import { useDuelStore, Duel, DuelMetric, DuelDuration, METRIC_LABELS, METRIC_EMOJIS } from '@/store/duelStore'
 import { useAchievementStore } from '@/store/achievementStore'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 const DURATIONS: { value: DuelDuration; label: string }[] = [
   { value: 1, label: '1 día' },
@@ -273,16 +274,20 @@ export default function DuelsScreen() {
   const current = tabs[tab]
 
   return (
-    <SafeAreaView style={s.container}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: Spacing[2] }}>
-          <Text style={s.back}>‹</Text>
-        </TouchableOpacity>
-        <Text style={s.title}>Duelos 1v1</Text>
-        <TouchableOpacity style={s.createBtn} onPress={() => setShowCreate(true)}>
-          <Text style={s.createTxt}>+ Retar</Text>
-        </TouchableOpacity>
-      </View>
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Comunidad"
+        title="Duelos 1v1"
+        subtitle="Rétate contra otros miembros"
+        icon="flash"
+        color={Colors.accent.orange}
+        right={
+          <TouchableOpacity style={s.createBtn} onPress={() => setShowCreate(true)}>
+            <Text style={s.createTxt}>+ Retar</Text>
+          </TouchableOpacity>
+        }
+      />
 
       <View style={s.tabs}>
         {(['active', 'pending', 'completed'] as const).map(t => (
@@ -316,7 +321,7 @@ export default function DuelsScreen() {
       </ScrollView>
 
       <CreateDuelModal visible={showCreate} onClose={() => setShowCreate(false)} />
-    </SafeAreaView>
+    </Screen>
   )
 }
 

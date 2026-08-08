@@ -92,7 +92,7 @@ type Tab = "dashboard" | "users" | "subs" | "retention" | "goals" | "analytics" 
 const C = {
   bg: "#080808", card: "rgba(255,255,255,0.035)", border: "rgba(255,255,255,0.08)",
   text: "#f4f4f5", dim: "rgba(255,255,255,0.4)", dim2: "rgba(255,255,255,0.28)",
-  blue: "#2563EB", gold: "#FFD60A", green: "#30D158", red: "#FF3B30", teal: "#00C2C0", amber: "#f59e0b",
+  blue: "#FF1F3D", gold: "#FFD60A", green: "#30D158", red: "#FF3B30", teal: "#FFFFFF", amber: "#f59e0b",
 };
 
 function StatCard({ icon, label, value, color, sub }: { icon: React.ReactNode; label: string; value: string | number; color: string; sub?: string }) {
@@ -366,9 +366,9 @@ export default function AdminPage() {
       <aside className="admin-sidebar" style={{ width: 240, flexShrink: 0, borderRight: `1px solid ${C.border}`, position: "sticky", top: 0, height: "100vh", overflowY: "auto", background: "rgba(10,10,12,0.98)", display: "flex", flexDirection: "column" }}>
         <div style={{ padding: "22px 20px 16px" }}>
           <Image src="/logo-blanco.png" alt="ZENCRUS" width={110} height={32} style={{ objectFit: "contain" }} />
-          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 999, padding: "4px 10px", marginTop: 12, width: "fit-content" }}>
-            <Shield size={12} color="#60a5fa" />
-            <span style={{ fontSize: 10, fontWeight: 800, color: "#60a5fa", letterSpacing: 1 }}>PANEL ADMIN</span>
+          <div style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,31,61,0.12)", border: "1px solid rgba(255,31,61,0.25)", borderRadius: 999, padding: "4px 10px", marginTop: 12, width: "fit-content" }}>
+            <Shield size={12} color="#FF5871" />
+            <span style={{ fontSize: 10, fontWeight: 800, color: "#FF5871", letterSpacing: 1 }}>PANEL ADMIN</span>
           </div>
         </div>
 
@@ -481,8 +481,8 @@ export default function AdminPage() {
             </div>
             {/* Bulk action bar */}
             {selected.size > 0 && (
-              <div style={{ padding: "12px 22px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "rgba(37,99,235,0.06)" }}>
-                <span style={{ fontSize: 13, fontWeight: 700, color: "#60a5fa" }}>{selected.size} seleccionados</span>
+              <div style={{ padding: "12px 22px", borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", gap: 12, flexWrap: "wrap", background: "rgba(255,31,61,0.06)" }}>
+                <span style={{ fontSize: 13, fontWeight: 700, color: "#FF5871" }}>{selected.size} seleccionados</span>
                 <button onClick={() => bulkAction((id) => admin.setUserStatus(id, false), "Desactivados")} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(245,158,11,0.1)", border: "1px solid rgba(245,158,11,0.3)", borderRadius: 8, padding: "7px 12px", cursor: "pointer", color: C.amber, fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}><Ban size={13} /> Desactivar</button>
                 <button onClick={() => bulkAction((id) => admin.setUserStatus(id, true), "Activados")} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(48,209,88,0.1)", border: "1px solid rgba(48,209,88,0.3)", borderRadius: 8, padding: "7px 12px", cursor: "pointer", color: C.green, fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}><Play size={13} /> Activar</button>
                 <button onClick={() => { if (confirm(`¿Eliminar ${selected.size} usuarios permanentemente?`)) bulkAction((id) => admin.deleteUser(id), "Eliminados"); }} style={{ display: "flex", alignItems: "center", gap: 6, background: "rgba(255,59,48,0.1)", border: "1px solid rgba(255,59,48,0.3)", borderRadius: 8, padding: "7px 12px", cursor: "pointer", color: C.red, fontSize: 12, fontWeight: 600, fontFamily: "inherit" }}><Trash2 size={13} /> Eliminar</button>
@@ -501,7 +501,7 @@ export default function AdminPage() {
                   </tr></thead>
                   <tbody>
                     {filteredUsers.map((u, i) => (
-                      <tr key={u.id} style={{ borderBottom: i < filteredUsers.length - 1 ? `1px solid ${C.border}` : "none", background: selected.has(u.id) ? "rgba(37,99,235,0.05)" : "transparent" }}>
+                      <tr key={u.id} style={{ borderBottom: i < filteredUsers.length - 1 ? `1px solid ${C.border}` : "none", background: selected.has(u.id) ? "rgba(255,31,61,0.05)" : "transparent" }}>
                         <td style={{ padding: "12px 0 12px 18px" }}>
                           <input type="checkbox" checked={selected.has(u.id)} disabled={u.id === user?.id} onChange={() => toggleSel(u.id)} style={{ cursor: u.id === user?.id ? "not-allowed" : "pointer", accentColor: C.blue }} />
                         </td>
@@ -650,7 +650,7 @@ export default function AdminPage() {
                         <td style={{ padding: "6px 10px", fontWeight: 700 }}>{c.size}</td>
                         {c.retention.map((r, i) => (
                           <td key={i} style={{ padding: "6px 10px", textAlign: "center", fontWeight: 700,
-                            background: `rgba(37,99,235,${(r / 100) * 0.65 + 0.05})`, color: r > 40 ? "#fff" : C.dim, borderRadius: 4 }}>{r}%</td>
+                            background: `rgba(255,31,61,${(r / 100) * 0.65 + 0.05})`, color: r > 40 ? "#fff" : C.dim, borderRadius: 4 }}>{r}%</td>
                         ))}
                       </tr>
                     ))}
@@ -845,10 +845,10 @@ function GoalsTab({ totalUsers, new7d, new30d }: { totalUsers: number; new7d: nu
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
       {/* Hero: current progress to next milestone */}
-      <div style={{ background: `linear-gradient(160deg, rgba(37,99,235,0.14), ${C.card})`, border: `1px solid ${C.blue}55`, borderRadius: 20, padding: 28 }}>
+      <div style={{ background: `linear-gradient(160deg, rgba(255,31,61,0.14), ${C.card})`, border: `1px solid ${C.blue}55`, borderRadius: 20, padding: 28 }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", flexWrap: "wrap", gap: 16, marginBottom: 20 }}>
           <div>
-            <div style={{ fontSize: 11, fontWeight: 800, color: "#8fa9dd", letterSpacing: 1.5, marginBottom: 6 }}>PRÓXIMA META</div>
+            <div style={{ fontSize: 11, fontWeight: 800, color: "#FFB3BE", letterSpacing: 1.5, marginBottom: 6 }}>PRÓXIMA META</div>
             <div style={{ fontSize: 34, fontWeight: 900, letterSpacing: "-0.02em" }}>{nextMilestone.target.toLocaleString("es-MX")} usuarios</div>
             <div style={{ fontSize: 13, color: C.dim, marginTop: 4 }}>{nextMilestone.label}{nextMilestone.note ? ` · ${nextMilestone.note}` : ""}</div>
           </div>
@@ -858,7 +858,7 @@ function GoalsTab({ totalUsers, new7d, new30d }: { totalUsers: number; new7d: nu
           </div>
         </div>
         <div style={{ height: 14, background: "rgba(255,255,255,0.06)", borderRadius: 8, overflow: "hidden", border: `1px solid ${C.border}` }}>
-          <div style={{ height: "100%", width: `${segmentPct}%`, background: `linear-gradient(90deg, ${C.blue}, #60a5fa)`, transition: "width 0.5s", boxShadow: "0 0 12px rgba(37,99,235,0.5)" }} />
+          <div style={{ height: "100%", width: `${segmentPct}%`, background: `linear-gradient(90deg, ${C.blue}, #FF5871)`, transition: "width 0.5s", boxShadow: "0 0 12px rgba(255,31,61,0.5)" }} />
         </div>
         <div style={{ display: "flex", justifyContent: "space-between", marginTop: 8, fontSize: 11.5, color: C.dim2 }}>
           <span>{prevTarget.toLocaleString("es-MX")}</span>
@@ -886,7 +886,7 @@ function GoalsTab({ totalUsers, new7d, new30d }: { totalUsers: number; new7d: nu
               const done = totalUsers >= m.target;
               const isNext = m.target === nextMilestone.target;
               return (
-                <div key={m.target} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 8px", borderRadius: 12, background: isNext ? "rgba(37,99,235,0.08)" : "transparent" }}>
+                <div key={m.target} style={{ display: "flex", alignItems: "center", gap: 16, padding: "12px 8px", borderRadius: 12, background: isNext ? "rgba(255,31,61,0.08)" : "transparent" }}>
                   <div style={{
                     width: 24, height: 24, borderRadius: "50%", flexShrink: 0, zIndex: 1,
                     background: done ? C.blue : C.card, border: `2px solid ${done ? C.blue : isNext ? C.blue : C.border}`,
@@ -997,7 +997,7 @@ function EditUserForm({ u, onDone }: { u: UserRow; onDone: () => void }) {
           const res = await admin.impersonate(u.id);
           const tk = res.data?.data?.accessToken;
           if (tk) { localStorage.setItem("zencrus_token", tk); window.location.href = "/home"; }
-        }, "Entrando como usuario...")} disabled={busy === "imp"} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 10, padding: 11, color: "#60a5fa", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
+        }, "Entrando como usuario...")} disabled={busy === "imp"} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 7, background: "rgba(255,31,61,0.12)", border: "1px solid rgba(255,31,61,0.3)", borderRadius: 10, padding: 11, color: "#FF5871", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}>
           <Eye size={15} /> Ver como
         </button>
       </div>
@@ -1059,7 +1059,7 @@ function UserDetailView({ u, onEdit, onNotify }: { u: UserRow; onAction: () => v
     <div>
       {/* Header info */}
       <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 18 }}>
-        <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(37,99,235,0.2)", border: "1px solid rgba(37,99,235,0.4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#60a5fa" }}>
+        <div style={{ width: 52, height: 52, borderRadius: "50%", background: "rgba(255,31,61,0.2)", border: "1px solid rgba(255,31,61,0.4)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 18, fontWeight: 800, color: "#FF5871" }}>
           {(info.full_name || info.email || "?").slice(0, 2).toUpperCase()}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
@@ -1123,7 +1123,7 @@ function UserDetailView({ u, onEdit, onNotify }: { u: UserRow; onAction: () => v
 
       {/* Actions */}
       <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-        <button onClick={onEdit} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 10, padding: 12, color: "#60a5fa", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}><UserCog size={15} /> Editar rol</button>
+        <button onClick={onEdit} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(255,31,61,0.12)", border: "1px solid rgba(255,31,61,0.3)", borderRadius: 10, padding: 12, color: "#FF5871", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}><UserCog size={15} /> Editar rol</button>
         <button onClick={onNotify} style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, background: "rgba(167,139,250,0.12)", border: "1px solid rgba(167,139,250,0.3)", borderRadius: 10, padding: 12, color: "#a78bfa", fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit" }}><Mail size={15} /> Enviar email</button>
       </div>
     </div>

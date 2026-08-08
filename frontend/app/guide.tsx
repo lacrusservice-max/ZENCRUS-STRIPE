@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Typography, Spacing, BorderRadius, Glass } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 const logoBlanco = require('@/assets/images/logo-blanco.png')
 
@@ -86,7 +87,22 @@ const SECTIONS: GuideSection[] = [
       'Genera reportes PDF con todo tu avance (función Premium).',
     ],
     tip: 'Tómate las fotos siempre con la misma luz y hora para comparaciones justas.',
-    route: '/(tabs)/progress',
+    route: '/profile-stats',
+  },
+  {
+    id: 'salud',
+    icon: 'pulse',
+    title: 'Salud',
+    tagline: 'Pasos, sueño, hidratación y más',
+    what: 'Todo lo relacionado a tu salud diaria en un solo lugar: pasos, sueño, hidratación, recuperación, hábitos y ciclo menstrual.',
+    steps: [
+      'Revisa tus pasos y horas de sueño del día en la parte superior.',
+      'Registra tus vasos de agua directamente desde ahí.',
+      'Haz check-in de energía, dolor muscular y estrés para tu score de recuperación.',
+      'Marca tus hábitos diarios y mira tu racha por cada uno.',
+    ],
+    tip: 'Entre más consistente seas registrando, más preciso será tu score de recuperación.',
+    route: '/(tabs)/salud',
   },
   {
     id: 'coach',
@@ -140,15 +156,14 @@ export default function GuideScreen() {
   }
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Guía de uso</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Ayuda"
+        title="Guía de uso"
+        subtitle="Aprende a usar cada sección paso a paso"
+        icon="book"
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
         {/* Hero */}
@@ -247,7 +262,7 @@ export default function GuideScreen() {
 
         <Text style={s.version}>ZENCRUS v1.0.0 · by LACRUSS</Text>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   )
 }
 

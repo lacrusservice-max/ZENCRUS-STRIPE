@@ -41,7 +41,7 @@ export default function LeaderboardPage() {
 
         <div style={{ display: "inline-flex", background: "rgba(255,255,255,0.04)", border: `1px solid ${C.border}`, borderRadius: 14, padding: 4, gap: 4, marginBottom: 24 }}>
           {([["week", "Semana"], ["month", "Mes"], ["all", "Histórico"]] as [Scope, string][]).map(([s, l]) => (
-            <button key={s} onClick={() => setScope(s)} style={{ padding: "10px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700, background: scope === s ? "linear-gradient(135deg, #2563EB, #1d4ed8)" : "transparent", color: scope === s ? "#fff" : C.dim, boxShadow: scope === s ? "0 8px 20px rgba(37,99,235,0.3)" : "none" }}>{l}</button>
+            <button key={s} onClick={() => setScope(s)} style={{ padding: "10px 20px", borderRadius: 10, border: "none", cursor: "pointer", fontFamily: "inherit", fontSize: 13, fontWeight: 700, background: scope === s ? "linear-gradient(135deg, #FF1F3D, #FF0030)" : "transparent", color: scope === s ? "#fff" : C.dim, boxShadow: scope === s ? "0 8px 20px rgba(255,31,61,0.3)" : "none" }}>{l}</button>
           ))}
         </div>
 
@@ -54,9 +54,9 @@ export default function LeaderboardPage() {
                   <span style={{ width: 30, textAlign: "center", display: "flex", justifyContent: "center" }}>
                     {MedalIcon ? <MedalIcon size={20} color={MEDAL_COLOR[i]} /> : <span style={{ fontSize: 14, fontWeight: 800, color: C.dim2 }}>{i + 1}</span>}
                   </span>
-                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: r.me ? "linear-gradient(135deg, #2563EB, #1d4ed8)" : "rgba(255,255,255,0.06)", border: r.me ? "none" : `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: r.me ? "#fff" : "#8fa9dd", flexShrink: 0 }}>{r.name.slice(0, 1)}</div>
+                  <div style={{ width: 40, height: 40, borderRadius: "50%", background: r.me ? "linear-gradient(135deg, #FF1F3D, #FF0030)" : "rgba(255,255,255,0.06)", border: r.me ? "none" : `1px solid ${C.border}`, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 14, fontWeight: 800, color: r.me ? "#fff" : "#FFB3BE", flexShrink: 0 }}>{r.name.slice(0, 1)}</div>
                   <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 14.5, fontWeight: 800, color: r.me ? "#93c5fd" : C.text }}>{r.name}</div>
+                    <div style={{ fontSize: 14.5, fontWeight: 800, color: r.me ? "#FF8FA0" : C.text }}>{r.name}</div>
                     <div style={{ fontSize: 11.5, color: C.dim2, display: "flex", alignItems: "center", gap: 4, marginTop: 2 }}>
                       <Flame size={12} color="#FF6B35" /> {r.streak} días de racha
                     </div>

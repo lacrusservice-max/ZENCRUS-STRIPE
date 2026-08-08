@@ -1,49 +1,73 @@
 // ZENCRUS — Sistema de diseño
-// Paleta: negro dominante, azul eléctrico ZENCRUS, blancos
+// Paleta: negro dominante, rojo neón ZENCRUS, blancos
 
 export const Colors = {
-  // Marca principal — Azul eléctrico ZENCRUS
+  // Marca principal — Rojo neón ZENCRUS
   primary: {
-    50: '#eff6ff',
-    100: '#dbeafe',
-    200: '#bfdbfe',
-    300: '#93c5fd',
-    400: '#60a5fa',
-    500: '#2563EB',  // Azul principal ZENCRUS
-    600: '#1d4ed8',
-    700: '#1e40af',
-    800: '#1e3a8f',
-    900: '#172554',
+    50: '#fff0f2',
+    100: '#ffd7de',
+    200: '#ffb3be',
+    300: '#ff8fa0',
+    400: '#ff5871',
+    500: '#FF1F3D',  // Rojo neón principal ZENCRUS
+    600: '#e01a36',
+    700: '#b3122a',
+    800: '#800d1e',
+    900: '#4d0812',
   },
 
-  // Secundario — Cyan energético
+  // Secundario — blanco/gris neutro
   secondary: {
-    50: '#e0fffe',
-    100: '#b3fffe',
-    200: '#66fffd',
-    300: '#00fffc',
-    400: '#00e5e3',
-    500: '#00C2C0',  // Cyan principal
-    600: '#009997',
-    700: '#007776',
-    800: '#005554',
-    900: '#003332',
+    50: '#ffffff',
+    100: '#f4f4f5',
+    200: '#e4e4e7',
+    300: '#d1d1d6',
+    400: '#a1a1aa',
+    500: '#8B8D96',  // Acero principal
+    600: '#74767F',
+    700: '#5C5E67',
+    800: '#3f3f46',
+    900: '#27272a',
   },
 
   // Acentos
   accent: {
-    orange: '#FF6B35',
-    red: '#FF3B30',
-    green: '#30D158',
-    yellow: '#FFD60A',
-    pink: '#FF375F',
+    orange: '#FF1F3D',
+    red: '#FF1F3D',
+    green: '#FFFFFF',
+    yellow: '#FFFFFF',
+    pink: '#FF1F3D',
+  },
+
+  /**
+   * Paleta NEÓN — negro · blanco · rojo neón.
+   * Dirección visual aprobada para Nutrición. El rojo se reserva para lo que
+   * exige atención (pendiente, excedido, ZENA, acción principal); el blanco
+   * es el dato primario y el acero el tercer macro.
+   */
+  neon: {
+    void: '#050506',
+    pane: 'rgba(255,255,255,0.045)',
+    paneHi: 'rgba(255,255,255,0.075)',
+    edge: 'rgba(255,255,255,0.11)',
+    white: '#FFFFFF',
+    w2: 'rgba(255,255,255,0.60)',
+    w3: 'rgba(255,255,255,0.34)',
+    w4: 'rgba(255,255,255,0.14)',
+    red: '#FF1F3D',
+    redSoft: '#FF5871',
+    redDeep: '#FF0030',
+    redCore: '#FFD7DE',
+    redDim: 'rgba(255,31,61,0.14)',
+    steel: '#74767F',
+    steelSoft: '#8B8D96',
   },
 
   // Semánticos
-  success: '#30D158',
-  warning: '#FF9F0A',
-  error: '#FF3B30',
-  info: '#2563EB',
+  success: '#FFFFFF',
+  warning: '#FFFFFF',
+  error: '#FF1F3D',
+  info: '#FF1F3D',
 
   // Neutros
   neutral: {
@@ -145,28 +169,28 @@ export const BorderRadius = {
 
 export const Shadows = {
   sm: {
-    shadowColor: '#2563EB',
+    shadowColor: '#FF1F3D',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.08,
     shadowRadius: 4,
     elevation: 1,
   },
   base: {
-    shadowColor: '#2563EB',
+    shadowColor: '#FF1F3D',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.12,
     shadowRadius: 8,
     elevation: 3,
   },
   md: {
-    shadowColor: '#2563EB',
+    shadowColor: '#FF1F3D',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.16,
     shadowRadius: 16,
     elevation: 6,
   },
   lg: {
-    shadowColor: '#2563EB',
+    shadowColor: '#FF1F3D',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.20,
     shadowRadius: 24,
@@ -175,10 +199,10 @@ export const Shadows = {
 }
 
 export const Gradients = {
-  primary: ['#2563EB', '#60a5fa'],
-  secondary: ['#00C2C0', '#00fffc'],
-  warm: ['#FF6B35', '#FFD60A'],
-  cool: ['#2563EB', '#00C2C0'],
+  primary: ['#FF1F3D', '#ff5871'],
+  secondary: ['#FFFFFF', '#e4e4e7'],
+  warm: ['#FF1F3D', '#ff5871'],
+  cool: ['#FF1F3D', '#FFFFFF'],
   dark: ['#141414', '#1c1c1e'],
   brand: ['#0a0a0a', '#1c1c1e'],
 }
@@ -207,11 +231,11 @@ export const Glass = {
   tabBar:        'rgba(11,11,15,0.97)',
   tabBorder:     'rgba(255,255,255,0.07)',
   tabHighlight:  'rgba(255,255,255,0.14)',
-  purpleTint:    'rgba(37,99,235,0.14)',
-  purpleBorder:  'rgba(37,99,235,0.28)',
-  successTint:   'rgba(48,209,88,0.10)',
-  successBorder: 'rgba(48,209,88,0.22)',
-  warningTint:   'rgba(255,159,10,0.10)',
-  errorTint:     'rgba(255,59,48,0.10)',
-  cyanTint:      'rgba(0,194,192,0.10)',
+  purpleTint:    'rgba(255,31,61,0.14)',
+  purpleBorder:  'rgba(255,31,61,0.28)',
+  successTint:   'rgba(255,255,255,0.10)',
+  successBorder: 'rgba(255,255,255,0.22)',
+  warningTint:   'rgba(255,255,255,0.10)',
+  errorTint:     'rgba(255,31,61,0.10)',
+  cyanTint:      'rgba(255,255,255,0.10)',
 }

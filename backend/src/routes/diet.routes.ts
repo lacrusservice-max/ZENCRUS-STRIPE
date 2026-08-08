@@ -3,6 +3,7 @@ import {
   generateDietPlan, getDietPlans, getActiveDietPlan,
   getDietPlan, updateDietPlan, getPendingValidation,
   validateDietPlan, generateDietPlanSchema, updateDietPlanSchema,
+  parseFoodList, parseFoodListSchema,
 } from '../controllers/dietController'
 import { authenticate, authorize } from '../middleware/auth'
 import { validate } from '../middleware/validate'
@@ -12,6 +13,7 @@ const router = Router()
 router.use(authenticate)
 
 router.post('/generate', validate(generateDietPlanSchema), generateDietPlan)
+router.post('/parse-food-list', validate(parseFoodListSchema), parseFoodList)
 router.get('/', getDietPlans)
 router.get('/active', getActiveDietPlan)
 router.get('/:id', getDietPlan)

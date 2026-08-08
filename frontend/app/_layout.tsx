@@ -2,6 +2,13 @@ import { useEffect, useCallback } from 'react'
 import { View } from 'react-native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
+import { ThemeProvider } from '@/context/ThemeContext'
+import { useThemeStore } from '@/store/themeStore'
+import { installThemePatch, setLightMode } from '@/theme/patch'
+
+// Debe instalarse antes del primer render: reescribe el color de todo lo que se
+// renderiza cuando el tema claro está activo.
+installThemePatch()
 import { GestureHandlerRootView } from 'react-native-gesture-handler'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { StripeProvider } from '@stripe/stripe-react-native'
@@ -28,6 +35,8 @@ import { useDuelStore } from '@/store/duelStore'
 import { useMealPlanStore } from '@/store/mealPlanStore'
 import { useMenstrualStore } from '@/store/menstrualStore'
 import { useMacroCyclingStore } from '@/store/macroCyclingStore'
+import { useHabitsStore } from '@/store/habitsStore'
+import { useRecoveryStore } from '@/store/recoveryStore'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { NetworkBanner } from '@/components/NetworkBanner'
 
@@ -46,6 +55,10 @@ export default function RootLayout() {
   const loadMealPlan = useMealPlanStore(s => s.load)
   const loadMenstrual = useMenstrualStore(s => s.load)
   const loadMacroCycling = useMacroCyclingStore(s => s.load)
+  const loadHabits = useHabitsStore(s => s.load)
+  const loadRecovery = useRecoveryStore(s => s.load)
+  const loadTheme = useThemeStore(s => s.load)
+  const isDark = useThemeStore(s => s.isDark)
 
   const [fontsLoaded] = useFonts({
     Rajdhani_500Medium, Rajdhani_600SemiBold, Rajdhani_700Bold,
@@ -65,33 +78,45 @@ export default function RootLayout() {
     loadMealPlan()
     loadMenstrual()
     loadMacroCycling()
+    loadHabits()
+    loadRecovery()
+    loadTheme()
   }, [])
 
   const onRootLayout = useCallback(() => {
     if (fontsLoaded) SplashScreen.hideAsync().catch(() => {})
   }, [fontsLoaded])
 
+  // El padre renderiza antes que los hijos, así que fijar el modo aquí garantiza
+  // que todo el árbol de abajo se cree ya con la paleta correcta.
+  setLightMode(!isDark)
+
   if (!fontsLoaded) return null
 
   return (
     <ErrorBoundary>
+      <ThemeProvider>
       <StripeProvider publishableKey={STRIPE_PK} merchantIdentifier="merchant.com.lacruss.zencrus">
       <GestureHandlerRootView style={{ flex: 1 }}>
         <SafeAreaProvider>
-          <View style={{ flex: 1 }} onLayout={onRootLayout}>
-            <StatusBar style="light" backgroundColor="#0a0a0a" />
-            <Stack screenOptions={{ headerShown: false }}>
+          {/* Los colores se escriben en paleta oscura: el interceptor los
+              convierte a la clara. `style` de StatusBar no es un color. */}
+          <View style={{ flex: 1, backgroundColor: '#070709' }} onLayout={onRootLayout}>
+            <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor="#0a0a0a" />
+            {/* La key remonta el árbol al cambiar de tema, para que ningún
+                subárbol memoizado se quede con la paleta anterior. */}
+            <Stack key={isDark ? 'dark' : 'light'} screenOptions={{ headerShown: false }}>
               <Stack.Screen name="index" />
               <Stack.Screen name="(auth)" />
               <Stack.Screen name="(onboarding)" />
               <Stack.Screen name="(tabs)" />
             </Stack>
-            {/* Banner de estado de red — flota sobre toda la app */}
             <NetworkBanner />
           </View>
         </SafeAreaProvider>
       </GestureHandlerRootView>
       </StripeProvider>
+      </ThemeProvider>
     </ErrorBoundary>
   )
 }

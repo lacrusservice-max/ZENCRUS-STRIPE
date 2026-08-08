@@ -24,7 +24,7 @@ export default function WelcomePage() {
   const firstName = user?.fullName?.split(" ")[0] ?? "Atleta";
 
   const macroCards = [
-    { label: "Calorías", value: macros.calories.toLocaleString("es-MX"), unit: "kcal/día", color: "#8fa9dd", emoji: "🔥" },
+    { label: "Calorías", value: macros.calories.toLocaleString("es-MX"), unit: "kcal/día", color: "#FFB3BE", emoji: "🔥" },
     { label: "Proteína", value: macros.protein, unit: "g/día", color: "#5f7bc4", emoji: "💪" },
     { label: "Carbohidratos", value: macros.carbs, unit: "g/día", color: "#7d8ba8", emoji: "🌾" },
     { label: "Grasa", value: macros.fat, unit: "g/día", color: "#707a8c", emoji: "🥑" },
@@ -60,7 +60,7 @@ export default function WelcomePage() {
               <Image src="/icon.png" alt="" width={22} height={22} style={{ objectFit: "contain" }} />
             </div>
             <div>
-              <div style={{ fontSize: 11, fontWeight: 800, color: "#8fa9dd", letterSpacing: 0.5, marginBottom: 6 }}>Coach ZENCRUS</div>
+              <div style={{ fontSize: 11, fontWeight: 800, color: "#FFB3BE", letterSpacing: 0.5, marginBottom: 6 }}>Coach ZENCRUS</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.7)", lineHeight: 1.7 }}>
                 He analizado tu perfil completo. Tu meta calórica es de <strong style={{ color: "#f4f4f5" }}>{macros.calories.toLocaleString("es-MX")} kcal/día</strong>. Con un déficit/superávit calibrado para tu objetivo, alcanzarás tu meta de forma sostenible y saludable. ¡Empecemos!
               </div>

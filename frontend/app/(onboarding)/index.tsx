@@ -19,7 +19,7 @@ const TOTAL_STEPS = 7
 
 const GOALS: { key: Goal; icon: string; emoji: string; label: string; desc: string; color: string }[] = [
   { key: 'lose_fat',    icon: 'trending-down', emoji: '🔥', label: 'Perder grasa',    desc: 'Definición, reducir peso y porcentaje de grasa corporal',    color: '#f97316' },
-  { key: 'gain_muscle', icon: 'barbell',       emoji: '💪', label: 'Ganar músculo',   desc: 'Aumentar masa muscular, fuerza y potencia',                  color: '#60a5fa' },
+  { key: 'gain_muscle', icon: 'barbell',       emoji: '💪', label: 'Ganar músculo',   desc: 'Aumentar masa muscular, fuerza y potencia',                  color: '#FF5871' },
   { key: 'maintain',   icon: 'shield-half',   emoji: '⚖️',  label: 'Mantenimiento',  desc: 'Mantener composición corporal y mejorar rendimiento',        color: '#a78bfa' },
 ]
 

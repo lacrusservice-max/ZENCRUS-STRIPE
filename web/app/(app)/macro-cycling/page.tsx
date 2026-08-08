@@ -14,8 +14,8 @@ const CONFIG: Record<DayType, { carb: number; protein: number; fat: number; cal:
 };
 const META: Record<DayType, { icon: typeof Flame; color: string; label: string; desc: string }> = {
   high: { icon: Flame, color: "#FF6B35", label: "Alto en carbs", desc: "Entreno intenso · más energía" },
-  moderate: { icon: Zap, color: "#60a5fa", label: "Moderado", desc: "Balance · intensidad media" },
-  low: { icon: Leaf, color: "#3fae6b", label: "Bajo en carbs", desc: "Recuperación · oxidar grasa" },
+  moderate: { icon: Zap, color: "#FF5871", label: "Moderado", desc: "Balance · intensidad media" },
+  low: { icon: Leaf, color: "#FFFFFF", label: "Bajo en carbs", desc: "Recuperación · oxidar grasa" },
   rest: { icon: BedDouble, color: "#c084fc", label: "Descanso", desc: "Sin entreno · déficit mayor" },
 };
 const DAYS: { k: string; l: string }[] = [
@@ -59,9 +59,9 @@ export default function MacroCyclingPage() {
             const t = week[d.k]; const sel = selDay === d.k;
             const Icon = META[t].icon;
             return (
-              <button key={d.k} onClick={() => setSelDay(d.k)} className="glass-card" style={{ flexShrink: 0, minWidth: 68, padding: "14px 8px", cursor: "pointer", fontFamily: "inherit", textAlign: "center", borderColor: sel ? "rgba(37,99,235,0.4)" : undefined, background: sel ? "rgba(37,99,235,0.08)" : undefined }}>
+              <button key={d.k} onClick={() => setSelDay(d.k)} className="glass-card" style={{ flexShrink: 0, minWidth: 68, padding: "14px 8px", cursor: "pointer", fontFamily: "inherit", textAlign: "center", borderColor: sel ? "rgba(255,31,61,0.4)" : undefined, background: sel ? "rgba(255,31,61,0.08)" : undefined }}>
                 <Icon size={19} color={META[t].color} style={{ margin: "0 auto" }} />
-                <div style={{ fontSize: 12, fontWeight: 800, marginTop: 6, color: sel ? "#93c5fd" : C.text }}>{d.l}</div>
+                <div style={{ fontSize: 12, fontWeight: 800, marginTop: 6, color: sel ? "#FF8FA0" : C.text }}>{d.l}</div>
               </button>
             );
           })}
@@ -74,12 +74,12 @@ export default function MacroCyclingPage() {
             const active = week[selDay] === t;
             const Icon = META[t].icon;
             return (
-              <button key={t} onClick={() => setDayType(t)} className="glass-card" style={{ display: "flex", alignItems: "center", gap: 14, padding: 16, cursor: "pointer", fontFamily: "inherit", textAlign: "left", borderColor: active ? "rgba(37,99,235,0.4)" : undefined, background: active ? "rgba(37,99,235,0.08)" : undefined }}>
+              <button key={t} onClick={() => setDayType(t)} className="glass-card" style={{ display: "flex", alignItems: "center", gap: 14, padding: 16, cursor: "pointer", fontFamily: "inherit", textAlign: "left", borderColor: active ? "rgba(255,31,61,0.4)" : undefined, background: active ? "rgba(255,31,61,0.08)" : undefined }}>
                 <div style={{ width: 44, height: 44, borderRadius: 13, background: `${META[t].color}22`, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                   <Icon size={20} color={META[t].color} />
                 </div>
                 <div>
-                  <div style={{ fontSize: 14, fontWeight: 800, color: active ? "#93c5fd" : C.text }}>{META[t].label}</div>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: active ? "#FF8FA0" : C.text }}>{META[t].label}</div>
                   <div style={{ fontSize: 11, color: C.dim2, marginTop: 2 }}>{META[t].desc}</div>
                 </div>
               </button>

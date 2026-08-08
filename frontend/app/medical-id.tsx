@@ -5,6 +5,7 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useMedicalIdStore, EmergencyContact } from '@/store/medicalIdStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 const BLOOD_TYPES = ['O-', 'O+', 'A-', 'A+', 'B-', 'B+', 'AB-', 'AB+', 'No sé']
 
@@ -29,14 +30,15 @@ export default function MedicalIdScreen() {
   }
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>ID médica de emergencia</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Salud"
+        title="ID médica"
+        subtitle="Datos críticos para una emergencia"
+        icon="medical"
+        color={Colors.accent.red}
+      />
 
       <ScrollView contentContainerStyle={{ padding: Spacing[5], paddingBottom: Spacing[16] }}>
         <View style={s.notice}>
@@ -89,7 +91,7 @@ export default function MedicalIdScreen() {
           </TouchableOpacity>
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   )
 }
 

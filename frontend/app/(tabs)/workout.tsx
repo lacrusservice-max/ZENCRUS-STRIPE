@@ -9,6 +9,7 @@ import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useWorkoutStore, Exercise, Routine } from '@/store/workoutStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 const FITNESS_TOOLS = [
   { icon: 'trending-up-outline' as const,   label: 'Progreso',      sub: '1RM y PRs',       route: '/workout/progress' },
@@ -489,18 +490,18 @@ export default function WorkoutScreen() {
   const weekSessions = logs.filter(l => l.date >= weekAgoStr).length
 
   return (
-    <SafeAreaView style={ws.container}>
-      {/* Header */}
-      <View style={ws.header}>
-        <View>
-          <Text style={ws.brand}>ENTRENAMIENTO</Text>
-          <Text style={ws.mainTitle}>Rutina</Text>
-          <Text style={ws.date}>{new Date().toLocaleDateString('es-MX', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
-        </View>
-        <TouchableOpacity style={ws.createBtn} onPress={openCreate}>
-          <Text style={ws.createBtnTxt}>+ Nueva</Text>
-        </TouchableOpacity>
-      </View>
+    <Screen>
+      <ScreenHeader
+        eyebrow="Zencrus · Entrenamiento"
+        title="Rutina"
+        subtitle={new Date().toLocaleDateString('es-MX', { weekday: 'long', month: 'long', day: 'numeric' })}
+        icon="barbell"
+        right={
+          <TouchableOpacity style={ws.createBtn} onPress={openCreate}>
+            <Text style={ws.createBtnTxt}>+ Nueva</Text>
+          </TouchableOpacity>
+        }
+      />
 
       {/* Fitness tools grid */}
       <View style={ws.toolsRow}>
@@ -611,7 +612,7 @@ export default function WorkoutScreen() {
         onClose={() => setEditorVisible(false)}
         onSave={handleSave}
       />
-    </SafeAreaView>
+    </Screen>
   )
 }
 

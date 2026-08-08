@@ -13,6 +13,7 @@ import {
   Symptom, MoodLevel, FlowLevel, CyclePhase,
 } from '@/store/menstrualStore'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 // ── Phase colors ──────────────────────────────────────────────────────────────
 
@@ -261,15 +262,20 @@ function MenstrualScreenContent() {
   }
 
   return (
-    <SafeAreaView style={s.container}>
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()}><Text style={s.backTxt}>‹</Text></TouchableOpacity>
-        <Text style={s.title}>Mi ciclo</Text>
-        <TouchableOpacity style={s.logBtn} onPress={() => setLogModal(true)}>
-          <Text style={s.logBtnTxt}>+ Registrar hoy</Text>
-        </TouchableOpacity>
-      </View>
+    <Screen tint={Colors.accent.red}>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Fisiología"
+        title="Mi ciclo"
+        subtitle="Tu plan se adapta a cada fase"
+        icon="flower"
+        color={Colors.accent.red}
+        right={
+          <TouchableOpacity style={s.logBtn} onPress={() => setLogModal(true)}>
+            <Text style={s.logBtnTxt}>+ Hoy</Text>
+          </TouchableOpacity>
+        }
+      />
 
       {/* Today log summary */}
       {todayLog && (
@@ -535,7 +541,7 @@ function MenstrualScreenContent() {
       </ScrollView>
 
       <LogDayModal visible={logModal} onClose={() => setLogModal(false)} />
-    </SafeAreaView>
+    </Screen>
   )
 }
 

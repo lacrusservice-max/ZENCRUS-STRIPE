@@ -138,7 +138,7 @@ export default function OnboardingPage() {
             style={{
               height: "100%",
               width: `${progress}%`,
-              background: "linear-gradient(90deg, #5b4fff, #2563eb)",
+              background: "linear-gradient(90deg, #FF1F3D, #FF1F3D)",
               borderRadius: 99,
               transition: "width 0.4s ease",
             }}
@@ -180,7 +180,7 @@ export default function OnboardingPage() {
             </div>
             <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
               {[
-                { value: "male", label: "Masculino", icon: <Mars size={28} color="#2563eb" /> },
+                { value: "male", label: "Masculino", icon: <Mars size={28} color="#FF1F3D" /> },
                 { value: "female", label: "Femenino", icon: <Venus size={28} color="#ec4899" /> },
               ].map((s) => (
                 <button
@@ -359,7 +359,7 @@ export default function OnboardingPage() {
                 width: 80,
                 height: 80,
                 borderRadius: "50%",
-                background: "linear-gradient(135deg, #5b4fff, #2563eb)",
+                background: "linear-gradient(135deg, #FF1F3D, #FF1F3D)",
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",

@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useLeaderboardStore, LeaderboardMetric, LeaderboardPeriod, LeaderboardEntry } from '@/store/leaderboardStore'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 const METRICS: { id: LeaderboardMetric; label: string; emoji: string; unit: string }[] = [
   { id: 'xp', label: 'XP Total', emoji: '⚡', unit: 'XP' },
@@ -101,16 +102,20 @@ export default function LeaderboardScreen() {
   const selectedMetric = METRICS.find(m => m.id === metric)!
 
   return (
-    <SafeAreaView style={s.container}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: Spacing[2] }}>
-          <Text style={s.back}>‹</Text>
-        </TouchableOpacity>
-        <Text style={s.title}>Clasificación</Text>
-        <View style={s.rankBadge}>
-          <Text style={s.rankTxt}>#{myRank || '–'}</Text>
-        </View>
-      </View>
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Comunidad"
+        title="Clasificación"
+        subtitle="Tu posición frente a la comunidad"
+        icon="trophy"
+        color={Colors.accent.yellow}
+        right={
+          <View style={s.rankBadge}>
+            <Text style={s.rankTxt}>#{myRank || '–'}</Text>
+          </View>
+        }
+      />
 
       {/* Period tabs */}
       <View style={s.periodTabs}>
@@ -155,7 +160,7 @@ export default function LeaderboardScreen() {
           )}
         </ScrollView>
       )}
-    </SafeAreaView>
+    </Screen>
   )
 }
 

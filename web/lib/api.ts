@@ -155,6 +155,8 @@ export const diet = {
   generate: (opts?: { durationDays?: number }) => api.post("/diet/generate", { durationDays: opts?.durationDays ?? 7 }),
   getActive: () => api.get("/diet/active"),
   getAll: () => api.get("/diet"),
+  parseFoodList: (meals: Partial<Record<"breakfast" | "lunch" | "dinner" | "snack1" | "snack2" | "snack3", string>>) =>
+    api.post("/diet/parse-food-list", meals),
 };
 
 export const workout = {

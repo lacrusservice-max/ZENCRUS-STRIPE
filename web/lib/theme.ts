@@ -1,6 +1,6 @@
 // ZENCRUS — Design tokens compartidos (web)
 // Espejo de frontend/src/constants/theme.ts — misma marca, mismo negro con
-// temperatura, mismo azul eléctrico. Fuente única de verdad: no redefinir
+// temperatura, mismo rojo neón. Fuente única de verdad: no redefinir
 // paletas locales por página (const C = {...}) — importar de aquí.
 
 export const Colors = {
@@ -10,21 +10,21 @@ export const Colors = {
   panelElevated: '#131824',
   border: '#1e2430',
 
-  navy: '#1e3a8a',
-  navySoft: 'rgba(30,58,138,0.16)',
-  navyBorder: 'rgba(37,99,235,0.3)',
-  blue: '#3b82f6',
-  blue2: '#60a5fa',
+  navy: '#B3122A',
+  navySoft: 'rgba(255,31,61,0.16)',
+  navyBorder: 'rgba(255,31,61,0.3)',
+  blue: '#FF1F3D',
+  blue2: '#FF5871',
 
   text: '#f4f5f7',
   dim: '#9aa3b2',
   dim2: '#5f6875',
 
-  green: '#3fae6b',
-  red: '#e0576b',
-  amber: '#f5b544',
-  orange: '#f08a4b',
-  gold: '#c9a94e',
+  green: '#FFFFFF',
+  red: '#FF1F3D',
+  amber: '#FFFFFF',
+  orange: '#FF1F3D',
+  gold: '#FFFFFF',
 } as const
 
 export const Spacing = {

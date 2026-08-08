@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useStreakStore, DayStatus } from '@/store/streakStore'
 import { useAchievementStore } from '@/store/achievementStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 const MILESTONES = [3, 7, 14, 30, 60, 100, 180, 365]
 
@@ -34,16 +35,20 @@ export default function StreaksScreen() {
   for (let i = 0; i < history.length; i += 7) weeks.push(history.slice(i, i + 7))
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      <View style={s.header}>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#fff" />
-        </TouchableOpacity>
-        <Text style={s.headerTitle}>Racha y constancia</Text>
-        <TouchableOpacity style={s.backBtn} onPress={() => router.push('/achievements')}>
-          <Ionicons name="trophy-outline" size={20} color={Colors.primary[400]} />
-        </TouchableOpacity>
-      </View>
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Constancia"
+        title="Racha y constancia"
+        subtitle="Tu historial y protectores de racha"
+        icon="flame"
+        color={Colors.accent.orange}
+        right={
+          <TouchableOpacity style={s.backBtn} onPress={() => router.push('/achievements')}>
+            <Ionicons name="trophy-outline" size={20} color={Colors.primary[400]} />
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView contentContainerStyle={{ padding: Spacing[5], paddingBottom: Spacing[16] }}>
         {justProtected && (
@@ -124,7 +129,7 @@ export default function StreaksScreen() {
           )
         })}
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   )
 }
 

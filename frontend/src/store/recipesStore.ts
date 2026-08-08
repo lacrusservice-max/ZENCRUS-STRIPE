@@ -34,6 +34,30 @@ export interface Recipe {
   isPublic: boolean
   imageUri?: string
   allergens: string[]
+
+  /**
+   * Minutos de cada paso, alineado con `steps`. Un 0 significa que ese paso no
+   * lleva reloj (cortar, emplatar). El modo cocina solo abre temporizador donde
+   * hay un número, en vez de inventar tiempos que la receta no declara.
+   */
+  stepTimersMin?: number[]
+
+  // ── Historial de uso ────────────────────────────────────────────────────
+  /** Veces que se ha cocinado. Ordena el recetario y alimenta el mapa de uso. */
+  cookCount?: number
+  lastCookedAt?: string
+  /** Foto que tomó la persona al terminar; sustituye a la de archivo. */
+  userPhotoUri?: string
+  /**
+   * Variación fijada por el usuario. Guarda las sustituciones que repite —si
+   * lleva siete veces cambiando arroz por quinoa, esa pasa a ser su versión— y
+   * las raciones que suele preparar.
+   */
+  variation?: {
+    label: string
+    servings: number
+    swaps: { from: string; to: RecipeIngredient }[]
+  }
 }
 
 const DEMO_RECIPES: Recipe[] = [
@@ -140,6 +164,12 @@ interface RecipesState {
   favorites: string[]
   allergens: string[]
   intolerances: string[]
+  /**
+   * Lo que hay en casa, en texto libre. Vive aquí y no en un store propio
+   * porque su único consumidor es el recetario: sirve para avisar de faltantes
+   * antes de empezar a cocinar.
+   */
+  pantry: string[]
   load: () => Promise<void>
   addRecipe: (recipe: Omit<Recipe, 'id' | 'createdAt'>) => Recipe
   updateRecipe: (id: string, updates: Partial<Recipe>) => void
@@ -151,6 +181,17 @@ interface RecipesState {
   getFiltered: (search?: string, cat?: Recipe['category'] | 'all') => Recipe[]
   getSafe: () => Recipe[]
   generateGroceryList: (recipeIds: string[], servings?: Record<string, number>) => GroceryItem[]
+
+  /** Cuenta una preparación: sube el contador y sella la fecha. */
+  logCooked: (id: string, servings?: number) => void
+  /** Guarda la foto que tomó el usuario al terminar. */
+  setPhoto: (id: string, uri: string) => void
+  /** Fija (o borra) la variación habitual de una receta. */
+  saveVariation: (id: string, variation: Recipe['variation']) => void
+  /** Las más cocinadas primero; sin historial quedan al final. */
+  getMostCooked: () => Recipe[]
+  /** Añade o quita un ingrediente de la despensa. */
+  togglePantry: (item: string) => void
 }
 
 export interface GroceryItem {
@@ -168,6 +209,9 @@ export const useRecipesStore = create<RecipesState>()(
       favorites: ['r1'],
       allergens: [],
       intolerances: [],
+      // Arranca con lo básico de una alacena para que el aviso de faltantes
+      // tenga sentido desde el primer uso en vez de marcarlo todo en rojo.
+      pantry: ['sal', 'pimienta', 'aceite de oliva', 'ajo'],
 
       load: async () => {},
 
@@ -231,6 +275,43 @@ export const useRecipesStore = create<RecipesState>()(
         const blocked = [...allergens, ...intolerances]
         if (!blocked.length) return recipes
         return recipes.filter(r => !r.allergens.some(a => blocked.includes(a)))
+      },
+
+      logCooked: (id, servings) => {
+        set(s => ({
+          recipes: s.recipes.map(r => r.id === id ? {
+            ...r,
+            cookCount: (r.cookCount ?? 0) + 1,
+            lastCookedAt: new Date().toISOString(),
+            // Las raciones que se acaban de preparar pasan a ser las habituales
+            // sin pedir confirmación: es un dato observado, no una preferencia
+            // que haya que declarar.
+            variation: servings && r.variation
+              ? { ...r.variation, servings }
+              : r.variation,
+          } : r),
+        }))
+      },
+
+      setPhoto: (id, uri) => {
+        set(s => ({ recipes: s.recipes.map(r => r.id === id ? { ...r, userPhotoUri: uri } : r) }))
+      },
+
+      saveVariation: (id, variation) => {
+        set(s => ({ recipes: s.recipes.map(r => r.id === id ? { ...r, variation } : r) }))
+      },
+
+      getMostCooked: () =>
+        [...get().recipes].sort((a, b) => (b.cookCount ?? 0) - (a.cookCount ?? 0)),
+
+      togglePantry: (item) => {
+        const key = item.trim().toLowerCase()
+        if (!key) return
+        set(s => ({
+          pantry: s.pantry.includes(key)
+            ? s.pantry.filter(p => p !== key)
+            : [...s.pantry, key],
+        }))
       },
 
       generateGroceryList: (recipeIds, servings = {}) => {

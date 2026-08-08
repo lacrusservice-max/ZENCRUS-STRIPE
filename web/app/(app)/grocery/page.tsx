@@ -29,7 +29,7 @@ export default function GroceryPage() {
       <div style={{ maxWidth: 780, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", paddingTop: 32, paddingBottom: 24, flexWrap: "wrap", gap: 16 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 900, color: "#3fae6b", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · NUTRICIÓN</div>
+            <div style={{ fontSize: 10, fontWeight: 900, color: "#FFFFFF", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · NUTRICIÓN</div>
             <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 36, letterSpacing: -0.5 }}>Lista de compras</div>
             <p style={{ fontSize: 13, color: C.dim, marginTop: 8 }}>Generada de tu planificador semanal</p>
           </div>
@@ -41,7 +41,7 @@ export default function GroceryPage() {
         {list.length > 0 && (
           <div style={{ display: "flex", alignItems: "center", gap: 14, marginBottom: 22 }}>
             <div className="progress-bar" style={{ flex: 1 }}>
-              <div className="progress-fill" style={{ width: `${list.length ? (done / list.length) * 100 : 0}%`, background: "linear-gradient(90deg, #2563EB, #3fae6b)" }} />
+              <div className="progress-fill" style={{ width: `${list.length ? (done / list.length) * 100 : 0}%`, background: "linear-gradient(90deg, #FF1F3D, #FFFFFF)" }} />
             </div>
             <span style={{ fontSize: 12, color: C.dim, fontWeight: 700 }}>{done}/{list.length}</span>
           </div>
@@ -59,7 +59,7 @@ export default function GroceryPage() {
               const on = !!checked[item.name];
               return (
                 <button key={item.name} onClick={() => toggle(item.name)} style={{ display: "flex", alignItems: "center", gap: 14, width: "100%", padding: "16px 20px", background: "none", border: "none", borderBottom: i < list.length - 1 ? `1px solid ${C.border}` : "none", cursor: "pointer", fontFamily: "inherit", textAlign: "left" }}>
-                  <span style={{ width: 22, height: 22, borderRadius: 7, border: `1.5px solid ${on ? "#3fae6b" : C.dim2}`, background: on ? "#3fae6b" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <span style={{ width: 22, height: 22, borderRadius: 7, border: `1.5px solid ${on ? "#FFFFFF" : C.dim2}`, background: on ? "#FFFFFF" : "transparent", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     {on && <Check size={13} color="#fff" strokeWidth={3} />}
                   </span>
                   <span style={{ flex: 1, fontSize: 14.5, color: on ? C.dim2 : C.text, textDecoration: on ? "line-through" : "none" }}>{item.name}</span>

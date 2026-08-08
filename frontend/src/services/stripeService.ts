@@ -59,7 +59,7 @@ export async function startStripePaymentSheet(tier: CheckoutTier, extraMembers =
     // Paleta ZENCRUS: azul eléctrico + negro. Sin morados ni amarillos.
     appearance: {
       colors: {
-        primary: '#2563EB',
+        primary: '#FF1F3D',
         background: '#0a0a0a',
         componentBackground: '#141414',
         componentBorder: '#FFFFFF1F', // rgba(255,255,255,0.12)
@@ -68,7 +68,7 @@ export async function startStripePaymentSheet(tier: CheckoutTier, extraMembers =
         secondaryText: '#a1a1aa',
         componentText: '#f4f4f5',
         placeholderText: '#FFFFFF4D', // rgba(255,255,255,0.3)
-        icon: '#2563EB',
+        icon: '#FF1F3D',
         error: '#FF3B30',
       },
       shapes: {
@@ -77,7 +77,7 @@ export async function startStripePaymentSheet(tier: CheckoutTier, extraMembers =
       },
       primaryButton: {
         colors: {
-          background: '#2563EB',
+          background: '#FF1F3D',
           text: '#ffffff',
         },
       },

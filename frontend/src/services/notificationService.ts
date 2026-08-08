@@ -59,7 +59,7 @@ export async function scheduleMorningCheckIn(hour: number, minute: number): Prom
       content: {
         title: '☀️ Buenos días, atleta',
         body: 'Tu check-in matutino te espera. 2 minutos para activar tu día al 100%.',
-        data: { type: 'check_in', screen: '/(tabs)/index' },
+        data: { type: 'check_in', screen: '/progress' },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.CALENDAR,

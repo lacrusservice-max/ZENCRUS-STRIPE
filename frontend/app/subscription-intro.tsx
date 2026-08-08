@@ -143,10 +143,21 @@ function PlanCard({
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function SubscriptionIntroScreen() {
-  const { user } = useAuthStore()
+  const { user, logout } = useAuthStore()
   const colorScheme = useColorScheme()
   const [selected, setSelected] = useState<PlanKey>('annual_individual')
   const [choosingPlan, setChoosingPlan] = useState(false)
+  const [loggingOut, setLoggingOut] = useState(false)
+
+  const handleLogout = async () => {
+    setLoggingOut(true)
+    try {
+      await logout()
+      router.replace('/(auth)/login')
+    } finally {
+      setLoggingOut(false)
+    }
+  }
 
   const headerOpacity = useRef(new Animated.Value(0)).current
   const trialOpacity = useRef(new Animated.Value(0)).current
@@ -182,9 +193,16 @@ export default function SubscriptionIntroScreen() {
       <SafeAreaView style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={s.scroll} showsVerticalScrollIndicator={false}>
 
-          {/* Logo */}
-          <Animated.View style={[s.logoWrap, { opacity: headerOpacity }]}>
-            <Image source={logoSource} style={s.logo} resizeMode="contain" />
+          {/* Logo + salir */}
+          <Animated.View style={[s.topRow, { opacity: headerOpacity }]}>
+            <View style={s.logoWrap}>
+              <Image source={logoSource} style={s.logo} resizeMode="contain" />
+            </View>
+            <TouchableOpacity onPress={handleLogout} disabled={loggingOut} hitSlop={10} style={s.logoutBtn}>
+              {loggingOut
+                ? <ActivityIndicator color="rgba(255,255,255,0.5)" size="small" />
+                : <Text style={s.logoutText}>Cerrar sesión</Text>}
+            </TouchableOpacity>
           </Animated.View>
 
           {/* Header */}
@@ -258,8 +276,14 @@ const s = StyleSheet.create({
   blob: { position: 'absolute', borderRadius: 9999, opacity: 0.09, width: 260, height: 260 },
   scroll: { paddingHorizontal: Spacing[5], paddingBottom: Spacing[10] },
 
-  logoWrap: { alignItems: 'center', paddingTop: Spacing[4], paddingBottom: Spacing[5] },
+  topRow: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingTop: Spacing[4], paddingBottom: Spacing[5],
+  },
+  logoWrap: { flex: 1, alignItems: 'center' },
   logo: { width: 120, height: 38 },
+  logoutBtn: { position: 'absolute', right: 0, top: Spacing[4] + 8 },
+  logoutText: { fontSize: 12.5, fontWeight: '700', color: 'rgba(255,255,255,0.45)' },
 
   title: {
     fontSize: 30, fontWeight: '300', color: 'rgba(255,255,255,0.6)',

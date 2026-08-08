@@ -9,6 +9,7 @@ import {
   DayType, WeekCycle,
 } from '@/store/macroCyclingStore'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 const DAYS_ES = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
 
@@ -154,17 +155,23 @@ export default function MacroCyclingScreen() {
   useEffect(() => { load() }, [])
 
   return (
-    <SafeAreaView style={s.container}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()}><Text style={s.backTxt}>‹</Text></TouchableOpacity>
-        <Text style={s.title}>Macro Cycling</Text>
-        <Switch
-          value={enabled}
-          onValueChange={setEnabled}
-          trackColor={{ true: Colors.primary[500], false: Colors.dark.border }}
-          thumbColor="#fff"
-        />
-      </View>
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Nutrición avanzada"
+        title="Macro Cycling"
+        subtitle="Periodiza tus carbohidratos según tu entrenamiento"
+        icon="refresh-circle"
+        color={Colors.accent.orange}
+        right={
+          <Switch
+            value={enabled}
+            onValueChange={setEnabled}
+            trackColor={{ true: Colors.primary[500], false: Colors.dark.border }}
+            thumbColor="#fff"
+          />
+        }
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 120 }}>
 
@@ -275,7 +282,7 @@ export default function MacroCyclingScreen() {
         </View>
 
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   )
 }
 

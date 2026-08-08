@@ -7,6 +7,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '@/store/authStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 import {
   fetchFeed, createPost, deletePost, likePost, unlikePost,
   fetchComments, addComment, CommunityPost, CommunityComment, FeedScope,
@@ -153,14 +154,19 @@ export default function SocialScreen() {
   }
 
   return (
-    <SafeAreaView style={s.container} edges={['top']}>
-      {/* Header */}
-      <View style={s.header}>
-        <Text style={s.headerTitle}>Comunidad</Text>
-        <TouchableOpacity style={s.newBtn} onPress={() => setComposerOpen(true)} activeOpacity={0.85}>
-          <Ionicons name="add" size={20} color="#fff" />
-        </TouchableOpacity>
-      </View>
+    <Screen tint={Colors.accent.green}>
+      <ScreenHeader
+        eyebrow="Zencrus · Comunidad"
+        title="Comunidad"
+        subtitle="Comparte tu progreso y motiva a otros"
+        icon="people"
+        color={Colors.accent.green}
+        right={
+          <TouchableOpacity style={s.newBtn} onPress={() => setComposerOpen(true)} activeOpacity={0.85}>
+            <Ionicons name="add" size={20} color="#fff" />
+          </TouchableOpacity>
+        }
+      />
 
       {/* Scope tabs */}
       <View style={s.tabs}>
@@ -235,7 +241,7 @@ export default function SocialScreen() {
           setPosts(prev => prev.map(x => x.id === commentsFor.id ? { ...x, comments_count: x.comments_count + 1 } : x))
         }} me={user} />
       )}
-    </SafeAreaView>
+    </Screen>
   )
 }
 

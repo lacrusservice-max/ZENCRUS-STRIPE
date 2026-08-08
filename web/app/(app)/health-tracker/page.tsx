@@ -51,9 +51,9 @@ export default function HealthTrackerPage() {
         {t && (
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(150px,1fr))", gap: 12, marginBottom: 32 }}>
             {[
-              { icon: <Footprints size={18} color="#60a5fa" />, glow: "rgba(37,99,235,0.15)", label: "Pasos", value: t.steps.toLocaleString("es-MX") },
+              { icon: <Footprints size={18} color="#FF5871" />, glow: "rgba(255,31,61,0.15)", label: "Pasos", value: t.steps.toLocaleString("es-MX") },
               { icon: <Flame size={18} color="#FF6B35" />, glow: "rgba(255,107,53,0.15)", label: "Kcal activas", value: stepsToKcal(t.steps) },
-              { icon: <MapPin size={18} color="#3fae6b" />, glow: "rgba(63,174,107,0.15)", label: "Distancia", value: `${stepsToKm(t.steps)} km` },
+              { icon: <MapPin size={18} color="#FFFFFF" />, glow: "rgba(63,174,107,0.15)", label: "Distancia", value: `${stepsToKm(t.steps)} km` },
               { icon: <Moon size={18} color="#c084fc" />, glow: "rgba(192,132,252,0.15)", label: "Sueño", value: `${t.sleepHours.toFixed(1)} h` },
               { icon: <Heart size={18} color="#e0576b" />, glow: "rgba(224,87,107,0.15)", label: "FC reposo", value: `${t.restingHR} bpm` },
             ].map((s) => (
@@ -72,7 +72,7 @@ export default function HealthTrackerPage() {
           <div style={{ display: "flex", alignItems: "flex-end", gap: 8, height: 120 }}>
             {[...days].slice(0, 7).reverse().map((d) => (
               <div key={d.date} title={`${d.steps} pasos`} style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "flex-end", height: "100%" }}>
-                <div style={{ width: "70%", height: `${(d.steps / maxSteps) * 100}%`, minHeight: 4, background: "linear-gradient(180deg, #60a5fa, #2563EB)", borderRadius: "4px 4px 0 0" }} />
+                <div style={{ width: "70%", height: `${(d.steps / maxSteps) * 100}%`, minHeight: 4, background: "linear-gradient(180deg, #FF5871, #FF1F3D)", borderRadius: "4px 4px 0 0" }} />
                 <span style={{ fontSize: 9.5, color: C.dim2, marginTop: 8 }}>{new Date(d.date + "T12:00").toLocaleDateString("es-MX", { weekday: "short" }).slice(0, 2)}</span>
               </div>
             ))}

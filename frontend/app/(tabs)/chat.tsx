@@ -19,6 +19,7 @@ import {
   CoachContext,
 } from '@/services/aiCoachService'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen } from '@/components/ui/Screen'
 
 const QUICK_QUESTIONS = [
   '¿Qué debería comer hoy para complementar mis macros?',
@@ -181,7 +182,7 @@ export default function ChatScreen() {
   const remaining = DAILY_LIMIT - aiMessagesToday
 
   return (
-    <SafeAreaView style={s.container}>
+    <Screen>
       {/* Header */}
       <View style={s.header}>
         <View style={s.headerLeft}>
@@ -262,7 +263,7 @@ export default function ChatScreen() {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
-    </SafeAreaView>
+    </Screen>
   )
 }
 

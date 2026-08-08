@@ -184,7 +184,7 @@ export default function WelcomeScreen() {
           </View>
 
           <View style={s.macroGrid}>
-            <MacroCard label="Proteína" value={protein} unit="g" color="#60a5fa" icon="barbell" delay={200} />
+            <MacroCard label="Proteína" value={protein} unit="g" color="#FF5871" icon="barbell" delay={200} />
             <MacroCard label="Carbohidratos" value={carbs} unit="g" color={Colors.accent.yellow} icon="leaf" delay={350} />
             <MacroCard label="Grasas" value={fat} unit="g" color={Colors.accent.orange} icon="water" delay={500} />
             <MacroCard label="Fibra" value={fiber} unit="g" color={Colors.accent.green} icon="nutrition" delay={650} />

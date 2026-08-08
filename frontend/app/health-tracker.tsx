@@ -10,6 +10,7 @@ import { useAchievementStore } from '@/store/achievementStore'
 import { detectTrend, Metric } from '@/utils/healthTrends'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 const DAYS = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb']
 const QUALITY_COLORS = {
@@ -285,14 +286,15 @@ export default function HealthTrackerScreen() {
   const hrData = weekly.map(d => ({ date: d.date, value: d.avgHeartRate }))
 
   return (
-    <SafeAreaView style={s.container}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: Spacing[2] }}>
-          <Text style={s.back}>‹</Text>
-        </TouchableOpacity>
-        <Text style={s.title}>Tracker de salud</Text>
-        <View style={{ width: 40 }} />
-      </View>
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Salud"
+        title="Tracker de salud"
+        subtitle="Pasos, sueño y frecuencia cardiaca"
+        icon="heart"
+        color="#FF5871"
+      />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing[10] }}>
         {/* Tendencias — patrones sostenidos, no reacciones a un solo día */}
@@ -424,7 +426,7 @@ export default function HealthTrackerScreen() {
       <AddStepsModal visible={showSteps} onClose={() => setShowSteps(false)} />
       <LogSleepModal visible={showSleep} onClose={() => setShowSleep(false)} />
       <LogHRModal visible={showHR} onClose={() => setShowHR(false)} />
-    </SafeAreaView>
+    </Screen>
   )
 }
 

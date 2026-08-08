@@ -69,7 +69,7 @@ function HealthScoreRing({ score }: { score: number }) {
   const STROKE = 9;
   const circ = 2 * Math.PI * R;
   const offset = circ - (score / 100) * circ;
-  const color = score >= 80 ? "#30D158" : score >= 55 ? "#60a5fa" : "#FF6B35";
+  const color = score >= 80 ? "#30D158" : score >= 55 ? "#FF5871" : "#FF6B35";
   const label = score >= 80 ? "Excelente" : score >= 55 ? "Muy bien" : score >= 30 ? "Regular" : "Empezando";
 
   return (
@@ -230,7 +230,7 @@ export default function HomePage() {
   const activityRings: [RingSpec, RingSpec, RingSpec] = [
     { label: 'Nutrición', value: Math.min(totalCalories / Math.max(caloriesTarget, 1), 1), color: '#FF6B35', display: `${Math.round(Math.min(totalCalories / Math.max(caloriesTarget, 1), 1) * 100)}%` },
     { label: 'Hidratación', value: waterGlasses / 8, color: '#38BDF8', display: `${waterGlasses}/8` },
-    { label: 'Constancia', value: ((checkInDone ? 1 : 0) + Math.min(waterGlasses / 8, 1) + (currentStreak > 0 ? 1 : 0)) / 3, color: '#60a5fa', display: `${Math.round((((checkInDone ? 1 : 0) + Math.min(waterGlasses / 8, 1) + (currentStreak > 0 ? 1 : 0)) / 3) * 100)}%` },
+    { label: 'Constancia', value: ((checkInDone ? 1 : 0) + Math.min(waterGlasses / 8, 1) + (currentStreak > 0 ? 1 : 0)) / 3, color: '#FF5871', display: `${Math.round((((checkInDone ? 1 : 0) + Math.min(waterGlasses / 8, 1) + (currentStreak > 0 ? 1 : 0)) / 3) * 100)}%` },
   ];
 
   return (
@@ -239,7 +239,7 @@ export default function HomePage() {
       {/* Header */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", paddingTop: 32, paddingBottom: 28 }}>
         <div>
-          <div style={{ fontSize: 11, fontWeight: 900, color: "#2563EB", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS</div>
+          <div style={{ fontSize: 11, fontWeight: 900, color: "#FF1F3D", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS</div>
           <div style={{ fontFamily: "var(--font-rajdhani)", fontSize: 40, color: "#f4f4f5" }}>{greeting}, {firstName}</div>
           <div style={{ fontSize: 13, color: "rgba(255,255,255,0.4)", marginTop: 4, textTransform: "capitalize" }}>{dateStr}</div>
         </div>
@@ -249,9 +249,9 @@ export default function HomePage() {
             display: "flex", alignItems: "center", gap: 8,
             background: "rgba(255,255,255,0.05)",
             borderRadius: 14, padding: "12px 18px",
-            border: checkInDone ? "1px solid rgba(48,209,88,0.4)" : "1px solid rgba(37,99,235,0.4)",
+            border: checkInDone ? "1px solid rgba(48,209,88,0.4)" : "1px solid rgba(255,31,61,0.4)",
             cursor: "pointer", marginTop: 6,
-            color: checkInDone ? "#30D158" : "#60a5fa",
+            color: checkInDone ? "#30D158" : "#FF5871",
             fontSize: 13, fontWeight: 800,
           }}
         >
@@ -274,7 +274,7 @@ export default function HomePage() {
           }}>
             <div style={{
               position: 'absolute', inset: 0,
-              background: 'radial-gradient(ellipse at 15% 0%, rgba(37,99,235,0.22), transparent 60%)',
+              background: 'radial-gradient(ellipse at 15% 0%, rgba(255,31,61,0.22), transparent 60%)',
               pointerEvents: 'none',
             }} />
             <ActivityRingsWeb rings={activityRings} />
@@ -292,7 +292,7 @@ export default function HomePage() {
                 border: "1px solid rgba(255,255,255,0.09)", cursor: "pointer",
               }}
             >
-              <Sun size={16} color="#60a5fa" />
+              <Sun size={16} color="#FF5871" />
               <span style={{ flex: 1, fontSize: 14, color: "rgba(255,255,255,0.5)" }}>Haz tu check-in matutino para activar tu día</span>
               <span style={{ fontSize: 16, color: "rgba(255,255,255,0.25)" }}>›</span>
             </div>
@@ -303,7 +303,7 @@ export default function HomePage() {
             <div style={{ display: "flex", alignItems: "center", gap: 24, padding: "24px 28px 16px" }}>
               <HealthScoreRing score={liveScore} />
               <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 11, fontWeight: 900, color: "#60a5fa", letterSpacing: 2.5, marginBottom: 8 }}>ZENCRUS HEALTH SCORE</div>
+                <div style={{ fontSize: 11, fontWeight: 900, color: "#FF5871", letterSpacing: 2.5, marginBottom: 8 }}>ZENCRUS HEALTH SCORE</div>
                 <div style={{ fontSize: 17, fontWeight: 700, color: "#f4f4f5", lineHeight: 1.5, marginBottom: 14 }}>
                   {currentStreak > 0 ? `¡${currentStreak} días de racha! Sigue así.` : "Comienza tu racha hoy"}
                 </div>
@@ -324,8 +324,8 @@ export default function HomePage() {
               </div>
             </div>
             <div style={{ display: "flex", borderTop: "1px solid rgba(255,255,255,0.09)", padding: "18px 28px", gap: 8 }}>
-              <ScorePill label="Nutrición" val={Math.round(Math.min(totalCalories / Math.max(caloriesTarget, 1), 1) * 25)} max={25} color="#60a5fa" />
-              <ScorePill label="Entreno" val={0} max={25} color="#00C2C0" />
+              <ScorePill label="Nutrición" val={Math.round(Math.min(totalCalories / Math.max(caloriesTarget, 1), 1) * 25)} max={25} color="#FF5871" />
+              <ScorePill label="Entreno" val={0} max={25} color="#FFFFFF" />
               <ScorePill label="Hidratación" val={Math.round(Math.min(waterGlasses / 8, 1) * 20)} max={20} color="#38BDF8" />
               <ScorePill label="Sueño" val={0} max={15} color="#FF6B35" />
               <ScorePill label="Bienestar" val={checkInDone ? 10 : 0} max={15} color="#30D158" />
@@ -337,7 +337,7 @@ export default function HomePage() {
             <div>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
                 <span className="section-label">Alimentación</span>
-                <button onClick={() => router.push("/nutrition")} style={{ fontSize: 13, fontWeight: 700, color: "#60a5fa", background: "none", border: "none", cursor: "pointer" }}>
+                <button onClick={() => router.push("/nutrition")} style={{ fontSize: 13, fontWeight: 700, color: "#FF5871", background: "none", border: "none", cursor: "pointer" }}>
                   Ver diario
                 </button>
               </div>
@@ -349,8 +349,8 @@ export default function HomePage() {
                   </div>
                   <div style={{ display: "flex", flexDirection: "column", gap: 7, paddingTop: 6 }}>
                     {[
-                      { l: "Proteína", v: totalProtein, c: "#60a5fa" },
-                      { l: "Carbos",   v: totalCarbs,   c: "#00C2C0" },
+                      { l: "Proteína", v: totalProtein, c: "#FF5871" },
+                      { l: "Carbos",   v: totalCarbs,   c: "#FFFFFF" },
                       { l: "Grasa",    v: totalFat,     c: "#FF6B35" },
                     ].map(m => (
                       <div key={m.l} style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -362,19 +362,19 @@ export default function HomePage() {
                 </div>
                 <div style={{ padding: "0 24px 16px" }}>
                   <div className="progress-bar">
-                    <div className="progress-fill" style={{ width: `${Math.min(totalCalories / Math.max(caloriesTarget, 1), 1) * 100}%`, background: "#2563EB" }} />
+                    <div className="progress-fill" style={{ width: `${Math.min(totalCalories / Math.max(caloriesTarget, 1), 1) * 100}%`, background: "#FF1F3D" }} />
                   </div>
                 </div>
                 <div style={{ display: "flex", alignItems: "center", gap: 16, borderTop: "1px solid rgba(255,255,255,0.09)", padding: "16px 24px" }}>
                   {[Sunrise, Sun, Moon, Apple].map((MealIcon, i) => (
                     <div key={i} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 5 }}>
-                      <MealIcon size={19} color={i === 0 ? "#60a5fa" : "rgba(255,255,255,0.4)"} />
+                      <MealIcon size={19} color={i === 0 ? "#FF5871" : "rgba(255,255,255,0.4)"} />
                       <div style={{ width: 5, height: 5, borderRadius: "50%", background: i === 0 ? "#30D158" : "rgba(255,255,255,0.12)" }} />
                     </div>
                   ))}
                   <button
                     onClick={() => router.push("/nutrition")}
-                    style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: "#2563EB", borderRadius: 12, padding: "9px 16px", border: "none", cursor: "pointer", color: "#fff", fontSize: 13, fontWeight: 800 }}
+                    style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 6, background: "#FF1F3D", borderRadius: 12, padding: "9px 16px", border: "none", cursor: "pointer", color: "#fff", fontSize: 13, fontWeight: 800 }}
                   >
                     <Plus size={14} /> Agregar
                   </button>
@@ -386,8 +386,8 @@ export default function HomePage() {
               <div className="section-label" style={{ marginBottom: 12 }}>Macros del día</div>
               <div className="glass-card" style={{ padding: 20, height: "calc(100% - 32px)", display: "flex", alignItems: "center" }}>
                 <div style={{ display: "flex", justifyContent: "space-around", width: "100%" }}>
-                  <MacroCircle value={totalProtein} max={proteinTarget} color="#60a5fa" label="Proteína" unit="g" />
-                  <MacroCircle value={totalCarbs} max={carbsTarget} color="#00C2C0" label="Carbos" unit="g" />
+                  <MacroCircle value={totalProtein} max={proteinTarget} color="#FF5871" label="Proteína" unit="g" />
+                  <MacroCircle value={totalCarbs} max={carbsTarget} color="#FFFFFF" label="Carbos" unit="g" />
                   <MacroCircle value={totalFat} max={fatTarget} color="#FF6B35" label="Grasa" unit="g" />
                 </div>
               </div>
@@ -411,7 +411,7 @@ export default function HomePage() {
                   <button onClick={() => setWaterGlasses(Math.max(0, waterGlasses - 1))} style={{ flex: 1, height: 34, background: "rgba(255,255,255,0.07)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 10, cursor: "pointer", color: "rgba(255,255,255,0.6)", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Minus size={15} />
                   </button>
-                  <button onClick={() => { if (waterGlasses < 8) setWaterGlasses(waterGlasses + 1); else toast.success("¡Meta de agua alcanzada!"); }} style={{ flex: 1, height: 34, background: "rgba(37,99,235,0.3)", border: "1px solid rgba(37,99,235,0.4)", borderRadius: 10, cursor: "pointer", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                  <button onClick={() => { if (waterGlasses < 8) setWaterGlasses(waterGlasses + 1); else toast.success("¡Meta de agua alcanzada!"); }} style={{ flex: 1, height: 34, background: "rgba(255,31,61,0.3)", border: "1px solid rgba(255,31,61,0.4)", borderRadius: 10, cursor: "pointer", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center" }}>
                     <Plus size={15} />
                   </button>
                 </div>
@@ -419,13 +419,13 @@ export default function HomePage() {
 
               <div className="glass-card" onClick={() => router.push("/workout")} style={{ padding: 18, cursor: "pointer" }}>
                 <div style={{ marginBottom: 8 }}>
-                  <Dumbbell size={22} color="#00C2C0" />
+                  <Dumbbell size={22} color="#FFFFFF" />
                 </div>
                 <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.5, marginBottom: 6 }}>Entrenamiento</div>
                 <div style={{ fontSize: 15, fontWeight: 700, color: "rgba(255,255,255,0.35)", marginBottom: 10 }}>Pendiente</div>
                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <span style={{ fontSize: 12, fontWeight: 700, color: "#60a5fa" }}>Comenzar</span>
-                  <span style={{ fontSize: 13, color: "#60a5fa" }}>›</span>
+                  <span style={{ fontSize: 12, fontWeight: 700, color: "#FF5871" }}>Comenzar</span>
+                  <span style={{ fontSize: 13, color: "#FF5871" }}>›</span>
                 </div>
               </div>
 
@@ -468,12 +468,12 @@ export default function HomePage() {
                         <div style={{
                           width: 34, height: 34, borderRadius: "50%",
                           background: active ? "#30D158" : "rgba(255,255,255,0.07)",
-                          border: isToday ? "1.5px solid #2563EB" : "none",
+                          border: isToday ? "1.5px solid #FF1F3D" : "none",
                           display: "flex", alignItems: "center", justifyContent: "center",
                         }}>
                           {active && <Check size={16} color="#fff" strokeWidth={3} />}
                         </div>
-                        <span style={{ fontSize: 10.5, color: isToday ? "#60a5fa" : "rgba(255,255,255,0.35)", fontWeight: 700 }}>{day}</span>
+                        <span style={{ fontSize: 10.5, color: isToday ? "#FF5871" : "rgba(255,255,255,0.35)", fontWeight: 700 }}>{day}</span>
                       </div>
                     );
                   })}
@@ -504,8 +504,8 @@ export default function HomePage() {
                         cursor: "pointer", position: "relative", overflow: "hidden",
                       }}
                     >
-                      <div style={{ width: 42, height: 42, borderRadius: 12, background: "rgba(37,99,235,0.14)", border: "1px solid rgba(37,99,235,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                        <item.icon size={19} color="#60a5fa" />
+                      <div style={{ width: 42, height: 42, borderRadius: 12, background: "rgba(255,31,61,0.14)", border: "1px solid rgba(255,31,61,0.22)", display: "flex", alignItems: "center", justifyContent: "center" }}>
+                        <item.icon size={19} color="#FF5871" />
                       </div>
                       <span style={{ fontSize: 10.5, color: "rgba(255,255,255,0.55)", fontWeight: 700, textAlign: "center", letterSpacing: 0.2 }}>{item.label}</span>
                     </button>
@@ -520,8 +520,8 @@ export default function HomePage() {
             <div className="section-label" style={{ marginBottom: 10 }}>Conocimiento</div>
             <div className="glass-card" style={{ padding: 20 }}>
               <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
-                <Zap size={15} color="#60a5fa" />
-                <span style={{ fontSize: 11, fontWeight: 800, color: "#60a5fa", letterSpacing: 0.8, textTransform: "uppercase" }}>{tag}</span>
+                <Zap size={15} color="#FF5871" />
+                <span style={{ fontSize: 11, fontWeight: 800, color: "#FF5871", letterSpacing: 0.8, textTransform: "uppercase" }}>{tag}</span>
               </div>
               <p style={{ fontSize: 14.5, color: "rgba(255,255,255,0.6)", lineHeight: 1.7 }}>{tip}</p>
             </div>

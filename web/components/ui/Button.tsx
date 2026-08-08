@@ -21,7 +21,7 @@ const sizeStyles: Record<Size, string> = {
 
 const variantStyles: Record<Variant, React.CSSProperties> = {
   primary: {
-    background: "linear-gradient(135deg, #5b4fff, #2563eb)",
+    background: "linear-gradient(135deg, #FF1F3D, #FF1F3D)",
     color: "#fff",
     border: "none",
   },

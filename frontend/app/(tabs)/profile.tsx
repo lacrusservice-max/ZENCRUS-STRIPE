@@ -1,19 +1,18 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  Alert, ActivityIndicator, TextInput, Switch, Image,
+  Alert, ActivityIndicator, TextInput, Image,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { useRouter } from 'expo-router'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '@/store/authStore'
-import { usePremiumStore } from '@/store/premiumStore'
 import { useAchievementStore } from '@/store/achievementStore'
 import { useRecipesStore } from '@/store/recipesStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import { GlassCard, SectionLabel } from '@/components/ui/Glass'
+import { Screen } from '@/components/ui/Screen'
 import { calculateTDEE } from '@/utils/tdee'
 import api from '@/services/api'
 
@@ -55,15 +54,78 @@ const INTOLERANCE_OPTIONS = [
   { id: 'nightshade',label: 'Solanáceas',               emoji: '🍅' },
 ] as const
 
+const QUICK_LINKS = [
+  { emoji: '📅', title: 'Plan de comidas', route: '/meal-planner' },
+  { emoji: '🛒', title: 'Lista de compras', route: '/grocery' },
+  { emoji: '🍽️', title: 'Recetas saludables', route: '/recipes' },
+  { emoji: '⚔️', title: 'Duelos y retos', route: '/duels' },
+] as const
+
+// ── Sección plegable ────────────────────────────────────────────────────────
+
+function CollapsibleSection({ title, subtitle, icon, children }: {
+  title: string; subtitle?: string; icon: keyof typeof Ionicons.glyphMap; children: React.ReactNode
+}) {
+  const [open, setOpen] = useState(false)
+  return (
+    <View style={cs.wrap}>
+      <TouchableOpacity style={cs.head} onPress={() => setOpen(v => !v)} activeOpacity={0.75}>
+        <View style={cs.iconBox}>
+          <Ionicons name={icon} size={17} color={Colors.primary[400]} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={cs.title}>{title}</Text>
+          {subtitle && <Text style={cs.subtitle}>{subtitle}</Text>}
+        </View>
+        <Ionicons name={open ? 'chevron-up' : 'chevron-down'} size={18} color="rgba(255,255,255,0.35)" />
+      </TouchableOpacity>
+      {open && <View style={cs.body}>{children}</View>}
+    </View>
+  )
+}
+
+const cs = StyleSheet.create({
+  wrap: { backgroundColor: Glass.card, borderRadius: BorderRadius.lg, borderWidth: 1, borderColor: Glass.cardBorder, overflow: 'hidden', marginBottom: Spacing[3] },
+  head: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], padding: Spacing[4] },
+  iconBox: { width: 34, height: 34, borderRadius: 10, backgroundColor: `${Colors.primary[500]}18`, alignItems: 'center', justifyContent: 'center' },
+  title: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
+  subtitle: { fontSize: 11, color: 'rgba(255,255,255,0.42)', marginTop: 1 },
+  body: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[4] },
+})
+
+// ── Tarjeta de acceso del hub ──────────────────────────────────────────────────
+
+function HubCard({ icon, title, subtitle, onPress, color = Colors.primary[500] }: {
+  icon: keyof typeof Ionicons.glyphMap; title: string; subtitle: string; onPress: () => void; color?: string
+}) {
+  return (
+    <TouchableOpacity style={hc.card} onPress={onPress} activeOpacity={0.8}>
+      <View style={[hc.iconBox, { backgroundColor: `${color}18`, borderColor: `${color}30` }]}>
+        <Ionicons name={icon} size={20} color={color} />
+      </View>
+      <Text style={hc.title}>{title}</Text>
+      <Text style={hc.sub}>{subtitle}</Text>
+    </TouchableOpacity>
+  )
+}
+
+const hc = StyleSheet.create({
+  card: {
+    width: '47%', backgroundColor: Glass.card, borderRadius: BorderRadius.lg, padding: Spacing[4],
+    borderWidth: 1, borderColor: Glass.cardBorder, gap: 6,
+  },
+  iconBox: { width: 38, height: 38, borderRadius: 12, borderWidth: 1, alignItems: 'center', justifyContent: 'center', marginBottom: 2 },
+  title: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
+  sub: { fontSize: 11, color: 'rgba(255,255,255,0.42)', lineHeight: 14 },
+})
+
 export default function ProfileScreen() {
   const router = useRouter()
-  const { user, setUser, logout } = useAuthStore()
-  const { isPremium, plan, aiMessagesToday, barcodeScanToday } = usePremiumStore()
+  const { user, setUser } = useAuthStore()
   const { getCurrentLevel, totalXP, getUnlocked } = useAchievementStore()
   const { allergens: savedAllergens, intolerances: savedIntolerances, setAllergens, setIntolerances } = useRecipesStore()
   const goals = (user as any)?.goals ?? {}
 
-  const [tab, setTab] = useState<'info' | 'targets' | 'settings' | 'salud'>('info')
   const [saving, setSaving] = useState(false)
 
   // ── Profile extras (persisted locally) ──────────────────────────────────────
@@ -71,19 +133,17 @@ export default function ProfileScreen() {
   const [nickname,   setNickname]   = useState('')
   const [bio,        setBio]        = useState('')
   const [interests,  setInterests]  = useState('')
-  const [isDarkMode, setIsDarkMode] = useState(true)
   const [editingProfile, setEditingProfile] = useState(false)
   const [savingProfile,  setSavingProfile]  = useState(false)
 
   useEffect(() => {
-    AsyncStorage.multiGet(['@zencrus_avatar', '@zencrus_nickname', '@zencrus_bio', '@zencrus_interests', '@zencrus_darkmode'])
+    AsyncStorage.multiGet(['@zencrus_avatar', '@zencrus_nickname', '@zencrus_bio', '@zencrus_interests'])
       .then(pairs => {
         const map = Object.fromEntries(pairs.map(([k, v]) => [k, v]))
         if (map['@zencrus_avatar'])    setAvatarUri(map['@zencrus_avatar']!)
         if (map['@zencrus_nickname'])  setNickname(map['@zencrus_nickname']!)
         if (map['@zencrus_bio'])       setBio(map['@zencrus_bio']!)
         if (map['@zencrus_interests']) setInterests(map['@zencrus_interests']!)
-        if (map['@zencrus_darkmode'])  setIsDarkMode(map['@zencrus_darkmode'] !== 'false')
       })
       .catch(() => {})
   }, [])
@@ -124,15 +184,6 @@ export default function ProfileScreen() {
     }
   }
 
-  const toggleTheme = async (val: boolean) => {
-    setIsDarkMode(val)
-    await AsyncStorage.setItem('@zencrus_darkmode', String(val))
-    Alert.alert(
-      val ? 'Tema oscuro activado' : 'Tema claro activado',
-      'El tema se aplicará completamente en la próxima versión.',
-    )
-  }
-
   // Allergens / intolerances
   const [allergens, setLocalAllergens] = useState<string[]>(savedAllergens)
   const [intolerances, setLocalIntolerances] = useState<string[]>(savedIntolerances)
@@ -150,13 +201,7 @@ export default function ProfileScreen() {
   }
 
   const level = getCurrentLevel()
-  const unlockedCount = getUnlocked().length
-
-  // Notification prefs (local state — wired to notificationService in next step)
-  const [notifCheckIn, setNotifCheckIn]   = useState(true)
-  const [notifWater,   setNotifWater]     = useState(true)
-  const [notifWorkout, setNotifWorkout]   = useState(false)
-  const [notifStreak,  setNotifStreak]    = useState(true)
+  const unlocked = getUnlocked()
 
   // Editable targets
   const [calories, setCalories]  = useState(String(goals.calories_target ?? 2000))
@@ -210,21 +255,13 @@ export default function ProfileScreen() {
     Alert.alert('Recalculado', `Nuevas calorías: ${r.targetCalories} kcal`)
   }
 
-  const handleLogout = () => {
-    Alert.alert('Cerrar sesión', '¿Estás seguro?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Salir', style: 'destructive', onPress: logout },
-    ])
-  }
-
   if (!user) return null
 
   return (
-    <SafeAreaView style={s.container}>
+    <Screen>
       {/* Glass Header */}
       <View style={s.header}>
         <View style={s.highlight} pointerEvents="none" />
-        {/* Avatar with photo upload */}
         <TouchableOpacity onPress={handlePickPhoto} activeOpacity={0.82} style={s.avatarWrap}>
           {avatarUri ? (
             <Image source={{ uri: avatarUri }} style={s.avatarImg} />
@@ -233,11 +270,9 @@ export default function ProfileScreen() {
               <Text style={s.avatarTxt}>{user.full_name?.[0]?.toUpperCase() ?? '?'}</Text>
             </View>
           )}
-          {/* Camera badge */}
           <View style={s.cameraBadge}>
             <Ionicons name="camera" size={12} color="#fff" />
           </View>
-          {/* Level bubble */}
           <View style={s.levelBubble}>
             <Text style={s.levelEmoji}>{level.emoji}</Text>
           </View>
@@ -252,390 +287,193 @@ export default function ProfileScreen() {
               <Text style={s.tierTxt}>{user.subscription_tier === 'premium' ? '⭐ Premium' : '🆓 Free'}</Text>
             </View>
             <View style={s.xpBadge}>
-              <Text style={s.xpTxt}>{totalXP} XP · {unlockedCount} logros</Text>
+              <Text style={s.xpTxt}>{totalXP} XP · {unlocked.length} logros</Text>
             </View>
           </View>
         </View>
       </View>
 
-      {/* Tab switcher — 4 tabs */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.tabsScroll}>
-        {(['info', 'targets', 'salud', 'settings'] as const).map(t => (
-          <TouchableOpacity key={t} style={[s.tabBtn, tab === t && s.tabBtnOn]} onPress={() => setTab(t)}>
-            <Text style={[s.tabTxt, tab === t && s.tabTxtOn]}>
-              {t === 'info' ? 'Mi perfil' : t === 'targets' ? 'Targets' : t === 'salud' ? 'Salud' : 'Ajustes'}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
-
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing[5], paddingBottom: 100 }}>
 
-        {/* ── TAB: Info ─────────────────────────── */}
-        {tab === 'info' && (
-          <View>
-            {/* Editable profile card */}
-            <GlassCard style={{ marginBottom: Spacing[5] }}>
-              <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing[3] }}>
-                <SectionLabel>Información pública</SectionLabel>
-                {!editingProfile ? (
-                  <TouchableOpacity onPress={() => setEditingProfile(true)} style={s.editIconBtn}>
-                    <Ionicons name="pencil-outline" size={15} color={Colors.primary[400]} />
-                    <Text style={s.editIconTxt}>Editar</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    onPress={saveProfileExtras}
-                    style={[s.editIconBtn, { borderColor: Colors.primary[500] }]}
-                    disabled={savingProfile}
-                  >
-                    {savingProfile
-                      ? <ActivityIndicator size="small" color={Colors.primary[400]} />
-                      : <Ionicons name="checkmark" size={15} color={Colors.primary[400]} />
-                    }
-                    <Text style={s.editIconTxt}>Guardar</Text>
-                  </TouchableOpacity>
-                )}
-              </View>
+        {/* ── Hub: accesos principales ── */}
+        <View style={s.hubGrid}>
+          <HubCard icon="flag" title="Objetivos" subtitle="Metas con fecha y seguimiento" onPress={() => router.push('/goals')} />
+          {/* Todas las tarjetas usan el acento de marca: las que iban en blanco
+              quedaban en gris carbón sobre fondo claro, sueltas entre las demás. */}
+          <HubCard icon="trending-up" title="Estadísticas" subtitle="Peso, medidas y entrenos" onPress={() => router.push('/profile-stats')} />
+          <HubCard icon="trophy" title="Insignias" subtitle={`${unlocked.length} desbloqueadas`} onPress={() => router.push('/achievements')} />
+          <HubCard icon="settings" title="Configuración" subtitle="Cuenta, notificaciones y más" onPress={() => router.push('/settings')} />
+        </View>
 
-              {editingProfile ? (
-                <View style={{ gap: Spacing[3] }}>
-                  <View style={s.profileField}>
-                    <Text style={s.profileFieldLabel}>Apodo</Text>
-                    <TextInput
-                      style={s.profileFieldInput}
-                      value={nickname}
-                      onChangeText={setNickname}
-                      placeholder="tu_apodo"
-                      placeholderTextColor="rgba(255,255,255,0.22)"
-                      autoCapitalize="none"
-                    />
-                  </View>
-                  <View style={s.profileField}>
-                    <Text style={s.profileFieldLabel}>Biografía</Text>
-                    <TextInput
-                      style={[s.profileFieldInput, { minHeight: 70, textAlignVertical: 'top' }]}
-                      value={bio}
-                      onChangeText={setBio}
-                      placeholder="Cuéntanos sobre ti..."
-                      placeholderTextColor="rgba(255,255,255,0.22)"
-                      multiline
-                      maxLength={160}
-                    />
-                  </View>
-                  <View style={s.profileField}>
-                    <Text style={s.profileFieldLabel}>Intereses</Text>
-                    <TextInput
-                      style={s.profileFieldInput}
-                      value={interests}
-                      onChangeText={setInterests}
-                      placeholder="fitness, nutrición, running..."
-                      placeholderTextColor="rgba(255,255,255,0.22)"
-                    />
-                  </View>
-                </View>
+        {/* ── Información personal ── */}
+        <CollapsibleSection title="Información personal" subtitle="Bio, apodo y datos físicos" icon="person">
+          <GlassCard style={{ marginBottom: Spacing[4] }}>
+            <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing[3] }}>
+              <SectionLabel>Información pública</SectionLabel>
+              {!editingProfile ? (
+                <TouchableOpacity onPress={() => setEditingProfile(true)} style={s.editIconBtn}>
+                  <Ionicons name="pencil-outline" size={15} color={Colors.primary[400]} />
+                  <Text style={s.editIconTxt}>Editar</Text>
+                </TouchableOpacity>
               ) : (
-                <View style={{ gap: Spacing[3] }}>
-                  {nickname ? (
-                    <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-                      <Ionicons name="at-outline" size={14} color="rgba(255,255,255,0.38)" />
-                      <Text style={s.profileDisplayVal}>{nickname}</Text>
-                    </View>
-                  ) : null}
-                  {bio ? (
-                    <Text style={[s.profileDisplayVal, { opacity: 0.75, lineHeight: 20 }]}>{bio}</Text>
-                  ) : (
-                    <Text style={s.profileEmptyHint}>Toca "Editar" para agregar tu bio</Text>
-                  )}
-                  {interests ? (
-                    <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
-                      {interests.split(',').map(i => i.trim()).filter(Boolean).map(i => (
-                        <View key={i} style={s.interestChip}>
-                          <Text style={s.interestChipTxt}>{i}</Text>
-                        </View>
-                      ))}
-                    </View>
-                  ) : null}
-                </View>
+                <TouchableOpacity onPress={saveProfileExtras} style={[s.editIconBtn, { borderColor: Colors.primary[500] }]} disabled={savingProfile}>
+                  {savingProfile
+                    ? <ActivityIndicator size="small" color={Colors.primary[400]} />
+                    : <Ionicons name="checkmark" size={15} color={Colors.primary[400]} />}
+                  <Text style={s.editIconTxt}>Guardar</Text>
+                </TouchableOpacity>
               )}
-            </GlassCard>
-
-            {/* Physical data */}
-            <SectionLabel style={{ marginBottom: Spacing[3] }}>Datos físicos</SectionLabel>
-            <GlassCard style={{ marginBottom: Spacing[5] }}>
-              <InfoRow label="Objetivo" value={GOAL_LABELS[goals.main_goal] ?? '—'} />
-              <InfoRow label="Peso actual" value={user.weight ? `${user.weight} kg` : '—'} />
-              <InfoRow label="Peso objetivo" value={goals.target_weight ? `${goals.target_weight} kg` : '—'} />
-              <InfoRow label="Altura" value={user.height ? `${user.height} cm` : '—'} />
-              <InfoRow label="Edad" value={user.age ? `${user.age} años` : '—'} />
-              <InfoRow label="Actividad" value={ACTIVITY_LABELS[user.activity_level ?? ''] ?? '—'} />
-              <InfoRow label="Entrenamiento" value={(Array.isArray(goals.training_type) ? goals.training_type : goals.training_type ? [goals.training_type] : []).map((t: string) => TRAINING_LABELS[t] ?? t).join(', ') || '—'} />
-              <InfoRow label="TDEE" value={goals.tdee ? `${goals.tdee} kcal` : '—'} />
-              <InfoRow label="BMR" value={goals.bmr ? `${goals.bmr} kcal` : '—'} />
-            </GlassCard>
-
-            <TouchableOpacity style={s.editProfileBtn} onPress={() => setTab('targets')}>
-              <Ionicons name="settings-outline" size={14} color={Colors.primary[400]} />
-              <Text style={s.editProfileTxt}>Editar mis targets nutricionales →</Text>
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* ── TAB: Targets ──────────────────────── */}
-        {tab === 'targets' && (
-          <View>
-            <Text style={s.sectionTitle}>Targets nutricionales diarios</Text>
-            <Text style={s.sectionSub}>Todos los valores son ajustables manualmente</Text>
-
-            <AdjustField label="Calorías diarias" value={calories} onChange={setCalories} unit="kcal"
-              onDec={() => setCalories(v => String(Math.max(1200, +v - 50)))}
-              onInc={() => setCalories(v => String(+v + 50))} />
-            <AdjustField label="Proteína" value={protein} onChange={setProtein} unit="g"
-              note={`${Math.round(+protein * 4)} kcal`}
-              onDec={() => setProtein(v => String(Math.max(30, +v - 5)))}
-              onInc={() => setProtein(v => String(+v + 5))} />
-            <AdjustField label="Carbohidratos" value={carbs} onChange={setCarbs} unit="g"
-              note={`${Math.round(+carbs * 4)} kcal`}
-              onDec={() => setCarbs(v => String(Math.max(20, +v - 5)))}
-              onInc={() => setCarbs(v => String(+v + 5))} />
-            <AdjustField label="Grasas" value={fat} onChange={setFat} unit="g"
-              note={`${Math.round(+fat * 9)} kcal`}
-              onDec={() => setFat(v => String(Math.max(20, +v - 5)))}
-              onInc={() => setFat(v => String(+v + 5))} />
-            <AdjustField label="Fibra" value={fiber} onChange={setFiber} unit="g"
-              onDec={() => setFiber(v => String(Math.max(10, +v - 1)))}
-              onInc={() => setFiber(v => String(+v + 1))} />
-
-            <Text style={[s.sectionSub, { marginTop: Spacing[4] }]}>Comidas al día</Text>
-            <View style={s.row}>
-              {[3, 4, 5, 6].map(n => (
-                <TouchableOpacity key={n} style={[s.dayBtn, mealsDay === n && s.dayBtnOn]} onPress={() => setMealsDay(n)}>
-                  <Text style={[s.dayBtnTxt, mealsDay === n && { color: Colors.primary[400] }]}>{n}</Text>
-                </TouchableOpacity>
-              ))}
             </View>
 
-            <View style={s.macroSummary}>
-              <Text style={s.macroSumTxt}>
-                Total macros: {Math.round(+protein * 4 + +carbs * 4 + +fat * 9)} kcal
-                {Math.abs(+protein * 4 + +carbs * 4 + +fat * 9 - +calories) > 50
-                  ? <Text style={{ color: Colors.accent.orange }}> ⚠️ no coincide con calorías</Text>
-                  : <Text style={{ color: Colors.accent.green }}> ✓ balanceado</Text>
-                }
-              </Text>
-            </View>
-
-            <TouchableOpacity style={s.recalcBtn} onPress={recalcFromProfile}>
-              <Text style={s.recalcTxt}>↺ Recalcular desde mi perfil</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.7 }]} onPress={saveTargets} disabled={saving}>
-              {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.saveTxt}>Guardar targets</Text>}
-            </TouchableOpacity>
-          </View>
-        )}
-
-        {/* ── TAB: Salud ────────────────────────── */}
-        {tab === 'salud' && (
-          <View style={{ gap: Spacing[5] }}>
-
-            {/* Allergens */}
-            <View>
-              <Text style={s.sectionTitle}>🚫 Alergias alimentarias</Text>
-              <Text style={s.sectionSub}>Las recetas con estos ingredientes se marcarán como no aptas</Text>
-              <View style={al.grid}>
-                {ALLERGEN_OPTIONS.map(({ id, label, emoji }) => (
-                  <TouchableOpacity
-                    key={id}
-                    style={[al.chip, allergens.includes(id) && al.chipOn]}
-                    onPress={() => toggleAllergen(id)}
-                  >
-                    <Text style={al.chipEmoji}>{emoji}</Text>
-                    <Text style={[al.chipTxt, allergens.includes(id) && al.chipTxtOn]}>{label}</Text>
-                    {allergens.includes(id) && <Text style={al.chipCheck}>✓</Text>}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Intolerances */}
-            <View>
-              <Text style={s.sectionTitle}>⚠️ Intolerancias</Text>
-              <Text style={s.sectionSub}>Filtra recetas según tus necesidades digestivas</Text>
-              <View style={al.grid}>
-                {INTOLERANCE_OPTIONS.map(({ id, label, emoji }) => (
-                  <TouchableOpacity
-                    key={id}
-                    style={[al.chip, intolerances.includes(id) && al.chipOn]}
-                    onPress={() => toggleIntolerance(id)}
-                  >
-                    <Text style={al.chipEmoji}>{emoji}</Text>
-                    <Text style={[al.chipTxt, intolerances.includes(id) && al.chipTxtOn]}>{label}</Text>
-                    {intolerances.includes(id) && <Text style={al.chipCheck}>✓</Text>}
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-            {/* Menstrual cycle */}
-            <View>
-              <Text style={s.sectionTitle}>🌸 Ciclo menstrual</Text>
-              <Text style={s.sectionSub}>Nutrición y seguimiento adaptados a tu ciclo hormonal</Text>
-              <TouchableOpacity style={al.navCard} onPress={() => router.push('/menstrual')}>
-                <Text style={al.navEmoji}>🌸</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={al.navTitle}>Seguimiento de ciclo</Text>
-                  <Text style={al.navSub}>Predicciones, síntomas y recomendaciones nutricionales</Text>
+            {editingProfile ? (
+              <View style={{ gap: Spacing[3] }}>
+                <View style={s.profileField}>
+                  <Text style={s.profileFieldLabel}>Apodo</Text>
+                  <TextInput style={s.profileFieldInput} value={nickname} onChangeText={setNickname} placeholder="tu_apodo" placeholderTextColor="rgba(255,255,255,0.22)" autoCapitalize="none" />
                 </View>
-                <Text style={al.navArrow}>›</Text>
-              </TouchableOpacity>
-            </View>
-
-            {/* Quick links */}
-            <View>
-              <Text style={s.sectionTitle}>🔗 Accesos rápidos</Text>
-              <View style={{ gap: Spacing[2] }}>
-                {[
-                  { emoji: '🏆', title: 'Mis logros y XP', route: '/achievements' },
-                  { emoji: '📏', title: 'Medidas corporales', route: '/measurements' },
-                  { emoji: '❤️', title: 'Tracker de salud', route: '/health-tracker' },
-                  { emoji: '📅', title: 'Plan de comidas', route: '/meal-planner' },
-                  { emoji: '🛒', title: 'Lista de compras', route: '/grocery' },
-                  { emoji: '🍽️', title: 'Recetas saludables', route: '/recipes' },
-                  { emoji: '⚔️', title: 'Duelos y retos', route: '/duels' },
-                  { emoji: '🏅', title: 'Ranking global', route: '/leaderboard' },
-                ].map(({ emoji, title, route }) => (
-                  <TouchableOpacity key={route} style={al.navCard} onPress={() => router.push(route as any)}>
-                    <Text style={al.navEmoji}>{emoji}</Text>
-                    <Text style={[al.navTitle, { flex: 1 }]}>{title}</Text>
-                    <Text style={al.navArrow}>›</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </View>
-
-          </View>
-        )}
-
-        {/* ── TAB: Settings ─────────────────────── */}
-        {tab === 'settings' && (
-          <View>
-
-            {/* Premium section */}
-            {isPremium() ? (
-              <TouchableOpacity style={pm.activeBadge} onPress={() => router.push('/subscription')} activeOpacity={0.8}>
-                <Ionicons name="checkmark-circle" size={28} color={Colors.accent.green} />
-                <View style={{ flex: 1 }}>
-                  <Text style={pm.activeTitle}>ZENCRUS Premium activo</Text>
-                  <Text style={pm.activeSub}>Toca para gestionar tu suscripción</Text>
+                <View style={s.profileField}>
+                  <Text style={s.profileFieldLabel}>Biografía</Text>
+                  <TextInput style={[s.profileFieldInput, { minHeight: 70, textAlignVertical: 'top' }]} value={bio} onChangeText={setBio} placeholder="Cuéntanos sobre ti..." placeholderTextColor="rgba(255,255,255,0.22)" multiline maxLength={160} />
                 </View>
-                <Ionicons name="chevron-forward" size={18} color={Colors.dark.textTertiary} />
-              </TouchableOpacity>
+                <View style={s.profileField}>
+                  <Text style={s.profileFieldLabel}>Intereses</Text>
+                  <TextInput style={s.profileFieldInput} value={interests} onChangeText={setInterests} placeholder="fitness, nutrición, running..." placeholderTextColor="rgba(255,255,255,0.22)" />
+                </View>
+              </View>
             ) : (
-              <View style={pm.wrap}>
-                <Text style={pm.upgradeTitle}>Desbloquea ZENCRUS Premium</Text>
-                <Text style={pm.upgradeSub}>
-                  Coach IA ilimitado · Escáner sin límite · Reportes avanzados · Todos los desafíos
-                </Text>
-
-                {/* Usage counters for free users */}
-                <View style={pm.counters}>
-                  <View style={pm.counter}>
-                    <Text style={pm.counterVal}>{aiMessagesToday}/5</Text>
-                    <Text style={pm.counterLbl}>IA hoy</Text>
+              <View style={{ gap: Spacing[3] }}>
+                {nickname ? (
+                  <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+                    <Ionicons name="at-outline" size={14} color="rgba(255,255,255,0.38)" />
+                    <Text style={s.profileDisplayVal}>{nickname}</Text>
                   </View>
-                  <View style={pm.counter}>
-                    <Text style={pm.counterVal}>{barcodeScanToday}/5</Text>
-                    <Text style={pm.counterLbl}>Scans hoy</Text>
+                ) : null}
+                {bio ? (
+                  <Text style={[s.profileDisplayVal, { opacity: 0.75, lineHeight: 20 }]}>{bio}</Text>
+                ) : (
+                  <Text style={s.profileEmptyHint}>Toca "Editar" para agregar tu bio</Text>
+                )}
+                {interests ? (
+                  <View style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 6 }}>
+                    {interests.split(',').map(i => i.trim()).filter(Boolean).map(i => (
+                      <View key={i} style={s.interestChip}><Text style={s.interestChipTxt}>{i}</Text></View>
+                    ))}
                   </View>
-                  <View style={pm.counter}>
-                    <Text style={pm.counterVal}>∞</Text>
-                    <Text style={pm.counterLbl}>Premium</Text>
-                  </View>
-                </View>
-
-                <TouchableOpacity
-                  style={pm.upgradeBtn}
-                  onPress={() => router.push('/subscription')}
-                >
-                  <Ionicons name="flash" size={16} color="#fff" />
-                  <Text style={pm.upgradeBtnTxt}>Ver planes y suscribirme</Text>
-                </TouchableOpacity>
-
+                ) : null}
               </View>
             )}
+          </GlassCard>
 
-            {/* Guía de uso */}
-            <TouchableOpacity style={gd.card} onPress={() => router.push('/guide')} activeOpacity={0.85}>
-              <View style={gd.iconWrap}>
-                <Ionicons name="book" size={22} color={Colors.primary[400]} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={gd.title}>Guía de uso</Text>
-                <Text style={gd.sub}>Aprende a usar cada sección de ZENCRUS paso a paso</Text>
-              </View>
-              <Ionicons name="chevron-forward" size={18} color="rgba(255,255,255,0.3)" />
-            </TouchableOpacity>
+          <SectionLabel style={{ marginBottom: Spacing[3] }}>Datos físicos</SectionLabel>
+          <GlassCard>
+            <InfoRow label="Objetivo" value={GOAL_LABELS[goals.main_goal] ?? '—'} />
+            <InfoRow label="Peso actual" value={user.weight ? `${user.weight} kg` : '—'} />
+            <InfoRow label="Peso objetivo" value={goals.target_weight ? `${goals.target_weight} kg` : '—'} />
+            <InfoRow label="Altura" value={user.height ? `${user.height} cm` : '—'} />
+            <InfoRow label="Edad" value={user.age ? `${user.age} años` : '—'} />
+            <InfoRow label="Actividad" value={ACTIVITY_LABELS[user.activity_level ?? ''] ?? '—'} />
+            <InfoRow label="Entrenamiento" value={(Array.isArray(goals.training_type) ? goals.training_type : goals.training_type ? [goals.training_type] : []).map((t: string) => TRAINING_LABELS[t] ?? t).join(', ') || '—'} />
+            <InfoRow label="TDEE" value={goals.tdee ? `${goals.tdee} kcal` : '—'} />
+            <InfoRow label="BMR" value={goals.bmr ? `${goals.bmr} kcal` : '—'} />
+          </GlassCard>
+        </CollapsibleSection>
 
-            {/* Notificaciones */}
-            <Text style={[s.sectionTitle, { marginTop: Spacing[6] }]}>Notificaciones</Text>
-            <Text style={s.sectionSub}>Recordatorios inteligentes para mantener tu racha</Text>
+        {/* ── Metas nutricionales ── */}
+        <CollapsibleSection title="Metas nutricionales" subtitle="Calorías, macros y comidas al día" icon="nutrition">
+          <AdjustField label="Calorías diarias" value={calories} onChange={setCalories} unit="kcal"
+            onDec={() => setCalories(v => String(Math.max(1200, +v - 50)))}
+            onInc={() => setCalories(v => String(+v + 50))} />
+          <AdjustField label="Proteína" value={protein} onChange={setProtein} unit="g"
+            note={`${Math.round(+protein * 4)} kcal`}
+            onDec={() => setProtein(v => String(Math.max(30, +v - 5)))}
+            onInc={() => setProtein(v => String(+v + 5))} />
+          <AdjustField label="Carbohidratos" value={carbs} onChange={setCarbs} unit="g"
+            note={`${Math.round(+carbs * 4)} kcal`}
+            onDec={() => setCarbs(v => String(Math.max(20, +v - 5)))}
+            onInc={() => setCarbs(v => String(+v + 5))} />
+          <AdjustField label="Grasas" value={fat} onChange={setFat} unit="g"
+            note={`${Math.round(+fat * 9)} kcal`}
+            onDec={() => setFat(v => String(Math.max(20, +v - 5)))}
+            onInc={() => setFat(v => String(+v + 5))} />
+          <AdjustField label="Fibra" value={fiber} onChange={setFiber} unit="g"
+            onDec={() => setFiber(v => String(Math.max(10, +v - 1)))}
+            onInc={() => setFiber(v => String(+v + 1))} />
 
-            <View style={nt.wrap}>
-              <NotifRow
-                label="Check-in matutino"
-                sub="7:00 AM · Empieza tu día con intención"
-                value={notifCheckIn}
-                onChange={v => {
-                  setNotifCheckIn(v)
-                  Alert.alert(v ? 'Activado' : 'Desactivado', v ? 'Recibirás un recordatorio a las 7:00 AM' : 'Sin recordatorio matutino')
-                }}
-              />
-              <NotifRow
-                label="Recordatorio de agua"
-                sub="Cada 2h · 8AM a 10PM"
-                value={notifWater}
-                onChange={v => {
-                  setNotifWater(v)
-                  Alert.alert(v ? 'Activado' : 'Desactivado', v ? 'Recibirás recordatorios de hidratación' : 'Sin recordatorios de agua')
-                }}
-              />
-              <NotifRow
-                label="Hora de entrenar"
-                sub="6:00 PM · ¿Hoy no has entrenado?"
-                value={notifWorkout}
-                onChange={v => {
-                  setNotifWorkout(v)
-                  Alert.alert(v ? 'Activado' : 'Desactivado', v ? 'Recibirás recordatorio de entrenamiento a las 6PM' : 'Sin recordatorio de entreno')
-                }}
-              />
-              <NotifRow
-                label="Protección de racha"
-                sub="9:00 PM · Solo si no has registrado actividad"
-                value={notifStreak}
-                onChange={v => {
-                  setNotifStreak(v)
-                  Alert.alert(v ? 'Activado' : 'Desactivado', v ? 'Recibirás aviso antes de perder tu racha' : 'Sin protección de racha')
-                }}
-              />
-            </View>
-
-            {/* Cuenta */}
-            <Text style={[s.sectionTitle, { marginTop: Spacing[6] }]}>Cuenta</Text>
-            <SettingRow icon="lock-closed" label="Cambiar contraseña" onPress={() => Alert.alert('Próximamente')} />
-            <SettingRow icon="mail" label="Cambiar correo" onPress={() => Alert.alert('Próximamente')} />
-            <SettingRow icon="resize" label="Unidades (kg / cm)" onPress={() => Alert.alert('Próximamente')} />
-            <SettingRow icon="moon" label="Tema oscuro" value={<Switch value={isDarkMode} onValueChange={toggleTheme} trackColor={{ true: Colors.primary[500], false: 'rgba(255,255,255,0.18)' }} thumbColor="#fff" />} />
-
-            <TouchableOpacity style={s.logoutBtn} onPress={handleLogout}>
-              <Text style={s.logoutTxt}>Cerrar sesión</Text>
-            </TouchableOpacity>
-
-            <Text style={s.version}>ZENCRUS v1.0.0 · by LACRUSS</Text>
+          <Text style={[s.sectionSub, { marginTop: Spacing[2] }]}>Comidas al día</Text>
+          <View style={s.row}>
+            {[3, 4, 5, 6].map(n => (
+              <TouchableOpacity key={n} style={[s.dayBtn, mealsDay === n && s.dayBtnOn]} onPress={() => setMealsDay(n)}>
+                <Text style={[s.dayBtnTxt, mealsDay === n && { color: Colors.primary[400] }]}>{n}</Text>
+              </TouchableOpacity>
+            ))}
           </View>
-        )}
+
+          <View style={s.macroSummary}>
+            <Text style={s.macroSumTxt}>
+              Total macros: {Math.round(+protein * 4 + +carbs * 4 + +fat * 9)} kcal
+              {Math.abs(+protein * 4 + +carbs * 4 + +fat * 9 - +calories) > 50
+                ? <Text style={{ color: Colors.accent.orange }}> ⚠️ no coincide con calorías</Text>
+                : <Text style={{ color: Colors.accent.green }}> ✓ balanceado</Text>}
+            </Text>
+          </View>
+
+          <TouchableOpacity style={s.recalcBtn} onPress={recalcFromProfile}>
+            <Text style={s.recalcTxt}>↺ Recalcular desde mi perfil</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.7 }]} onPress={saveTargets} disabled={saving}>
+            {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.saveTxt}>Guardar targets</Text>}
+          </TouchableOpacity>
+        </CollapsibleSection>
+
+        {/* ── Alergias / intolerancias ── */}
+        <CollapsibleSection title="Alergias e intolerancias" subtitle="Filtra recetas según tus necesidades" icon="warning">
+          <Text style={s.sectionTitle}>🚫 Alergias alimentarias</Text>
+          <View style={al.grid}>
+            {ALLERGEN_OPTIONS.map(({ id, label, emoji }) => (
+              <TouchableOpacity key={id} style={[al.chip, allergens.includes(id) && al.chipOn]} onPress={() => toggleAllergen(id)}>
+                <Text style={al.chipEmoji}>{emoji}</Text>
+                <Text style={[al.chipTxt, allergens.includes(id) && al.chipTxtOn]}>{label}</Text>
+                {allergens.includes(id) && <Text style={al.chipCheck}>✓</Text>}
+              </TouchableOpacity>
+            ))}
+          </View>
+
+          <Text style={[s.sectionTitle, { marginTop: Spacing[4] }]}>⚠️ Intolerancias</Text>
+          <View style={al.grid}>
+            {INTOLERANCE_OPTIONS.map(({ id, label, emoji }) => (
+              <TouchableOpacity key={id} style={[al.chip, intolerances.includes(id) && al.chipOn]} onPress={() => toggleIntolerance(id)}>
+                <Text style={al.chipEmoji}>{emoji}</Text>
+                <Text style={[al.chipTxt, intolerances.includes(id) && al.chipTxtOn]}>{label}</Text>
+                {intolerances.includes(id) && <Text style={al.chipCheck}>✓</Text>}
+              </TouchableOpacity>
+            ))}
+          </View>
+        </CollapsibleSection>
+
+        {/* ── Ciclo menstrual ── */}
+        <TouchableOpacity style={al.navCard} onPress={() => router.push('/menstrual')}>
+          <Text style={al.navEmoji}>🌸</Text>
+          <View style={{ flex: 1 }}>
+            <Text style={al.navTitle}>Ciclo menstrual</Text>
+            <Text style={al.navSub}>Predicciones, síntomas y nutrición por fase</Text>
+          </View>
+          <Text style={al.navArrow}>›</Text>
+        </TouchableOpacity>
+
+        {/* ── Accesos rápidos ── */}
+        <Text style={[s.sectionTitle, { marginTop: Spacing[5] }]}>Accesos rápidos</Text>
+        <View style={{ gap: Spacing[2] }}>
+          {QUICK_LINKS.map(({ emoji, title, route }) => (
+            <TouchableOpacity key={route} style={al.navCard} onPress={() => router.push(route as any)}>
+              <Text style={al.navEmoji}>{emoji}</Text>
+              <Text style={[al.navTitle, { flex: 1 }]}>{title}</Text>
+              <Text style={al.navArrow}>›</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   )
 }
 
@@ -683,78 +521,6 @@ const af = StyleSheet.create({
   unit: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.5)', fontWeight: '600', minWidth: 36 },
 })
 
-function NotifRow({ label, sub, value, onChange }: { label: string; sub: string; value: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <View style={nt.row}>
-      <View style={{ flex: 1 }}>
-        <Text style={nt.label}>{label}</Text>
-        <Text style={nt.sub}>{sub}</Text>
-      </View>
-      <Switch value={value} onValueChange={onChange} trackColor={{ true: Colors.primary[500], false: Glass.cardBorder }} thumbColor="#fff" />
-    </View>
-  )
-}
-
-const nt = StyleSheet.create({
-  wrap: { backgroundColor: Glass.card, borderRadius: BorderRadius.lg, borderWidth: 1, borderColor: Glass.cardBorder, overflow: 'hidden', marginBottom: Spacing[4] },
-  row: { flexDirection: 'row', alignItems: 'center', padding: Spacing[4], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
-  label: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#fff', marginBottom: 2 },
-  sub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.42)' },
-})
-
-const pm = StyleSheet.create({
-  wrap: { backgroundColor: Glass.card, borderRadius: BorderRadius.xl, padding: Spacing[5], borderWidth: 1, borderColor: Glass.purpleBorder, overflow: 'hidden' },
-  upgradeTitle: { fontSize: Typography.fontSize.lg, fontWeight: '900', color: '#fff', marginBottom: Spacing[2] },
-  upgradeSub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.5)', lineHeight: 18, marginBottom: Spacing[4] },
-  counters: { flexDirection: 'row', gap: Spacing[3], marginBottom: Spacing[4] },
-  counter: { flex: 1, backgroundColor: Glass.elevated, borderRadius: BorderRadius.md, padding: Spacing[3], alignItems: 'center', borderWidth: 1, borderColor: Glass.cardBorder },
-  counterVal: { fontSize: Typography.fontSize.lg, fontWeight: '900', color: '#fff' },
-  counterLbl: { fontSize: 10, color: 'rgba(255,255,255,0.35)', marginTop: 2 },
-  planRow: { flexDirection: 'row', gap: Spacing[3], marginBottom: Spacing[4] },
-  planCard: { flex: 1, backgroundColor: Glass.elevated, borderRadius: BorderRadius.lg, padding: Spacing[4], alignItems: 'center', borderWidth: 1.5, borderColor: Glass.cardBorder },
-  planCardBest: { borderColor: Colors.primary[500] },
-  bestBadge: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.full, paddingHorizontal: Spacing[2], paddingVertical: 2, marginBottom: Spacing[2] },
-  bestBadgeTxt: { fontSize: 9, fontWeight: '900', color: '#fff', letterSpacing: 0.5 },
-  planPrice: { fontSize: Typography.fontSize['2xl'], fontWeight: '900', color: '#fff' },
-  planCurrency: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.42)', marginBottom: 4 },
-  planSavings: { fontSize: Typography.fontSize.xs, color: Colors.accent.green, fontWeight: '700' },
-  upgradeBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.lg, padding: Spacing[4], alignItems: 'center', marginBottom: Spacing[4], shadowColor: Colors.primary[500], shadowOpacity: 0.4, shadowRadius: 12 },
-  upgradeBtnTxt: { color: '#fff', fontWeight: '900', fontSize: Typography.fontSize.base },
-  featureList: { gap: 0 },
-  featureRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing[2], borderTopWidth: 1, borderTopColor: Glass.cardBorder },
-  featureLabel: { flex: 1, fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.5)' },
-  featureFree: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.28)', width: 72, textAlign: 'center' },
-  featurePremium: { fontSize: Typography.fontSize.xs, color: Colors.primary[400], fontWeight: '700', width: 88, textAlign: 'right' },
-  activeBadge: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: Glass.purpleTint, borderRadius: BorderRadius.lg, padding: Spacing[4], borderWidth: 1, borderColor: Glass.purpleBorder, marginBottom: Spacing[4] },
-  activeEmoji: { fontSize: 28 },
-  activeTitle: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
-  activeSub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.42)', marginTop: 2 },
-})
-
-function SettingRow({ icon, label, onPress, value, accent }: any) {
-  return (
-    <TouchableOpacity style={sr.row} onPress={onPress} activeOpacity={0.7}>
-      <View style={sr.iconWrap}>
-        <Ionicons name={icon} size={17} color={accent ? Colors.primary[400] : 'rgba(255,255,255,0.7)'} />
-      </View>
-      <Text style={[sr.label, accent && { color: Colors.primary[400] }]}>{label}</Text>
-      {value ?? <Ionicons name="chevron-forward" size={16} color="rgba(255,255,255,0.25)" />}
-    </TouchableOpacity>
-  )
-}
-const sr = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing[4], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder, gap: Spacing[3] },
-  iconWrap: { width: 28, alignItems: 'center' },
-  label: { flex: 1, fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.78)', fontWeight: '500' },
-})
-
-const gd = StyleSheet.create({
-  card: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: Glass.purpleTint, borderWidth: 1, borderColor: Glass.purpleBorder, borderRadius: BorderRadius.lg, padding: Spacing[4], marginTop: Spacing[6] },
-  iconWrap: { width: 44, height: 44, borderRadius: 12, backgroundColor: 'rgba(37,99,235,0.18)', alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
-  sub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.5)', marginTop: 2, lineHeight: 16 },
-})
-
 // ── Allergen styles ───────────────────────────────────────────────────────────
 
 const al = StyleSheet.create({
@@ -775,16 +541,12 @@ const al = StyleSheet.create({
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080808' },
   header: {
     flexDirection: 'row', alignItems: 'center', padding: Spacing[5], gap: Spacing[4],
     borderBottomWidth: 1, borderBottomColor: Glass.cardBorder,
     backgroundColor: Glass.card, overflow: 'hidden',
   },
-  highlight: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-    backgroundColor: Glass.cardHighlight,
-  },
+  highlight: { position: 'absolute', top: 0, left: 0, right: 0, height: 1, backgroundColor: Glass.cardHighlight },
   avatarWrap: { width: 72, height: 72, borderRadius: 36, position: 'relative' },
   avatarImg: { width: 72, height: 72, borderRadius: 36, borderWidth: 2.5, borderColor: Colors.primary[500] },
   avatarFill: {
@@ -813,22 +575,11 @@ const s = StyleSheet.create({
   nickname: { fontSize: Typography.fontSize.xs, color: Colors.primary[400], fontWeight: '600', marginTop: 1 },
   email: { fontSize: 10, color: 'rgba(255,255,255,0.38)', marginTop: 2 },
   headerBadges: { flexDirection: 'row', gap: Spacing[2], marginTop: Spacing[1], flexWrap: 'wrap' },
-  tierBadge: {
-    backgroundColor: Glass.purpleTint, paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: BorderRadius.full, borderWidth: 1, borderColor: Glass.purpleBorder,
-  },
+  tierBadge: { backgroundColor: Glass.purpleTint, paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.full, borderWidth: 1, borderColor: Glass.purpleBorder },
   tierTxt: { fontSize: 10, color: Colors.primary[300], fontWeight: '700' },
-  xpBadge: {
-    backgroundColor: `${Colors.accent.yellow}18`, paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: BorderRadius.full, borderWidth: 1, borderColor: `${Colors.accent.yellow}40`,
-  },
+  xpBadge: { backgroundColor: `${Colors.accent.yellow}18`, paddingHorizontal: 8, paddingVertical: 3, borderRadius: BorderRadius.full, borderWidth: 1, borderColor: `${Colors.accent.yellow}40` },
   xpTxt: { fontSize: 10, color: Colors.accent.yellow, fontWeight: '700' },
-  tabsScroll: { borderBottomWidth: 1, borderBottomColor: Glass.cardBorder, paddingHorizontal: Spacing[2] },
-  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
-  tabBtn: { paddingVertical: Spacing[3], paddingHorizontal: Spacing[4], alignItems: 'center' },
-  tabBtnOn: { borderBottomWidth: 2, borderBottomColor: Colors.primary[500] },
-  tabTxt: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.42)', fontWeight: '600' },
-  tabTxtOn: { color: Colors.primary[400] },
+  hubGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[3], marginBottom: Spacing[5] },
   sectionTitle: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff', marginBottom: Spacing[1] },
   sectionSub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.42)', marginBottom: Spacing[4] },
   row: { flexDirection: 'row', gap: Spacing[2], marginBottom: Spacing[3] },
@@ -841,17 +592,6 @@ const s = StyleSheet.create({
   recalcTxt: { fontSize: Typography.fontSize.sm, color: Colors.primary[400], fontWeight: '600' },
   saveBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.lg, padding: Spacing[4], alignItems: 'center', shadowColor: Colors.primary[500], shadowOpacity: 0.35, shadowRadius: 12 },
   saveTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
-  editProfileBtn: {
-    marginTop: Spacing[5], backgroundColor: Glass.card,
-    borderRadius: BorderRadius.md, paddingVertical: Spacing[3], paddingHorizontal: Spacing[4],
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    borderWidth: 1, borderColor: Glass.purpleBorder,
-  },
-  editProfileTxt: { fontSize: Typography.fontSize.xs, color: Colors.primary[400], fontWeight: '600' },
-  logoutBtn: { marginTop: Spacing[8], borderWidth: 1, borderColor: `${Colors.accent.red}55`, borderRadius: BorderRadius.lg, padding: Spacing[4], alignItems: 'center' },
-  logoutTxt: { fontSize: Typography.fontSize.base, color: Colors.accent.red, fontWeight: '700' },
-  version: { textAlign: 'center', marginTop: Spacing[4], fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.22)' },
-  // Profile editing
   editIconBtn: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: 10, paddingVertical: 4,

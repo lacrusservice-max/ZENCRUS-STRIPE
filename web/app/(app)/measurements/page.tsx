@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { Plus, X, TrendingDown, TrendingUp, Minus, Trash2 } from "lucide-react";
 
-const C = { bg: "#08090c", panel: "#0f1218", border: "#1e2430", navy: "#1e3a8a", navySoft: "rgba(30,58,138,0.16)", text: "#f4f5f7", dim: "#9aa3b2", dim2: "#5f6875", green: "#3fae6b", red: "#c85a6a" };
+const C = { bg: "#08090c", panel: "#0f1218", border: "#1e2430", navy: "#1e3a8a", navySoft: "rgba(30,58,138,0.16)", text: "#f4f5f7", dim: "#9aa3b2", dim2: "#5f6875", green: "#FFFFFF", red: "#c85a6a" };
 
 interface Measurement {
   id: string; date: string;
@@ -50,7 +50,7 @@ export default function MeasurementsPage() {
       <div style={{ maxWidth: 1100, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", paddingTop: 32, paddingBottom: 28, flexWrap: "wrap", gap: 16 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 900, color: "#8fa9dd", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · PROGRESO</div>
+            <div style={{ fontSize: 10, fontWeight: 900, color: "#FFB3BE", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · PROGRESO</div>
             <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 40, letterSpacing: -0.5 }}>Medidas corporales</div>
           </div>
           <button onClick={() => setOpen(true)} className="btn-primary"><Plus size={15} /> Registrar</button>

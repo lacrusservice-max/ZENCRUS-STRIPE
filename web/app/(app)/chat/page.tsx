@@ -24,8 +24,8 @@ const QUICK_QUESTIONS = [
 
 function ZenaAvatar({ size = 32 }: { size?: number }) {
   return (
-    <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, rgba(37,99,235,0.5), rgba(0,194,192,0.35))", border: "1.5px solid rgba(96,165,250,0.5)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 6px 16px rgba(37,99,235,0.3)" }}>
-      <Zap size={size * 0.46} color="#93c5fd" />
+    <div style={{ width: size, height: size, borderRadius: "50%", background: "linear-gradient(135deg, rgba(255,31,61,0.5), rgba(255,255,255,0.35))", border: "1.5px solid rgba(96,165,250,0.5)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 6px 16px rgba(255,31,61,0.3)" }}>
+      <Zap size={size * 0.46} color="#FF8FA0" />
     </div>
   );
 }
@@ -37,7 +37,7 @@ function TypingIndicator() {
       <div className="glass-card" style={{ borderRadius: "18px 18px 18px 4px", padding: "14px 18px" }}>
         <div style={{ display: "flex", gap: 4 }}>
           {[0, 1, 2].map(i => (
-            <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "#60a5fa", animation: `typing-dot 1.2s ${i * 0.2}s infinite` }} />
+            <div key={i} style={{ width: 6, height: 6, borderRadius: "50%", background: "#FF5871", animation: `typing-dot 1.2s ${i * 0.2}s infinite` }} />
           ))}
         </div>
       </div>
@@ -160,7 +160,7 @@ export default function ChatPage() {
       {/* Context chips */}
       <div style={{ display: "flex", justifyContent: "center", flexShrink: 0, borderBottom: "1px solid rgba(255,255,255,0.06)" }}>
         <div style={{ width: "100%", maxWidth: 780, display: "flex", gap: 8, padding: "10px 20px", flexWrap: "wrap" }}>
-          {[{ icon: Utensils, c: "#60a5fa", label: "0 kcal" }, { icon: Droplet, c: "#38BDF8", label: "0 vasos" }, { icon: Flame, c: "#FF6B35", label: "0d racha" }, { icon: Star, c: "#FFD60A", label: "Score 0" }].map(c => (
+          {[{ icon: Utensils, c: "#FF5871", label: "0 kcal" }, { icon: Droplet, c: "#38BDF8", label: "0 vasos" }, { icon: Flame, c: "#FF6B35", label: "0d racha" }, { icon: Star, c: "#FFD60A", label: "Score 0" }].map(c => (
             <div key={c.label} style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(255,255,255,0.04)", border: "1px solid rgba(255,255,255,0.09)", borderRadius: 999, padding: "5px 12px" }}>
               <c.icon size={12} color={c.c} />
               <span style={{ fontSize: 11, color: "rgba(255,255,255,0.5)", fontWeight: 600 }}>{c.label}</span>
@@ -181,8 +181,8 @@ export default function ChatPage() {
                 className={isUser ? undefined : "glass-card"}
                 style={{
                   maxWidth: "78%",
-                  background: isUser ? "linear-gradient(135deg, #2563EB, #1d4ed8)" : undefined,
-                  boxShadow: isUser ? "0 8px 20px rgba(37,99,235,0.3)" : undefined,
+                  background: isUser ? "linear-gradient(135deg, #FF1F3D, #FF0030)" : undefined,
+                  boxShadow: isUser ? "0 8px 20px rgba(255,31,61,0.3)" : undefined,
                   borderRadius: isUser ? "18px 18px 4px 18px" : "18px 18px 18px 4px",
                   padding: "12px 16px",
                 }}
@@ -200,7 +200,7 @@ export default function ChatPage() {
             <p style={{ fontSize: 10, fontWeight: 700, color: "rgba(255,255,255,0.3)", textTransform: "uppercase", letterSpacing: 1.2, marginBottom: 12 }}>Preguntas frecuentes</p>
             <div style={{ display: "grid", gridTemplateColumns: "1fr", gap: 8 }} className="chat-suggestions">
               {QUICK_QUESTIONS.map(q => (
-                <button key={q} onClick={() => handleSend(q)} disabled={atLimit} className="glass-card" style={{ width: "100%", padding: "13px 16px", textAlign: "left", cursor: "pointer", color: "#93c5fd", fontSize: 13.5, fontWeight: 500, opacity: atLimit ? 0.4 : 1, fontFamily: "inherit", border: "1px solid rgba(96,165,250,0.15)" }}>
+                <button key={q} onClick={() => handleSend(q)} disabled={atLimit} className="glass-card" style={{ width: "100%", padding: "13px 16px", textAlign: "left", cursor: "pointer", color: "#FF8FA0", fontSize: 13.5, fontWeight: 500, opacity: atLimit ? 0.4 : 1, fontFamily: "inherit", border: "1px solid rgba(96,165,250,0.15)" }}>
                   {q}
                 </button>
               ))}
@@ -211,7 +211,7 @@ export default function ChatPage() {
         {atLimit && (
           <div className="glass-card-accent" style={{ margin: "16px 0" }}>
             <div style={{ padding: 24, textAlign: "center" }}>
-              <Zap size={36} color="#60a5fa" style={{ marginBottom: 8 }} />
+              <Zap size={36} color="#FF5871" style={{ marginBottom: 8 }} />
               <div style={{ fontSize: 16, fontWeight: 800, color: "#f4f4f5", marginBottom: 8 }}>Límite diario alcanzado</div>
               <div style={{ fontSize: 13, color: "rgba(255,255,255,0.5)", lineHeight: 1.6, marginBottom: 16 }}>Usaste {aiMessagesToday}/{DAILY_LIMIT} mensajes gratis.</div>
               <button className="btn-primary" style={{ fontSize: 13 }}>Ver Premium →</button>
@@ -234,7 +234,7 @@ export default function ChatPage() {
             className="glass-input"
             style={{ flex: 1, resize: "none", borderRadius: 18, fontSize: 15, maxHeight: 100, opacity: atLimit ? 0.4 : 1 }}
           />
-          <button onClick={() => handleSend()} disabled={!input.trim() || sending || atLimit} style={{ width: 46, height: 46, borderRadius: "50%", background: input.trim() && !atLimit ? "linear-gradient(135deg, #2563EB, #1d4ed8)" : "rgba(255,255,255,0.05)", boxShadow: input.trim() && !atLimit ? "0 8px 20px rgba(37,99,235,0.35)" : "none", border: input.trim() && !atLimit ? "none" : "1px solid rgba(255,255,255,0.09)", cursor: input.trim() && !atLimit ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+          <button onClick={() => handleSend()} disabled={!input.trim() || sending || atLimit} style={{ width: 46, height: 46, borderRadius: "50%", background: input.trim() && !atLimit ? "linear-gradient(135deg, #FF1F3D, #FF0030)" : "rgba(255,255,255,0.05)", boxShadow: input.trim() && !atLimit ? "0 8px 20px rgba(255,31,61,0.35)" : "none", border: input.trim() && !atLimit ? "none" : "1px solid rgba(255,255,255,0.09)", cursor: input.trim() && !atLimit ? "pointer" : "not-allowed", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
             <Send size={18} color={input.trim() && !atLimit ? "#fff" : "rgba(255,255,255,0.3)"} />
           </button>
         </div>

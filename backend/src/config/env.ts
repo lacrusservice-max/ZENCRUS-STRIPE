@@ -2,7 +2,11 @@ import dotenv from 'dotenv'
 import path from 'path'
 import { z } from 'zod'
 
-dotenv.config({ path: path.resolve(__dirname, '../../../.env') })
+// __dirname es backend/src/config, así que dos niveles arriba está backend/.
+// Antes subía tres y apuntaba a la raíz del repo, donde no hay ningún .env:
+// dotenv no encontraba nada y el arranque moría con "Required" en todas las
+// variables aunque backend/.env estuviera completo.
+dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
 const envSchema = z.object({
   NODE_ENV: z.enum(['development', 'staging', 'production']).default('development'),
@@ -17,6 +21,11 @@ const envSchema = z.object({
   SUPABASE_URL: z.string().url(),
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
+
+  // FatSecret — catálogo de alimentos. Solo aquí: la API exige lista blanca de
+  // IP, así que las llamadas salen del backend y el secreto nunca toca la app.
+  FATSECRET_CLIENT_ID: z.string().optional(),
+  FATSECRET_CLIENT_SECRET: z.string().optional(),
 
   DEEPSEEK_API_KEY: z.string().optional(),
   DEEPSEEK_API_URL: z.string().url().default('https://api.deepseek.com/v1'),

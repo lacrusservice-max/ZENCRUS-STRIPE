@@ -108,6 +108,40 @@ class DeepSeekClient {
   }
 
   /**
+   * Parsea texto libre (uno o varios alimentos por línea, por comida) a
+   * alimentos estructurados con macros.
+   */
+  async parseFoodList(mealsText) {
+    const { FOOD_LIST_PARSE_PROMPT } = require('./prompts')
+
+    const prompt = FOOD_LIST_PARSE_PROMPT
+      .replace('{breakfast}', mealsText.breakfast || '(vacío)')
+      .replace('{lunch}', mealsText.lunch || '(vacío)')
+      .replace('{dinner}', mealsText.dinner || '(vacío)')
+      .replace('{snack1}', mealsText.snack1 || '(vacío)')
+      .replace('{snack2}', mealsText.snack2 || '(vacío)')
+      .replace('{snack3}', mealsText.snack3 || '(vacío)')
+      // Bloque oculto solo para que el modo mock (sin API key) pueda leer el
+      // input crudo sin depender de parsear el prompt en lenguaje natural.
+      + `\n\n__RAW_INPUT__: ${JSON.stringify(mealsText)}`
+
+    const result = await this._call('/chat/completions', {
+      messages: [
+        {
+          role: 'system',
+          content: 'Eres un nutriólogo que parsea alimentos a JSON estructurado. Responde siempre en formato JSON.',
+        },
+        { role: 'user', content: prompt },
+      ],
+      response_format: { type: 'json_object' },
+      temperature: 0.3,
+      max_tokens: 3000,
+    })
+
+    return this._extractJson(result)
+  }
+
+  /**
    * Extrae y parsea el JSON de la respuesta de chat completions.
    * DeepSeek devuelve el texto en choices[0].message.content como STRING JSON —
    * nunca se debe devolver el sobre crudo de la API a los controllers.
@@ -282,6 +316,40 @@ No sustituyes a un profesional de la salud.`
               'Limita alimentos procesados y azúcares refinados',
             ],
             disclaimer: 'Este plan es informativo y no sustituye la consulta con un profesional de la salud.',
+          }
+        }
+
+        if (payload.messages?.[0]?.content?.includes('parsea alimentos')) {
+          const userPrompt = payload.messages?.[1]?.content || ''
+          const rawMatch = userPrompt.match(/__RAW_INPUT__: (.*)$/s)
+          let raw = {}
+          try { raw = rawMatch ? JSON.parse(rawMatch[1]) : {} } catch { raw = {} }
+
+          const toItems = (text) => {
+            if (!text || !text.trim()) return []
+            return text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
+              const clean = line.replace(/^[-•]\s*/, '')
+              return {
+                name: clean.charAt(0).toUpperCase() + clean.slice(1),
+                amount: 100,
+                unit: 'g',
+                calories: 150,
+                protein: 8,
+                carbs: 15,
+                fat: 6,
+                fiber: 2,
+                emoji: '🍽️',
+              }
+            })
+          }
+
+          return {
+            breakfast: toItems(raw.breakfast),
+            lunch: toItems(raw.lunch),
+            dinner: toItems(raw.dinner),
+            snack1: toItems(raw.snack1),
+            snack2: toItems(raw.snack2),
+            snack3: toItems(raw.snack3),
           }
         }
 

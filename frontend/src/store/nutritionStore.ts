@@ -12,6 +12,16 @@ export interface FoodEntry {
   amount: number
   unit: string
   timestamp: number
+  /** Si es false, el alimento se queda visible pero sale de los totales. Default true. */
+  active?: boolean
+  /**
+   * Emoji del alimento, resuelto al registrarlo.
+   *
+   * Se guarda con la entrada en vez de recalcularlo en cada pantalla: así el
+   * icono es el mismo en la búsqueda, en la revisión y en el diario del día,
+   * y no depende de que cada vista recuerde pedirlo.
+   */
+  emoji?: string
 }
 
 export interface MealSlot {
@@ -45,7 +55,10 @@ interface NutritionState {
 
   loadToday: () => Promise<void>
   addEntry: (mealId: string, entry: FoodEntry) => void
+  /** Agrega varias entradas a la vez, repartidas por comida — usado por Confirmar alimentos. */
+  addEntries: (entriesByMeal: Record<string, FoodEntry[]>) => void
   removeEntry: (mealId: string, entryId: string) => void
+  toggleEntryActive: (mealId: string, entryId: string) => void
   addWater: () => void
   removeWater: () => void
   save: () => Promise<void>
@@ -58,6 +71,7 @@ function todayKey() {
 function computeTotals(meals: MealSlot[]) {
   let cal = 0, prot = 0, carbs = 0, fat = 0, fiber = 0
   meals.forEach(m => m.entries.forEach(e => {
+    if (e.active === false) return
     cal += e.calories; prot += e.protein; carbs += e.carbs; fat += e.fat; fiber += e.fiber
   }))
   return {
@@ -109,9 +123,28 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
     get().save()
   },
 
+  addEntries: (entriesByMeal) => {
+    const meals = get().meals.map(m => {
+      const toAdd = entriesByMeal[m.id]
+      return toAdd?.length ? { ...m, entries: [...m.entries, ...toAdd] } : m
+    })
+    set({ meals, ...computeTotals(meals) })
+    get().save()
+  },
+
   removeEntry: (mealId, entryId) => {
     const meals = get().meals.map(m =>
       m.id === mealId ? { ...m, entries: m.entries.filter(e => e.id !== entryId) } : m
+    )
+    set({ meals, ...computeTotals(meals) })
+    get().save()
+  },
+
+  toggleEntryActive: (mealId, entryId) => {
+    const meals = get().meals.map(m =>
+      m.id === mealId
+        ? { ...m, entries: m.entries.map(e => e.id === entryId ? { ...e, active: e.active === false } : e) }
+        : m
     )
     set({ meals, ...computeTotals(meals) })
     get().save()

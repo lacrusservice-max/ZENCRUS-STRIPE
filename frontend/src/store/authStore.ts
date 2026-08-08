@@ -21,6 +21,12 @@ export interface User {
     main_goal?: string
     target_weight?: number
     calories_target?: number
+    /**
+     * Piso calórico del día. Comer por debajo frena el progreso tanto como
+     * pasarse, así que la pantalla de Nutrición lo señala igual que el exceso.
+     * Sin valor guardado se deriva del objetivo (85 %).
+     */
+    calories_min?: number
     protein_g?: number
     carbs_g?: number
     fat_g?: number

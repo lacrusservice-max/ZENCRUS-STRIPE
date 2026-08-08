@@ -20,7 +20,7 @@ export function LoadingScreen() {
           fontSize: 32,
           fontWeight: 800,
           letterSpacing: "-0.5px",
-          background: "linear-gradient(135deg, #5b4fff, #2563eb)",
+          background: "linear-gradient(135deg, #FF1F3D, #FF1F3D)",
           WebkitBackgroundClip: "text",
           WebkitTextFillColor: "transparent",
           backgroundClip: "text",
@@ -34,7 +34,7 @@ export function LoadingScreen() {
           width: 40,
           height: 40,
           border: "3px solid rgba(91,79,255,0.2)",
-          borderTopColor: "#5b4fff",
+          borderTopColor: "#FF1F3D",
           borderRadius: "50%",
           animation: "spin 0.8s linear infinite",
         }}

@@ -120,7 +120,7 @@ export default function GuidePage() {
           const isOpen = open === sec.id;
           const Icon = sec.icon;
           return (
-            <div key={sec.id} className="glass-card" style={{ background: isOpen ? "rgba(37,99,235,0.06)" : undefined, borderColor: isOpen ? C.navyBorder : undefined }}>
+            <div key={sec.id} className="glass-card" style={{ background: isOpen ? "rgba(255,31,61,0.06)" : undefined, borderColor: isOpen ? C.navyBorder : undefined }}>
               <button
                 onClick={() => setOpen(isOpen ? null : sec.id)}
                 style={{ width: "100%", display: "flex", alignItems: "center", gap: 14, padding: 18, background: "none", border: "none", cursor: "pointer", textAlign: "left" }}

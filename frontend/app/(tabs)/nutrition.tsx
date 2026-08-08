@@ -1,900 +1,741 @@
+/**
+ * NUTRICIÓN · ZENCRUS
+ * ═══════════════════
+ * Lectura del día en cuatro planos, de lo general a lo accionable:
+ *
+ *   1. ESTADO      — cuánto queda, si vas dentro de meta, cómo van los macros
+ *   2. COMIDAS     — presupuesto adaptativo por comida y lo que ya registraste
+ *   3. ZENA        — la única lectura interpretada, no un dato más
+ *   4. HERRAMIENTAS— accesos secundarios, al final porque no son la tarea
+ *
+ * El registro de alimentos no vive aquí: lo resuelve `FoodConsole`, que es una
+ * consola de dos etapas con su propia máquina de estados.
+ */
+
 import { useState, useEffect } from 'react'
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  TextInput, Modal, Alert, KeyboardAvoidingView, Platform,
-  FlatList, ActivityIndicator,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useRouter } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '@/store/authStore'
-import { useNutritionStore, FoodEntry, MealSlot } from '@/store/nutritionStore'
+import { useNutritionStore, MealSlot } from '@/store/nutritionStore'
 import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
 import { suggestCalorieAdjustment, Goal } from '@/utils/calorieAdjustment'
 import api from '@/services/api'
-import { MiniRing } from '@/components/ui/MiniRing'
-import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
-import {
-  lookupBarcode,
-  classifyFoodByName,
-  HEALTH_LEVEL_COLORS,
-  HEALTH_LEVEL_LABELS,
-  ScannedFood,
-} from '@/services/barcodeService'
-import { analyzePhotoMacros, PhotoMacros } from '@/services/foodPhotoService'
+import { PlateRing } from '@/components/ui/PlateRing'
+import { CountUp } from '@/components/ui/CountUp'
+import { ZIcon, ZIconName } from '@/components/ui/ZencrusIcon'
+import { Colors } from '@/constants/theme'
+import { TabBar } from '@/constants/layout'
+import { computeMealBudgets, describeMealStatus, buildCoachNote, MealBudget } from '@/utils/mealBudget'
+import { FoodConsole } from '@/components/nutrition/FoodConsole'
+import { emojiForFood } from '@/data/foodEmoji'
 
-// ── Simple food database (local, expandable) ─────────────────────────────────
-const FOOD_DB: Omit<FoodEntry, 'id' | 'timestamp'>[] = [
-  { name: 'Pechuga de pollo (100g)',   calories: 165, protein: 31, carbs: 0,  fat: 3.6, fiber: 0,  amount: 100, unit: 'g' },
-  { name: 'Arroz blanco cocido (100g)',calories: 130, protein: 2.7,carbs: 28, fat: 0.3, fiber: 0.4,amount: 100, unit: 'g' },
-  { name: 'Huevo entero',              calories: 70,  protein: 6,  carbs: 0.6,fat: 5,   fiber: 0,  amount: 1,   unit: 'pza' },
-  { name: 'Clara de huevo',            calories: 17,  protein: 3.6,carbs: 0.2,fat: 0.1, fiber: 0,  amount: 1,   unit: 'pza' },
-  { name: 'Avena (100g)',              calories: 389, protein: 17, carbs: 66, fat: 7,   fiber: 10, amount: 100, unit: 'g' },
-  { name: 'Plátano mediano',           calories: 89,  protein: 1.1,carbs: 23, fat: 0.3, fiber: 2.6,amount: 1,   unit: 'pza' },
-  { name: 'Manzana mediana',           calories: 52,  protein: 0.3,carbs: 14, fat: 0.2, fiber: 2.4,amount: 1,   unit: 'pza' },
-  { name: 'Leche entera (250ml)',      calories: 149, protein: 8,  carbs: 12, fat: 8,   fiber: 0,  amount: 250, unit: 'ml' },
-  { name: 'Yogur griego (150g)',       calories: 132, protein: 12, carbs: 7,  fat: 5,   fiber: 0,  amount: 150, unit: 'g' },
-  { name: 'Aguacate ½',               calories: 120, protein: 1.5,carbs: 6,  fat: 11,  fiber: 5,  amount: 80,  unit: 'g' },
-  { name: 'Almendras (30g)',           calories: 174, protein: 6,  carbs: 6,  fat: 15,  fiber: 3.5,amount: 30,  unit: 'g' },
-  { name: 'Pan integral (1 rebanada)', calories: 69,  protein: 3.6,carbs: 12, fat: 1,   fiber: 1.9,amount: 40,  unit: 'g' },
-  { name: 'Pasta cocida (100g)',       calories: 158, protein: 5.8,carbs: 31, fat: 0.9, fiber: 1.8,amount: 100, unit: 'g' },
-  { name: 'Salmón (100g)',             calories: 208, protein: 20, carbs: 0,  fat: 13,  fiber: 0,  amount: 100, unit: 'g' },
-  { name: 'Atún en agua (100g)',       calories: 84,  protein: 20, carbs: 0,  fat: 0.5, fiber: 0,  amount: 100, unit: 'g' },
-  { name: 'Papa cocida (100g)',        calories: 86,  protein: 1.7,carbs: 20, fat: 0.1, fiber: 1.8,amount: 100, unit: 'g' },
-  { name: 'Camote cocido (100g)',      calories: 90,  protein: 2,  carbs: 21, fat: 0.1, fiber: 3,  amount: 100, unit: 'g' },
-  { name: 'Brócoli (100g)',            calories: 34,  protein: 2.8,carbs: 7,  fat: 0.4, fiber: 2.6,amount: 100, unit: 'g' },
-  { name: 'Espinacas (100g)',          calories: 23,  protein: 2.9,carbs: 3.6,fat: 0.4, fiber: 2.2,amount: 100, unit: 'g' },
-  { name: 'Proteína whey (30g)',       calories: 120, protein: 25, carbs: 3,  fat: 1.5, fiber: 0,  amount: 30,  unit: 'g' },
-  { name: 'Tortilla de maíz',         calories: 52,  protein: 1.4,carbs: 11, fat: 0.7, fiber: 1.2,amount: 30,  unit: 'g' },
-  { name: 'Queso panela (50g)',        calories: 79,  protein: 7.4,carbs: 2,  fat: 4.5, fiber: 0,  amount: 50,  unit: 'g' },
-  { name: 'Frijoles negros (100g)',    calories: 132, protein: 8.9,carbs: 24, fat: 0.5, fiber: 8.7,amount: 100, unit: 'g' },
-  { name: 'Aceite de oliva (1 cda)',   calories: 119, protein: 0,  carbs: 0,  fat: 14,  fiber: 0,  amount: 14,  unit: 'g' },
-  { name: 'Mantequilla de maní (2cdas)', calories: 188, protein: 8, carbs: 6, fat: 16, fiber: 1.9, amount: 32, unit: 'g' },
+const NEON = Colors.neon
+
+const TOOLS: { icon: ZIconName; label: string; note: string; route: string | null }[] = [
+  { icon: 'codex',  label: 'Recetas',      note: 'Qué cocinar hoy',       route: '/recipes' },
+  { icon: 'layers', label: 'Plan semanal', note: 'Organiza la semana',    route: '/meal-planner' },
+  { icon: 'stack',  label: 'Compras',      note: 'Lista de la despensa',  route: '/grocery' },
+  { icon: 'gauge',  label: 'Medidas',      note: 'Peso y composición',    route: '/measurements' },
 ]
 
-// ── Add Food Modal ────────────────────────────────────────────────────────────
-
-interface AddFoodModalProps {
-  visible: boolean
-  mealId: string
-  mealLabel: string
-  onClose: () => void
-  onAdd: (mealId: string, entry: FoodEntry) => void
+/** Icono del momento del día. Sustituye a los emojis, que rompían la línea gráfica. */
+function mealIcon(id: string): ZIconName {
+  if (id.startsWith('snack')) return 'bolt'
+  if (id === 'breakfast') return 'dawn'
+  if (id === 'lunch') return 'zenith'
+  return 'dusk'
 }
-
-// ── Barcode scanner tab (uses barcodeService mock, expo-camera to be wired later)
-
-const DEMO_BARCODES = ['7502005556657', '7501000140131', '0048001348093', '7500478002069', '7500231134090']
-
-function BarcodeScannerTab({ mealId, onAdd, onClose }: {
-  mealId: string
-  onAdd: (mealId: string, entry: FoodEntry) => void
-  onClose: () => void
-}) {
-  const [scanning, setScanning] = useState(false)
-  const [result, setResult] = useState<ScannedFood | null>(null)
-  const [manualBarcode, setManualBarcode] = useState('')
-
-  const simulateScan = async (barcode?: string) => {
-    const code = barcode ?? DEMO_BARCODES[Math.floor(Math.random() * DEMO_BARCODES.length)]
-    setScanning(true)
-    setResult(null)
-    const found = await lookupBarcode(code)
-    setScanning(false)
-    setResult(found)
-  }
-
-  const addScanned = () => {
-    if (!result) return
-    onAdd(mealId, {
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-      name: result.name,
-      calories: result.calories,
-      protein: result.protein,
-      carbs: result.carbs,
-      fat: result.fat,
-      fiber: result.fiber ?? 0,
-      amount: result.amount,
-      unit: result.unit,
-    })
-    onClose()
-  }
-
-  return (
-    <View style={{ flex: 1 }}>
-      {/* Camera placeholder */}
-      <View style={sc2.camBox}>
-        <View style={sc2.camInner}>
-          <Text style={sc2.camIcon}>📷</Text>
-          <Text style={sc2.camTitle}>Escáner de código de barras</Text>
-          <Text style={sc2.camSub}>Cámara real: expo-camera (próximo paso){'\n'}Por ahora usa el botón de demostración</Text>
-        </View>
-        {/* Scanner corners */}
-        <View style={[sc2.corner, sc2.tl]} />
-        <View style={[sc2.corner, sc2.tr]} />
-        <View style={[sc2.corner, sc2.bl]} />
-        <View style={[sc2.corner, sc2.br]} />
-      </View>
-
-      {/* Manual barcode input */}
-      <View style={sc2.manualRow}>
-        <TextInput
-          style={sc2.manualInput}
-          value={manualBarcode}
-          onChangeText={setManualBarcode}
-          placeholder="Ingresar código de barras..."
-          placeholderTextColor={Colors.neutral[500]}
-          keyboardType="number-pad"
-        />
-        <TouchableOpacity
-          style={sc2.manualBtn}
-          onPress={() => simulateScan(manualBarcode || undefined)}
-          disabled={scanning}
-        >
-          <Text style={sc2.manualBtnTxt}>Buscar</Text>
-        </TouchableOpacity>
-      </View>
-
-      <TouchableOpacity style={sc2.demoBtn} onPress={() => simulateScan()} disabled={scanning}>
-        {scanning
-          ? <ActivityIndicator color="#fff" />
-          : <Text style={sc2.demoBtnTxt}>⚡ Simular escaneo (demo)</Text>
-        }
-      </TouchableOpacity>
-
-      {/* Result card */}
-      {result && (
-        <View style={sc2.resultCard}>
-          <View style={sc2.resultHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={sc2.resultName}>{result.name}</Text>
-              {result.brand && <Text style={sc2.resultBrand}>{result.brand}</Text>}
-            </View>
-            <View style={[sc2.semaforo, { backgroundColor: HEALTH_LEVEL_COLORS[result.healthLevel] + '20', borderColor: HEALTH_LEVEL_COLORS[result.healthLevel] }]}>
-              <Text style={[sc2.semaforoTxt, { color: HEALTH_LEVEL_COLORS[result.healthLevel] }]}>
-                {HEALTH_LEVEL_LABELS[result.healthLevel]}
-              </Text>
-            </View>
-          </View>
-          <Text style={sc2.resultMacros}>
-            {result.calories} kcal · P:{result.protein}g · C:{result.carbs}g · G:{result.fat}g{result.fiber ? ` · F:${result.fiber}g` : ''}
-          </Text>
-          <Text style={sc2.resultPortion}>{result.amount} {result.unit} por porción</Text>
-
-          <TouchableOpacity style={sc2.addBtn} onPress={addScanned}>
-            <Text style={sc2.addBtnTxt}>+ Agregar a comida</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </View>
-  )
-}
-
-const sc2 = StyleSheet.create({
-  camBox: { height: 180, marginHorizontal: Spacing[4], marginTop: Spacing[3], backgroundColor: '#000', borderRadius: BorderRadius.lg, alignItems: 'center', justifyContent: 'center', overflow: 'hidden', position: 'relative' },
-  camInner: { alignItems: 'center', gap: Spacing[2] },
-  camIcon: { fontSize: 40 },
-  camTitle: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#fff' },
-  camSub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.6)', textAlign: 'center', lineHeight: 18 },
-  corner: { position: 'absolute', width: 24, height: 24, borderColor: Colors.primary[400], borderWidth: 2.5 },
-  tl: { top: 12, left: 12, borderRightWidth: 0, borderBottomWidth: 0 },
-  tr: { top: 12, right: 12, borderLeftWidth: 0, borderBottomWidth: 0 },
-  bl: { bottom: 12, left: 12, borderRightWidth: 0, borderTopWidth: 0 },
-  br: { bottom: 12, right: 12, borderLeftWidth: 0, borderTopWidth: 0 },
-  manualRow: { flexDirection: 'row', gap: Spacing[2], padding: Spacing[4], paddingBottom: 0 },
-  manualInput: { flex: 1, backgroundColor: Colors.dark.surface, borderWidth: 1, borderColor: Colors.dark.border, borderRadius: BorderRadius.md, padding: Spacing[3], color: Colors.dark.text, fontSize: Typography.fontSize.sm },
-  manualBtn: { backgroundColor: Colors.dark.surface, borderWidth: 1, borderColor: Colors.primary[500], borderRadius: BorderRadius.md, paddingHorizontal: Spacing[4], justifyContent: 'center' },
-  manualBtnTxt: { color: Colors.primary[400], fontWeight: '700', fontSize: Typography.fontSize.sm },
-  demoBtn: { marginHorizontal: Spacing[4], marginTop: Spacing[3], backgroundColor: Colors.primary[500], borderRadius: BorderRadius.md, padding: Spacing[3], alignItems: 'center' },
-  demoBtnTxt: { color: '#fff', fontWeight: '800', fontSize: Typography.fontSize.sm },
-  resultCard: { marginHorizontal: Spacing[4], marginTop: Spacing[3], backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.lg, padding: Spacing[4], borderWidth: 1, borderColor: Colors.dark.border },
-  resultHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: Spacing[3], marginBottom: Spacing[2] },
-  resultName: { fontSize: Typography.fontSize.base, fontWeight: '700', color: Colors.dark.text },
-  resultBrand: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, marginTop: 2 },
-  semaforo: { borderRadius: BorderRadius.full, paddingHorizontal: Spacing[3], paddingVertical: Spacing[1], borderWidth: 1 },
-  semaforoTxt: { fontSize: Typography.fontSize.xs, fontWeight: '800' },
-  resultMacros: { fontSize: Typography.fontSize.sm, color: Colors.dark.textSecondary, marginBottom: Spacing[1] },
-  resultPortion: { fontSize: Typography.fontSize.xs, color: Colors.dark.textTertiary, marginBottom: Spacing[3] },
-  addBtn: { backgroundColor: Colors.accent.green, borderRadius: BorderRadius.md, padding: Spacing[3], alignItems: 'center' },
-  addBtnTxt: { color: '#fff', fontWeight: '800', fontSize: Typography.fontSize.sm },
-})
-
-// ── Food Photo Tab ────────────────────────────────────────────────────────────
-
-const DEMO_PHOTO_FOODS = [
-  'Pollo a la plancha con arroz',
-  'Tacos de carnitas',
-  'Ensalada César',
-  'Pizza de pepperoni',
-  'Bowl de avena con frutas',
-]
-
-function FoodPhotoTab({ mealId, onAdd, onClose }: {
-  mealId: string
-  onAdd: (mealId: string, entry: FoodEntry) => void
-  onClose: () => void
-}) {
-  const [analyzing, setAnalyzing] = useState(false)
-  const [result, setResult] = useState<PhotoMacros | null>(null)
-  const [selectedDemo, setSelectedDemo] = useState<string | null>(null)
-
-  const simulateAnalysis = async (foodHint?: string) => {
-    setAnalyzing(true)
-    setResult(null)
-    const photoResult = await analyzePhotoMacros(foodHint ? `demo:${foodHint}` : 'demo:random')
-    setAnalyzing(false)
-    setResult(photoResult)
-  }
-
-  const HEALTH_LEVEL_COLORS_LOCAL: Record<string, string> = {
-    excellent: Colors.accent.green,
-    good: '#4CAF50',
-    moderate: Colors.accent.yellow,
-    poor: Colors.accent.orange,
-    bad: '#FF375F',
-  }
-
-  const addResult = () => {
-    if (!result) return
-    onAdd(mealId, {
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-      name: result.foodName,
-      calories: result.calories,
-      protein: result.protein,
-      carbs: result.carbs,
-      fat: result.fat,
-      fiber: result.fiber ?? 0,
-      amount: 1,
-      unit: result.servingSize,
-    })
-    onClose()
-  }
-
-  return (
-    <ScrollView contentContainerStyle={{ padding: Spacing[4], paddingBottom: 60 }}>
-      {/* Camera placeholder */}
-      <View style={fp.camBox}>
-        <Text style={fp.camIcon}>🍽️</Text>
-        <Text style={fp.camTitle}>Análisis de foto con IA</Text>
-        <Text style={fp.camSub}>
-          {'Próximamente: apunta la cámara a tu plato\ny la IA detectará los macros automáticamente'}
-        </Text>
-      </View>
-
-      {/* Demo buttons */}
-      <Text style={fp.demoLabel}>Simular análisis de foto (demo):</Text>
-      <View style={fp.demoGrid}>
-        {DEMO_PHOTO_FOODS.map(food => (
-          <TouchableOpacity
-            key={food}
-            style={[fp.demoChip, selectedDemo === food && fp.demoChipOn]}
-            onPress={() => { setSelectedDemo(food); simulateAnalysis(food) }}
-            disabled={analyzing}
-          >
-            <Text style={[fp.demoChipTxt, selectedDemo === food && fp.demoChipTxtOn]}>{food}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <TouchableOpacity style={fp.analyzeBtn} onPress={() => simulateAnalysis()} disabled={analyzing}>
-        {analyzing
-          ? <><ActivityIndicator color="#fff" size="small" /><Text style={fp.analyzeBtnTxt}> Analizando...</Text></>
-          : <Text style={fp.analyzeBtnTxt}>📸 Tomar foto y analizar</Text>
-        }
-      </TouchableOpacity>
-
-      {result && (
-        <View style={fp.result}>
-          <View style={fp.resultHeader}>
-            <Text style={fp.resultName}>{result.foodName}</Text>
-            <View style={[fp.confidenceBadge, { backgroundColor: HEALTH_LEVEL_COLORS_LOCAL[result.healthLevel] + '20' }]}>
-              <Text style={[fp.confidenceTxt, { color: HEALTH_LEVEL_COLORS_LOCAL[result.healthLevel] }]}>
-                {Math.round(result.confidence * 100)}% confianza
-              </Text>
-            </View>
-          </View>
-          <Text style={fp.serving}>{result.servingSize}</Text>
-          <View style={fp.macroGrid}>
-            {[
-              { label: 'Calorías', val: `${result.calories}`, unit: 'kcal', color: Colors.primary[400] },
-              { label: 'Proteína', val: `${result.protein}g`, unit: '', color: Colors.accent.green },
-              { label: 'Carbos', val: `${result.carbs}g`, unit: '', color: Colors.accent.yellow },
-              { label: 'Grasas', val: `${result.fat}g`, unit: '', color: Colors.accent.orange },
-            ].map(({ label, val, color }) => (
-              <View key={label} style={fp.macroCell}>
-                <Text style={[fp.macroCellVal, { color }]}>{val}</Text>
-                <Text style={fp.macroCellLabel}>{label}</Text>
-              </View>
-            ))}
-          </View>
-          {result.tips.length > 0 && (
-            <View style={fp.tips}>
-              {result.tips.slice(0, 2).map((tip, i) => (
-                <Text key={i} style={fp.tipTxt}>💡 {tip}</Text>
-              ))}
-            </View>
-          )}
-          <TouchableOpacity style={fp.addBtn} onPress={addResult}>
-            <Text style={fp.addBtnTxt}>+ Agregar a comida</Text>
-          </TouchableOpacity>
-        </View>
-      )}
-    </ScrollView>
-  )
-}
-
-const fp = StyleSheet.create({
-  camBox: { height: 160, backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.lg, alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderStyle: 'dashed', borderColor: Colors.dark.border, marginBottom: Spacing[4], gap: Spacing[2] },
-  camIcon: { fontSize: 40 },
-  camTitle: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.dark.text },
-  camSub: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, textAlign: 'center', lineHeight: 18 },
-  demoLabel: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, fontWeight: '700', marginBottom: Spacing[2] },
-  demoGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2], marginBottom: Spacing[3] },
-  demoChip: { paddingHorizontal: Spacing[3], paddingVertical: Spacing[2], backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.full, borderWidth: 1, borderColor: Colors.dark.border },
-  demoChipOn: { borderColor: Colors.primary[500], backgroundColor: Colors.primary[900] + '40' },
-  demoChipTxt: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary },
-  demoChipTxtOn: { color: Colors.primary[400] },
-  analyzeBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.lg, padding: Spacing[4], alignItems: 'center', flexDirection: 'row', justifyContent: 'center', gap: Spacing[2], marginBottom: Spacing[4] },
-  analyzeBtnTxt: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
-  result: { backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.lg, padding: Spacing[4], borderWidth: 1, borderColor: Colors.dark.border, gap: Spacing[3] },
-  resultHeader: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between', gap: Spacing[2] },
-  resultName: { flex: 1, fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.dark.text },
-  confidenceBadge: { borderRadius: BorderRadius.full, paddingHorizontal: Spacing[2], paddingVertical: 3 },
-  confidenceTxt: { fontSize: 10, fontWeight: '700' },
-  serving: { fontSize: Typography.fontSize.xs, color: Colors.dark.textTertiary },
-  macroGrid: { flexDirection: 'row', gap: Spacing[2] },
-  macroCell: { flex: 1, alignItems: 'center', backgroundColor: Colors.dark.background, borderRadius: BorderRadius.md, padding: Spacing[3] },
-  macroCellVal: { fontSize: Typography.fontSize.base, fontWeight: '900' },
-  macroCellLabel: { fontSize: 10, color: Colors.dark.textTertiary, marginTop: 2 },
-  tips: { gap: Spacing[1] },
-  tipTxt: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, lineHeight: 18 },
-  addBtn: { backgroundColor: Colors.accent.green, borderRadius: BorderRadius.md, padding: Spacing[3], alignItems: 'center' },
-  addBtnTxt: { color: '#fff', fontWeight: '800', fontSize: Typography.fontSize.sm },
-})
-
-// ── Add Food Modal ─────────────────────────────────────────────────────────────
-
-function AddFoodModal({ visible, mealId, mealLabel, onClose, onAdd }: AddFoodModalProps) {
-  const [tab, setTab] = useState<'search' | 'scanner' | 'foto' | 'manual'>('search')
-  const [query, setQuery] = useState('')
-  // Manual form
-  const [name, setName]     = useState('')
-  const [cal, setCal]       = useState('')
-  const [prot, setProt]     = useState('')
-  const [carbs, setCarbs]   = useState('')
-  const [fat, setFat]       = useState('')
-  const [fiber, setFiber]   = useState('')
-  const [amount, setAmount] = useState('100')
-  const [unit, setUnit]     = useState('g')
-  const [multiplier, setMultiplier] = useState('1')
-
-  const filtered = query.length > 1
-    ? FOOD_DB.filter(f => f.name.toLowerCase().includes(query.toLowerCase())).slice(0, 10)
-    : FOOD_DB.slice(0, 12)
-
-  const addFromDB = (food: typeof FOOD_DB[0]) => {
-    const ml = parseFloat(multiplier) || 1
-    onAdd(mealId, {
-      ...food,
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-      calories: Math.round(food.calories * ml),
-      protein: Math.round(food.protein * ml * 10) / 10,
-      carbs:   Math.round(food.carbs * ml * 10) / 10,
-      fat:     Math.round(food.fat * ml * 10) / 10,
-      fiber:   Math.round(food.fiber * ml * 10) / 10,
-      amount:  Math.round(food.amount * ml),
-    })
-    setQuery(''); setMultiplier('1'); onClose()
-  }
-
-  const addManual = () => {
-    if (!name || !cal) { Alert.alert('Campos requeridos', 'Nombre y calorías son obligatorios'); return }
-    onAdd(mealId, {
-      id: Date.now().toString(),
-      timestamp: Date.now(),
-      name, calories: +cal, protein: +prot || 0, carbs: +carbs || 0,
-      fat: +fat || 0, fiber: +fiber || 0, amount: +amount || 1, unit,
-    })
-    setName(''); setCal(''); setProt(''); setCarbs(''); setFat(''); setFiber(''); setAmount('100')
-    onClose()
-  }
-
-  const reset = () => { setQuery(''); setMultiplier('1'); setTab('search') }
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <SafeAreaView style={m.container}>
-          <View style={m.header}>
-            <Text style={m.title}>Agregar a {mealLabel}</Text>
-            <TouchableOpacity onPress={() => { reset(); onClose() }}>
-              <Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" />
-            </TouchableOpacity>
-          </View>
-
-          {/* Tabs */}
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={m.tabsScroll}>
-            {([
-              { id: 'search',  icon: 'search',       label: 'Buscar' },
-              { id: 'scanner', icon: 'barcode',      label: 'Escanear' },
-              { id: 'foto',    icon: 'camera',       label: 'Foto IA' },
-              { id: 'manual',  icon: 'create',       label: 'Manual' },
-            ] as const).map(t => (
-              <TouchableOpacity key={t.id} style={[m.tab, tab === t.id && m.tabOn]} onPress={() => setTab(t.id)}>
-                <Ionicons name={t.icon} size={14} color={tab === t.id ? Colors.primary[400] : 'rgba(255,255,255,0.55)'} />
-                <Text style={[m.tabTxt, tab === t.id && m.tabTxtOn]}>{t.label}</Text>
-              </TouchableOpacity>
-            ))}
-          </ScrollView>
-
-          {tab === 'search' && (
-            <View style={{ flex: 1 }}>
-              <TextInput
-                style={m.searchInput}
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Buscar alimento..."
-                placeholderTextColor={Colors.neutral[500]}
-                autoFocus
-              />
-              <View style={m.multRow}>
-                <Text style={m.multLabel}>Multiplicador de porción:</Text>
-                <TextInput
-                  style={m.multInput}
-                  value={multiplier}
-                  onChangeText={setMultiplier}
-                  keyboardType="decimal-pad"
-                  placeholder="1"
-                />
-                <Text style={m.multHint}>× base</Text>
-              </View>
-              <FlatList
-                data={filtered}
-                keyExtractor={(_, i) => String(i)}
-                renderItem={({ item }) => {
-                  const ml = parseFloat(multiplier) || 1
-                  const level = classifyFoodByName(item.name)
-                  return (
-                    <TouchableOpacity style={m.foodRow} onPress={() => addFromDB(item)}>
-                      <View style={[m.semaforoDot, { backgroundColor: HEALTH_LEVEL_COLORS[level] }]} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={m.foodName}>{item.name}</Text>
-                        <Text style={m.foodMacros}>
-                          {Math.round(item.calories * ml)} kcal · P:{Math.round(item.protein * ml)}g · C:{Math.round(item.carbs * ml)}g · G:{Math.round(item.fat * ml)}g
-                        </Text>
-                      </View>
-                      <Text style={m.addIcon}>+</Text>
-                    </TouchableOpacity>
-                  )
-                }}
-                keyboardShouldPersistTaps="handled"
-              />
-            </View>
-          )}
-
-          {tab === 'scanner' && (
-            <ScrollView keyboardShouldPersistTaps="handled">
-              <BarcodeScannerTab mealId={mealId} onAdd={onAdd} onClose={onClose} />
-            </ScrollView>
-          )}
-
-          {tab === 'foto' && (
-            <FoodPhotoTab mealId={mealId} onAdd={onAdd} onClose={onClose} />
-          )}
-
-          {tab === 'manual' && (
-            <ScrollView contentContainerStyle={{ padding: Spacing[5] }} keyboardShouldPersistTaps="handled">
-              <Text style={m.fieldLabel}>Nombre del alimento *</Text>
-              <TextInput style={m.input} value={name} onChangeText={setName} placeholder="Ej. Tacos de canasta" placeholderTextColor={Colors.neutral[600]} />
-
-              <View style={m.row2}>
-                <View style={{ flex: 1 }}>
-                  <Text style={m.fieldLabel}>Calorías *</Text>
-                  <TextInput style={m.input} value={cal} onChangeText={setCal} keyboardType="number-pad" placeholder="300" placeholderTextColor={Colors.neutral[600]} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={m.fieldLabel}>Cantidad</Text>
-                  <TextInput style={m.input} value={amount} onChangeText={setAmount} keyboardType="decimal-pad" placeholder="100" placeholderTextColor={Colors.neutral[600]} />
-                </View>
-              </View>
-
-              <View style={m.row2}>
-                <View style={{ flex: 1 }}>
-                  <Text style={m.fieldLabel}>Proteína (g)</Text>
-                  <TextInput style={m.input} value={prot} onChangeText={setProt} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={Colors.neutral[600]} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={m.fieldLabel}>Carbos (g)</Text>
-                  <TextInput style={m.input} value={carbs} onChangeText={setCarbs} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={Colors.neutral[600]} />
-                </View>
-              </View>
-
-              <View style={m.row2}>
-                <View style={{ flex: 1 }}>
-                  <Text style={m.fieldLabel}>Grasas (g)</Text>
-                  <TextInput style={m.input} value={fat} onChangeText={setFat} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={Colors.neutral[600]} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={m.fieldLabel}>Fibra (g)</Text>
-                  <TextInput style={m.input} value={fiber} onChangeText={setFiber} keyboardType="decimal-pad" placeholder="0" placeholderTextColor={Colors.neutral[600]} />
-                </View>
-              </View>
-
-              <TouchableOpacity style={m.addBtn} onPress={addManual}>
-                <Text style={m.addBtnTxt}>Agregar alimento</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-    </Modal>
-  )
-}
-
-const m = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.dark.background },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[5], borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
-  title: { fontSize: Typography.fontSize.xl, fontWeight: '700', color: Colors.dark.text },
-  closeBtn: { fontSize: 22, color: Colors.dark.textSecondary, padding: Spacing[2] },
-  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
-  tabsScroll: { borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
-  tab: { flexDirection: 'row', gap: 6, paddingVertical: Spacing[3], paddingHorizontal: Spacing[4], alignItems: 'center' },
-  tabOn: { borderBottomWidth: 2, borderBottomColor: Colors.primary[500] },
-  tabTxt: { fontSize: Typography.fontSize.sm, color: Colors.dark.textSecondary, fontWeight: '600' },
-  tabTxtOn: { color: Colors.primary[400] },
-  searchInput: { margin: Spacing[4], backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.md, padding: Spacing[4], fontSize: Typography.fontSize.base, color: Colors.dark.text, borderWidth: 1, borderColor: Colors.dark.border },
-  multRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing[4], marginBottom: Spacing[2], gap: Spacing[2] },
-  multLabel: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, flex: 1 },
-  multInput: { backgroundColor: Colors.dark.surface, borderWidth: 1, borderColor: Colors.dark.border, borderRadius: BorderRadius.base, padding: Spacing[2], width: 60, textAlign: 'center', color: Colors.dark.text, fontSize: Typography.fontSize.sm },
-  multHint: { fontSize: Typography.fontSize.xs, color: Colors.dark.textTertiary },
-  foodRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing[4], paddingVertical: Spacing[3], borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
-  foodName: { fontSize: Typography.fontSize.sm, fontWeight: '600', color: Colors.dark.text },
-  foodMacros: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, marginTop: 2 },
-  addIcon: { fontSize: 24, color: Colors.primary[500], fontWeight: '700', paddingLeft: Spacing[3] },
-  semaforoDot: { width: 10, height: 10, borderRadius: 5, marginRight: Spacing[2] },
-  row2: { flexDirection: 'row', gap: Spacing[3], marginBottom: Spacing[3] },
-  fieldLabel: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: Colors.dark.textSecondary, marginBottom: Spacing[2], textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { backgroundColor: Colors.dark.surface, borderWidth: 1.5, borderColor: Colors.dark.border, borderRadius: BorderRadius.md, padding: Spacing[3], fontSize: Typography.fontSize.base, color: Colors.dark.text },
-  addBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.lg, padding: Spacing[4], alignItems: 'center', marginTop: Spacing[4] },
-  addBtnTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
-})
-
-// ── Meal Section ──────────────────────────────────────────────────────────────
-
-function MealSection({ meal, onAddPress, onRemove }: {
-  meal: MealSlot
-  onAddPress: () => void
-  onRemove: (entryId: string) => void
-}) {
-  const [open, setOpen] = useState(true)
-  const total = meal.entries.reduce((s, e) => s + e.calories, 0)
-  const totalP = meal.entries.reduce((s, e) => s + e.protein, 0)
-  const totalC = meal.entries.reduce((s, e) => s + e.carbs, 0)
-  const totalF = meal.entries.reduce((s, e) => s + e.fat, 0)
-
-  return (
-    <View style={ms.wrap}>
-      <TouchableOpacity style={ms.header} onPress={() => setOpen(v => !v)}>
-        <Text style={ms.emoji}>{meal.emoji}</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={ms.label}>{meal.label}</Text>
-          {total > 0 && (
-            <Text style={ms.sub}>{Math.round(total)} kcal · P:{Math.round(totalP)}g C:{Math.round(totalC)}g G:{Math.round(totalF)}g</Text>
-          )}
-        </View>
-        <TouchableOpacity style={ms.addBtn} onPress={onAddPress}>
-          <Text style={ms.addBtnTxt}>+ Agregar</Text>
-        </TouchableOpacity>
-        <Text style={[ms.chevron, open && { transform: [{ rotate: '90deg' }] }]}>›</Text>
-      </TouchableOpacity>
-
-      {open && (
-        <View style={ms.entries}>
-          {meal.entries.length === 0 ? (
-            <TouchableOpacity style={ms.emptyRow} onPress={onAddPress}>
-              <Text style={ms.emptyTxt}>Toca "Agregar" para registrar alimentos</Text>
-            </TouchableOpacity>
-          ) : (
-            meal.entries.map(entry => {
-              const level = classifyFoodByName(entry.name)
-              return (
-                <View key={entry.id} style={ms.entryRow}>
-                  <View style={[ms.semaforoDot, { backgroundColor: HEALTH_LEVEL_COLORS[level] }]} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={ms.entryName}>{entry.name}</Text>
-                    <Text style={ms.entryMacros}>{entry.amount}{entry.unit} · {entry.calories} kcal · P:{entry.protein}g C:{entry.carbs}g G:{entry.fat}g</Text>
-                  </View>
-                  <TouchableOpacity onPress={() => onRemove(entry.id)} style={ms.removeBtn}>
-                    <Text style={ms.removeTxt}>✕</Text>
-                  </TouchableOpacity>
-                </View>
-              )
-            })
-          )}
-        </View>
-      )}
-    </View>
-  )
-}
-
-const ms = StyleSheet.create({
-  wrap: { backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.lg, marginBottom: Spacing[3], overflow: 'hidden', borderWidth: 1, borderColor: Colors.dark.border },
-  header: { flexDirection: 'row', alignItems: 'center', padding: Spacing[4], gap: Spacing[3] },
-  emoji: { fontSize: 22 },
-  label: { fontSize: Typography.fontSize.base, fontWeight: '700', color: Colors.dark.text },
-  sub: { fontSize: Typography.fontSize.xs, color: Colors.primary[400], marginTop: 2 },
-  addBtn: { backgroundColor: Colors.primary[900] + '60', borderRadius: BorderRadius.base, paddingHorizontal: Spacing[3], paddingVertical: Spacing[1], borderWidth: 1, borderColor: Colors.primary[500] + '60' },
-  addBtnTxt: { fontSize: Typography.fontSize.xs, color: Colors.primary[400], fontWeight: '700' },
-  chevron: { fontSize: 20, color: Colors.dark.textTertiary, marginLeft: Spacing[1] },
-  entries: { borderTopWidth: 1, borderTopColor: Colors.dark.border },
-  emptyRow: { padding: Spacing[4] },
-  emptyTxt: { fontSize: Typography.fontSize.xs, color: Colors.dark.textTertiary, textAlign: 'center' },
-  entryRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing[4], paddingVertical: Spacing[3], borderBottomWidth: 1, borderBottomColor: Colors.dark.border + '80' },
-  semaforoDot: { width: 10, height: 10, borderRadius: 5, marginRight: Spacing[2] },
-  entryName: { fontSize: Typography.fontSize.sm, fontWeight: '600', color: Colors.dark.text },
-  entryMacros: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, marginTop: 2 },
-  removeBtn: { padding: Spacing[2] },
-  removeTxt: { fontSize: 14, color: Colors.accent.red, fontWeight: '700' },
-})
-
-// ── Main Screen ───────────────────────────────────────────────────────────────
-
-const NUTRITION_TOOLS = [
-  { icon: 'book-outline' as const,      label: 'Recetas',     sub: 'Cocina sano', route: '/recipes' },
-  { icon: 'calendar-outline' as const,  label: 'Plan comidas',sub: 'Semana completa', route: '/meal-planner' },
-  { icon: 'cart-outline' as const,      label: 'Compras',     sub: 'Lista inteligente', route: '/grocery' },
-  { icon: 'camera-outline' as const,    label: 'Foto IA',     sub: 'Analiza tu plato', route: null },
-]
 
 export default function NutritionScreen() {
   const router = useRouter()
   const { user, setUser } = useAuthStore()
   const {
-    meals, totalCalories, totalProtein, totalCarbs, totalFat, totalFiber,
-    loadToday, addEntry, removeEntry,
+    meals, totalCalories, totalProtein, totalCarbs, totalFat,
+    loadToday, addEntries, removeEntry, toggleEntryActive,
   } = useNutritionStore()
 
   const goals = (user as any)?.goals ?? {}
   const caloriesTarget = goals.calories_target ?? 2000
-  const mealsPerDay    = goals.meals_per_day ?? 3
-  const visibleMeals   = meals.slice(0, mealsPerDay)
+  // Piso del día. Si el perfil no trae uno guardado, se deriva del objetivo:
+  // por debajo del 85 % el déficit deja de ser sostenible.
+  const caloriesFloor  = goals.calories_min ?? Math.round(caloriesTarget * 0.85)
+  const proteinTarget  = goals.protein_g ?? 150
+  const carbsTarget    = goals.carbs_g ?? 200
+  const fatTarget      = goals.fat_g ?? 65
+  const visibleMeals   = meals.slice(0, goals.meals_per_day ?? 3)
 
   const { measurements, load: loadMeasurements } = useBodyMeasurementsStore()
   const [dismissedAdjustment, setDismissedAdjustment] = useState(false)
   const [applyingAdjustment, setApplyingAdjustment] = useState(false)
+  const [consoleOpen, setConsoleOpen] = useState(false)
+  const [consoleMeal, setConsoleMeal] = useState<string | null>(null)
 
+  useEffect(() => { loadToday() }, [])
   useEffect(() => { loadMeasurements() }, [])
 
-  const MAIN_GOAL_TO_GOAL: Record<string, Goal> = { lose_fat: 'perder_grasa', gain_muscle: 'ganar_musculo', maintain: 'mantener' }
+  // ── Ajuste calórico semanal ─────────────────────────────────────────────
+  const MAIN_GOAL_TO_GOAL: Record<string, Goal> = {
+    lose_fat: 'perder_grasa', gain_muscle: 'ganar_musculo', maintain: 'mantener',
+  }
   const goal = MAIN_GOAL_TO_GOAL[goals.main_goal] ?? 'mantener'
-  const weighIns = measurements.filter(m => typeof m.weight === 'number').map(m => ({ date: m.date, weightKg: m.weight! }))
+  const weighIns = measurements
+    .filter(m => typeof m.weight === 'number')
+    .map(m => ({ date: m.date, weightKg: m.weight! }))
   const adjustment = suggestCalorieAdjustment(weighIns, goal, caloriesTarget)
   const showAdjustment = adjustment.shouldAdjust && !dismissedAdjustment
 
   const applyAdjustment = async () => {
     setApplyingAdjustment(true)
     try {
-      const updatedGoals = { ...goals, calories_target: caloriesTarget + adjustment.deltaKcal }
-      const { data: res } = await api.put('/users/profile', { goals: updatedGoals })
+      const { data: res } = await api.put('/users/profile', {
+        goals: { ...goals, calories_target: caloriesTarget + adjustment.deltaKcal },
+      })
       if (res?.data) setUser(res.data)
       setDismissedAdjustment(true)
     } catch {
-      Alert.alert('Error', 'No se pudo aplicar el ajuste. Intenta desde Perfil.')
+      Alert.alert('No se pudo aplicar', 'Revisa tu conexión o cámbialo desde Perfil.')
     } finally {
       setApplyingAdjustment(false)
     }
   }
 
-  const [activeMeal, setActiveMeal]   = useState<{ id: string; label: string } | null>(null)
-  const [modalVisible, setModalVisible] = useState(false)
-
-  useEffect(() => { loadToday() }, [])
-
-  const openAdd = (mealId: string, mealLabel: string) => {
-    setActiveMeal({ id: mealId, label: mealLabel })
-    setModalVisible(true)
-  }
+  // ── Presupuesto por comida ──────────────────────────────────────────────
+  const budgets = computeMealBudgets(
+    visibleMeals.map(m => ({
+      id: m.id,
+      label: m.label,
+      consumed: Math.round(m.entries.reduce((a, e) => a + (e.active === false ? 0 : e.calories), 0)),
+      entryCount: m.entries.filter(e => e.active !== false).length,
+    })),
+    caloriesTarget,
+  )
+  const budgetById = Object.fromEntries(budgets.map(b => [b.id, b]))
 
   const remaining = Math.max(0, caloriesTarget - totalCalories)
-  const pct = Math.min((totalCalories / caloriesTarget) * 100, 100)
+  const overBy = Math.max(0, totalCalories - caloriesTarget)
+  const underFloorBy = Math.max(0, caloriesFloor - totalCalories)
+  const pct = caloriesTarget > 0 ? (totalCalories / caloriesTarget) * 100 : 0
+  const coachNote = buildCoachNote(budgets, Math.max(0, proteinTarget - totalProtein))
+
+  const closed = budgets.filter(b => b.status !== 'pending')
+  const adherence = closed.length
+    ? Math.round(closed.reduce((a, b) => (
+        b.budget <= 0 ? a + 100 : a + Math.max(0, 100 - (Math.abs(b.delta) / b.budget) * 100)
+      ), 0) / closed.length)
+    : 100
+
+  const nextPending = budgets.find(b => b.status === 'pending')
+  const nextMeal = nextPending ? visibleMeals.find(m => m.id === nextPending.id) : undefined
+
+  const openConsole = (mealId: string) => {
+    setConsoleMeal(mealId)
+    setConsoleOpen(true)
+  }
 
   return (
-    <SafeAreaView style={ns.container}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 160 }}>
-
-        {/* Header */}
-        <View style={ns.header}>
-          <View>
-            <Text style={ns.brand}>NUTRICIÓN</Text>
-            <Text style={ns.date}>{new Date().toLocaleDateString('es-MX', { weekday: 'long', month: 'long', day: 'numeric' })}</Text>
-          </View>
-        </View>
-
-        {/* Quick tools — Recetas, Plan, Compras, Foto IA */}
-        <View style={ns.toolsRow}>
-          {NUTRITION_TOOLS.map(tool => (
-            <TouchableOpacity
-              key={tool.label}
-              style={ns.toolCard}
-              onPress={() => tool.route ? router.push(tool.route as any) : Alert.alert('Foto IA', 'Agrega una comida y toca "📷 Foto IA" para analizar tu plato.')}
-              activeOpacity={0.78}
-            >
-              <View style={ns.toolHighlight} pointerEvents="none" />
-              <View style={ns.toolIconWrap}>
-                <Ionicons name={tool.icon} size={22} color={Colors.primary[400]} />
-              </View>
-              <Text style={ns.toolLabel}>{tool.label}</Text>
-              <Text style={ns.toolSub}>{tool.sub}</Text>
-            </TouchableOpacity>
-          ))}
-        </View>
-
-        {/* Daily summary */}
-        <View style={ns.summaryCard}>
-          <View style={ns.calRow}>
-            <View style={ns.calMain}>
-              <Text style={ns.calNum}>{totalCalories.toLocaleString()}</Text>
-              <Text style={ns.calLabel}>/ {caloriesTarget.toLocaleString()} kcal</Text>
+    <View style={s.root}>
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: TabBar.scrollInset + 20 }}
+        >
+          {/* ── Cabecera ── */}
+          <View style={s.head}>
+            <View style={s.kickRow}>
+              <View style={s.kickDot} />
+              <Text style={s.kick}>ZENCRUS · NUTRICIÓN</Text>
             </View>
-            <View style={ns.calStats}>
-              <Text style={ns.calStatTxt}>Restante</Text>
-              <Text style={[ns.calStatVal, { color: remaining === 0 ? Colors.accent.green : Colors.primary[400] }]}>
-                {remaining > 0 ? remaining.toLocaleString() : '✓'} {remaining > 0 ? 'kcal' : 'Meta'}
+            <Text style={s.h1}>Tu plato</Text>
+            <Text style={s.h1}>de <Text style={s.h1Accent}>hoy</Text></Text>
+          </View>
+
+          {/* ── Semana ── */}
+          <View style={s.week}>
+            {weekStrip().map(d => (
+              <View key={d.iso} style={[s.day, d.isToday && s.dayOn]}>
+                <Text style={[s.dayNum, d.isToday && s.dayNumOn]}>{d.day}</Text>
+                <Text style={[s.dayLbl, d.isToday && s.dayLblOn]}>{d.short}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* ── Estado del día ── */}
+          <View style={s.plate}>
+            <PlateRing
+              size={276}
+              target={caloriesTarget}
+              consumed={totalCalories}
+              minTarget={caloriesFloor}
+            />
+            <View style={s.plateCenter} pointerEvents="none">
+              <CountUp
+                value={overBy > 0 ? overBy : remaining}
+                style={[s.plateNum, overBy > 0 && s.plateNumOver]}
+              />
+              <Text style={s.plateLbl}>{overBy > 0 ? 'KCAL DE MÁS' : 'KCAL RESTANTES'}</Text>
+              <Text style={s.plateOf}>
+                {Math.round(totalCalories).toLocaleString('es-MX')} de {caloriesTarget.toLocaleString('es-MX')} kcal
               </Text>
             </View>
           </View>
 
-          {/* Progress bar */}
-          <View style={ns.progTrack}>
-            <View style={[ns.progFill, { width: `${pct}%` as any, backgroundColor: pct >= 100 ? Colors.accent.orange : Colors.primary[500] }]} />
-          </View>
-
-          {/* Macros */}
-          <View style={ns.macrosRow}>
-            <MacroChip label="Proteína" val={totalProtein} target={goals.protein_g ?? 150} color={Colors.primary[500]} />
-            <MacroChip label="Carbos"   val={totalCarbs}   target={goals.carbs_g ?? 200}   color={Colors.secondary[500]} />
-            <MacroChip label="Grasas"   val={totalFat}     target={goals.fat_g ?? 65}       color={Colors.accent.orange} />
-            <MacroChip label="Fibra"    val={totalFiber}   target={goals.fiber_g ?? 28}     color={Colors.accent.green} />
-          </View>
-        </View>
-
-        {/* Sugerencia de ajuste automático semanal — nunca silenciosa, siempre explicada */}
-        {showAdjustment && (
-          <View style={ns.adjustCard}>
-            <View style={ns.adjustHead}>
-              <Ionicons name="trending-up" size={18} color={Colors.accent.yellow} />
-              <Text style={ns.adjustTitle}>Ajuste sugerido esta semana</Text>
+          {/* Leyenda de límites del anillo */}
+          <View style={s.legend}>
+            <View style={s.legendItem}>
+              <View style={[s.legendMark, { backgroundColor: NEON.steelSoft }]} />
+              <Text style={s.legendTxt}>Mín {caloriesFloor.toLocaleString('es-MX')}</Text>
             </View>
-            <Text style={ns.adjustReason}>{adjustment.reason}</Text>
-            <View style={ns.adjustActions}>
-              <TouchableOpacity style={ns.adjustDismiss} onPress={() => setDismissedAdjustment(true)}>
-                <Text style={ns.adjustDismissTxt}>Ignorar</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={ns.adjustAccept} onPress={applyAdjustment} disabled={applyingAdjustment}>
-                {applyingAdjustment
-                  ? <ActivityIndicator color="#fff" size="small" />
-                  : <Text style={ns.adjustAcceptTxt}>{adjustment.deltaKcal > 0 ? '+' : ''}{adjustment.deltaKcal} kcal · Aceptar</Text>
-                }
-              </TouchableOpacity>
+            <View style={s.legendItem}>
+              <View style={s.legendBand} />
+              <Text style={s.legendTxt}>Zona óptima</Text>
+            </View>
+            <View style={s.legendItem}>
+              <View style={[s.legendMark, { backgroundColor: NEON.white }]} />
+              <Text style={s.legendTxt}>Meta {caloriesTarget.toLocaleString('es-MX')}</Text>
             </View>
           </View>
-        )}
 
-        {/* Meal sections */}
-        <View style={ns.section}>
-          <Text style={ns.sectionTitle}>Registro del día</Text>
+          <View style={s.verdict}>
+            <View style={[s.verdictDot, pct > 100 && { backgroundColor: NEON.redSoft }]} />
+            <Text style={s.verdictTxt}>
+              {/* Con el día en blanco, «vas dentro de meta» es falso: aún no
+                  hay nada que juzgar. El veredicto solo aplica al día vivo. */}
+              {totalCalories === 0 ? 'Sin registrar aún'
+                : overBy > 0 ? 'Te pasaste de la meta'
+                : remaining === 0 ? 'Meta alcanzada'
+                : underFloorBy > 0 ? 'Por debajo del mínimo'
+                : 'Vas dentro de meta'}
+            </Text>
+            <Text style={s.verdictPct}>
+              <Text style={s.verdictPctB}>{adherence} %</Text> adherencia
+            </Text>
+          </View>
+
+          {/* ── Aviso de exceso ── */}
+          {overBy > 0 && (
+            <View style={s.limitOver}>
+              <ZIcon name="warning" size={15} color={NEON.red} weight={2} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.limitOverTitle}>
+                  Te pasaste por {overBy.toLocaleString('es-MX')} kcal
+                </Text>
+                <Text style={s.limitBody}>
+                  Un día no define la semana. Mañana bajamos{' '}
+                  {Math.min(overBy, 300).toLocaleString('es-MX')} kcal y quedamos parejos.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* ── Aviso de piso: comer de menos también cuenta ── */}
+          {overBy === 0 && underFloorBy > 0 && (
+            <View style={s.limitLow}>
+              <ZIcon name="target" size={14} color={NEON.steelSoft} weight={2} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.limitLowTitle}>
+                  Te faltan {underFloorBy.toLocaleString('es-MX')} kcal para el mínimo
+                </Text>
+                <Text style={s.limitBody}>
+                  Tu piso son {caloriesFloor.toLocaleString('es-MX')} kcal. Comer de menos
+                  también frena el progreso.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          <View style={s.macros}>
+            <Macro label="Proteína" value={totalProtein} target={proteinTarget} tone={NEON.white} />
+            <Macro label="Carbos"   value={totalCarbs}   target={carbsTarget}   tone={NEON.w2} />
+            <Macro label="Grasas"   value={totalFat}     target={fatTarget}     tone={NEON.steelSoft} />
+          </View>
+
+          {/* ── Ajuste sugerido ── */}
+          {showAdjustment && (
+            <View style={s.adjust}>
+              <View style={s.adjustHead}>
+                <ZIcon name="target" size={16} color={NEON.white} weight={1.7} />
+                <Text style={s.adjustTitle}>Ajuste sugerido esta semana</Text>
+              </View>
+              <Text style={s.adjustReason}>{adjustment.reason}</Text>
+              <View style={s.adjustActions}>
+                <TouchableOpacity
+                  style={s.adjustSkip}
+                  onPress={() => setDismissedAdjustment(true)}
+                  activeOpacity={0.75}
+                >
+                  <Text style={s.adjustSkipTxt}>Ignorar</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={s.adjustApply}
+                  onPress={applyAdjustment}
+                  disabled={applyingAdjustment}
+                  activeOpacity={0.85}
+                >
+                  {applyingAdjustment
+                    ? <ActivityIndicator color="#fff" size="small" />
+                    : (
+                      <Text style={s.adjustApplyTxt}>
+                        {adjustment.deltaKcal > 0 ? '+' : ''}{adjustment.deltaKcal} kcal · Aplicar
+                      </Text>
+                    )}
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          {/* ── Comidas ── */}
+          <Section title="Comidas" note="Presupuesto adaptativo" />
+
           {visibleMeals.map(meal => (
-            <MealSection
+            <MealCard
               key={meal.id}
               meal={meal}
-              onAddPress={() => openAdd(meal.id, meal.label)}
-              onRemove={(entryId) => removeEntry(meal.id, entryId)}
+              budget={budgetById[meal.id]}
+              onAdd={() => openConsole(meal.id)}
+              onRemove={id => removeEntry(meal.id, id)}
+              onToggle={id => toggleEntryActive(meal.id, id)}
             />
           ))}
-        </View>
 
-        {/* Quick tip */}
-        <View style={[ns.tip, { flexDirection: 'row', alignItems: 'flex-start', gap: 8 }]}>
-          <Ionicons name="bulb" size={15} color={Colors.accent.yellow} style={{ marginTop: 1 }} />
-          <Text style={[ns.tipTxt, { flex: 1 }]}>Registra tus comidas para ver tu progreso en tiempo real. El Coach IA puede analizar tu dieta de hoy.</Text>
-        </View>
-      </ScrollView>
+          {nextMeal && (
+            <TouchableOpacity style={s.cta} onPress={() => openConsole(nextMeal.id)} activeOpacity={0.86}>
+              <ZIcon name="plus" size={17} color="#fff" weight={2.2} />
+              <Text style={s.ctaTxt}>Registrar {nextMeal.label.toLowerCase()}</Text>
+            </TouchableOpacity>
+          )}
 
-      {/* Add Food Modal */}
-      {activeMeal && (
-        <AddFoodModal
-          visible={modalVisible}
-          mealId={activeMeal.id}
-          mealLabel={activeMeal.label}
-          onClose={() => setModalVisible(false)}
-          onAdd={addEntry}
+          {/* ── ZENA ── */}
+          {coachNote && (
+            <View style={s.zena}>
+              <View style={s.zenaMark}>
+                <ZIcon name="spark" size={14} color="#fff" />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={s.zenaName}>ZENA</Text>
+                <Text style={s.zenaTxt}>{coachNote}</Text>
+              </View>
+            </View>
+          )}
+
+          {/* ── Herramientas ── */}
+          <Section title="Herramientas" />
+          <View style={s.tools}>
+            {TOOLS.map(tool => (
+              <TouchableOpacity
+                key={tool.label}
+                style={s.tool}
+                onPress={() => tool.route && router.push(tool.route as any)}
+                activeOpacity={0.78}
+              >
+                <View style={s.toolIcon}>
+                  <ZIcon name={tool.icon} size={18} color={NEON.white} weight={1.6} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={s.toolLabel}>{tool.label}</Text>
+                  <Text style={s.toolNote} numberOfLines={1}>{tool.note}</Text>
+                </View>
+                <ZIcon name="chevronRight" size={14} color={NEON.w3} weight={1.9} />
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      </SafeAreaView>
+
+      {/* Difuminado bajo la barra flotante: el contenido se desvanece en vez de
+          quedar cortado por la píldora. */}
+      <LinearGradient
+        colors={['rgba(5,5,6,0)', 'rgba(5,5,6,0.92)', '#050506']}
+        style={s.scrim}
+        pointerEvents="none"
+      />
+
+      {consoleMeal && (
+        <FoodConsole
+          visible={consoleOpen}
+          meals={visibleMeals}
+          budgetById={budgetById}
+          initialMealId={consoleMeal}
+          dailyConsumed={totalCalories}
+          dailyTarget={caloriesTarget}
+          onClose={() => setConsoleOpen(false)}
+          onCommit={addEntries}
         />
       )}
-    </SafeAreaView>
-  )
-}
-
-function MacroChip({ label, val, target, color }: { label: string; val: number; target: number; color: string }) {
-  const pct = target > 0 ? val / target : 0
-  return (
-    <View style={mc2.wrap}>
-      <MiniRing value={pct} color={color} size={52} strokeWidth={4.5}>
-        <Text style={[mc2.ringVal, { color }]}>{Math.round(val)}</Text>
-      </MiniRing>
-      <Text style={mc2.target}>/ {target}g</Text>
-      <Text style={mc2.label}>{label}</Text>
     </View>
   )
 }
-const mc2 = StyleSheet.create({
-  wrap: { flex: 1, alignItems: 'center', gap: 3 },
-  ringVal: { fontSize: 14, fontWeight: '800' },
-  target: { fontSize: 10, color: 'rgba(255,255,255,0.3)' },
-  label: { fontSize: 10, color: 'rgba(255,255,255,0.45)', marginTop: 1 },
-})
 
-const ns = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080808' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[5] },
-  // Ajuste automático semanal
-  adjustCard: { marginHorizontal: Spacing[4], marginBottom: Spacing[5], backgroundColor: 'rgba(255,214,10,0.08)', borderWidth: 1, borderColor: 'rgba(255,214,10,0.25)', borderRadius: BorderRadius.lg, padding: Spacing[4] },
-  adjustHead: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2], marginBottom: Spacing[2] },
-  adjustTitle: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: Colors.accent.yellow },
-  adjustReason: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.8)', lineHeight: 20, marginBottom: Spacing[3] },
-  adjustActions: { flexDirection: 'row', gap: Spacing[3] },
-  adjustDismiss: { flex: 1, alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing[3], borderRadius: BorderRadius.md, borderWidth: 1, borderColor: 'rgba(255,255,255,0.15)' },
-  adjustDismissTxt: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: 'rgba(255,255,255,0.6)' },
-  adjustAccept: { flex: 2, alignItems: 'center', justifyContent: 'center', paddingVertical: Spacing[3], borderRadius: BorderRadius.md, backgroundColor: Colors.primary[500] },
-  adjustAcceptTxt: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
-  brand: { fontSize: Typography.fontSize.xs, fontWeight: '800', color: Colors.primary[400], letterSpacing: 3 },
-  date: { fontSize: Typography.fontSize.base, fontWeight: '700', color: '#fff', marginTop: 2, textTransform: 'capitalize' },
-  // Quick tools grid
-  toolsRow: { flexDirection: 'row', flexWrap: 'wrap', paddingHorizontal: Spacing[4], gap: Spacing[3], marginBottom: Spacing[5] },
-  toolCard: {
-    width: '22%', flexGrow: 1,
-    backgroundColor: Glass.card, borderRadius: 16,
-    borderWidth: 1, borderColor: Glass.cardBorder,
-    padding: Spacing[3], alignItems: 'center', gap: 6,
-    overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.2, shadowRadius: 8,
+// ── Piezas ────────────────────────────────────────────────────────────────────
+
+function Section({ title, note }: { title: string; note?: string }) {
+  return (
+    <View style={s.section}>
+      <Text style={s.sectionTitle}>{title.toUpperCase()}</Text>
+      {!!note && <Text style={s.sectionNote}>{note}</Text>}
+    </View>
+  )
+}
+
+/**
+ * Macro como barra, no como anillo.
+ *
+ * Tres anillos junto al medidor principal competían con él y obligaban a leer
+ * cuatro círculos para entender un día. La barra es un dato de apoyo y se lee
+ * de un vistazo; además el color separa los tres: blanco, blanco atenuado y
+ * acero, reservando el rojo para lo que exige atención.
+ */
+function Macro({ label, value, target, tone }: {
+  label: string; value: number; target: number; tone: string
+}) {
+  const pct = target > 0 ? Math.min(value / target, 1) : 0
+  return (
+    <View style={s.macro}>
+      <View style={s.macroTop}>
+        <Text style={s.macroLbl}>{label.toUpperCase()}</Text>
+        <Text style={s.macroVal}>{Math.round(value)}<Text style={s.macroTarget}>/{target}g</Text></Text>
+      </View>
+      <View style={s.macroTrack}>
+        <View style={[s.macroFill, { width: `${pct * 100}%` as any, backgroundColor: tone }]} />
+      </View>
+    </View>
+  )
+}
+
+function MealCard({ meal, budget, onAdd, onRemove, onToggle }: {
+  meal: MealSlot
+  budget?: MealBudget
+  onAdd: () => void
+  onRemove: (entryId: string) => void
+  onToggle: (entryId: string) => void
+}) {
+  const [open, setOpen] = useState(false)
+  const active = meal.entries.filter(e => e.active !== false)
+  const kcal = Math.round(active.reduce((a, e) => a + e.calories, 0))
+  const empty = meal.entries.length === 0
+  const over = budget?.status === 'over'
+  const status = budget ? describeMealStatus(budget) : null
+
+  return (
+    <View style={[s.meal, empty && s.mealEmpty]}>
+      <TouchableOpacity
+        style={s.mealTop}
+        onPress={() => (empty ? onAdd() : setOpen(v => !v))}
+        activeOpacity={0.82}
+      >
+        <View style={[s.mealMark, empty && s.mealMarkEmpty]}>
+          <ZIcon
+            name={empty ? 'plus' : mealIcon(meal.id)}
+            size={17}
+            color={empty ? NEON.red : NEON.white}
+            weight={empty ? 2.2 : 1.7}
+          />
+        </View>
+
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={s.mealName}>{meal.label}</Text>
+          <Text style={s.mealSub} numberOfLines={1}>
+            {active.length === 0
+              ? (empty ? 'Sin registrar' : 'Todo desactivado')
+              : active.map(e => e.name.split('(')[0].trim()).join(' · ')}
+          </Text>
+        </View>
+
+        <View style={{ alignItems: 'flex-end' }}>
+          <Text style={[s.mealKcal, empty && { color: NEON.w3 }]}>{kcal}</Text>
+          {!!budget && <Text style={s.mealBudget}>de {budget.budget}</Text>}
+        </View>
+
+        {!empty && (
+          <ZIcon name={open ? 'chevronUp' : 'chevronDown'} size={14} color={NEON.w3} weight={1.9} />
+        )}
+      </TouchableOpacity>
+
+      <View style={s.track}>
+        <View
+          style={[
+            s.fill,
+            {
+              width: `${Math.round((budget?.fill ?? 0) * 100)}%` as any,
+              backgroundColor: over ? NEON.red : NEON.white,
+            },
+          ]}
+        />
+      </View>
+
+      {!!status && (
+        <View style={s.statusRow}>
+          <View style={[s.statusDot, over && { backgroundColor: NEON.red }]} />
+          <Text style={[s.statusTxt, over && { color: NEON.redSoft }]}>{status}</Text>
+        </View>
+      )}
+
+      {open && !empty && (
+        <View style={s.entries}>
+          {meal.entries.map(e => {
+            const on = e.active !== false
+            return (
+              <View key={e.id} style={[s.entry, !on && s.entryOff]}>
+                <TouchableOpacity
+                  onPress={() => onToggle(e.id)}
+                  hitSlop={8}
+                  style={[s.check, on && s.checkOn]}
+                >
+                  {on && <ZIcon name="check" size={10} color="#fff" weight={3} />}
+                </TouchableOpacity>
+                {/* Las entradas antiguas no traen emoji guardado, así que se
+                    deduce del nombre para que ninguna fila quede sin icono. */}
+                <Text style={[s.entryEmoji, !on && s.entryEmojiOff]}>
+                  {e.emoji ?? emojiForFood(e.name)}
+                </Text>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={[s.entryName, !on && s.strike]} numberOfLines={1}>{e.name}</Text>
+                  <Text style={s.entryMacros}>
+                    {e.amount} {e.unit} · P {Math.round(e.protein)} · C {Math.round(e.carbs)} · G {Math.round(e.fat)}
+                  </Text>
+                </View>
+                <Text style={[s.entryKcal, !on && s.strike]}>{Math.round(e.calories)}</Text>
+                <TouchableOpacity onPress={() => onRemove(e.id)} hitSlop={8}>
+                  <ZIcon name="close" size={13} color={NEON.w3} weight={2} />
+                </TouchableOpacity>
+              </View>
+            )
+          })}
+
+          <TouchableOpacity style={s.entryAdd} onPress={onAdd} activeOpacity={0.8}>
+            <ZIcon name="plus" size={12} color={NEON.red} weight={2.2} />
+            <Text style={s.entryAddTxt}>Añadir a {meal.label.toLowerCase()}</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  )
+}
+
+// ── Utilidades ────────────────────────────────────────────────────────────────
+
+function weekStrip() {
+  const SHORT = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá']
+  const today = new Date()
+  return Array.from({ length: 6 }, (_, i) => {
+    const d = new Date(today)
+    d.setDate(today.getDate() - (5 - i))
+    return {
+      iso: d.toISOString().slice(0, 10),
+      day: d.getDate(),
+      short: SHORT[d.getDay()],
+      isToday: i === 5,
+    }
+  })
+}
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: NEON.void },
+
+  // Cabecera
+  head: { paddingHorizontal: 20, paddingTop: 6 },
+  kickRow: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 9 },
+  kickDot: { width: 5, height: 5, borderRadius: 3, backgroundColor: NEON.red },
+  kick: { fontSize: 9.5, fontWeight: '800', letterSpacing: 2.6, color: NEON.red },
+  h1: { fontSize: 34, fontWeight: '800', color: NEON.white, letterSpacing: -1.2, lineHeight: 37 },
+  h1Accent: { color: NEON.red },
+
+  // Semana
+  week: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, marginTop: 20 },
+  day: {
+    flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 13,
+    backgroundColor: NEON.pane,
   },
-  toolHighlight: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-    backgroundColor: Glass.cardHighlight,
+  dayOn: { backgroundColor: 'rgba(255,31,61,0.16)' },
+  dayNum: { fontSize: 13.5, fontWeight: '800', color: NEON.w2, fontVariant: ['tabular-nums'] },
+  dayNumOn: { color: NEON.white },
+  dayLbl: { fontSize: 8, fontWeight: '800', letterSpacing: 1.2, color: NEON.w3, marginTop: 3 },
+  dayLblOn: { color: NEON.redSoft },
+
+  // Estado
+  plate: { alignItems: 'center', justifyContent: 'flex-start', marginTop: 18 },
+  // El arco abre por abajo, así que la cifra se asienta algo por encima del
+  // centro geométrico para quedar ópticamente centrada dentro del medidor.
+  plateCenter: { position: 'absolute', top: '34%', alignItems: 'center' },
+  plateOf: { fontSize: 11, color: NEON.w3, marginTop: 7 },
+  plateNum: {
+    fontSize: 58, fontWeight: '800', color: NEON.white,
+    letterSpacing: -3, lineHeight: 60, fontVariant: ['tabular-nums'],
   },
-  toolIconWrap: {
-    width: 44, height: 44, borderRadius: 22,
-    backgroundColor: Glass.purpleTint, borderWidth: 1, borderColor: Glass.purpleBorder,
+  plateLbl: { fontSize: 8.5, fontWeight: '800', letterSpacing: 2.2, color: NEON.w3, marginTop: 9 },
+  plateNumOver: { color: NEON.red },
+
+  // Leyenda de límites del anillo
+  legend: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    gap: 16, marginTop: 14,
+  },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  legendMark: { width: 2, height: 11, borderRadius: 1 },
+  legendBand: { width: 14, height: 6, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.22)' },
+  legendTxt: { fontSize: 10.5, fontWeight: '600', color: NEON.w3 },
+
+  // Avisos de límite
+  limitOver: {
+    flexDirection: 'row', gap: 10, alignItems: 'flex-start',
+    marginHorizontal: 20, marginTop: 12, padding: 13, borderRadius: 14,
+    backgroundColor: NEON.redDim, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+  },
+  limitOverTitle: {
+    fontSize: 12.5, fontWeight: '800', color: NEON.red,
+    letterSpacing: 0.2, marginBottom: 3,
+  },
+  limitLow: {
+    flexDirection: 'row', gap: 10, alignItems: 'flex-start',
+    marginHorizontal: 20, marginTop: 12, padding: 12, borderRadius: 12,
+    backgroundColor: NEON.paneHi, borderWidth: 1, borderColor: NEON.edge,
+  },
+  limitLowTitle: {
+    fontSize: 12, fontWeight: '800', color: NEON.steelSoft,
+    letterSpacing: 0.2, marginBottom: 3,
+  },
+  limitBody: { fontSize: 11.5, lineHeight: 16, color: NEON.w2 },
+
+  verdict: {
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+    marginHorizontal: 20, marginTop: 22, height: 46, paddingHorizontal: 16,
+    borderRadius: 14, backgroundColor: NEON.paneHi,
+  },
+  verdictDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: NEON.white },
+  verdictTxt: { fontSize: 12.5, fontWeight: '700', color: NEON.white },
+  verdictPct: { marginLeft: 'auto', fontSize: 11, fontWeight: '700', color: NEON.w2 },
+  verdictPctB: { color: NEON.white, fontWeight: '800' },
+
+  macros: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 14 },
+  macro: {
+    flex: 1, paddingVertical: 10, paddingHorizontal: 11,
+    borderRadius: 14, backgroundColor: NEON.pane,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: NEON.edge,
+  },
+  macroTop: {
+    flexDirection: 'row', alignItems: 'baseline',
+    justifyContent: 'space-between', marginBottom: 7,
+  },
+  macroVal: { fontSize: 12.5, fontWeight: '800', color: NEON.white, fontVariant: ['tabular-nums'] },
+  macroTarget: { fontSize: 9, color: NEON.w3, fontWeight: '600' },
+  macroLbl: { fontSize: 8, fontWeight: '800', letterSpacing: 1.3, color: NEON.w3 },
+  macroTrack: { height: 3, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.09)', overflow: 'hidden' },
+  macroFill: { height: '100%', borderRadius: 2 },
+
+  // Ajuste
+  adjust: {
+    marginHorizontal: 20, marginTop: 22, padding: 16,
+    borderRadius: 18, backgroundColor: NEON.pane,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: NEON.edge,
+  },
+  adjustHead: { flexDirection: 'row', alignItems: 'center', gap: 9, marginBottom: 9 },
+  adjustTitle: { fontSize: 13, fontWeight: '800', color: NEON.white },
+  adjustReason: { fontSize: 12.5, color: NEON.w2, lineHeight: 19, marginBottom: 14 },
+  adjustActions: { flexDirection: 'row', gap: 9 },
+  adjustSkip: {
+    flex: 1, height: 44, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  adjustSkipTxt: { fontSize: 12.5, fontWeight: '700', color: NEON.w2 },
+  adjustApply: {
+    flex: 2, height: 44, alignItems: 'center', justifyContent: 'center',
+    borderRadius: 12, backgroundColor: NEON.red,
+  },
+  adjustApplyTxt: { fontSize: 12.5, fontWeight: '800', color: '#fff' },
+
+  // Secciones
+  section: {
+    flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
+    paddingHorizontal: 20, marginTop: 30, marginBottom: 13,
+  },
+  sectionTitle: { fontSize: 9.5, fontWeight: '800', letterSpacing: 2.4, color: NEON.w3 },
+  sectionNote: { fontSize: 10, fontWeight: '700', color: NEON.w3 },
+
+  // Comida
+  meal: {
+    marginHorizontal: 20, marginBottom: 9, padding: 14,
+    borderRadius: 18, backgroundColor: NEON.pane,
+  },
+  mealEmpty: { backgroundColor: 'rgba(255,31,61,0.06)' },
+  mealTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  mealMark: {
+    width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.07)',
+  },
+  mealMarkEmpty: { backgroundColor: 'rgba(255,31,61,0.13)' },
+  mealName: { fontSize: 13.5, fontWeight: '700', color: NEON.white, letterSpacing: -0.2 },
+  mealSub: { fontSize: 11, color: NEON.w3, marginTop: 3 },
+  mealKcal: { fontSize: 15, fontWeight: '800', color: NEON.white, fontVariant: ['tabular-nums'] },
+  mealBudget: { fontSize: 9.5, color: NEON.w3, marginTop: 2, fontVariant: ['tabular-nums'] },
+
+  track: { height: 4, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.08)', marginTop: 13, overflow: 'hidden' },
+  fill: { height: 4, borderRadius: 2 },
+
+  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 10 },
+  statusDot: { width: 4.5, height: 4.5, borderRadius: 3, backgroundColor: NEON.w2 },
+  statusTxt: { fontSize: 10, fontWeight: '700', color: NEON.w2 },
+
+  entries: {
+    marginTop: 13, paddingTop: 12, gap: 11,
+    borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: NEON.edge,
+  },
+  entry: { flexDirection: 'row', alignItems: 'center', gap: 10 },
+  entryOff: { opacity: 0.42 },
+  check: {
+    width: 19, height: 19, borderRadius: 6,
+    borderWidth: 1.4, borderColor: 'rgba(255,255,255,0.26)',
     alignItems: 'center', justifyContent: 'center',
   },
-  toolLabel: { fontSize: 11, fontWeight: '700', color: '#fff', textAlign: 'center' },
-  toolSub: { fontSize: 9, color: 'rgba(255,255,255,0.38)', textAlign: 'center' },
-  // Summary card
-  summaryCard: {
-    marginHorizontal: Spacing[5], backgroundColor: Glass.elevated,
-    borderRadius: BorderRadius.xl, padding: Spacing[5],
-    borderWidth: 1, borderColor: Glass.cardBorder, marginBottom: Spacing[4],
-    overflow: 'hidden',
+  checkOn: { backgroundColor: NEON.red, borderColor: NEON.red },
+  strike: { textDecorationLine: 'line-through' },
+  entryEmoji: { fontSize: 16, width: 22, textAlign: 'center' },
+  entryEmojiOff: { opacity: 0.4 },
+  entryName: { fontSize: 12.5, color: NEON.white, fontWeight: '600' },
+  entryMacros: { fontSize: 10, color: NEON.w3, marginTop: 2, fontVariant: ['tabular-nums'] },
+  entryKcal: { fontSize: 12.5, fontWeight: '800', color: NEON.w2, fontVariant: ['tabular-nums'] },
+  entryAdd: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 1 },
+  entryAddTxt: { fontSize: 11.5, fontWeight: '700', color: NEON.red },
+
+  // Acción principal
+  cta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
+    marginHorizontal: 20, marginTop: 12, height: 54, borderRadius: 16,
+    backgroundColor: NEON.red,
   },
-  calRow: { flexDirection: 'row', alignItems: 'flex-end', justifyContent: 'space-between', marginBottom: Spacing[3] },
-  calMain: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  calNum: { fontFamily: Typography.fontFamily.display, fontSize: 46, color: '#fff' },
-  calLabel: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.5)' },
-  calStats: { alignItems: 'flex-end' },
-  calStatTxt: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.35)' },
-  calStatVal: { fontSize: Typography.fontSize.lg, fontWeight: '800' },
-  progTrack: { height: 5, backgroundColor: 'rgba(255,255,255,0.1)', borderRadius: 3, overflow: 'hidden', marginBottom: Spacing[4] },
-  progFill: { height: 5, borderRadius: 3 },
-  macrosRow: { flexDirection: 'row', gap: Spacing[2] },
-  section: { paddingHorizontal: Spacing[5] },
-  sectionTitle: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff', marginBottom: Spacing[3] },
-  tip: {
-    marginHorizontal: Spacing[5], marginTop: Spacing[4],
-    backgroundColor: Glass.purpleTint, borderRadius: BorderRadius.md,
-    padding: Spacing[4], borderWidth: 1, borderColor: Glass.purpleBorder,
+  ctaTxt: { fontSize: 14.5, fontWeight: '800', color: '#fff' },
+
+  // ZENA
+  zena: {
+    flexDirection: 'row', gap: 12, marginHorizontal: 20, marginTop: 22, padding: 15,
+    borderRadius: 18, backgroundColor: 'rgba(255,31,61,0.09)',
   },
-  tipTxt: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.55)', lineHeight: 18 },
+  zenaMark: {
+    width: 28, height: 28, borderRadius: 9, backgroundColor: NEON.red,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  zenaName: { fontSize: 9.5, fontWeight: '800', letterSpacing: 1.6, color: NEON.redSoft, marginBottom: 4 },
+  zenaTxt: { fontSize: 12.5, lineHeight: 19, color: 'rgba(255,225,230,0.92)' },
+
+  // Herramientas
+  tools: { paddingHorizontal: 20, gap: 8 },
+  tool: {
+    flexDirection: 'row', alignItems: 'center', gap: 13,
+    height: 62, paddingHorizontal: 14, borderRadius: 16,
+    backgroundColor: NEON.pane,
+  },
+  toolIcon: {
+    width: 38, height: 38, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  toolLabel: { fontSize: 13, fontWeight: '700', color: NEON.white },
+  toolNote: { fontSize: 10.5, color: NEON.w3, marginTop: 2 },
+
+  // Difuminado inferior
+  scrim: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    height: TabBar.scrollInset,
+  },
 })

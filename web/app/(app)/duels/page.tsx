@@ -3,13 +3,13 @@
 import { useEffect, useState } from "react";
 import { Swords, Plus, X, Trophy, Footprints, Dumbbell, Flame } from "lucide-react";
 
-const C = { bg: "#08090c", panel: "#0f1218", border: "#1e2430", navy: "#1e3a8a", navySoft: "rgba(30,58,138,0.16)", text: "#f4f5f7", dim: "#9aa3b2", dim2: "#5f6875", green: "#3fae6b" };
+const C = { bg: "#08090c", panel: "#0f1218", border: "#1e2430", navy: "#1e3a8a", navySoft: "rgba(30,58,138,0.16)", text: "#f4f5f7", dim: "#9aa3b2", dim2: "#5f6875", green: "#FFFFFF" };
 
 interface Duel { id: string; type: string; opponent: string; myScore: number; theirScore: number; daysLeft: number; goal: string; }
 const KEY = "zencrus-duels";
 const DUEL_TYPES = [
-  { id: "steps", label: "Pasos", icon: Footprints, color: "#3fae6b", goal: "Más pasos en 7 días" },
-  { id: "workouts", label: "Entrenos", icon: Dumbbell, color: "#60a5fa", goal: "Más entrenamientos en 7 días" },
+  { id: "steps", label: "Pasos", icon: Footprints, color: "#FFFFFF", goal: "Más pasos en 7 días" },
+  { id: "workouts", label: "Entrenos", icon: Dumbbell, color: "#FF5871", goal: "Más entrenamientos en 7 días" },
   { id: "streak", label: "Racha", icon: Flame, color: "#FF6B35", goal: "Mantener la racha más días" },
   { id: "calories", label: "Déficit", icon: Flame, color: "#f08a4b", goal: "Cumplir objetivo calórico más días" },
 ];
@@ -39,7 +39,7 @@ export default function DuelsPage() {
       <div style={{ maxWidth: 900, margin: "0 auto" }}>
         <div style={{ display: "flex", alignItems: "flex-start", justifyContent: "space-between", paddingTop: 32, paddingBottom: 28, flexWrap: "wrap", gap: 16 }}>
           <div>
-            <div style={{ fontSize: 10, fontWeight: 900, color: "#8fa9dd", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · GAMIFICACIÓN</div>
+            <div style={{ fontSize: 10, fontWeight: 900, color: "#FFB3BE", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · GAMIFICACIÓN</div>
             <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 40, letterSpacing: -0.5 }}>Duelos</div>
           </div>
           <button onClick={() => setOpen(true)} className="btn-primary"><Plus size={15} /> Nuevo duelo</button>
@@ -74,7 +74,7 @@ export default function DuelsPage() {
                   </div>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
                     <div style={{ textAlign: "center", flex: 1 }}>
-                      <div style={{ fontSize: 12, color: "#8fa9dd", fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>Tú {winning && <Trophy size={12} />}</div>
+                      <div style={{ fontSize: 12, color: "#FFB3BE", fontWeight: 700, marginBottom: 4, display: "flex", alignItems: "center", justifyContent: "center", gap: 4 }}>Tú {winning && <Trophy size={12} />}</div>
                       <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 24 }}>{d.myScore.toLocaleString("es-MX")}</div>
                     </div>
                     <span style={{ fontSize: 13, color: C.dim2, fontWeight: 800 }}>VS</span>
@@ -84,7 +84,7 @@ export default function DuelsPage() {
                     </div>
                   </div>
                   <div className="progress-bar" style={{ display: "flex" }}>
-                    <div className="progress-fill" style={{ width: `${(d.myScore / total) * 100}%`, background: "linear-gradient(90deg, #2563EB, #00C2C0)" }} />
+                    <div className="progress-fill" style={{ width: `${(d.myScore / total) * 100}%`, background: "linear-gradient(90deg, #FF1F3D, #FFFFFF)" }} />
                   </div>
                   <div style={{ fontSize: 11, color: C.dim2, marginTop: 10, textAlign: "center" }}>{d.goal}</div>
                 </div>

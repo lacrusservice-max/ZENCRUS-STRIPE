@@ -55,9 +55,9 @@ export default function LoginPage() {
 
   const inputStyle = (field: string): React.CSSProperties => ({
     display: "flex", alignItems: "center", gap: 0,
-    background: focused === field ? "rgba(37,99,235,0.07)" : "rgba(255,255,255,0.04)",
+    background: focused === field ? "rgba(255,31,61,0.07)" : "rgba(255,255,255,0.04)",
     borderRadius: 14,
-    border: `1px solid ${focused === field ? "rgba(37,99,235,0.55)" : "rgba(255,255,255,0.09)"}`,
+    border: `1px solid ${focused === field ? "rgba(255,31,61,0.55)" : "rgba(255,255,255,0.09)"}`,
     padding: "14px 16px",
     marginBottom: 20,
     transition: "all 0.2s",
@@ -66,8 +66,8 @@ export default function LoginPage() {
   return (
     <div style={{ minHeight: "100vh", background: "#080808", display: "flex", alignItems: "center", justifyContent: "center", padding: "24px 24px", position: "relative", overflow: "hidden" }}>
       {/* Blobs */}
-      <div style={{ position: "absolute", top: -100, right: -60, width: 320, height: 320, borderRadius: "50%", background: "#2563EB", opacity: 0.13, filter: "blur(40px)", pointerEvents: "none" }} />
-      <div style={{ position: "absolute", bottom: 60, left: -80, width: 260, height: 260, borderRadius: "50%", background: "#009997", opacity: 0.10, filter: "blur(40px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: -100, right: -60, width: 320, height: 320, borderRadius: "50%", background: "#FF1F3D", opacity: 0.13, filter: "blur(40px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", bottom: 60, left: -80, width: 260, height: 260, borderRadius: "50%", background: "#FFFFFF", opacity: 0.10, filter: "blur(40px)", pointerEvents: "none" }} />
 
       <div style={{ width: "100%", maxWidth: 420, animation: "slideUp 0.5s ease" }}>
         {/* Logo */}
@@ -118,7 +118,7 @@ export default function LoginPage() {
 
           {/* Forgot */}
           <div style={{ textAlign: "right", marginTop: -12, marginBottom: 24 }}>
-            <Link href="/forgot-password" style={{ fontSize: 12, color: "#60a5fa", fontWeight: 600 }}>¿Olvidaste tu contraseña?</Link>
+            <Link href="/forgot-password" style={{ fontSize: 12, color: "#FF5871", fontWeight: 600 }}>¿Olvidaste tu contraseña?</Link>
           </div>
 
           {/* Submit */}
@@ -136,7 +136,7 @@ export default function LoginPage() {
           {/* Register link */}
           <div style={{ textAlign: "center" }}>
             <span style={{ fontSize: 13, color: "rgba(255,255,255,0.38)" }}>¿No tienes cuenta? </span>
-            <Link href="/register" style={{ fontSize: 13, color: "#60a5fa", fontWeight: 700 }}>Regístrate gratis</Link>
+            <Link href="/register" style={{ fontSize: 13, color: "#FF5871", fontWeight: 700 }}>Regístrate gratis</Link>
           </div>
         </form>
       </div>

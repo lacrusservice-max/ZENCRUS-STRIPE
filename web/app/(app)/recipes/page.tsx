@@ -21,7 +21,7 @@ export default function RecipesPage() {
     <div style={{ minHeight: "100vh", color: C.text, padding: "0 20px 120px" }}>
       <div style={{ maxWidth: 1360, margin: "0 auto" }}>
         <div style={{ paddingTop: 32, paddingBottom: 28 }}>
-          <div style={{ fontSize: 10, fontWeight: 900, color: "#3fae6b", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · NUTRICIÓN</div>
+          <div style={{ fontSize: 10, fontWeight: 900, color: "#FFFFFF", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · NUTRICIÓN</div>
           <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 40, letterSpacing: -0.5 }}>Recetas</div>
         </div>
 
@@ -32,7 +32,7 @@ export default function RecipesPage() {
 
         <div style={{ display: "flex", gap: 8, overflowX: "auto", marginBottom: 28, paddingBottom: 4 }}>
           {CATS.map((c) => (
-            <button key={c.id} onClick={() => setCat(c.id)} style={{ whiteSpace: "nowrap", padding: "9px 18px", borderRadius: 999, border: "none", background: cat === c.id ? "linear-gradient(135deg, #2563EB, #1d4ed8)" : "rgba(255,255,255,0.04)", color: cat === c.id ? "#fff" : C.dim, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: cat === c.id ? "0 8px 20px rgba(37,99,235,0.3)" : "none" }}>{c.label}</button>
+            <button key={c.id} onClick={() => setCat(c.id)} style={{ whiteSpace: "nowrap", padding: "9px 18px", borderRadius: 999, border: "none", background: cat === c.id ? "linear-gradient(135deg, #FF1F3D, #FF0030)" : "rgba(255,255,255,0.04)", color: cat === c.id ? "#fff" : C.dim, fontSize: 13, fontWeight: 700, cursor: "pointer", fontFamily: "inherit", boxShadow: cat === c.id ? "0 8px 20px rgba(255,31,61,0.3)" : "none" }}>{c.label}</button>
           ))}
         </div>
 
@@ -93,7 +93,7 @@ export default function RecipesPage() {
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 {open.steps.map((s, i) => (
                   <div key={i} style={{ display: "flex", gap: 12 }}>
-                    <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg, #2563EB, #1d4ed8)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>{i + 1}</span>
+                    <span style={{ flexShrink: 0, width: 26, height: 26, borderRadius: "50%", background: "linear-gradient(135deg, #FF1F3D, #FF0030)", color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 12, fontWeight: 800 }}>{i + 1}</span>
                     <span style={{ fontSize: 13.5, color: C.dim, lineHeight: 1.6 }}>{s}</span>
                   </div>
                 ))}

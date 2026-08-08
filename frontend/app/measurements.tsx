@@ -8,6 +8,7 @@ import { router } from 'expo-router'
 import { useBodyMeasurementsStore, BodyMeasurement } from '@/store/bodyMeasurementsStore'
 import { useAchievementStore } from '@/store/achievementStore'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 type MeasurementField = {
   key: keyof BodyMeasurement
@@ -200,16 +201,20 @@ export default function MeasurementsScreen() {
   const chestProgress = getProgress('chest')
 
   return (
-    <SafeAreaView style={s.container}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: Spacing[2] }}>
-          <Text style={s.back}>‹</Text>
-        </TouchableOpacity>
-        <Text style={s.title}>Medidas corporales</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)}>
-          <Text style={s.addTxt}>+ Registrar</Text>
-        </TouchableOpacity>
-      </View>
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Progreso"
+        title="Medidas corporales"
+        subtitle="Registra y sigue tu evolución real"
+        icon="body"
+        color={Colors.accent.yellow}
+        right={
+          <TouchableOpacity style={s.addBtn} onPress={() => setShowAdd(true)}>
+            <Text style={s.addTxt}>+ Registrar</Text>
+          </TouchableOpacity>
+        }
+      />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         {latest ? (
@@ -255,7 +260,7 @@ export default function MeasurementsScreen() {
       </ScrollView>
 
       <AddMeasurementModal visible={showAdd} onClose={() => setShowAdd(false)} />
-    </SafeAreaView>
+    </Screen>
   )
 }
 

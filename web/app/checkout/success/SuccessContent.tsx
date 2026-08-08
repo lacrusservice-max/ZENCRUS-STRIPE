@@ -81,7 +81,7 @@ export default function SuccessContent() {
         <div style={{ background: C.panel, border: `1px solid ${C.border}`, borderRadius: 16, padding: 18, marginBottom: 28, textAlign: "left" }}>
           {INCLUDED.map((f) => (
             <div key={f} style={{ display: "flex", alignItems: "center", gap: 10, padding: "8px 4px" }}>
-              <Check size={16} color="#8fa9dd" style={{ flexShrink: 0 }} />
+              <Check size={16} color="#FFB3BE" style={{ flexShrink: 0 }} />
               <span style={{ fontSize: 13.5, color: C.text }}>{f}</span>
             </div>
           ))}

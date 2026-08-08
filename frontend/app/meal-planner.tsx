@@ -10,7 +10,10 @@ import {
   DayKey, MealSlotId, PlannedMeal,
 } from '@/store/mealPlanStore'
 import { useRecipesStore } from '@/store/recipesStore'
+import { RecipePhoto } from '@/components/recipes/RecipePhoto'
+import { photoFor, RECIPE_CREDITS } from '@/data/recipePhotos'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 // ── Macro Bar ─────────────────────────────────────────────────────────────────
 
@@ -148,8 +151,10 @@ function AddMealModal({ visible, day, slot, onClose }: {
               </TouchableOpacity>
             ))}
 
+            {/* Las recetas se eligen por su foto, igual que en el recetario:
+                un emoji de 20 px no distingue un bowl de una ensalada. */}
             {tab === 'recipes' && filteredRecipes.map(recipe => (
-              <TouchableOpacity key={recipe.id} style={am.mealRow} onPress={() => addMeal({
+              <TouchableOpacity key={recipe.id} style={am.recipeCard} onPress={() => addMeal({
                 id: recipe.id,
                 name: recipe.title,
                 emoji: recipe.emoji,
@@ -157,13 +162,29 @@ function AddMealModal({ visible, day, slot, onClose }: {
                 protein: recipe.nutrition.protein,
                 carbs: recipe.nutrition.carbs,
                 fat: recipe.nutrition.fat,
-              })}>
-                <Text style={am.mealEmoji}>{recipe.emoji}</Text>
-                <View style={{ flex: 1 }}>
-                  <Text style={am.mealName}>{recipe.title}</Text>
-                  <Text style={am.mealMacros}>{recipe.nutrition.calories} kcal · {recipe.nutrition.protein}P · {recipe.nutrition.carbs}C · {recipe.nutrition.fat}G</Text>
-                </View>
-                <Text style={am.mealAdd}>+</Text>
+              })} activeOpacity={0.88}>
+                <RecipePhoto
+                  source={photoFor(recipe.id, recipe.userPhotoUri)}
+                  emoji={recipe.emoji}
+                  height={104}
+                  radius={0}
+                  steam={recipe.cookTimeMin > 0}
+                >
+                  <View style={am.recipeTime}>
+                    <Text style={am.recipeTimeTxt}>
+                      {(recipe.prepTimeMin ?? 0) + (recipe.cookTimeMin ?? 0)} min
+                    </Text>
+                  </View>
+                  <View style={am.recipeKcal}>
+                    <Text style={am.recipeKcalTxt}>{Math.round(recipe.nutrition.calories)}</Text>
+                  </View>
+                  <View style={am.recipeCap}>
+                    <Text style={am.recipeName} numberOfLines={1}>{recipe.title}</Text>
+                    <Text style={am.recipeMacros} numberOfLines={1}>
+                      P{Math.round(recipe.nutrition.protein)} · C{Math.round(recipe.nutrition.carbs)} · G{Math.round(recipe.nutrition.fat)}
+                    </Text>
+                  </View>
+                </RecipePhoto>
               </TouchableOpacity>
             ))}
 
@@ -218,6 +239,26 @@ const am = StyleSheet.create({
   tabTxt: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: Colors.dark.textSecondary },
   tabTxtOn: { color: '#fff' },
   mealRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.md, padding: Spacing[3], borderWidth: 1, borderColor: Colors.dark.border },
+
+  recipeCard: {
+    borderRadius: BorderRadius.md, overflow: 'hidden',
+    borderWidth: 1, borderColor: Colors.dark.border,
+  },
+  recipeTime: {
+    position: 'absolute', top: 8, left: 8,
+    paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999,
+    backgroundColor: 'rgba(255,255,255,0.93)',
+  },
+  recipeTimeTxt: { fontSize: 9.5, fontWeight: '800', color: '#0A0A0D' },
+  recipeKcal: {
+    position: 'absolute', top: 8, right: 8,
+    paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999,
+    backgroundColor: 'rgba(0,0,0,0.72)',
+  },
+  recipeKcalTxt: { fontSize: 10, fontWeight: '800', color: '#fff' },
+  recipeCap: { position: 'absolute', left: 11, right: 11, bottom: 9 },
+  recipeName: { fontSize: 13.5, fontWeight: '800', color: '#fff', letterSpacing: -0.2 },
+  recipeMacros: { fontSize: 10, color: 'rgba(255,255,255,0.66)', marginTop: 2 },
   mealEmoji: { fontSize: 24 },
   mealName: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.dark.text },
   mealMacros: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, marginTop: 2 },
@@ -353,20 +394,20 @@ export default function MealPlannerScreen() {
   const dayMacros = getDayMacros(selectedDay)
 
   return (
-    <SafeAreaView style={s.container}>
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backTxt}>‹</Text>
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={s.title}>Plan semanal</Text>
-          <Text style={s.week}>{activeWeek}</Text>
-        </View>
-        <TouchableOpacity style={s.groceryBtn} onPress={() => router.push('/grocery')}>
-          <Text style={s.groceryTxt}>🛒 Lista</Text>
-        </TouchableOpacity>
-      </View>
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Nutrición"
+        title="Plan semanal"
+        subtitle={activeWeek}
+        icon="calendar"
+        color={Colors.accent.green}
+        right={
+          <TouchableOpacity style={s.groceryBtn} onPress={() => router.push('/grocery')}>
+            <Text style={s.groceryTxt}>Lista</Text>
+          </TouchableOpacity>
+        }
+      />
 
       {/* Day selector */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.dayScroll}>
@@ -443,7 +484,7 @@ export default function MealPlannerScreen() {
         currentDay={selectedDay}
         onClose={() => setCopyModal(false)}
       />
-    </SafeAreaView>
+    </Screen>
   )
 }
 

@@ -29,6 +29,19 @@ export const updateDietPlanSchema = z.object({
   }),
 })
 
+const mealTextField = z.string().max(2000).optional()
+
+export const parseFoodListSchema = z.object({
+  body: z.object({
+    breakfast: mealTextField,
+    lunch: mealTextField,
+    dinner: mealTextField,
+    snack1: mealTextField,
+    snack2: mealTextField,
+    snack3: mealTextField,
+  }),
+})
+
 export async function generateDietPlan(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
   const { name, targetCalories, targetMacros, durationDays, requestValidation } = req.body
@@ -217,4 +230,65 @@ export async function validateDietPlan(req: Request, res: Response): Promise<voi
   logger.info(`Plan ${id} validado por nutrióloga ${nutritionistId}`)
 
   res.status(200).json({ success: true, message: 'Plan validado correctamente', data: plan } satisfies ApiResponse)
+}
+
+interface ParsedFood {
+  name: string
+  amount: number
+  unit: string
+  calories: number
+  protein: number
+  carbs: number
+  fat: number
+  fiber: number
+  emoji: string
+}
+
+const MEAL_KEYS = ['breakfast', 'lunch', 'dinner', 'snack1', 'snack2', 'snack3'] as const
+
+function sanitizeParsedFoods(raw: unknown): Record<string, ParsedFood[]> {
+  const out: Record<string, ParsedFood[]> = {}
+  for (const key of MEAL_KEYS) {
+    const items = (raw as any)?.[key]
+    out[key] = Array.isArray(items)
+      ? items
+          .filter((it: any) => it && typeof it.name === 'string')
+          .map((it: any) => ({
+            name: String(it.name).slice(0, 100),
+            amount: Number(it.amount) || 100,
+            unit: typeof it.unit === 'string' ? it.unit.slice(0, 10) : 'g',
+            calories: Math.max(0, Number(it.calories) || 0),
+            protein: Math.max(0, Number(it.protein) || 0),
+            carbs: Math.max(0, Number(it.carbs) || 0),
+            fat: Math.max(0, Number(it.fat) || 0),
+            fiber: Math.max(0, Number(it.fiber) || 0),
+            emoji: typeof it.emoji === 'string' ? it.emoji.slice(0, 4) : '🍽️',
+          }))
+      : []
+  }
+  return out
+}
+
+/**
+ * Convierte texto libre (uno o varios alimentos por línea, por comida) en
+ * alimentos estructurados con macros vía IA. Usa el mismo cliente/patrón que
+ * generateDietPlan — incluye fallback simulado si no hay API key configurada.
+ */
+export async function parseFoodList(req: Request, res: Response): Promise<void> {
+  const { breakfast, lunch, dinner, snack1, snack2, snack3 } = req.body
+
+  const hasAnyText = [breakfast, lunch, dinner, snack1, snack2, snack3].some(t => t && t.trim())
+  if (!hasAnyText) {
+    res.status(400).json({ success: false, message: 'Escribe al menos un alimento en alguna comida' } satisfies ApiResponse)
+    return
+  }
+
+  try {
+    const raw = await aiClient.parseFoodList({ breakfast, lunch, dinner, snack1, snack2, snack3 })
+    const data = sanitizeParsedFoods(raw)
+    res.status(200).json({ success: true, data } satisfies ApiResponse)
+  } catch (err: any) {
+    logger.error('Error parseando lista de alimentos:', err?.message)
+    res.status(502).json({ success: false, message: 'No se pudo interpretar la lista. Intenta de nuevo.' } satisfies ApiResponse)
+  }
 }

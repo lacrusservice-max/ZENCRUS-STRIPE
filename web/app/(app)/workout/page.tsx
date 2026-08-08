@@ -6,9 +6,9 @@ import toast from "react-hot-toast";
 import { Dumbbell, Play, CheckCircle, Clock, Zap, Plus, Check, Flame, Footprints, Wind } from "lucide-react";
 
 const ROUTINE_ACCENT: Record<string, { icon: typeof Dumbbell; color: string; glow: string }> = {
-  upper: { icon: Dumbbell, color: "#60a5fa", glow: "rgba(37,99,235,0.28)" },
+  upper: { icon: Dumbbell, color: "#FF5871", glow: "rgba(255,31,61,0.28)" },
   lower: { icon: Footprints, color: "#f08a4b", glow: "rgba(240,138,75,0.28)" },
-  cardio: { icon: Wind, color: "#3fae6b", glow: "rgba(63,174,107,0.28)" },
+  cardio: { icon: Wind, color: "#FFFFFF", glow: "rgba(63,174,107,0.28)" },
 };
 
 interface Exercise {
@@ -153,10 +153,10 @@ export default function WorkoutPage() {
     <div style={{ maxWidth: 1360, margin: "0 auto", padding: "0 20px 120px", animation: "fadeIn 0.5s ease" }}>
       {/* Header */}
       <div style={{ paddingTop: 32, paddingBottom: 28 }}>
-        <div style={{ fontSize: 10, fontWeight: 900, color: "#60a5fa", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · ENTRENAMIENTO</div>
+        <div style={{ fontSize: 10, fontWeight: 900, color: "#FF5871", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · ENTRENAMIENTO</div>
         <div style={{ display: "flex", alignItems: "center", gap: 14 }}>
-          <div style={{ width: 44, height: 44, borderRadius: 14, background: "linear-gradient(135deg, rgba(37,99,235,0.35), rgba(0,194,192,0.2))", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
-            <Dumbbell size={22} color="#93c5fd" />
+          <div style={{ width: 44, height: 44, borderRadius: 14, background: "linear-gradient(135deg, rgba(255,31,61,0.35), rgba(255,255,255,0.2))", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+            <Dumbbell size={22} color="#FF8FA0" />
           </div>
           <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 40, color: "#f4f4f5", letterSpacing: -0.5 }}>Entrenamiento</div>
         </div>
@@ -171,8 +171,8 @@ export default function WorkoutPage() {
             <div className="glass-card-accent">
               <div style={{ padding: 26 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 20 }}>
-                  <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, rgba(37,99,235,0.4), rgba(0,194,192,0.25))", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 8px 24px rgba(37,99,235,0.35)" }}>
-                    <Zap size={26} color="#93c5fd" />
+                  <div style={{ width: 56, height: 56, borderRadius: 16, background: "linear-gradient(135deg, rgba(255,31,61,0.4), rgba(255,255,255,0.25))", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, boxShadow: "0 8px 24px rgba(255,31,61,0.35)" }}>
+                    <Zap size={26} color="#FF8FA0" />
                   </div>
                   <div>
                     <div style={{ fontSize: 17, fontWeight: 800, color: "#f4f4f5" }}>Rutina recomendada por IA</div>
@@ -237,7 +237,7 @@ export default function WorkoutPage() {
             <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 34, color: "#f4f4f5" }}>3 <span style={{ fontSize: 15, color: "rgba(255,255,255,0.4)", fontFamily: "inherit" }}>sesiones</span></div>
             <div style={{ fontSize: 12, color: "rgba(255,255,255,0.4)", marginTop: 4 }}>Meta semanal: 4 sesiones</div>
             <div className="progress-bar" style={{ marginTop: 14 }}>
-              <div className="progress-fill" style={{ width: "75%", background: "linear-gradient(90deg, #2563EB, #00C2C0)" }} />
+              <div className="progress-fill" style={{ width: "75%", background: "linear-gradient(90deg, #FF1F3D, #FFFFFF)" }} />
             </div>
           </div>
         </div>

@@ -15,7 +15,7 @@ const LEVELS = [
 
 type Cat = "streak" | "workout" | "nutrition" | "social" | "health" | "special";
 const CAT_LABELS: Record<Cat, string> = { streak: "Racha", workout: "Entreno", nutrition: "Nutrición", social: "Social", health: "Salud", special: "Especial" };
-const CAT_COLORS: Record<Cat, string> = { streak: "#FF6B35", workout: "#60a5fa", nutrition: "#3fae6b", social: "#c084fc", health: "#38BDF8", special: "#FFD60A" };
+const CAT_COLORS: Record<Cat, string> = { streak: "#FF6B35", workout: "#FF5871", nutrition: "#FFFFFF", social: "#c084fc", health: "#38BDF8", special: "#FFD60A" };
 
 const ACHIEVEMENTS: { id: string; title: string; description: string; icon: typeof Flame; category: Cat; xp: number }[] = [
   { id: "first_meal", title: "Primera comida", description: "Registra tu primera comida", icon: Utensils, category: "nutrition", xp: 50 },
@@ -72,11 +72,11 @@ export default function AchievementsPage() {
             <div className="glass-card-accent">
               <div style={{ padding: 26 }}>
                 <div style={{ display: "flex", alignItems: "center", gap: 18, marginBottom: 18 }}>
-                  <div style={{ width: 64, height: 64, borderRadius: 18, background: "linear-gradient(135deg, rgba(255,214,10,0.25), rgba(37,99,235,0.2))", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                  <div style={{ width: 64, height: 64, borderRadius: 18, background: "linear-gradient(135deg, rgba(255,214,10,0.25), rgba(255,31,61,0.2))", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                     <LevelIcon size={30} color="#FFD60A" />
                   </div>
                   <div style={{ flex: 1 }}>
-                    <div style={{ fontSize: 12, color: "#8fa9dd", fontWeight: 700 }}>Nivel {level.level}</div>
+                    <div style={{ fontSize: 12, color: "#FFB3BE", fontWeight: 700 }}>Nivel {level.level}</div>
                     <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 26, color: C.text }}>{level.name}</div>
                   </div>
                   <div style={{ textAlign: "right" }}>

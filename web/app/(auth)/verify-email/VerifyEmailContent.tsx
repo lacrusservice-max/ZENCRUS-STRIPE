@@ -114,20 +114,20 @@ export default function VerifyEmailContent() {
 
   return (
     <div style={{ minHeight: "100vh", background: "#080808", display: "flex", alignItems: "center", justifyContent: "center", padding: 24, position: "relative", overflow: "hidden" }}>
-      <div style={{ position: "absolute", top: -100, right: -60, width: 300, height: 300, borderRadius: "50%", background: "#2563EB", opacity: 0.1, filter: "blur(60px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: -100, right: -60, width: 300, height: 300, borderRadius: "50%", background: "#FF1F3D", opacity: 0.1, filter: "blur(60px)", pointerEvents: "none" }} />
 
       <div style={{ width: "100%", maxWidth: 400, textAlign: "center" }}>
         <div style={{ display: "flex", justifyContent: "center", marginBottom: 32 }}>
           <Image src="/logo-blanco.png" alt="ZENCRUS" width={140} height={42} style={{ objectFit: "contain" }} priority />
         </div>
 
-        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(37,99,235,0.12)", border: "1px solid rgba(37,99,235,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
-          <Mail size={30} color="#2563EB" />
+        <div style={{ width: 72, height: 72, borderRadius: "50%", background: "rgba(255,31,61,0.12)", border: "1px solid rgba(255,31,61,0.3)", display: "flex", alignItems: "center", justifyContent: "center", margin: "0 auto 20px" }}>
+          <Mail size={30} color="#FF1F3D" />
         </div>
 
         <h1 style={{ fontSize: 24, fontWeight: 900, color: "#f4f4f5", marginBottom: 10 }}>Verifica tu correo</h1>
         <p style={{ fontSize: 14, color: "rgba(255,255,255,0.45)", lineHeight: 1.7, marginBottom: 8 }}>Enviamos un código de 6 dígitos a</p>
-        <p style={{ fontSize: 15, fontWeight: 700, color: "#60a5fa", marginBottom: 32 }}>{email || "tu correo"}</p>
+        <p style={{ fontSize: 15, fontWeight: 700, color: "#FF5871", marginBottom: 32 }}>{email || "tu correo"}</p>
 
         <div style={{ background: "rgba(255,255,255,0.04)", borderRadius: 20, border: "1px solid rgba(255,255,255,0.08)", padding: 28, marginBottom: 20 }}>
           <div style={{ fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.4)", letterSpacing: 1.5, marginBottom: 20 }}>CÓDIGO DE VERIFICACIÓN</div>
@@ -136,12 +136,12 @@ export default function VerifyEmailContent() {
             {code.map((c, i) => (
               <input key={i} ref={el => { inputRefs.current[i] = el; }} type="text" inputMode="numeric" maxLength={1}
                 value={c} onChange={e => handleInput(i, e.target.value)} onKeyDown={e => handleKeyDown(i, e)} disabled={loading}
-                style={{ ...box, border: `1px solid ${c ? "rgba(37,99,235,0.6)" : "rgba(255,255,255,0.12)"}`, background: c ? "rgba(37,99,235,0.1)" : "rgba(255,255,255,0.05)" }} />
+                style={{ ...box, border: `1px solid ${c ? "rgba(255,31,61,0.6)" : "rgba(255,255,255,0.12)"}`, background: c ? "rgba(255,31,61,0.1)" : "rgba(255,255,255,0.05)" }} />
             ))}
           </div>
 
           <button onClick={() => handleVerify(code.join(""))} disabled={loading || code.some(c => c === "")}
-            style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", cursor: loading || code.some(c => c === "") ? "not-allowed" : "pointer", background: loading || code.some(c => c === "") ? "rgba(37,99,235,0.3)" : "#2563EB", color: "#fff", fontFamily: "inherit", fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s" }}>
+            style={{ width: "100%", padding: 14, borderRadius: 12, border: "none", cursor: loading || code.some(c => c === "") ? "not-allowed" : "pointer", background: loading || code.some(c => c === "") ? "rgba(255,31,61,0.3)" : "#FF1F3D", color: "#fff", fontFamily: "inherit", fontSize: 15, fontWeight: 700, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "all 0.2s" }}>
             {loading
               ? <div style={{ width: 18, height: 18, borderRadius: "50%", border: "2px solid #fff", borderTopColor: "transparent", animation: "spin 1s linear infinite" }} />
               : <>Verificar cuenta <ArrowRight size={17} /></>}
@@ -150,8 +150,8 @@ export default function VerifyEmailContent() {
 
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 12 }}>
           {countdown > 0
-            ? <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>Reenviar código en <span style={{ color: "#60a5fa", fontWeight: 700 }}>{countdown}s</span></p>
-            : <button onClick={handleResend} disabled={resending} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "#60a5fa", fontSize: 13, fontWeight: 700, fontFamily: "inherit" }}>
+            ? <p style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>Reenviar código en <span style={{ color: "#FF5871", fontWeight: 700 }}>{countdown}s</span></p>
+            : <button onClick={handleResend} disabled={resending} style={{ display: "flex", alignItems: "center", gap: 6, background: "none", border: "none", cursor: "pointer", color: "#FF5871", fontSize: 13, fontWeight: 700, fontFamily: "inherit" }}>
                 <RefreshCw size={14} />{resending ? "Enviando..." : "Reenviar código"}
               </button>}
           <button onClick={() => router.replace("/register")} style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", fontSize: 12, fontFamily: "inherit" }}>

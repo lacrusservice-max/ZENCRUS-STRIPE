@@ -58,7 +58,7 @@ export default function SubscriptionPage() {
       <div style={{ maxWidth: 1360, margin: "0 auto" }}>
         {/* Header */}
         <div style={{ textAlign: "center", paddingTop: 44, paddingBottom: 8 }}>
-          <div style={{ fontSize: 10, fontWeight: 900, color: "#8fa9dd", letterSpacing: 4, marginBottom: 12 }}>ZENCRUS · PLANES</div>
+          <div style={{ fontSize: 10, fontWeight: 900, color: "#FFB3BE", letterSpacing: 4, marginBottom: 12 }}>ZENCRUS · PLANES</div>
           <h1 style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: "clamp(2rem,4vw,3rem)", letterSpacing: -0.5, marginBottom: 12, color: C.text }}>
             {currentTier !== "free" ? "Tu suscripción" : "Elige tu plan y empieza gratis"}
           </h1>
@@ -70,7 +70,7 @@ export default function SubscriptionPage() {
         {/* Trial banner — clear for every plan */}
         {currentTier === "free" && (
           <div className="glass-card" style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 10, margin: "28px auto 0", maxWidth: 680, padding: "16px 22px" }}>
-            <ShieldCheck size={18} color="#8fa9dd" style={{ flexShrink: 0 }} />
+            <ShieldCheck size={18} color="#FFB3BE" style={{ flexShrink: 0 }} />
             <p style={{ fontSize: 13, color: "#c3d0f0", lineHeight: 1.5, margin: 0 }}>
               Elige cualquier plan y prueba <b>5 días gratis</b>. Pedimos tus datos bancarios para activar la prueba; si no cancelas antes de que termine, se cobra automáticamente la mensualidad o anualidad de tu plan.
             </p>
@@ -83,7 +83,7 @@ export default function SubscriptionPage() {
             const active = currentTier === p.id;
             const cardBody = (
               <div style={{ display: "flex", flexDirection: "column", padding: 26, height: "100%" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, color: p.popular ? "#8fa9dd" : C.dim }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 16, color: p.popular ? "#FFB3BE" : C.dim }}>
                   {iconFor(p.id)}
                   <span style={{ fontSize: 13, fontWeight: 700, letterSpacing: 0.5 }}>{p.name}</span>
                 </div>
@@ -95,7 +95,7 @@ export default function SubscriptionPage() {
                   {p.currency} · {p.period === "año" ? `equivale a $${monthlyEquivalent(p).toLocaleString("es-MX")}/mes` : "facturado mensual"}
                 </div>
                 <div style={{ display: "inline-flex", alignItems: "center", gap: 5, background: "rgba(143,169,221,0.12)", borderRadius: 999, padding: "4px 12px", marginBottom: 20, alignSelf: "flex-start" }}>
-                  <span style={{ fontSize: 10.5, fontWeight: 800, color: "#8fa9dd" }}>5 días gratis</span>
+                  <span style={{ fontSize: 10.5, fontWeight: 800, color: "#FFB3BE" }}>5 días gratis</span>
                 </div>
 
                 {/* Extra members selector for familiar */}
@@ -124,7 +124,7 @@ export default function SubscriptionPage() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
                   {p.features.map((f) => (
                     <div key={f} style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
-                      <Check size={14} style={{ color: p.popular ? "#8fa9dd" : C.dim, flexShrink: 0, marginTop: 2 }} />
+                      <Check size={14} style={{ color: p.popular ? "#FFB3BE" : C.dim, flexShrink: 0, marginTop: 2 }} />
                       <span style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.5 }}>{f}</span>
                     </div>
                   ))}
@@ -133,7 +133,7 @@ export default function SubscriptionPage() {
             );
             return p.popular ? (
               <div key={p.id} style={{ position: "relative" }}>
-                <div style={{ position: "absolute", top: 14, right: 14, zIndex: 1, background: "linear-gradient(135deg, #2563EB, #1d4ed8)", color: "#fff", fontSize: 9.5, fontWeight: 800, padding: "4px 10px", borderRadius: 999, letterSpacing: 0.5, boxShadow: "0 6px 16px rgba(37,99,235,0.4)" }}>POPULAR</div>
+                <div style={{ position: "absolute", top: 14, right: 14, zIndex: 1, background: "linear-gradient(135deg, #FF1F3D, #FF0030)", color: "#fff", fontSize: 9.5, fontWeight: 800, padding: "4px 10px", borderRadius: 999, letterSpacing: 0.5, boxShadow: "0 6px 16px rgba(255,31,61,0.4)" }}>POPULAR</div>
                 <div className="glass-card-accent">{cardBody}</div>
               </div>
             ) : (

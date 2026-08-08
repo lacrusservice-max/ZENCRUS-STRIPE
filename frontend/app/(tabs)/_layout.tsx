@@ -8,25 +8,48 @@ import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
 import { useAuthStore } from '@/store/authStore'
 import { Colors, Glass } from '@/constants/theme'
 import { getCurrentSubscription } from '@/services/stripeService'
+import { useAppTheme } from '@/context/ThemeContext'
+import { useThemeStore } from '@/store/themeStore'
+import { final } from '@/theme/remap'
+
+// Colores propios del tema claro para la barra: vidrio esmerilado claro con los
+// iconos en el azul de marca. Van marcados con `final()` porque ya pertenecen al
+// tema claro y el interceptor de color no debe volver a convertirlos.
+const LIGHT_TAB = {
+  scrim:     final('rgba(255,255,255,0.72)'),
+  border:    final('rgba(15,68,139,0.16)'),
+  highlight: final('rgba(255,255,255,0.94)'),
+  accent:    final('#0F448B'),
+  pill:      final('rgba(15,68,139,0.12)'),
+  idle:      final('rgba(15,68,139,0.42)'),
+}
 
 type IconName = React.ComponentProps<typeof Ionicons>['name']
 
 // ── Tab Configuration ──────────────────────────────────────────────────────────
 
 const TAB_CONFIG: Record<string, { outline: IconName; filled: IconName; label: string }> = {
-  index:     { outline: 'home-outline',         filled: 'home',         label: 'Inicio' },
   nutrition: { outline: 'restaurant-outline',   filled: 'restaurant',   label: 'Nutrición' },
   workout:   { outline: 'barbell-outline',      filled: 'barbell',      label: 'Entrena' },
-  progress:  { outline: 'stats-chart-outline',  filled: 'stats-chart',  label: 'Progreso' },
+  salud:     { outline: 'pulse-outline',        filled: 'pulse',        label: 'Salud' },
   social:    { outline: 'people-outline',       filled: 'people',       label: 'Social' },
   profile:   { outline: 'person-outline',       filled: 'person',       label: 'Perfil' },
 }
 
-const VISIBLE = new Set(['index', 'nutrition', 'workout', 'progress', 'social', 'profile'])
+/**
+ * `index` queda fuera a propósito: es solo la redirección de entrada.
+ *
+ * Recetas tampoco es pestaña: vive dentro de Nutrición, en la consola de
+ * captura. Es donde se decide qué comer, así que es donde tiene que estar —
+ * sacarla a la barra la separaría del momento en que se usa.
+ */
+const VISIBLE = new Set(['nutrition', 'workout', 'salud', 'social', 'profile'])
 
 // ── Animated Icon ──────────────────────────────────────────────────────────────
 
 function AnimatedTabIcon({ name, focused }: { name: string; focused: boolean }) {
+  const T = useAppTheme()
+  const isDark = useThemeStore(s => s.isDark)
   const scale = useRef(new Animated.Value(focused ? 1.12 : 1)).current
   const opacity = useRef(new Animated.Value(focused ? 1 : 0.4)).current
   const glowOpacity = useRef(new Animated.Value(focused ? 1 : 0)).current
@@ -56,21 +79,20 @@ function AnimatedTabIcon({ name, focused }: { name: string; focused: boolean }) 
   if (!config) return null
 
   const iconName = focused ? config.filled : config.outline
-  const tint = focused ? Colors.primary[400] : 'rgba(255,255,255,0.4)'
+  const accent = isDark ? T.accent : LIGHT_TAB.accent
+  const tint = focused ? accent : (isDark ? T.ink3 : LIGHT_TAB.idle)
+  const pill = isDark ? `${T.accent}1E` : LIGHT_TAB.pill
 
   return (
     <View style={tb.iconWrap}>
-      {/* Active pill glow */}
       <Animated.View
-        style={[tb.activePill, { opacity: glowOpacity }]}
+        style={[tb.activePill, { opacity: glowOpacity, backgroundColor: pill }]}
         pointerEvents="none"
       />
-      {/* Animated icon */}
       <Animated.View style={{ transform: [{ scale }], opacity }}>
         <Ionicons name={iconName} size={22} color={tint} />
       </Animated.View>
-      {/* Active dot */}
-      {focused && <View style={tb.activeDot} />}
+      {focused && <View style={[tb.activeDot, { backgroundColor: accent }]} />}
     </View>
   )
 }
@@ -78,17 +100,26 @@ function AnimatedTabIcon({ name, focused }: { name: string; focused: boolean }) 
 // ── Glass Tab Bar ──────────────────────────────────────────────────────────────
 
 function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
+  const T = useAppTheme()
+  const isDark = useThemeStore(s => s.isDark)
   const insets = useSafeAreaInsets()
 
   return (
     <View style={[tb.wrapper, { bottom: Math.max(insets.bottom, 14) + 6 }]}>
-      <View style={tb.pill}>
-        {/* Real backdrop blur */}
-        <BlurView intensity={80} tint="dark" style={StyleSheet.absoluteFillObject} />
-        {/* Dark overlay on top of blur for depth */}
-        <View style={[StyleSheet.absoluteFillObject, { backgroundColor: 'rgba(6,6,12,0.45)' }]} pointerEvents="none" />
-        {/* Top specular highlight */}
-        <View style={tb.pillHighlight} pointerEvents="none" />
+      <View style={[tb.pill, { borderColor: isDark ? T.tabBorder : LIGHT_TAB.border }]}>
+        <BlurView
+          intensity={isDark ? 80 : 55}
+          tint={isDark ? 'dark' : 'light'}
+          style={StyleSheet.absoluteFillObject}
+        />
+        <View
+          style={[StyleSheet.absoluteFillObject, { backgroundColor: isDark ? T.tabBar : LIGHT_TAB.scrim }]}
+          pointerEvents="none"
+        />
+        <View
+          style={[tb.pillHighlight, { backgroundColor: isDark ? T.tabHighlight : LIGHT_TAB.highlight }]}
+          pointerEvents="none"
+        />
 
         {state.routes.map((route, index) => {
           if (!VISIBLE.has(route.name)) return null
@@ -120,7 +151,11 @@ function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
               activeOpacity={0.72}
             >
               <AnimatedTabIcon name={route.name} focused={focused} />
-              <Text style={[tb.label, focused && tb.labelActive]}>
+              <Text style={[
+                tb.label,
+                { color: isDark ? T.ink3 : LIGHT_TAB.idle },
+                focused && { color: isDark ? T.accent : LIGHT_TAB.accent, fontWeight: '700' },
+              ]}>
                 {config.label}
               </Text>
             </TouchableOpacity>
@@ -238,10 +273,10 @@ export default function TabsLayout() {
       tabBar={(props) => <GlassTabBar {...props} />}
       screenOptions={{ headerShown: false }}
     >
-      <Tabs.Screen name="index" />
+      <Tabs.Screen name="index" options={{ href: null }} />
       <Tabs.Screen name="nutrition" />
       <Tabs.Screen name="workout" />
-      <Tabs.Screen name="progress" />
+      <Tabs.Screen name="salud" />
       <Tabs.Screen name="social" />
       <Tabs.Screen name="chat" options={{ href: null }} />
       <Tabs.Screen name="profile" />

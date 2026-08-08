@@ -88,7 +88,7 @@ export default function ForgotPasswordPage() {
       </Button>
 
       <p style={{ textAlign: "center", fontSize: 14, color: "#94a3b8" }}>
-        <Link href="/login" style={{ color: "#5b4fff", textDecoration: "none" }}>
+        <Link href="/login" style={{ color: "#FF1F3D", textDecoration: "none" }}>
           Volver al inicio de sesión
         </Link>
       </p>

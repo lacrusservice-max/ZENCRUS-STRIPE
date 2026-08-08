@@ -129,15 +129,15 @@ export default function RegisterPage() {
 
   const inputStyle = (field: string): React.CSSProperties => ({
     display: "flex", alignItems: "center",
-    background: focused === field ? "rgba(37,99,235,0.07)" : "rgba(255,255,255,0.06)",
-    borderRadius: 14, border: `1px solid ${focused === field ? "rgba(37,99,235,0.6)" : "rgba(255,255,255,0.08)"}`,
+    background: focused === field ? "rgba(255,31,61,0.07)" : "rgba(255,255,255,0.06)",
+    borderRadius: 14, border: `1px solid ${focused === field ? "rgba(255,31,61,0.6)" : "rgba(255,255,255,0.08)"}`,
     padding: "14px 14px", marginBottom: 14, transition: "all 0.2s",
   });
 
   return (
     <div style={{ minHeight: "100vh", background: "#080808", padding: "0 0 40px", position: "relative", overflow: "hidden" }}>
       {/* Blobs */}
-      <div style={{ position: "absolute", top: -100, right: -80, width: 280, height: 280, borderRadius: "50%", background: "#2563EB", opacity: 0.10, filter: "blur(40px)", pointerEvents: "none" }} />
+      <div style={{ position: "absolute", top: -100, right: -80, width: 280, height: 280, borderRadius: "50%", background: "#FF1F3D", opacity: 0.10, filter: "blur(40px)", pointerEvents: "none" }} />
 
       {/* Header */}
       <div style={{ display: "flex", alignItems: "center", padding: "16px 20px 12px", gap: 12 }}>
@@ -145,7 +145,7 @@ export default function RegisterPage() {
           <ChevronLeft size={22} />
         </button>
         <div style={{ flex: 1, height: 3, borderRadius: 2, background: "rgba(255,255,255,0.08)", overflow: "hidden" }}>
-          <div style={{ height: "100%", borderRadius: 2, background: "#60a5fa", width: step === 0 ? "50%" : "100%", transition: "width 0.3s ease" }} />
+          <div style={{ height: "100%", borderRadius: 2, background: "#FF5871", width: step === 0 ? "50%" : "100%", transition: "width 0.3s ease" }} />
         </div>
         <span style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", fontWeight: 600 }}>{step + 1}/2</span>
       </div>
@@ -193,7 +193,7 @@ export default function RegisterPage() {
             </button>
             <div style={{ textAlign: "center", marginTop: 16 }}>
               <span style={{ fontSize: 13, color: "rgba(255,255,255,0.3)" }}>¿Ya tienes cuenta? </span>
-              <Link href="/login" style={{ fontSize: 13, color: "#60a5fa", fontWeight: 600 }}>Inicia sesión</Link>
+              <Link href="/login" style={{ fontSize: 13, color: "#FF5871", fontWeight: 600 }}>Inicia sesión</Link>
             </div>
           </div>
         )}
@@ -234,7 +234,7 @@ export default function RegisterPage() {
             </div>
 
             <p style={{ fontSize: 11, color: "rgba(255,255,255,0.25)", textAlign: "center", lineHeight: 1.6, marginBottom: 16 }}>
-              Al continuar aceptas los <span style={{ color: "#60a5fa" }}>Términos de Servicio</span> y la <span style={{ color: "#60a5fa" }}>Política de Privacidad</span> de ZENCRUS.
+              Al continuar aceptas los <span style={{ color: "#FF5871" }}>Términos de Servicio</span> y la <span style={{ color: "#FF5871" }}>Política de Privacidad</span> de ZENCRUS.
             </p>
 
             <button type="submit" disabled={loading} className="btn-primary" style={{ width: "100%", fontSize: 15, display: "flex", alignItems: "center", justifyContent: "center", gap: 8 }}>

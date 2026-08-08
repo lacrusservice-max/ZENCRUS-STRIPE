@@ -163,9 +163,46 @@ Formato JSON:
 }
 `
 
+const FOOD_LIST_PARSE_PROMPT = `
+Eres un nutriólogo que parsea alimentos escritos en lenguaje libre y coloquial (mexicano) a datos
+nutricionales estructurados. El usuario escribió, para cada comida del día, una lista de alimentos
+(un alimento por línea, puede incluir cantidad o no — si no incluye cantidad, asume una porción
+estándar razonable).
+
+TEXTO POR COMIDA (puede venir vacío si el usuario no escribió nada en esa comida):
+- Desayuno: {breakfast}
+- Almuerzo: {lunch}
+- Cena: {dinner}
+- Snack 1: {snack1}
+- Snack 2: {snack2}
+- Snack 3: {snack3}
+
+Para cada línea no vacía, identifica el alimento, la cantidad (usa gramos, ml o piezas/unidad según
+el alimento) y calcula sus macros con datos nutricionales reales y precisos. Elige un emoji simple
+que represente el alimento.
+
+FORMATO DE RESPUESTA JSON REQUERIDO (omite las comidas que vinieron vacías):
+{
+  "breakfast": [ { "name": string, "amount": number, "unit": string, "calories": number, "protein": number, "carbs": number, "fat": number, "fiber": number, "emoji": string } ],
+  "lunch": [...mismo formato...],
+  "dinner": [...mismo formato...],
+  "snack1": [...mismo formato...],
+  "snack2": [...mismo formato...],
+  "snack3": [...mismo formato...]
+}
+
+INSTRUCCIONES:
+1. Una línea de texto puede describir más de un alimento junto (ej. "huevos con jamón") — sepáralos en items distintos.
+2. Si la cantidad no es clara, usa una porción estándar razonable (ej. "huevos" = 2 piezas de 50g).
+3. Todos los números son valores reales, nunca placeholders ni ceros salvo que el alimento realmente no aporte ese macro.
+4. No inventes alimentos que no estén en el texto.
+5. Responde SOLO el JSON, sin texto adicional.
+`
+
 module.exports = {
   DIET_PROMPT_TEMPLATE,
   WORKOUT_PROMPT_TEMPLATE,
   CHAT_SYSTEM_PROMPT,
   MEAL_REPLACEMENT_PROMPT,
+  FOOD_LIST_PARSE_PROMPT,
 }

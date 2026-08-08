@@ -6,7 +6,7 @@ import Link from "next/link";
 import Image from "next/image";
 import { useAuthStore } from "@/store/authStore";
 import {
-  LayoutDashboard, Bot, Apple, Users, User, Dumbbell, TrendingUp,
+  LayoutDashboard, Bot, Apple, Users, User, Dumbbell, Activity,
   LogOut, ShieldCheck, CalendarDays, BookOpen, ShoppingCart,
   Ruler, HeartPulse, Repeat, CalendarHeart, Trophy, Swords, BarChart3, BookMarked,
 } from "lucide-react";
@@ -19,7 +19,7 @@ const NAV_ITEMS = [
   { href: "/recipes",      label: "Recetas",      icon: BookOpen },
   { href: "/grocery",      label: "Compras",      icon: ShoppingCart },
   { href: "/workout",      label: "Entreno",      icon: Dumbbell },
-  { href: "/progress",     label: "Progreso",     icon: TrendingUp },
+  { href: "/salud",        label: "Salud",        icon: Activity },
   { href: "/social",       label: "Comunidad",    icon: Users },
   { href: "/profile",      label: "Perfil",       icon: User },
 ];
@@ -39,7 +39,7 @@ function LoadingScreen() {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center", minHeight: "100vh", background: "#0a0a0a" }}>
       <div style={{ textAlign: "center" }}>
-        <div style={{ width: 40, height: 40, borderRadius: "50%", border: "2px solid #2563EB", borderTopColor: "transparent", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
+        <div style={{ width: 40, height: 40, borderRadius: "50%", border: "2px solid #FF1F3D", borderTopColor: "transparent", animation: "spin 1s linear infinite", margin: "0 auto 16px" }} />
         <p style={{ color: "rgba(255,255,255,0.4)", fontSize: 13 }}>Cargando...</p>
       </div>
     </div>
@@ -110,7 +110,7 @@ function Sidebar({ pathname }: { pathname: string }) {
               gap: 12,
               padding: "10px 14px",
               borderRadius: 12,
-              background: active ? "#2563EB" : "transparent",
+              background: active ? "#FF1F3D" : "transparent",
               color: active ? "#fff" : "rgba(255,255,255,0.55)",
               fontWeight: active ? 700 : 500,
               fontSize: 14,
@@ -130,7 +130,7 @@ function Sidebar({ pathname }: { pathname: string }) {
           return (
             <Link key={href} href={href} style={{
               display: "flex", alignItems: "center", gap: 12, padding: "10px 14px", borderRadius: 12,
-              background: active ? "#2563EB" : "transparent",
+              background: active ? "#FF1F3D" : "transparent",
               color: active ? "#fff" : "rgba(255,255,255,0.55)",
               fontWeight: active ? 700 : 500, fontSize: 14, transition: "all 0.15s", cursor: "pointer",
             }}>
@@ -163,10 +163,10 @@ function Sidebar({ pathname }: { pathname: string }) {
         <div style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 14px", borderRadius: 12, background: "rgba(255,255,255,0.04)", marginBottom: 4 }}>
           <div style={{
             width: 32, height: 32, borderRadius: "50%",
-            background: "rgba(37,99,235,0.25)",
-            border: "1px solid rgba(37,99,235,0.4)",
+            background: "rgba(255,31,61,0.25)",
+            border: "1px solid rgba(255,31,61,0.4)",
             display: "flex", alignItems: "center", justifyContent: "center",
-            fontSize: 12, fontWeight: 800, color: "#60a5fa", flexShrink: 0,
+            fontSize: 12, fontWeight: 800, color: "#FF5871", flexShrink: 0,
           }}>
             {initials}
           </div>
@@ -216,7 +216,7 @@ function MobileBottomNav({ pathname }: { pathname: string }) {
           <Link key={href} href={href} style={{
             display: "flex", flexDirection: "column", alignItems: "center", gap: 3,
             padding: "4px 12px", borderRadius: 10,
-            color: active ? "#2563EB" : "rgba(255,255,255,0.4)",
+            color: active ? "#FF1F3D" : "rgba(255,255,255,0.4)",
             minWidth: 56,
           }}>
             <Icon size={22} />

@@ -87,7 +87,7 @@ export default function SocialPage() {
   return (
     <div style={{ maxWidth: 1360, margin: "0 auto", padding: "0 20px 120px" }}>
       <div style={{ paddingTop: 32, paddingBottom: 28 }}>
-        <div style={{ fontSize: 10, fontWeight: 900, color: "#3fae6b", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · COMUNIDAD</div>
+        <div style={{ fontSize: 10, fontWeight: 900, color: "#FFFFFF", letterSpacing: 4, marginBottom: 6 }}>ZENCRUS · COMUNIDAD</div>
         <div style={{ fontFamily: "var(--font-rajdhani)", fontWeight: 700, fontSize: 40, color: C.text, letterSpacing: -0.5 }}>Comunidad</div>
       </div>
 
@@ -97,10 +97,10 @@ export default function SocialPage() {
             {(["all", "following"] as const).map(sc => (
               <button key={sc} onClick={() => setScope(sc)} style={{
                 padding: "10px 20px", borderRadius: 999, cursor: "pointer", fontSize: 13.5, fontWeight: 700,
-                background: scope === sc ? "linear-gradient(135deg, #2563EB, #1d4ed8)" : "rgba(255,255,255,0.04)",
+                background: scope === sc ? "linear-gradient(135deg, #FF1F3D, #FF0030)" : "rgba(255,255,255,0.04)",
                 color: scope === sc ? "#fff" : C.dim,
                 border: `1px solid ${scope === sc ? "transparent" : C.border}`,
-                boxShadow: scope === sc ? "0 8px 20px rgba(37,99,235,0.3)" : "none",
+                boxShadow: scope === sc ? "0 8px 20px rgba(255,31,61,0.3)" : "none",
               }}>
                 {sc === "all" ? "Explorar" : "Siguiendo"}
               </button>
@@ -188,7 +188,7 @@ export default function SocialPage() {
           <div className="section-label">Comunidad ZENCRUS</div>
           <div className="glass-card" style={{ padding: 20 }}>
             <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 10 }}>
-              <Users size={18} color="#3fae6b" />
+              <Users size={18} color="#FFFFFF" />
               <div style={{ fontSize: 13, fontWeight: 700, color: C.text }}>Comparte tu progreso</div>
             </div>
             <div style={{ fontSize: 12.5, color: C.dim, lineHeight: 1.6 }}>

@@ -8,6 +8,7 @@ import { useRouter } from 'expo-router'
 import { useMealPlanStore, DAYS, DAY_LABELS } from '@/store/mealPlanStore'
 import { useRecipesStore } from '@/store/recipesStore'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 // ── Category helpers ──────────────────────────────────────────────────────────
 
@@ -151,22 +152,20 @@ export default function GroceryScreen() {
   }).filter(d => d.count > 0)
 
   return (
-    <SafeAreaView style={s.container}>
-      {/* Header */}
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={s.backBtn}>
-          <Text style={s.backTxt}>‹</Text>
-        </TouchableOpacity>
-        <View style={{ flex: 1 }}>
-          <Text style={s.title}>Lista de compras</Text>
-          <Text style={s.sub}>{checkedCount}/{totalCount} completados</Text>
-        </View>
-        {checkedCount > 0 && (
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Nutrición"
+        title="Lista de compras"
+        subtitle={`${checkedCount}/${totalCount} completados`}
+        icon="cart"
+        color={Colors.accent.green}
+        right={checkedCount > 0 ? (
           <TouchableOpacity onPress={clearChecked}>
-            <Text style={s.clearTxt}>Limpiar ✓</Text>
+            <Text style={s.clearTxt}>Limpiar</Text>
           </TouchableOpacity>
-        )}
-      </View>
+        ) : undefined}
+      />
 
       {/* Progress bar */}
       {totalCount > 0 && (
@@ -254,7 +253,7 @@ export default function GroceryScreen() {
         )}
 
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   )
 }
 

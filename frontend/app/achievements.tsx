@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { useAchievementStore, XP_LEVELS, Achievement } from '@/store/achievementStore'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
 type FilterCat = 'all' | 'streak' | 'nutrition' | 'workout' | 'social' | 'health' | 'special'
 
@@ -165,14 +166,15 @@ export default function AchievementsScreen() {
   const visibleLocked = visible.filter(a => !unlockedMap.has(a.id))
 
   return (
-    <SafeAreaView style={s.container}>
-      <View style={s.header}>
-        <TouchableOpacity onPress={() => router.back()} style={{ padding: Spacing[2] }}>
-          <Text style={s.back}>‹</Text>
-        </TouchableOpacity>
-        <Text style={s.title}>Logros</Text>
-        <Text style={s.count}>{unlocked.length}/{all.length}</Text>
-      </View>
+    <Screen>
+      <ScreenHeader
+        back
+        eyebrow="Zencrus · Gamificación"
+        title="Logros"
+        subtitle={`${unlocked.length} de ${all.length} desbloqueados`}
+        icon="ribbon"
+        color={Colors.accent.yellow}
+      />
 
       <ScrollView showsVerticalScrollIndicator={false}>
         <XPProgressBar />
@@ -217,7 +219,7 @@ export default function AchievementsScreen() {
           )}
         </View>
       </ScrollView>
-    </SafeAreaView>
+    </Screen>
   )
 }
 

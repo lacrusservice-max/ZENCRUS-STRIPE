@@ -110,7 +110,7 @@ export function ScrollProgress() {
   }, []);
   return (
     <div style={{ position: "fixed", top: 0, left: 0, right: 0, height: 2, zIndex: 200, pointerEvents: "none" }}>
-      <div style={{ height: "100%", width: `${p * 100}%`, background: "linear-gradient(90deg,#2563EB,#00E5D0)", boxShadow: "0 0 12px rgba(0,229,208,0.6)", transition: "width 0.1s linear" }} />
+      <div style={{ height: "100%", width: `${p * 100}%`, background: "linear-gradient(90deg,#FF1F3D,#FF1F3D)", boxShadow: "0 0 12px rgba(0,229,208,0.6)", transition: "width 0.1s linear" }} />
     </div>
   );
 }

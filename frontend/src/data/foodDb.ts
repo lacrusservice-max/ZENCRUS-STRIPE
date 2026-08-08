@@ -1,0 +1,30 @@
+import { FoodEntry } from '@/store/nutritionStore'
+
+// ── Base de alimentos simple (local, expandible) ──────────────────────────────
+export const FOOD_DB: Omit<FoodEntry, 'id' | 'timestamp'>[] = [
+  { name: 'Pechuga de pollo (100g)',   calories: 165, protein: 31, carbs: 0,  fat: 3.6, fiber: 0,  amount: 100, unit: 'g' },
+  { name: 'Arroz blanco cocido (100g)',calories: 130, protein: 2.7,carbs: 28, fat: 0.3, fiber: 0.4,amount: 100, unit: 'g' },
+  { name: 'Huevo entero',              calories: 70,  protein: 6,  carbs: 0.6,fat: 5,   fiber: 0,  amount: 1,   unit: 'pza' },
+  { name: 'Clara de huevo',            calories: 17,  protein: 3.6,carbs: 0.2,fat: 0.1, fiber: 0,  amount: 1,   unit: 'pza' },
+  { name: 'Avena (100g)',              calories: 389, protein: 17, carbs: 66, fat: 7,   fiber: 10, amount: 100, unit: 'g' },
+  { name: 'Plátano mediano',           calories: 89,  protein: 1.1,carbs: 23, fat: 0.3, fiber: 2.6,amount: 1,   unit: 'pza' },
+  { name: 'Manzana mediana',           calories: 52,  protein: 0.3,carbs: 14, fat: 0.2, fiber: 2.4,amount: 1,   unit: 'pza' },
+  { name: 'Leche entera (250ml)',      calories: 149, protein: 8,  carbs: 12, fat: 8,   fiber: 0,  amount: 250, unit: 'ml' },
+  { name: 'Yogur griego (150g)',       calories: 132, protein: 12, carbs: 7,  fat: 5,   fiber: 0,  amount: 150, unit: 'g' },
+  { name: 'Aguacate ½',               calories: 120, protein: 1.5,carbs: 6,  fat: 11,  fiber: 5,  amount: 80,  unit: 'g' },
+  { name: 'Almendras (30g)',           calories: 174, protein: 6,  carbs: 6,  fat: 15,  fiber: 3.5,amount: 30,  unit: 'g' },
+  { name: 'Pan integral (1 rebanada)', calories: 69,  protein: 3.6,carbs: 12, fat: 1,   fiber: 1.9,amount: 40,  unit: 'g' },
+  { name: 'Pasta cocida (100g)',       calories: 158, protein: 5.8,carbs: 31, fat: 0.9, fiber: 1.8,amount: 100, unit: 'g' },
+  { name: 'Salmón (100g)',             calories: 208, protein: 20, carbs: 0,  fat: 13,  fiber: 0,  amount: 100, unit: 'g' },
+  { name: 'Atún en agua (100g)',       calories: 84,  protein: 20, carbs: 0,  fat: 0.5, fiber: 0,  amount: 100, unit: 'g' },
+  { name: 'Papa cocida (100g)',        calories: 86,  protein: 1.7,carbs: 20, fat: 0.1, fiber: 1.8,amount: 100, unit: 'g' },
+  { name: 'Camote cocido (100g)',      calories: 90,  protein: 2,  carbs: 21, fat: 0.1, fiber: 3,  amount: 100, unit: 'g' },
+  { name: 'Brócoli (100g)',            calories: 34,  protein: 2.8,carbs: 7,  fat: 0.4, fiber: 2.6,amount: 100, unit: 'g' },
+  { name: 'Espinacas (100g)',          calories: 23,  protein: 2.9,carbs: 3.6,fat: 0.4, fiber: 2.2,amount: 100, unit: 'g' },
+  { name: 'Proteína whey (30g)',       calories: 120, protein: 25, carbs: 3,  fat: 1.5, fiber: 0,  amount: 30,  unit: 'g' },
+  { name: 'Tortilla de maíz',         calories: 52,  protein: 1.4,carbs: 11, fat: 0.7, fiber: 1.2,amount: 30,  unit: 'g' },
+  { name: 'Queso panela (50g)',        calories: 79,  protein: 7.4,carbs: 2,  fat: 4.5, fiber: 0,  amount: 50,  unit: 'g' },
+  { name: 'Frijoles negros (100g)',    calories: 132, protein: 8.9,carbs: 24, fat: 0.5, fiber: 8.7,amount: 100, unit: 'g' },
+  { name: 'Aceite de oliva (1 cda)',   calories: 119, protein: 0,  carbs: 0,  fat: 14,  fiber: 0,  amount: 14,  unit: 'g' },
+  { name: 'Mantequilla de maní (2cdas)', calories: 188, protein: 8, carbs: 6, fat: 16, fiber: 1.9, amount: 32, unit: 'g' },
+]
