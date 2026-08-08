@@ -1,0 +1,6 @@
+# Respaldo temporal de una corrida concreta, no es fuente ni resultado.
+out/_backup/
+# Binario compilado del OCR: se regenera con `swiftc -O ocr_vision.swift -o ocr_vision`
+ocr_vision
+*.dSYM/
+__pycache__/

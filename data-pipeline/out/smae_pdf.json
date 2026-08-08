@@ -1,0 +1,814 @@
+{
+ "erratas": [
+  {
+   "excel": "Alga para sushl",
+   "pdf": "Alga para sushi",
+   "parecido": 0.933,
+   "conf": 1,
+   "pagina": "016",
+   "food_id": "smae_06f7b2b3ffe1",
+   "veces": 1
+  },
+  {
+   "excel": "Chile chllaca",
+   "pdf": "Chile chilaca",
+   "parecido": 0.923,
+   "conf": 1,
+   "pagina": "018",
+   "food_id": "smae_f894110ccd64",
+   "veces": 1
+  },
+  {
+   "excel": "Fisili cocido",
+   "pdf": "Fusili cocido",
+   "parecido": 0.923,
+   "conf": 1,
+   "pagina": "054",
+   "food_id": "smae_d48eb00703ec",
+   "veces": 1
+  },
+  {
+   "excel": "Dona glaseasa",
+   "pdf": "Dona glaseada",
+   "parecido": 0.923,
+   "conf": 1,
+   "pagina": "076",
+   "food_id": "smae_ce4fef2675ae",
+   "veces": 2
+  },
+  {
+   "excel": "Dorltos Incógnita",
+   "pdf": "Doritos Incognita",
+   "parecido": 0.941,
+   "conf": 1,
+   "pagina": "077",
+   "food_id": "smae_5565acc6fc50",
+   "veces": 1
+  },
+  {
+   "excel": "Sabrilas Ligeras Citricas",
+   "pdf": "Sabritas Ligeras Cítricas",
+   "parecido": 0.96,
+   "conf": 1,
+   "pagina": "088",
+   "food_id": "smae_3d80208a2e26",
+   "veces": 1
+  },
+  {
+   "excel": "Camarón de surirmi",
+   "pdf": "Camarón de surimi",
+   "parecido": 0.971,
+   "conf": 1,
+   "pagina": "098",
+   "food_id": "smae_7bda333271f4",
+   "veces": 1
+  },
+  {
+   "excel": "Costillar do cerdo",
+   "pdf": "Costillar de cerdo",
+   "parecido": 0.944,
+   "conf": 1,
+   "pagina": "118",
+   "food_id": "smae_6cfdf50ff259",
+   "veces": 1
+  },
+  {
+   "excel": "Salchicha Vlenna",
+   "pdf": "Salchicha Vienna",
+   "parecido": 0.938,
+   "conf": 1,
+   "pagina": "130",
+   "food_id": "smae_116f19577fdf",
+   "veces": 2
+  },
+  {
+   "excel": "Actlvla natural sólido",
+   "pdf": "Activia natural sólido",
+   "parecido": 0.909,
+   "conf": 1,
+   "pagina": "139",
+   "food_id": "smae_ffe561538eff",
+   "veces": 1
+  },
+  {
+   "excel": "Malleada de vainilla",
+   "pdf": "Malteada de vainilla",
+   "parecido": 0.95,
+   "conf": 1,
+   "pagina": "142",
+   "food_id": "smae_082219f4c7f0",
+   "veces": 1
+  },
+  {
+   "excel": "Aderezo de hiervas finas",
+   "pdf": "Aderezo de hierbas finas",
+   "parecido": 0.958,
+   "conf": 1,
+   "pagina": "148",
+   "food_id": "smae_2f55e164f33e",
+   "veces": 1
+  },
+  {
+   "excel": "Mlguelito en polvo",
+   "pdf": "Miguelito en polvo",
+   "parecido": 0.944,
+   "conf": 1,
+   "pagina": "176",
+   "food_id": "smae_4472266a2f65",
+   "veces": 1
+  },
+  {
+   "excel": "Pasltas con chocolate",
+   "pdf": "Pasitas con chocolate",
+   "parecido": 0.952,
+   "conf": 1,
+   "pagina": "177",
+   "food_id": "smae_d62000dc9586",
+   "veces": 1
+  },
+  {
+   "excel": "Chocolate Kinder Deiice",
+   "pdf": "Chocolate Kinder Delice",
+   "parecido": 0.957,
+   "conf": 1,
+   "pagina": "184",
+   "food_id": "smae_120fef844a00",
+   "veces": 1
+  },
+  {
+   "excel": "Consomé de res enlatadc",
+   "pdf": "Consomé de res enlatado",
+   "parecido": 0.957,
+   "conf": 1,
+   "pagina": "194",
+   "food_id": "smae_083d06262e0b",
+   "veces": 1
+  },
+  {
+   "excel": "Orange Crush Dlet",
+   "pdf": "Orange Crush Diet",
+   "parecido": 0.941,
+   "conf": 1,
+   "pagina": "198",
+   "food_id": "smae_02f79dbc7720",
+   "veces": 1
+  },
+  {
+   "excel": "Sldral de dieta",
+   "pdf": "Sidral de dieta",
+   "parecido": 0.933,
+   "conf": 1,
+   "pagina": "201",
+   "food_id": "smae_121d22aa0b3a",
+   "veces": 1
+  }
+ ],
+ "dudosas": [
+  {
+   "excel": "Huitlacoche cocido",
+   "pdf": "Cuitlacoche cocido",
+   "parecido": 0.944,
+   "conf": 0.5,
+   "pagina": "020",
+   "food_id": "smae_a4aadf812b21",
+   "veces": 1
+  },
+  {
+   "excel": "Espinaca cruda",
+   "pdf": "Espinaca crudaR",
+   "parecido": 0.966,
+   "conf": 0.5,
+   "pagina": "020",
+   "food_id": "smae_46ccddc30f41",
+   "veces": 1
+  },
+  {
+   "excel": "Yemltas (hongo) crudas",
+   "pdf": "Yemitas (hongo) crudas",
+   "parecido": 0.95,
+   "conf": 0.5,
+   "pagina": "026",
+   "food_id": "smae_1b6a11d9579f",
+   "veces": 1
+  },
+  {
+   "excel": "Melón Valenciano picada",
+   "pdf": "Melón Valenciano picado",
+   "parecido": 0.957,
+   "conf": 1,
+   "pagina": "034",
+   "food_id": "smae_ff5cec3eacd5",
+   "veces": 1
+  },
+  {
+   "excel": "Manche agrio",
+   "pdf": "Nanche agrio",
+   "parecido": 0.917,
+   "conf": 0.5,
+   "pagina": "035",
+   "food_id": "smae_6e80534bb893",
+   "veces": 1
+  },
+  {
+   "excel": "Chabacano",
+   "pdf": "y chabacano",
+   "parecido": 0.9,
+   "conf": 1,
+   "pagina": "036",
+   "food_id": "smae_e019c0fbd02d",
+   "veces": 1
+  },
+  {
+   "excel": "Papilla de peraypiña",
+   "pdf": "Papilla de pera y piña",
+   "parecido": 0.952,
+   "conf": 1,
+   "pagina": "036",
+   "food_id": "smae_3446e1c8bcc1",
+   "veces": 1
+  },
+  {
+   "excel": "Chocolate semi amargo",
+   "pdf": "Chocolate semiamargo",
+   "parecido": 0.976,
+   "conf": 1,
+   "pagina": "047",
+   "food_id": "smae_1834709c86b0",
+   "veces": 1
+  },
+  {
+   "excel": "Barra de granola",
+   "pdf": "Barrita de granola",
+   "parecido": 0.941,
+   "conf": 1,
+   "pagina": "047",
+   "food_id": "smae_553ce0c945b6",
+   "veces": 5
+  },
+  {
+   "excel": "Chispas de chocolate",
+   "pdf": "de chispa de chocolate",
+   "parecido": 0.905,
+   "conf": 1,
+   "pagina": "049",
+   "food_id": "smae_fd0e29b06e16",
+   "veces": 1
+  },
+  {
+   "excel": "Espinaca cocida",
+   "pdf": "espinaca cocido",
+   "parecido": 0.933,
+   "conf": 1,
+   "pagina": "053",
+   "food_id": "smae_ed09f178e224",
+   "veces": 2
+  },
+  {
+   "excel": "Galleta de avena",
+   "pdf": "Galletas de avena",
+   "parecido": 0.97,
+   "conf": 1,
+   "pagina": "055",
+   "food_id": "smae_7b7f6ea0c507",
+   "veces": 1
+  },
+  {
+   "excel": "Hojuelas de avena",
+   "pdf": "Hojuelasde avena",
+   "parecido": 0.97,
+   "conf": 0.5,
+   "pagina": "060",
+   "food_id": "smae_ad4dc14fdfd5",
+   "veces": 1
+  },
+  {
+   "excel": "Maíz pozolera",
+   "pdf": "Maíz pozolero",
+   "parecido": 0.923,
+   "conf": 0.5,
+   "pagina": "061",
+   "food_id": "smae_aae5bc565a42",
+   "veces": 1
+  },
+  {
+   "excel": "Galleta de manzana",
+   "pdf": "Galletas de manzana",
+   "parecido": 0.973,
+   "conf": 1,
+   "pagina": "080",
+   "food_id": "smae_072930900eb1",
+   "veces": 1
+  },
+  {
+   "excel": "Galleta de nuez",
+   "pdf": "Galletas de nuez",
+   "parecido": 0.968,
+   "conf": 1,
+   "pagina": "080",
+   "food_id": "smae_a074ffe0d9cc",
+   "veces": 1
+  },
+  {
+   "excel": "Pastel de chocolate",
+   "pdf": "Pastelito de chocolate",
+   "parecido": 0.927,
+   "conf": 1,
+   "pagina": "087",
+   "food_id": "smae_bf20474a34e5",
+   "veces": 1
+  },
+  {
+   "excel": "Camarón U15",
+   "pdf": "Camarón U",
+   "parecido": 0.9,
+   "conf": 1,
+   "pagina": "098",
+   "food_id": "smae_2611a309d852",
+   "veces": 1
+  },
+  {
+   "excel": "Huachinango crudo",
+   "pdf": "Guachinango crudo",
+   "parecido": 0.941,
+   "conf": 0.5,
+   "pagina": "102",
+   "food_id": "smae_0a35cd5a8ca8",
+   "veces": 1
+  },
+  {
+   "excel": "Queso Cottage",
+   "pdf": "Queso Cotagge",
+   "parecido": 0.923,
+   "conf": 0.5,
+   "pagina": "108",
+   "food_id": "smae_fdd822ece7b1",
+   "veces": 1
+  },
+  {
+   "excel": "Comed beef con áspic",
+   "pdf": "Corned beef con áspic",
+   "parecido": 0.927,
+   "conf": 0.5,
+   "pagina": "112",
+   "food_id": "smae_784d8227c1ba",
+   "veces": 1
+  },
+  {
+   "excel": "Queso Cheezwlz",
+   "pdf": "Queso Cheezwiz",
+   "parecido": 0.929,
+   "conf": 0.5,
+   "pagina": "127",
+   "food_id": "smae_cf0e369dd445",
+   "veces": 1
+  },
+  {
+   "excel": "Queso Cotlja",
+   "pdf": "Queso Cotija",
+   "parecido": 0.917,
+   "conf": 0.5,
+   "pagina": "127",
+   "food_id": "smae_314914467ea9",
+   "veces": 1
+  },
+  {
+   "excel": "Queso Lmburger",
+   "pdf": "Queso Limburger",
+   "parecido": 0.966,
+   "conf": 0.5,
+   "pagina": "128",
+   "food_id": "smae_7375cebfdfc1",
+   "veces": 1
+  },
+  {
+   "excel": "Leche descremada",
+   "pdf": "Leche descremada en",
+   "parecido": 0.914,
+   "conf": 1,
+   "pagina": "134",
+   "food_id": "smae_09f0297f0a6d",
+   "veces": 1
+  },
+  {
+   "excel": "Aceite de girasol",
+   "pdf": "Aceite de girasol 60%",
+   "parecido": 0.919,
+   "conf": 1,
+   "pagina": "146",
+   "food_id": "smae_fd1e28142eca",
+   "veces": 1
+  },
+  {
+   "excel": "Manteca de cerdo",
+   "pdf": "Manleca de cerdo",
+   "parecido": 0.938,
+   "conf": 0.5,
+   "pagina": "151",
+   "food_id": "smae_c6a0da418fcf",
+   "veces": 1
+  },
+  {
+   "excel": "Monkfruit",
+   "pdf": "Monk Fruit",
+   "parecido": 0.947,
+   "conf": 0.5,
+   "pagina": "156",
+   "food_id": "smae_92fd7bfb005a",
+   "veces": 1
+  },
+  {
+   "excel": "Cocoa sin azúcar",
+   "pdf": "Coco sin azúcar",
+   "parecido": 0.968,
+   "conf": 1,
+   "pagina": "156",
+   "food_id": "smae_b2cfa90ba95d",
+   "veces": 1
+  },
+  {
+   "excel": "Tamarindo",
+   "pdf": "y tamarindo",
+   "parecido": 0.9,
+   "conf": 1,
+   "pagina": "168",
+   "food_id": "smae_3645f2c4cf4c",
+   "veces": 1
+  },
+  {
+   "excel": "Jugo de frutas",
+   "pdf": "Jugo de fruta",
+   "parecido": 0.963,
+   "conf": 1,
+   "pagina": "173",
+   "food_id": "smae_09e3badecdf2",
+   "veces": 1
+  },
+  {
+   "excel": "Jugo Naturales de Lala",
+   "pdf": "Jugo Natural es de Lala",
+   "parecido": 0.978,
+   "conf": 1,
+   "pagina": "174",
+   "food_id": "smae_a02007306ad1",
+   "veces": 1
+  },
+  {
+   "excel": "Paleta Tutsl Pop",
+   "pdf": "Paleta Tutsi Pop",
+   "parecido": 0.938,
+   "conf": 0.5,
+   "pagina": "177",
+   "food_id": "smae_9cd5735641af",
+   "veces": 1
+  },
+  {
+   "excel": "Masa para pizza",
+   "pdf": "Salsa para pizza",
+   "parecido": 0.903,
+   "conf": 1,
+   "pagina": "179",
+   "food_id": "smae_427a5a2f226d",
+   "veces": 1
+  },
+  {
+   "excel": "Aderezo de miel",
+   "pdf": "Aderezo de miel y",
+   "parecido": 0.938,
+   "conf": 1,
+   "pagina": "181",
+   "food_id": "smae_8ed633dfa340",
+   "veces": 1
+  },
+  {
+   "excel": "Cacahuates confitados",
+   "pdf": "Cacahuate confitado",
+   "parecido": 0.95,
+   "conf": 0.5,
+   "pagina": "182",
+   "food_id": "smae_f21d5ecd5049",
+   "veces": 1
+  },
+  {
+   "excel": "Chocolate barra Mllch",
+   "pdf": "Chocolate barra Milch",
+   "parecido": 0.952,
+   "conf": 1,
+   "pagina": "182",
+   "food_id": "smae_7a795de9e131",
+   "veces": 1
+  },
+  {
+   "excel": "Chocolate con leche",
+   "pdf": "Chocolate con leche y",
+   "parecido": 0.95,
+   "conf": 1,
+   "pagina": "183",
+   "food_id": "smae_d56d2f23ba9e",
+   "veces": 1
+  },
+  {
+   "excel": "Cacahuate",
+   "pdf": "y cacahuate",
+   "parecido": 0.9,
+   "conf": 0.5,
+   "pagina": "183",
+   "food_id": "smae_10ec4e0f7c93",
+   "veces": 1
+  },
+  {
+   "excel": "Chocolate Mllky Way",
+   "pdf": "Chocolate Milky Way",
+   "parecido": 0.947,
+   "conf": 1,
+   "pagina": "184",
+   "food_id": "smae_4e7654ea6f60",
+   "veces": 1
+  },
+  {
+   "excel": "Chocolate Mllkyway minl",
+   "pdf": "Chocolate Milkyway mini",
+   "parecido": 0.913,
+   "conf": 1,
+   "pagina": "184",
+   "food_id": "smae_896a50dc7c4b",
+   "veces": 1
+  },
+  {
+   "excel": "Chocolate Snlckers",
+   "pdf": "Chocolate Snickers",
+   "parecido": 0.944,
+   "conf": 0.5,
+   "pagina": "185",
+   "food_id": "smae_6b36e046dbbe",
+   "veces": 1
+  },
+  {
+   "excel": "Ajo en polvo",
+   "pdf": "o en polvo",
+   "parecido": 0.909,
+   "conf": 1,
+   "pagina": "196",
+   "food_id": "smae_96c0bc3d3ce5",
+   "veces": 1
+  },
+  {
+   "excel": "Squlrt de dieta",
+   "pdf": "Squirt de dieta",
+   "parecido": 0.933,
+   "conf": 0.5,
+   "pagina": "201",
+   "food_id": "smae_6197d41b9c0c",
+   "veces": 1
+  },
+  {
+   "excel": "Squlrt light",
+   "pdf": "Squirt light",
+   "parecido": 0.917,
+   "conf": 0.5,
+   "pagina": "201",
+   "food_id": "smae_acbb77c0801e",
+   "veces": 1
+  },
+  {
+   "excel": "Licor 80°proof",
+   "pdf": "Licor 80° proof",
+   "parecido": 0.963,
+   "conf": 0.5,
+   "pagina": "204",
+   "food_id": "smae_c5142361b4dd",
+   "veces": 1
+  }
+ ],
+ "medidas": [
+  {
+   "food_id": "smae_e77df9f78e12",
+   "excel": "Puré de manzana",
+   "unidad_pdf": "taza",
+   "leido": "taza",
+   "cantidad": 0.5,
+   "gramos": 122.0,
+   "conf": 0.5,
+   "pagina": "039"
+  },
+  {
+   "food_id": "smae_3645f2c4cf4c",
+   "excel": "Tamarindo",
+   "unidad_pdf": "cucharada",
+   "leido": "cda",
+   "cantidad": null,
+   "gramos": 100.0,
+   "conf": 0.5,
+   "pagina": "039"
+  },
+  {
+   "food_id": "smae_37087f054b00",
+   "excel": "Papilla de arroz",
+   "unidad_pdf": "gramos",
+   "leido": "gramos",
+   "cantidad": 15.0,
+   "gramos": 15.0,
+   "conf": 1,
+   "pagina": "067"
+  },
+  {
+   "food_id": "smae_d77fd583bf75",
+   "excel": "Harina de cacahuate",
+   "unidad_pdf": "cucharada",
+   "leido": "cda",
+   "cantidad": null,
+   "gramos": 32.0,
+   "conf": 0.5,
+   "pagina": "081"
+  },
+  {
+   "food_id": "smae_7e971158b023",
+   "excel": "Nature Valley",
+   "unidad_pdf": "pieza",
+   "leido": "pieza",
+   "cantidad": 0.6,
+   "gramos": 20.0,
+   "conf": 1,
+   "pagina": "083"
+  },
+  {
+   "food_id": "smae_ed61b08c3f09",
+   "excel": "Sabritas Ligeras",
+   "unidad_pdf": "bolsita",
+   "leido": "bolsita",
+   "cantidad": 0.25,
+   "gramos": 25.0,
+   "conf": 1,
+   "pagina": "088"
+  },
+  {
+   "food_id": "smae_fdd822ece7b1",
+   "excel": "Queso Cottage",
+   "unidad_pdf": "taza",
+   "leido": "taza",
+   "cantidad": null,
+   "gramos": 57.0,
+   "conf": 0.5,
+   "pagina": "108"
+  },
+  {
+   "food_id": "smae_3f30ba623ef0",
+   "excel": "Queso Mozzarella",
+   "unidad_pdf": "rebanada",
+   "leido": "reb",
+   "cantidad": null,
+   "gramos": 28.0,
+   "conf": 0.5,
+   "pagina": "108"
+  },
+  {
+   "food_id": "smae_c743a7f0facb",
+   "excel": "Queso Monterrey",
+   "unidad_pdf": "rebanada",
+   "leido": "reb",
+   "cantidad": null,
+   "gramos": 28.0,
+   "conf": 0.5,
+   "pagina": "121"
+  },
+  {
+   "food_id": "smae_3f30ba623ef0",
+   "excel": "Queso Mozzarella",
+   "unidad_pdf": "rebanada",
+   "leido": "reb",
+   "cantidad": null,
+   "gramos": 28.0,
+   "conf": 0.5,
+   "pagina": "121"
+  },
+  {
+   "food_id": "smae_3f30ba623ef0",
+   "excel": "Queso Mozzarella",
+   "unidad_pdf": "rebanada",
+   "leido": "reb",
+   "cantidad": null,
+   "gramos": 28.0,
+   "conf": 0.5,
+   "pagina": "122"
+  },
+  {
+   "food_id": "smae_3f30ba623ef0",
+   "excel": "Queso Mozzarella",
+   "unidad_pdf": "rebanada",
+   "leido": "reb",
+   "cantidad": null,
+   "gramos": 28.0,
+   "conf": 0.5,
+   "pagina": "128"
+  },
+  {
+   "food_id": "smae_09f0297f0a6d",
+   "excel": "Leche descremada",
+   "unidad_pdf": "cucharada",
+   "leido": "cda",
+   "cantidad": null,
+   "gramos": 30.0,
+   "conf": 0.5,
+   "pagina": "134"
+  },
+  {
+   "food_id": "smae_09f0297f0a6d",
+   "excel": "Leche descremada",
+   "unidad_pdf": "cucharada",
+   "leido": "cda",
+   "cantidad": null,
+   "gramos": 30.0,
+   "conf": 0.5,
+   "pagina": "134"
+  },
+  {
+   "food_id": "smae_fc97df8eb311",
+   "excel": "Cáscara de naranja",
+   "unidad_pdf": "gramos",
+   "leido": "gramos",
+   "cantidad": 10.0,
+   "gramos": 10.0,
+   "conf": 1,
+   "pagina": "166"
+  },
+  {
+   "food_id": "smae_2a390f92514d",
+   "excel": "Leche condensada",
+   "unidad_pdf": "cucharada",
+   "leido": "cda",
+   "cantidad": null,
+   "gramos": 15.0,
+   "conf": 0.5,
+   "pagina": "174"
+  },
+  {
+   "food_id": "smae_f21d5ecd5049",
+   "excel": "Cacahuates confitados",
+   "unidad_pdf": "pieza",
+   "leido": "pieza",
+   "cantidad": null,
+   "gramos": 16.0,
+   "conf": 1,
+   "pagina": "182"
+  },
+  {
+   "food_id": "smae_5c52b4aabfa6",
+   "excel": "Mole poblano en pasta",
+   "unidad_pdf": "cucharada",
+   "leido": "cda",
+   "cantidad": null,
+   "gramos": 16.0,
+   "conf": 1,
+   "pagina": "187"
+  },
+  {
+   "food_id": "smae_aff81eea4b56",
+   "excel": "Nutella de avellana",
+   "unidad_pdf": "cucharada",
+   "leido": "cda",
+   "cantidad": null,
+   "gramos": 15.0,
+   "conf": 1,
+   "pagina": "187"
+  },
+  {
+   "food_id": "smae_3013cac4e9e5",
+   "excel": "Café instantáneo",
+   "unidad_pdf": "taza",
+   "leido": "taza",
+   "cantidad": null,
+   "gramos": 240.0,
+   "conf": 0.5,
+   "pagina": "191"
+  },
+  {
+   "food_id": "smae_d22db6de04d2",
+   "excel": "Consomé de pollo",
+   "unidad_pdf": "cucharada",
+   "leido": "cda",
+   "cantidad": null,
+   "gramos": 60.0,
+   "conf": 0.5,
+   "pagina": "194"
+  },
+  {
+   "food_id": "smae_d22db6de04d2",
+   "excel": "Consomé de pollo",
+   "unidad_pdf": "cucharada",
+   "leido": "cda",
+   "cantidad": null,
+   "gramos": 12.0,
+   "conf": 0.5,
+   "pagina": "194"
+  },
+  {
+   "food_id": "smae_a6806e12dda4",
+   "excel": "Consomé de res",
+   "unidad_pdf": "cucharada",
+   "leido": "cda",
+   "cantidad": null,
+   "gramos": 12.0,
+   "conf": 0.5,
+   "pagina": "194"
+  }
+ ]
+}
