@@ -9,7 +9,7 @@
       "distribution": "internal",
       "env": {
         "APP_ENV": "development",
-        "API_URL": "http://192.168.100.3:5000/api"
+        "EXPO_PUBLIC_API_URL": "http://192.168.100.3:5000/api"
       }
     },
     "preview": {
@@ -17,7 +17,7 @@
       "channel": "preview",
       "env": {
         "APP_ENV": "preview",
-        "API_URL": "https://zencrus-api-staging.railway.app/api"
+        "EXPO_PUBLIC_API_URL": "https://web-production-1d2e22.up.railway.app/api"
       }
     },
     "production": {
@@ -25,7 +25,7 @@
       "channel": "production",
       "env": {
         "APP_ENV": "production",
-        "API_URL": "https://zencrus-api.railway.app/api"
+        "EXPO_PUBLIC_API_URL": "https://web-production-1d2e22.up.railway.app/api"
       }
     }
   },
