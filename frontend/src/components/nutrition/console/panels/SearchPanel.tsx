@@ -16,6 +16,7 @@ import { useEffect, useRef, useState } from 'react'
 import { View, Text, StyleSheet, TextInput, FlatList, ActivityIndicator, Image } from 'react-native'
 import Animated, { FadeIn, FadeOut, LinearTransition } from 'react-native-reanimated'
 import { ZIcon } from '@/components/ui/ZencrusIcon'
+import { VerifiedSeal } from '@/components/ui/VerifiedSeal'
 import { Food, searchFoods } from '@/services/foodApi'
 import { FoodEntry } from '@/store/nutritionStore'
 import {
@@ -159,26 +160,38 @@ function FoodRow({ food, expanded, onToggle, consumed, budget, onCommit }: {
 
   return (
     <Animated.View layout={LinearTransition.duration(220)} style={s.row}>
+      {/* Filo encendido a la izquierda: marca la fila como tocable sin rodearla
+          de neón, que a veinte resultados en pantalla sería demasiado ruido. */}
+      <View style={[s.edge, expanded && s.edgeOn]} pointerEvents="none" />
+
       <Tap onPress={onToggle} scaleTo={0.99}>
         <View style={s.rowHead}>
-          {food.imageUrl
-            ? <Image source={{ uri: food.imageUrl }} style={s.thumb} />
-            : <View style={s.emojiBox}><Text style={s.emoji}>{food.emoji}</Text></View>}
+          <View>
+            {food.imageUrl
+              ? <Image source={{ uri: food.imageUrl }} style={s.thumb} />
+              : <View style={s.emojiBox}><Text style={s.emoji}>{food.emoji}</Text></View>}
 
-          <View style={{ flex: 1, minWidth: 0 }}>
-            <Text style={s.name} numberOfLines={1}>{food.name}</Text>
-            <Text style={s.meta} numberOfLines={1}>
-              {food.brand ? `${food.brand} · ` : ''}{food.per100.calories} kcal / 100 g
-              {food.verified && food.sourceLabel ? ` · Verificado · ${food.sourceLabel}` : ''}
-            </Text>
+            {/* El sello va montado en la esquina de la miniatura. En la línea
+                del nombre gastaba 29 px y truncaba los nombres corrientes;
+                aquí no cuesta ancho y es donde se espera una insignia. */}
+            {food.verified && (
+              <View style={s.sealSlot}>
+                <VerifiedSeal size={16} color={CT.ink} checkColor={CT.base} />
+              </View>
+            )}
           </View>
 
-          {food.verified && (
-            <View style={s.verified}>
-              <ZIcon name="check" size={10} color="#22c55e" weight={2.6} />
-            </View>
-          )}
-          <ZIcon name={expanded ? 'minus' : 'plus'} size={16} color={CT.ink3} weight={1.8} />
+          {/* Sin `numberOfLines`: el nombre nunca se recorta. Los largos —hay
+              alimentos de 96 caracteres— reparten en varias líneas y la fila
+              crece con ellos. Por eso la miniatura se alinea arriba. */}
+          <Text style={s.name}>{food.name}</Text>
+
+          {/* Las kilocalorías NO salen aquí: dependen de la porción, y la
+              porción se elige abajo. Enseñar el valor por 100 g en la lista
+              solo invita a confundirlo con lo que se va a registrar. */}
+          <View style={[s.plusRing, expanded && s.plusRingOn]}>
+            <ZIcon name={expanded ? 'minus' : 'plus'} size={15} color={CT.signal} weight={2.2} />
+          </View>
         </View>
       </Tap>
 
@@ -313,23 +326,56 @@ const s = StyleSheet.create({
   list: { paddingHorizontal: 18, paddingTop: 10, paddingBottom: 24, gap: 8 },
 
   row: {
-    borderRadius: CT.r.md, backgroundColor: CT.panel,
+    borderRadius: CT.r.lg, backgroundColor: CT.panel,
     borderWidth: 1, borderColor: CT.hairline, overflow: 'hidden',
   },
-  rowHead: { flexDirection: 'row', alignItems: 'center', gap: 12, padding: 12 },
-  thumb: { width: 38, height: 38, borderRadius: CT.r.xs, backgroundColor: CT.panelHot },
+
+  // Filo neón. Va absoluto y sin capturar toques para no partir la fila en dos
+  // zonas pulsables; el `Tap` sigue cubriéndola entera.
+  edge: {
+    position: 'absolute', left: 0, top: 0, bottom: 0,
+    width: CT.neonEdgeWidth, backgroundColor: CT.signal,
+    // Halo: iOS lo pinta, Android lo ignora y se queda con el filo a secas.
+    shadowColor: CT.signal, shadowOpacity: 0.9, shadowRadius: 7,
+    shadowOffset: { width: 0, height: 0 },
+    zIndex: 1,
+  },
+  edgeOn: { shadowRadius: 12 },
+
+  // `flex-start`: con un nombre de tres o cuatro líneas, la miniatura centrada
+  // quedaría flotando en mitad del bloque.
+  rowHead: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 12,
+    paddingLeft: 16, paddingRight: 12, paddingVertical: 13,
+  },
+  thumb: { width: 44, height: 44, borderRadius: CT.r.sm, backgroundColor: CT.panelHot },
   emojiBox: {
-    width: 38, height: 38, borderRadius: CT.r.xs, backgroundColor: CT.panelHot,
+    width: 44, height: 44, borderRadius: CT.r.sm, backgroundColor: CT.panelHot,
     alignItems: 'center', justifyContent: 'center',
   },
-  emoji: { fontSize: 19 },
-  name: { fontSize: 14, fontWeight: '700', color: CT.ink },
-  meta: { fontSize: 11, color: CT.ink3, marginTop: 2 },
-  verified: {
-    width: 20, height: 20, borderRadius: 10,
-    backgroundColor: 'rgba(34,197,94,0.14)',
-    alignItems: 'center', justifyContent: 'center',
+  emoji: { fontSize: 22 },
+  // El halo del color del fondo despega el sello de la miniatura.
+  sealSlot: {
+    position: 'absolute', right: -5, bottom: -5,
+    borderRadius: 999, backgroundColor: CT.base, padding: 1.5,
   },
+  name: {
+    // '650' es peso de fuente variable: vale en CSS pero React Native solo
+    // admite los múltiplos de 100.
+    flex: 1, minWidth: 0, fontSize: 15, fontWeight: '600',
+    color: CT.ink, lineHeight: 20, paddingTop: 3,
+  },
+
+  // Aro de añadir. El icono va centrado por el contenedor, no por su métrica
+  // tipográfica, que es lo que descuadraba el signo dentro del círculo.
+  plusRing: {
+    width: 34, height: 34, borderRadius: 999,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: CT.neonLine,
+    shadowColor: CT.signal, shadowOpacity: 0.55, shadowRadius: 6,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  plusRingOn: { borderColor: CT.neonLineHot, shadowRadius: 10 },
 
   body: { paddingHorizontal: 12, paddingBottom: 12, gap: 8 },
   sectionLbl: { marginTop: 4 },

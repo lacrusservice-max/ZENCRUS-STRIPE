@@ -49,6 +49,24 @@ export const CT = {
   signalWash: 'rgba(255,31,61,0.10)',
   signalEdge: 'rgba(255,31,61,0.42)',
 
+  // ── Neón ─────────────────────────────────────────────────────────────────
+  // Marca los elementos que responden al toque: el filo de cada alimento y el
+  // aro de añadir. Sale de aquí y de ningún otro sitio, así que el día que haya
+  // tema claro basta con cambiar estos cinco valores por sus equivalentes en
+  // azul — el rojo no aguanta un halo sobre fondo blanco y además chocaría con
+  // el rojo de las alertas.
+  //
+  // El halo se pinta con `shadowColor`, que iOS respeta y ANDROID NO: allí solo
+  // existe la sombra gris de `elevation`. Por eso el neón vive del borde y del
+  // filo, que se ven igual en las dos, y el halo es un extra que suma donde lo
+  // hay pero cuya ausencia no rompe el diseño.
+  neonLine: 'rgba(255,31,61,0.55)',
+  neonLineHot: 'rgba(255,88,113,0.95)',
+  neonHalo: 'rgba(255,31,61,0.30)',
+  neonInner: 'rgba(255,31,61,0.07)',
+  /** Grosor del filo encendido a la izquierda de la fila. */
+  neonEdgeWidth: 3,
+
   // ── Geometría ────────────────────────────────────────────────────────────
   r: { xs: 8, sm: 11, md: 14, lg: 18, pill: 999 },
 } as const
