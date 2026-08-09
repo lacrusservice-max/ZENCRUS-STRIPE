@@ -1,13 +1,13 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   Search, Barcode, Plus, X, ChevronUp, Check, Sparkles, BookOpen, List as ListIcon, Mic,
 } from "lucide-react";
 import {
   scaleFood, computeAddImpact, suggestPortionFix, dialRange, type FoodBase,
 } from "@/lib/portionScale";
-import { FOOD_DB } from "@/lib/foodDb";
+import { buscarAlimentos, type CatalogFood } from "@/lib/foodApi";
 import type { FoodEntry, MealSlot } from "@/store/nutritionStore";
 import type { MealBudget } from "@/lib/mealBudget";
 import type { ParsedFoodsByMeal } from "@/lib/foodListService";
@@ -104,11 +104,25 @@ export function AddFoodSheet({
   const mealLabels = Object.fromEntries(meals.map((m) => [m.id, m.label]));
   const mealOrder = meals.map((m) => m.id);
 
-  const results = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    return q.length > 1
-      ? FOOD_DB.filter((f) => f.name.toLowerCase().includes(q)).slice(0, 12)
-      : FOOD_DB.slice(0, 12);
+  // Búsqueda contra el catálogo real (10.611 alimentos), no contra la lista
+  // local de quince que había antes. Se espera 250 ms desde la última tecla
+  // para no lanzar una petición por pulsación, y cada respuesta comprueba que
+  // sigue siendo la vigente: al escribir rápido las peticiones vuelven
+  // desordenadas y sin esto una respuesta vieja pisa a la nueva.
+  const [results, setResults] = useState<CatalogFood[]>([]);
+  const [buscando, setBuscando] = useState(false);
+
+  useEffect(() => {
+    let vigente = true;
+    const t = setTimeout(async () => {
+      if (!vigente) return;
+      setBuscando(true);
+      const r = await buscarAlimentos(query);
+      if (!vigente) return;
+      setResults(r);
+      setBuscando(false);
+    }, 250);
+    return () => { vigente = false; clearTimeout(t); };
   }, [query]);
 
   const scaled = picked ? scaleFood(picked, amount) : null;
@@ -223,6 +237,14 @@ export function AddFoodSheet({
                   </div>
 
                   <div className="afs-list">
+                    {/* La consulta va al servidor: sin esto la lista parece
+                        vacía mientras responde y da la impresión de que no
+                        existe el alimento. */}
+                    {buscando && results.length === 0 && (
+                      <p style={{ color: N.w3, fontSize: 13, padding: "14px 4px" }}>
+                        Buscando en el catálogo…
+                      </p>
+                    )}
                     {results.map((f) => {
                       const isOpen = picked?.name === f.name;
                       if (!isOpen) {
@@ -233,6 +255,13 @@ export function AddFoodSheet({
                               <span className="afs-row-n">{f.name}</span>
                               <span className="afs-row-m">
                                 {f.calories} kcal · P {Math.round(f.protein)} · C {Math.round(f.carbs)} · G {Math.round(f.fat)}
+                                {/* De dónde sale el dato: distingue una fuente
+                                    oficial de un valor tecleado a mano. */}
+                                {f.sourceLabel && (
+                                  <> · <span style={{ color: N.w2 }}>
+                                    {f.verified ? "Verificado · " : ""}{f.sourceLabel}
+                                  </span></>
+                                )}
                               </span>
                               <span className="afs-row-bar">
                                 {f.protein > 0 && <i style={{ flex: f.protein * 4, background: N.white }} />}
