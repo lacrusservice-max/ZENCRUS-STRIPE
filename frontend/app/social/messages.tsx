@@ -20,6 +20,7 @@ import { useAppTheme } from '@/context/ThemeContext'
 import { useSocialStore } from '@/store/socialStore'
 import { Avatar, Badge, Empty, Skeleton, timeAgo } from '@/components/social/Bits'
 import * as S from '@/services/socialService'
+import { useLivePoll } from '@/hooks/useLivePoll'
 
 export default function MessagesScreen() {
   const T = useAppTheme()
@@ -46,6 +47,18 @@ export default function MessagesScreen() {
 
   // Al volver de un chat hay que recargar: el contador de sin leer cambió.
   useFocusEffect(useCallback(() => { cargar(true) }, []))
+
+  /**
+   * La bandeja se refresca sola, pero mucho más despacio que un chat abierto.
+   * Aquí nadie está esperando una respuesta concreta: basta con que la lista no
+   * esté rancia cuando llegue un mensaje mientras se mira.
+   *
+   * Sin `refrescando`, la rueda de «tirar para actualizar» aparecería sola cada
+   * quince segundos.
+   */
+  useLivePoll(async () => {
+    try { setInbox(await S.getInbox()); loadBadges() } catch { /* se reintenta */ }
+  }, 15000)
 
   const responder = async (c: S.Conversation, aceptar: boolean) => {
     try {

@@ -66,6 +66,9 @@ const envSchema = z.object({
 
   RATE_LIMIT_WINDOW_MS: z.coerce.number().default(900000),
   RATE_LIMIT_MAX: z.coerce.number().default(100),
+  // La comunidad cuenta aparte: un chat abierto se refresca solo y con el tope
+  // general se quedaría sin cuota en siete minutos. Ver `socialLimiter`.
+  SOCIAL_RATE_LIMIT_MAX: z.coerce.number().default(900),
   LOGIN_RATE_LIMIT_MAX: z.coerce.number().default(5),
   ENCRYPTION_KEY: z.string().length(64),
   SALT_ROUNDS: z.coerce.number().default(12),

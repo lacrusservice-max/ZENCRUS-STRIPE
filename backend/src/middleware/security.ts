@@ -28,12 +28,43 @@ export const securityHeaders = helmet({
   referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
 })
 
+/**
+ * ── Presupuesto propio para la comunidad ────────────────────────────────────
+ * El limitador general está pensado para una API que se consulta de vez en
+ * cuando: cien peticiones cada quince minutos son una cada nueve segundos. Un
+ * chat abierto, que se refresca solo para traer lo que llega, las agota en
+ * siete minutos y deja al resto de la app sin cuota — y el 429 aparece como si
+ * el servidor se hubiera roto.
+ *
+ * Así que `/api/social` cuenta aparte y con margen para una conversación viva.
+ * Sigue siendo un muro: sesenta por minuto no las hace una persona, las hace un
+ * guion. Y lo caro de verdad —subir archivos— no pasa por aquí: va directo al
+ * almacén con una URL firmada.
+ */
+export const socialLimiter = rateLimit({
+  windowMs: env.RATE_LIMIT_WINDOW_MS,
+  max: env.SOCIAL_RATE_LIMIT_MAX,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: {
+    success: false,
+    message: 'Demasiadas solicitudes. Espera un momento.',
+  } satisfies ApiResponse,
+  handler: (req, res, _next, options) => {
+    logger.warn(`Rate limit (social) alcanzado: ${req.ip} ${req.path}`)
+    res.status(429).json(options.message)
+  },
+})
+
 // ── Rate limiting general ─────────────────────────────────────────────────────
 export const apiLimiter = rateLimit({
   windowMs: env.RATE_LIMIT_WINDOW_MS,
   max: env.RATE_LIMIT_MAX,
   standardHeaders: true,
   legacyHeaders: false,
+  // La comunidad tiene su propio contador: sin esta exclusión gastaría también
+  // el general y el tope estricto seguiría mandando.
+  skip: req => req.path.startsWith('/social'),
   message: {
     success: false,
     message: 'Demasiadas solicitudes. Intenta nuevamente más tarde.',

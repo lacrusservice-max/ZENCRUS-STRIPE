@@ -8,7 +8,7 @@ import path from 'path'
 import { env } from './config/env'
 import { logger } from './config/logger'
 import helmet from 'helmet'
-import { securityHeaders, apiLimiter, suspiciousActivityLogger, enforceHTTPS } from './middleware/security'
+import { securityHeaders, apiLimiter, socialLimiter, suspiciousActivityLogger, enforceHTTPS } from './middleware/security'
 import { errorHandler, notFound } from './middleware/errorHandler'
 import routes from './routes'
 import { purgeExpiredStories } from './controllers/socialContentController'
@@ -65,6 +65,7 @@ app.use(morgan('combined', {
   skip: (req) => req.url === '/api/health',
 }))
 app.use(suspiciousActivityLogger)
+app.use('/api/social', socialLimiter)
 app.use('/api', apiLimiter)
 
 // ── Panel Admin — CSP relajado para CDNs (solo /admin) ───────────────────────

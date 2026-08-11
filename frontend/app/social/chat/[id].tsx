@@ -29,6 +29,7 @@ import { useAppTheme } from '@/context/ThemeContext'
 import { useSocialStore } from '@/store/socialStore'
 import { Avatar, Btn, Empty, Skeleton, timeAgo } from '@/components/social/Bits'
 import { VideoPlayer } from '@/components/social/VideoPlayer'
+import { useLivePoll } from '@/hooks/useLivePoll'
 import * as S from '@/services/socialService'
 
 export default function ChatScreen() {
@@ -70,6 +71,47 @@ export default function ChatScreen() {
   }, [id])
 
   useEffect(() => { cargar() }, [cargar])
+
+  /**
+   * Trae lo que haya llegado mientras la conversación está abierta.
+   *
+   * Pide la primera página y añade solo lo que no estaba: reemplazar la lista
+   * entera perdería la posición de quien está leyendo hacia atrás, y volvería a
+   * pedir cada foto ya descargada.
+   *
+   * También marca leído lo nuevo del otro, que es lo que un chat abierto
+   * significa — y lo que hace bajar el contador en su pantalla.
+   */
+  const refrescar = useCallback(async () => {
+    if (!id) return
+    const pagina = await S.getMessages(id)
+    let llegoAlgo = false
+
+    setMensajes(prev => {
+      const conocidos = new Set(prev.map(m => m.id))
+      const nuevos = pagina.messages.filter(m => !conocidos.has(m.id))
+      if (!nuevos.length) {
+        // Aunque no haya mensajes nuevos, el «leído» del otro sí puede haber
+        // cambiado: se refresca ese estado sin tocar el resto.
+        const porId = new Map(pagina.messages.map(m => [m.id, m]))
+        return prev.map(m => {
+          const fresco = porId.get(m.id)
+          return fresco && fresco.readAt !== m.readAt ? { ...m, readAt: fresco.readAt } : m
+        })
+      }
+      llegoAlgo = nuevos.some(m => !m.mine)
+      return [...nuevos, ...prev]
+    })
+
+    if (llegoAlgo) {
+      await S.markConversationRead(id).catch(() => {})
+      loadBadges()
+    }
+  }, [id])
+
+  // Cinco segundos: lo bastante para que una conversación se sienta viva, y lo
+  // bastante espaciado para caber de sobra en el presupuesto de la comunidad.
+  useLivePoll(refrescar, 5000, !!id && !error)
 
   const cargarMas = async () => {
     if (!id || !cursor || cargandoMas) return
