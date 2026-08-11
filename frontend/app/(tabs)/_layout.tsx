@@ -235,13 +235,30 @@ const tb = StyleSheet.create({
 
 // ── Root Layout ────────────────────────────────────────────────────────────────
 
+/**
+ * ⚠️ TEMPORAL — EL MURO DE PAGO ESTÁ APAGADO
+ *
+ * Con esto en `false` cualquiera con sesión entra en la app sin plan activo.
+ * Se apagó a propósito para poder trabajar y probar; **hay que volver a
+ * ponerlo en `true` antes de publicar**.
+ *
+ * Se deja como interruptor y no se borra el código a propósito: reactivarlo es
+ * cambiar esta palabra, y así la comprobación sigue a la vista de cualquiera
+ * que abra el archivo. Borrarlo lo convertiría en algo que hay que reescribir
+ * —y recordar— dentro de unos meses.
+ */
+const EXIGIR_PLAN = false
+
 export default function TabsLayout() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const user = useAuthStore(s => s.user)
-  const [checking, setChecking] = useState(true)
-  const [hasAccess, setHasAccess] = useState(false)
+  // Con el muro apagado se entra directo: ni pantalla de espera ni consulta al
+  // servidor de suscripciones, que sería un viaje en cada apertura para nada.
+  const [checking, setChecking] = useState(EXIGIR_PLAN)
+  const [hasAccess, setHasAccess] = useState(!EXIGIR_PLAN)
 
   useEffect(() => {
+    if (!EXIGIR_PLAN) return
     if (!isAuthenticated) { setChecking(false); return }
     if (user?.role === 'admin') { setHasAccess(true); setChecking(false); return }
     let cancelled = false
@@ -258,7 +275,8 @@ export default function TabsLayout() {
 
   if (!isAuthenticated) return <Redirect href="/(auth)/login" />
 
-  // Nadie accede a la app sin un plan activo (o prueba de 5 días con tarjeta ya registrada)
+  // Sin plan activo no se entra (o con la prueba de 5 días y tarjeta ya
+  // registrada) — mientras `EXIGIR_PLAN` esté en `true`. Ahora mismo NO lo está.
   if (checking) {
     return (
       <View style={{ flex: 1, backgroundColor: '#080808', alignItems: 'center', justifyContent: 'center' }}>
