@@ -11,13 +11,10 @@ import { useWorkoutStore, Exercise, Routine } from '@/store/workoutStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
-const FITNESS_TOOLS = [
-  { icon: 'trending-up-outline' as const,   label: 'Progreso',      sub: '1RM y PRs',       route: '/workout/progress' },
-  { icon: 'body-outline' as const,          label: 'Medidas',       sub: 'Cuerpo completo', route: '/measurements' },
-  { icon: 'sync-outline' as const,          label: 'Ciclo macro',   sub: 'Periodización',   route: '/macro-cycling' },
-  { icon: 'heart-outline' as const,         label: 'Salud',         sub: 'Tracker diario',  route: '/health-tracker' },
-  { icon: 'trophy-outline' as const,        label: 'Duelos',        sub: 'Reta amigos',     route: '/duels' },
-]
+// La rejilla de accesos (Progreso, Medidas, Ciclo macro, Salud, Duelos) se
+// retiró de aquí: cada una de esas cosas ya vive en su propia sección —Progreso,
+// Salud, Comunidad— y repetirlas en Entrena convertía la pantalla en un índice
+// de la app en vez de en el sitio donde se entrena.
 
 // ── Constants ────────────────────────────────────────────────────────────────
 
@@ -503,25 +500,6 @@ export default function WorkoutScreen() {
         }
       />
 
-      {/* Fitness tools grid */}
-      <View style={ws.toolsRow}>
-        {FITNESS_TOOLS.map(tool => (
-          <TouchableOpacity
-            key={tool.label}
-            style={ws.toolCard}
-            onPress={() => router.push(tool.route as any)}
-            activeOpacity={0.78}
-          >
-            <View style={ws.toolHighlight} pointerEvents="none" />
-            <View style={ws.toolIconWrap}>
-              <Ionicons name={tool.icon} size={20} color={Colors.primary[400]} />
-            </View>
-            <Text style={ws.toolLabel}>{tool.label}</Text>
-            <Text style={ws.toolSub}>{tool.sub}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
       {/* Semana */}
       <View style={ws.weekStat}>
         <View style={ws.weekStatNum}>
@@ -633,24 +611,6 @@ const ws = StyleSheet.create({
     shadowColor: Colors.primary[500], shadowOpacity: 0.35, shadowRadius: 8,
   },
   createBtnTxt: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
-  // Fitness tools
-  toolsRow: { flexDirection: 'row', paddingHorizontal: Spacing[4], gap: Spacing[3], marginBottom: Spacing[4] },
-  toolCard: {
-    flex: 1, backgroundColor: Glass.card, borderRadius: 16,
-    borderWidth: 1, borderColor: Glass.cardBorder,
-    padding: Spacing[3], alignItems: 'center', gap: 5, overflow: 'hidden',
-  },
-  toolHighlight: {
-    position: 'absolute', top: 0, left: 0, right: 0, height: 1,
-    backgroundColor: Glass.cardHighlight,
-  },
-  toolIconWrap: {
-    width: 40, height: 40, borderRadius: 20,
-    backgroundColor: Glass.purpleTint, borderWidth: 1, borderColor: Glass.purpleBorder,
-    alignItems: 'center', justifyContent: 'center',
-  },
-  toolLabel: { fontSize: 10, fontWeight: '700', color: '#fff', textAlign: 'center' },
-  toolSub: { fontSize: 9, color: 'rgba(255,255,255,0.35)', textAlign: 'center' },
   todayBanner: {
     flexDirection: 'row', alignItems: 'center', marginHorizontal: Spacing[5],
     marginBottom: Spacing[3], backgroundColor: Glass.purpleTint, borderRadius: BorderRadius.md,
