@@ -28,6 +28,7 @@ import { Screen } from '@/components/ui/Screen'
 import { useAppTheme } from '@/context/ThemeContext'
 import { useSocialStore } from '@/store/socialStore'
 import { Avatar, Btn, Empty, Skeleton, timeAgo } from '@/components/social/Bits'
+import { VideoPlayer } from '@/components/social/VideoPlayer'
 import * as S from '@/services/socialService'
 
 export default function ChatScreen() {
@@ -213,12 +214,21 @@ export default function ChatScreen() {
                   : { backgroundColor: T.glass, borderColor: T.glassBorder, borderWidth: 1, borderBottomLeftRadius: 5 },
               ]}>
                 {item.media?.url && (
-                  <Image
-                    source={{ uri: item.media.url }}
-                    style={{ width: anchoMedia, height: anchoMedia * 0.8, borderRadius: 12, marginBottom: item.body ? 8 : 0 }}
-                    contentFit="cover"
-                    transition={160}
-                  />
+                  item.media.type === 'video' ? (
+                    <VideoPlayer
+                      uri={item.media.url}
+                      width={anchoMedia}
+                      height={anchoMedia * 0.8}
+                      style={{ borderRadius: 12, overflow: 'hidden', marginBottom: item.body ? 8 : 0 }}
+                    />
+                  ) : (
+                    <Image
+                      source={{ uri: item.media.url }}
+                      style={{ width: anchoMedia, height: anchoMedia * 0.8, borderRadius: 12, marginBottom: item.body ? 8 : 0 }}
+                      contentFit="cover"
+                      transition={160}
+                    />
+                  )
                 )}
                 {item.media && !item.media.url && (
                   <Text style={[b.roto, { color: item.mine ? 'rgba(255,255,255,0.7)' : T.ink3 }]}>

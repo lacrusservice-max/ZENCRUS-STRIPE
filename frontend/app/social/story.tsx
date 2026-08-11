@@ -26,6 +26,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { StatusBar } from 'expo-status-bar'
 import { useSocialStore } from '@/store/socialStore'
 import { Avatar, timeAgo, timeLeft } from '@/components/social/Bits'
+import { VideoPlayer } from '@/components/social/VideoPlayer'
 import type { StoryGroup } from '@/services/socialService'
 
 const DURACION = 5000
@@ -40,6 +41,13 @@ export default function StoryViewer() {
   const [indice, setIndice] = useState(0)
   const [pausado, setPausado] = useState(false)
   const [cargando, setCargando] = useState(true)
+  /**
+   * Cuánto dura la historia visible.
+   *
+   * Una foto dura lo fijo; un vídeo, lo que dure el vídeo. Sin esto, uno de
+   * veinte segundos se cortaría a los cinco.
+   */
+  const [duracion, setDuracion] = useState(DURACION)
 
   const progreso = useRef(new Animated.Value(0)).current
   const animacion = useRef<Animated.CompositeAnimation | null>(null)
@@ -56,13 +64,14 @@ export default function StoryViewer() {
     if (indice < grupo.stories.length - 1) {
       setIndice(i => i + 1)
       setCargando(true)
+      setDuracion(DURACION)
     } else {
       cerrar()
     }
   }, [grupo, indice, cerrar])
 
   const retroceder = () => {
-    if (indice > 0) { setIndice(i => i - 1); setCargando(true) }
+    if (indice > 0) { setIndice(i => i - 1); setCargando(true); setDuracion(DURACION) }
   }
 
   // Arranca el contador de la historia visible. Se reinicia al cambiar de
@@ -75,13 +84,13 @@ export default function StoryViewer() {
 
     animacion.current = Animated.timing(progreso, {
       toValue: 1,
-      duration: DURACION,
+      duration: duracion,
       useNativeDriver: false,
     })
     animacion.current.start(({ finished }) => { if (finished) avanzar() })
 
     return () => animacion.current?.stop()
-  }, [indice, pausado, cargando, actual?.id])
+  }, [indice, pausado, cargando, duracion, actual?.id])
 
   if (!grupo || !actual) {
     return (
@@ -101,7 +110,17 @@ export default function StoryViewer() {
     <View style={[v.root, { width, height }]}>
       <StatusBar style="light" />
 
-      {pieza?.url ? (
+      {pieza?.url && pieza.type === 'video' ? (
+        <VideoPlayer
+          uri={pieza.url}
+          width={width}
+          height={height}
+          autoPlay
+          paused={pausado}
+          onDuration={seg => { setDuracion(Math.max(1200, seg * 1000)); setCargando(false) }}
+          onEnd={avanzar}
+        />
+      ) : pieza?.url ? (
         <Image
           source={{ uri: pieza.url }}
           style={{ width, height }}

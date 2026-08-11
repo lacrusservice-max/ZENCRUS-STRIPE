@@ -27,6 +27,7 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useAppTheme } from '@/context/ThemeContext'
 import { Avatar, NameBlock, timeAgo } from './Bits'
+import { VideoPlayer } from './VideoPlayer'
 import type { Post } from '@/services/socialService'
 
 type IconName = React.ComponentProps<typeof Ionicons>['name']
@@ -122,7 +123,7 @@ function Media({ post, onDoubleTap }: { post: Post; onDoubleTap?: () => void }) 
   )
 }
 
-/** Una sola pieza: foto, o vídeo con su marca de reproducción. */
+/** Una sola pieza: foto o vídeo. */
 function Pieza({ pieza, ancho, alto }: { pieza: Post['media'][0]; ancho: number; alto: number }) {
   const T = useAppTheme()
   const [cargando, setCargando] = useState(true)
@@ -131,9 +132,16 @@ function Pieza({ pieza, ancho, alto }: { pieza: Post['media'][0]; ancho: number;
     return (
       <View style={[{ width: ancho, height: alto }, m.roto]}>
         <Ionicons name="image-outline" size={26} color={T.ink3} />
-        <Text style={[m.rotoTxt, { color: T.ink3 }]}>No pudimos cargar esta imagen</Text>
+        <Text style={[m.rotoTxt, { color: T.ink3 }]}>No pudimos cargar este archivo</Text>
       </View>
     )
+  }
+
+  // En el muro el vídeo NO arranca solo: se toca para verlo. Un muro donde cada
+  // vídeo empieza a sonar al pasar por delante es insoportable, y esta app se
+  // usa en el gimnasio.
+  if (pieza.type === 'video') {
+    return <VideoPlayer uri={pieza.url} width={ancho} height={alto} />
   }
 
   return (
@@ -148,11 +156,6 @@ function Pieza({ pieza, ancho, alto }: { pieza: Post['media'][0]; ancho: number;
       {cargando && (
         <View style={m.cargando}>
           <ActivityIndicator size="small" color="rgba(255,255,255,0.5)" />
-        </View>
-      )}
-      {pieza.type === 'video' && (
-        <View style={m.play} pointerEvents="none">
-          <Ionicons name="play" size={22} color="#FFFFFF" style={{ marginLeft: 3 }} />
         </View>
       )}
     </View>
