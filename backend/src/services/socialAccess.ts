@@ -29,6 +29,7 @@
 
 import { supabase } from '../config/supabase'
 import { logger } from '../config/logger'
+import { readUrls, isStoredKey } from './media'
 
 /** Lo ÚNICO que puede salir de `users` hacia otra persona. Lista blanca. */
 export const PUBLIC_FIELDS = 'id, username, full_name, profile_picture, bio, is_private' as const
@@ -52,6 +53,36 @@ export function toPublicProfile(row: any): PublicProfile {
     bio: row.bio ?? null,
     isPrivate: !!row.is_private,
   }
+}
+
+/**
+ * Firma los avatares que viven en el bucket.
+ *
+ * La foto de perfil se guarda como CLAVE, no como dirección: el bucket es
+ * privado y una dirección fija sería acceso permanente a algo que la persona
+ * puede cambiar o borrar mañana. Se firman todas de una tacada porque una lista
+ * de veinte comentarios trae veinte avatares, y firmarlos de uno en uno son
+ * veinte esperas.
+ *
+ * Quien tenga guardada una dirección externa de antes se queda como está.
+ *
+ * Toda respuesta que lleve perfiles pasa por aquí. Si algún día aparece una que
+ * no, se verá enseguida: el avatar sale como una ruta suelta que no carga.
+ */
+export async function signAvatars<T extends { avatar: string | null }>(perfiles: T[]): Promise<T[]> {
+  const claves = [...new Set(perfiles.map(p => p.avatar).filter(isStoredKey))]
+  if (!claves.length) return perfiles
+
+  const firmadas = await readUrls(claves)
+  for (const p of perfiles) {
+    if (isStoredKey(p.avatar)) p.avatar = firmadas.get(p.avatar) ?? null
+  }
+  return perfiles
+}
+
+/** Atajo para cuando solo hay uno. */
+export async function signAvatar<T extends { avatar: string | null }>(perfil: T): Promise<T> {
+  return (await signAvatars([perfil]))[0]
 }
 
 /** Relación del que mira con el mirado. */
@@ -90,18 +121,31 @@ export async function relationOf(viewerId: string, targetId: string): Promise<Re
   return data.status === 'accepted' ? 'following' : 'requested'
 }
 
-/** Ficha básica de la persona mirada, con su privacidad. */
+/**
+ * Ficha básica de la persona mirada, con su privacidad.
+ *
+ * Una cuenta desactivada no existe para nadie: ni perfil, ni contenido, ni
+ * mensajes. La búsqueda ya la escondía, pero entrando por el identificador
+ * seguía apareciendo — y quien se da de baja espera desaparecer entero, no solo
+ * de una lista.
+ *
+ * `is_active` se pide aparte y se tira antes de devolver: `PUBLIC_FIELDS` es la
+ * lista blanca de lo que sale, y esta columna no está en ella.
+ */
 async function loadTarget(targetId: string) {
   const { data, error } = await supabase
     .from('users')
-    .select(PUBLIC_FIELDS)
+    .select(`${PUBLIC_FIELDS}, is_active`)
     .eq('id', targetId)
     .maybeSingle()
   if (error) {
     logger.error(`social · loadTarget ${targetId}: ${error.message}`)
     return null
   }
-  return data
+  if (!data || data.is_active === false) return null
+
+  const { is_active, ...publico } = data as Record<string, unknown>
+  return publico
 }
 
 export interface Access {
@@ -141,11 +185,15 @@ export async function accessTo(viewerId: string, targetId: string): Promise<Acce
  * publicación: se piden los autores permitidos y se acota la búsqueda a ellos.
  */
 export async function visibleAuthorIds(viewerId: string): Promise<string[]> {
+  // El cruce interno con `users` deja fuera a las cuentas desactivadas, para
+  // que desaparezcan también del muro de amigos y de las historias, no solo del
+  // buscador. Ante error se devuelve solo uno mismo: se ve de menos, nunca de más.
   const { data, error } = await supabase
     .from('follows')
-    .select('following_id')
+    .select('following_id, seguido:users!follows_following_id_fkey!inner(is_active)')
     .eq('follower_id', viewerId)
     .eq('status', 'accepted')
+    .eq('seguido.is_active', true)
 
   if (error) {
     logger.error(`social · visibleAuthorIds ${viewerId}: ${error.message}`)
@@ -191,6 +239,127 @@ export async function canMessage(viewerId: string, targetId: string): Promise<Me
 }
 
 /**
+ * Cuántos mensajes puede dejar quien aún no ha sido aceptado.
+ *
+ * Sin tope, una solicitud sin responder sería un canal libre para gritarle a
+ * alguien indefinidamente: basta con no aceptar nunca y el otro sigue
+ * escribiendo. Tres bastan para presentarse; a partir de ahí hace falta que la
+ * otra persona diga que sí.
+ */
+export const MAX_PENDING_MESSAGES = 3
+
+/** Fila de `conversations` tal y como se necesita para decidir. */
+export interface ConversationRow {
+  id: string
+  user_lo: string
+  user_hi: string
+  status: 'pending' | 'accepted' | 'blocked'
+  requested_by: string | null
+  last_message_at: string | null
+}
+
+export interface ConversationAccess {
+  /** Existe y quien pregunta es uno de los dos. Si no, no existe para él. */
+  member: boolean
+  conv: ConversationRow | null
+  /** El otro participante. */
+  other?: string
+  /** Puede leer lo que ya hay: los dos pueden, también con la solicitud sin responder. */
+  canRead: boolean
+  /** Puede enviar ahora mismo. */
+  canWrite: boolean
+  /** Enviar aquí convierte la solicitud en conversación aceptada. */
+  accepting: boolean
+  /** Qué responder cuando no se puede escribir. */
+  code?: number
+  reason?: string
+}
+
+/**
+ * Todo lo que hay que saber para dejar a alguien leer o escribir en un chat.
+ *
+ * ── Qué significa `requested_by` ────────────────────────────────────────────
+ * «Quien necesita permiso del otro». Es una sola columna y cubre los dos casos
+ * sin inventarse ninguna más:
+ *
+ *   · A escribe a B, que es privada  → `pending`, `requested_by = A`.
+ *     A puede dejar hasta tres mensajes; B los ve en su bandeja de solicitudes.
+ *   · B rechaza                      → `blocked`, `requested_by = A`.
+ *     A deja de poder escribir. B puede reabrirla aceptando.
+ *   · B bloquea una conversación ya aceptada → `blocked`, `requested_by = A`,
+ *     el bloqueado. Quien figura en esa columna es siempre el que no puede
+ *     escribir mientras el otro no consienta, y por eso solo el otro reabre.
+ *
+ * Con `blocked` no escribe nadie, ni siquiera quien bloqueó: reabrir es un acto
+ * explícito, no un descuido al teclear.
+ *
+ * ── Por qué rechazar no borra ───────────────────────────────────────────────
+ * Si rechazar borrase la fila, el rechazado podría volver a solicitar acto
+ * seguido, y otra vez, y otra. La fila bloqueada es justamente lo que recuerda
+ * que ya dijiste que no.
+ */
+export async function conversationAccess(
+  userId: string,
+  conversationId: string,
+): Promise<ConversationAccess> {
+  const { data, error } = await supabase
+    .from('conversations')
+    .select('id, user_lo, user_hi, status, requested_by, last_message_at')
+    .eq('id', conversationId)
+    .maybeSingle()
+
+  // Ante error de consulta se niega, igual que en el resto del módulo.
+  if (error) logger.error(`social · conversationAccess ${conversationId}: ${error.message}`)
+  if (error || !data) {
+    return { member: false, conv: null, canRead: false, canWrite: false, accepting: false }
+  }
+  if (data.user_lo !== userId && data.user_hi !== userId) {
+    return { member: false, conv: null, canRead: false, canWrite: false, accepting: false }
+  }
+
+  const conv = data as ConversationRow
+  const other = conv.user_lo === userId ? conv.user_hi : conv.user_lo
+  const base = { member: true, conv, other, canRead: true }
+
+  if (conv.status === 'blocked') {
+    return {
+      ...base, canWrite: false, accepting: false, code: 403,
+      reason: conv.requested_by === userId
+        ? 'Esta persona no acepta tus mensajes'
+        : 'Has bloqueado esta conversación',
+    }
+  }
+
+  if (conv.status === 'accepted') {
+    return { ...base, canWrite: true, accepting: false }
+  }
+
+  // Pendiente. Quien la abrió tiene cupo; quien la recibió, al contestar, la
+  // acepta — responder a alguien es la forma más clara de decir que sí.
+  if (conv.requested_by !== userId) {
+    return { ...base, canWrite: true, accepting: true }
+  }
+
+  const { count, error: e2 } = await supabase
+    .from('direct_messages')
+    .select('id', { count: 'exact', head: true })
+    .eq('conversation_id', conv.id)
+    .eq('sender_id', userId)
+
+  if (e2) {
+    logger.error(`social · conversationAccess cupo ${conv.id}: ${e2.message}`)
+    return { ...base, canWrite: false, accepting: false, code: 500, reason: 'No pudimos comprobarlo' }
+  }
+  if ((count ?? 0) >= MAX_PENDING_MESSAGES) {
+    return {
+      ...base, canWrite: false, accepting: false, code: 429,
+      reason: 'Espera a que acepte tu solicitud para seguir escribiendo',
+    }
+  }
+  return { ...base, canWrite: true, accepting: false }
+}
+
+/**
  * Comprueba que alguien pertenece a una conversación.
  *
  * Es la única puerta a los mensajes directos y no admite matices: o eres uno de
@@ -201,20 +370,9 @@ export async function isConversationMember(
   userId: string,
   conversationId: string,
 ): Promise<{ ok: boolean; other?: string; status?: string }> {
-  const { data, error } = await supabase
-    .from('conversations')
-    .select('user_lo, user_hi, status')
-    .eq('id', conversationId)
-    .maybeSingle()
-
-  if (error || !data) return { ok: false }
-  if (data.user_lo !== userId && data.user_hi !== userId) return { ok: false }
-
-  return {
-    ok: true,
-    other: data.user_lo === userId ? data.user_hi : data.user_lo,
-    status: data.status,
-  }
+  const a = await conversationAccess(userId, conversationId)
+  if (!a.member || !a.conv) return { ok: false }
+  return { ok: true, other: a.other, status: a.conv.status }
 }
 
 /**

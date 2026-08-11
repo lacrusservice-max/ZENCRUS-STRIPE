@@ -26,6 +26,14 @@ import {
   like, unlike,
   getComments, addComment, commentSchema, deleteComment,
 } from '../controllers/socialContentController'
+import {
+  listConversations, openConversation, openSchema, getConversation,
+  listMessages, sendMessage, sendSchema, markRead, deleteMessage,
+  acceptConversation, rejectConversation, blockConversation,
+} from '../controllers/socialMessagesController'
+import {
+  listNotifications, markAllRead, markOneRead, deleteNotification, getBadges,
+} from '../controllers/socialNotificationsController'
 
 const router = Router()
 
@@ -45,6 +53,15 @@ router.post('/requests/:id/reject', rejectRequest)
 router.get('/feed', getFeed)
 router.get('/stories', getStories)
 
+// ── Notificaciones ───────────────────────────────────────────────────────────
+// `/notifications/read` va antes que `/notifications/:id/read`, o «read» se
+// colaría como identificador de notificación.
+router.get('/badges', getBadges)
+router.get('/notifications', listNotifications)
+router.post('/notifications/read', markAllRead)
+router.post('/notifications/:id/read', markOneRead)
+router.delete('/notifications/:id', deleteNotification)
+
 // ── Medios y publicaciones ───────────────────────────────────────────────────
 router.post('/media/ticket', validate(ticketSchema), mediaTicket)
 router.post('/posts', validate(createPostSchema), createPost)
@@ -55,6 +72,20 @@ router.delete('/posts/:id/like', unlike)
 router.get('/posts/:id/comments', getComments)
 router.post('/posts/:id/comments', validate(commentSchema), addComment)
 router.delete('/comments/:id', deleteComment)
+
+// ── Mensajes directos ────────────────────────────────────────────────────────
+// La bandeja trae los chats y las solicitudes en la misma respuesta: la app las
+// enseña juntas y separarlas serían dos viajes para pintar una sola pantalla.
+router.get('/conversations', listConversations)
+router.post('/conversations', validate(openSchema), openConversation)
+router.get('/conversations/:id', getConversation)
+router.get('/conversations/:id/messages', listMessages)
+router.post('/conversations/:id/messages', validate(sendSchema), sendMessage)
+router.post('/conversations/:id/read', markRead)
+router.post('/conversations/:id/accept', acceptConversation)
+router.post('/conversations/:id/reject', rejectConversation)
+router.post('/conversations/:id/block', blockConversation)
+router.delete('/messages/:id', deleteMessage)
 
 // ── Otras personas ───────────────────────────────────────────────────────────
 router.get('/users/:id', getProfile)

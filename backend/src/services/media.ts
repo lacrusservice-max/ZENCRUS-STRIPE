@@ -112,6 +112,34 @@ export function isAllowedType(t: string): t is AllowedType {
   return t in ALLOWED
 }
 
+/**
+ * El tipo de un archivo deducido de su extensión.
+ *
+ * Lo necesita el avatar: a diferencia de una publicación, la app solo manda la
+ * clave, y `confirmUpload` necesita saber qué esperaba encontrar. La extensión
+ * la puso `newKey` a partir del tipo firmado, así que es de fiar — y aun así, lo
+ * que decide es la comprobación contra R2, no esta cadena.
+ */
+export function typeFromKey(key: string): AllowedType | null {
+  const ext = key.split('.').pop()?.toLowerCase()
+  if (!ext) return null
+  for (const [tipo, spec] of Object.entries(ALLOWED)) {
+    if (spec.ext === ext) return tipo as AllowedType
+  }
+  return null
+}
+
+/**
+ * Distingue un archivo del bucket de una dirección de internet.
+ *
+ * `profile_picture` guardaba direcciones externas antes de que existiera el
+ * bucket, y sigue habiendo cuentas con una. Lo que no empieza por http es una
+ * clave nuestra y hay que firmarla; lo que empieza por http se devuelve tal cual.
+ */
+export function isStoredKey(value: string | null | undefined): value is string {
+  return !!value && !/^https?:\/\//i.test(value)
+}
+
 // ── Subida ───────────────────────────────────────────────────────────────────
 
 export interface UploadTicket {

@@ -15,8 +15,9 @@ import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
 import { supabase } from '../config/supabase'
 import {
-  PUBLIC_FIELDS, toPublicProfile, relationOf, accessTo,
+  PUBLIC_FIELDS, toPublicProfile, relationOf, accessTo, signAvatar, signAvatars,
 } from '../services/socialAccess'
+import { confirmUpload, typeFromKey, isStoredKey, remove } from '../services/media'
 
 const uid = (req: Request) => req.user?.userId ?? req.user?.id
 
@@ -40,7 +41,10 @@ export const updateProfileSchema = z.object({
       .optional(),
     fullName: z.string().max(60).optional(),
     bio: z.string().max(160).optional(),
-    avatar: z.string().url().max(1000).nullable().optional(),
+    // Dos formas válidas: la CLAVE de un archivo recién subido al bucket
+    // (`avatar/<mi id>/<algo>.jpg`) o una dirección de internet, que es lo que
+    // se guardaba antes de que existiera el bucket. `null` quita la foto.
+    avatar: z.string().min(1).max(1000).nullable().optional(),
     isPrivate: z.boolean().optional(),
   }),
 })
@@ -94,7 +98,7 @@ export async function getMyProfile(req: Request, res: Response): Promise<void> {
 
   res.json({
     success: true,
-    data: { ...toPublicProfile(data), stats: await statsOf(userId) },
+    data: { ...await signAvatar(toPublicProfile(data)), stats: await statsOf(userId) },
   } satisfies ApiResponse)
 }
 
@@ -110,10 +114,44 @@ export async function updateMyProfile(req: Request, res: Response): Promise<void
   if (username !== undefined) patch.username = username.toLowerCase()
   if (fullName !== undefined) patch.full_name = fullName
   if (bio !== undefined) patch.bio = bio
-  if (avatar !== undefined) patch.profile_picture = avatar
   if (isPrivate !== undefined) patch.is_private = isPrivate
 
+  if (avatar !== undefined) {
+    if (avatar === null) {
+      patch.profile_picture = null
+    } else if (isStoredKey(avatar)) {
+      // El prefijo impide poner de avatar la foto de una publicación mía:
+      // cambiar el avatar después borraría el archivo de esa publicación. Lo
+      // que no empieza por `avatar/` ni es una dirección no es nada — y decir
+      // «no es válida» es más cierto que decir «no es tuyo».
+      if (!avatar.startsWith('avatar/')) {
+        return fail(res, 422, 'Esa foto de perfil no es válida')
+      }
+      // La carpeta con mi identificador impide reclamar el archivo recién
+      // subido de otra persona.
+      if (!avatar.includes(`/${userId}/`)) return fail(res, 403, 'Ese archivo no es tuyo')
+
+      const tipo = typeFromKey(avatar)
+      if (!tipo || !tipo.startsWith('image/')) {
+        return fail(res, 415, 'La foto de perfil tiene que ser una imagen')
+      }
+      const ok = await confirmUpload(avatar, tipo)
+      if (!ok.ok) return fail(res, 400, ok.reason ?? 'La foto no se subió correctamente')
+      patch.profile_picture = avatar
+    } else {
+      // Dirección de internet: se acepta por compatibilidad con lo ya guardado.
+      patch.profile_picture = avatar
+    }
+  }
+
   if (!Object.keys(patch).length) return fail(res, 400, 'No hay nada que cambiar')
+
+  // Con qué se queda antes de cambiarlo: si era un archivo del bucket y deja de
+  // serlo, hay que borrarlo o se queda ocupando sitio para siempre.
+  const anterior = patch.profile_picture !== undefined
+    ? (await supabase.from('users').select('profile_picture').eq('id', userId).maybeSingle())
+        .data?.profile_picture as string | null
+    : null
 
   const { data, error } = await supabase
     .from('users').update(patch).eq('id', userId).select(PUBLIC_FIELDS).maybeSingle()
@@ -127,7 +165,11 @@ export async function updateMyProfile(req: Request, res: Response): Promise<void
   }
   if (!data) return fail(res, 404, 'No encontramos tu perfil')
 
-  res.json({ success: true, data: toPublicProfile(data) } satisfies ApiResponse)
+  // Solo después de que el cambio se haya guardado: al revés, un fallo al
+  // guardar dejaría el perfil apuntando a un archivo ya borrado.
+  if (isStoredKey(anterior) && anterior !== patch.profile_picture) await remove(anterior)
+
+  res.json({ success: true, data: await signAvatar(toPublicProfile(data)) } satisfies ApiResponse)
 }
 
 // ── Perfil de otra persona ───────────────────────────────────────────────────
@@ -150,7 +192,7 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
   res.json({
     success: true,
     data: {
-      ...access.target,
+      ...await signAvatar(access.target),
       relation: access.relation,
       canViewContent: access.content,
       stats: access.content ? await statsOf(req.params.id) : null,
@@ -174,9 +216,22 @@ export async function searchUsers(req: Request, res: Response): Promise<void> {
   const q = String(req.query.q).trim().toLowerCase()
   const limit = Number(req.query.limit ?? 20)
 
-  // `%` y `_` son comodines de ILIKE: sin escaparlos, buscar «_» devolvería
-  // media base.
-  const safe = q.replace(/[%_\\]/g, ch => `\\${ch}`)
+  /**
+   * Lo que se busca acaba DENTRO de un filtro `or(...)`, que PostgREST recibe
+   * como texto en crudo. Eso obliga a dos limpiezas distintas:
+   *
+   *  · La coma, los paréntesis y la comilla doble son la gramática del propio
+   *    filtro. Sin quitarlos, buscar `a,is_private.eq.true` no busca: añade una
+   *    condición al `or` y devuelve lo que le dé la gana. Se eliminan.
+   *    El punto y el apóstrofo NO: PostgREST parte por los dos primeros puntos
+   *    y el resto es el valor, así que «juan.perez» y «O'Brien» son inofensivos
+   *    — y quitarlos sería no poder buscar a esas personas.
+   *  · `%` y `_` son comodines de ILIKE. Se escapan, no se quitan: quien busque
+   *    «juan_perez» quiere ese guion bajo, no un comodín.
+   */
+  const limpio = q.replace(/[,()"]/g, ' ').replace(/\s+/g, ' ').trim()
+  if (!limpio) return res.json({ success: true, data: [] } satisfies ApiResponse) as never
+  const safe = limpio.replace(/[%_\\]/g, ch => `\\${ch}`)
 
   const { data, error } = await supabase
     .from('users')
@@ -208,12 +263,12 @@ export async function searchUsers(req: Request, res: Response): Promise<void> {
         : byId.get(r.id) === 'pending' ? 'requested' : 'none',
     }))
     .sort((a, b) => {
-      const ap = (a.username ?? '').toLowerCase().startsWith(q) ? 0 : 1
-      const bp = (b.username ?? '').toLowerCase().startsWith(q) ? 0 : 1
+      const ap = (a.username ?? '').toLowerCase().startsWith(limpio) ? 0 : 1
+      const bp = (b.username ?? '').toLowerCase().startsWith(limpio) ? 0 : 1
       return ap - bp || (a.username ?? '').localeCompare(b.username ?? '')
     })
 
-  res.json({ success: true, data: out } satisfies ApiResponse)
+  res.json({ success: true, data: await signAvatars(out) } satisfies ApiResponse)
 }
 
 // ── Seguir ───────────────────────────────────────────────────────────────────
@@ -284,11 +339,14 @@ export async function listRequests(req: Request, res: Response): Promise<void> {
   const userId = uid(req)
   if (!userId) return noAuth(res)
 
+  // `!inner` con el filtro por cuenta activa: una cuenta suspendida no debe
+  // dejar una solicitud pendiente esperando respuesta en la bandeja de nadie.
   const { data, error } = await supabase
     .from('follows')
-    .select(`created_at, requester:users!follows_follower_id_fkey(${PUBLIC_FIELDS})`)
+    .select(`created_at, requester:users!follows_follower_id_fkey!inner(${PUBLIC_FIELDS})`)
     .eq('following_id', userId)
     .eq('status', 'pending')
+    .eq('requester.is_active', true)
     .order('created_at', { ascending: false })
 
   if (error) {
@@ -298,10 +356,10 @@ export async function listRequests(req: Request, res: Response): Promise<void> {
 
   res.json({
     success: true,
-    data: (data ?? []).map((r: any) => ({
+    data: await signAvatars((data ?? []).map((r: any) => ({
       ...toPublicProfile(r.requester),
       requestedAt: r.created_at,
-    })),
+    }))),
   } satisfies ApiResponse)
 }
 
@@ -331,6 +389,8 @@ export async function acceptRequest(req: Request, res: Response): Promise<void> 
   }
   if (!data) return fail(res, 404, 'Esa solicitud ya no existe')
 
+  // La solicitud ya está respondida: su aviso deja de tener botones que pulsar.
+  await unnotify(userId, req.params.id, 'follow_request')
   await notify(req.params.id, userId, 'follow_accepted')
   res.json({ success: true, data: { accepted: true } } satisfies ApiResponse)
 }
@@ -349,6 +409,7 @@ export async function rejectRequest(req: Request, res: Response): Promise<void> 
     logger.error(`social · rejectRequest ${userId}←${req.params.id}: ${error.message}`)
     return fail(res, 500, 'No pudimos rechazar la solicitud')
   }
+  await unnotify(userId, req.params.id, 'follow_request')
   res.json({ success: true, data: { rejected: true } } satisfies ApiResponse)
 }
 
@@ -372,10 +433,11 @@ async function listRelations(req: Request, res: Response, kind: 'followers' | 'f
   const { data, error } = await supabase
     .from('follows')
     .select(mine
-      ? `person:users!follows_follower_id_fkey(${PUBLIC_FIELDS})`
-      : `person:users!follows_following_id_fkey(${PUBLIC_FIELDS})`)
+      ? `person:users!follows_follower_id_fkey!inner(${PUBLIC_FIELDS})`
+      : `person:users!follows_following_id_fkey!inner(${PUBLIC_FIELDS})`)
     .eq(mine ? 'following_id' : 'follower_id', req.params.id)
     .eq('status', 'accepted')
+    .eq('person.is_active', true)
     .limit(200)
 
   if (error) {
@@ -385,7 +447,7 @@ async function listRelations(req: Request, res: Response, kind: 'followers' | 'f
 
   res.json({
     success: true,
-    data: (data ?? []).map((r: any) => toPublicProfile(r.person)),
+    data: await signAvatars((data ?? []).map((r: any) => toPublicProfile(r.person))),
   } satisfies ApiResponse)
 }
 
@@ -413,4 +475,25 @@ export async function notify(
     post_id: extra.postId ?? null, comment_id: extra.commentId ?? null,
   })
   if (error) logger.warn(`social · notify ${type} → ${userId}: ${error.message}`)
+}
+
+/**
+ * Retira un aviso que ya no es cierto.
+ *
+ * Un me gusta que alguien quita, o una solicitud ya respondida, dejan en la
+ * bandeja una frase que dice algo que no pasó. Borrarlo es tan importante como
+ * escribirlo: una lista de avisos en la que no se puede confiar deja de mirarse.
+ */
+export async function unnotify(
+  userId: string,
+  actorId: string,
+  type: 'like' | 'comment' | 'follow' | 'follow_request' | 'follow_accepted' | 'mention',
+  extra: { postId?: string } = {},
+): Promise<void> {
+  let q = supabase.from('social_notifications').delete()
+    .eq('user_id', userId).eq('actor_id', actorId).eq('type', type)
+  if (extra.postId) q = q.eq('post_id', extra.postId)
+
+  const { error } = await q
+  if (error) logger.warn(`social · unnotify ${type} → ${userId}: ${error.message}`)
 }

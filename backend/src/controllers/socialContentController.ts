@@ -26,13 +26,13 @@ import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
 import { supabase } from '../config/supabase'
 import {
-  PUBLIC_FIELDS, toPublicProfile, accessTo, visibleAuthorIds,
+  PUBLIC_FIELDS, toPublicProfile, accessTo, visibleAuthorIds, signAvatars,
 } from '../services/socialAccess'
 import {
-  createUploadTicket, confirmUpload, readUrls, removeMany, remove,
+  createUploadTicket, confirmUpload, readUrls, removeMany,
   isAllowedType, kindOf, mediaReady, MAX_VIDEO_SECONDS, AllowedType,
 } from '../services/media'
-import { notify } from './socialController'
+import { notify, unnotify } from './socialController'
 
 const uid = (req: Request) => req.user?.userId ?? req.user?.id
 const noAuth = (res: Response) => {
@@ -148,8 +148,11 @@ export async function createPost(req: Request, res: Response): Promise<void> {
     kind: b.kind,
     visibility: b.visibility,
     expires_at: expiresAt,
-    // `image_url` es la columna vieja de una sola imagen. Se rellena con la
-    // primera pieza para que lo que ya lee esa columna siga funcionando.
+    // `image_url` es la columna vieja de una sola imagen y se queda a null a
+    // propósito: guardaba una dirección pública, y aquí los archivos son claves
+    // de un bucket privado que no se pueden servir sin firmar. Escribir una
+    // clave ahí haría que lo que aún lee esa columna pintara una imagen rota.
+    // Los medios de una publicación viven en `post_media`.
     image_url: null,
   // Se piden TODAS las columnas, no solo el id: la respuesta pasa por
   // `hydrate`, y con un select corto la publicación recién creada volvía sin
@@ -208,7 +211,8 @@ async function hydrate(rows: any[], viewerId: string) {
     supabase.from('post_likes').select('post_id').eq('user_id', viewerId).in('post_id', ids),
   ])
 
-  const porAutor = new Map((users ?? []).map(u => [u.id, toPublicProfile(u)]))
+  const perfiles = await signAvatars((users ?? []).map(toPublicProfile))
+  const porAutor = new Map(perfiles.map(p => [p.id, p]))
   const miosLike = new Set((likes ?? []).map(l => l.post_id))
 
   // Todas las URLs de una tacada: una firma por archivo, no una por consulta.
@@ -255,7 +259,11 @@ export async function getFeed(req: Request, res: Response): Promise<void> {
   const limit = Math.min(Number(req.query.limit ?? 20) || 20, 50)
   const before = typeof req.query.before === 'string' ? req.query.before : null
 
-  let q = supabase.from('posts').select(POST_COLS)
+  // El muro «Para ti» necesita filtrar por la cuenta del autor, y para eso hay
+  // que traerla en la misma consulta; el de amigos no, pero pedirla también
+  // ahorra tener dos variantes del mismo `select` que se desincronizan.
+  let q = supabase.from('posts')
+    .select(`${POST_COLS}, author:users!posts_user_id_fkey!inner(is_private, is_active)`)
     .eq('kind', 'post')
     .order('created_at', { ascending: false })
     .limit(limit)
@@ -264,12 +272,19 @@ export async function getFeed(req: Request, res: Response): Promise<void> {
   if (scope === 'friends') {
     q = q.in('user_id', await visibleAuthorIds(viewerId))
   } else {
-    // Público de verdad: la publicación marcada como pública Y de una cuenta
-    // que no es privada. Se resuelve con la lista de cuentas públicas porque
-    // PostgREST no cruza tablas dentro de un filtro.
-    const { data: pubs } = await supabase.from('users')
-      .select('id').eq('is_private', false).eq('is_active', true).limit(5000)
-    q = q.eq('visibility', 'public').in('user_id', (pubs ?? []).map(u => u.id))
+    /**
+     * Público de verdad: la publicación marcada como pública Y de una cuenta
+     * que no es privada. Basta con que falle una de las dos para que no salga.
+     *
+     * Se resuelve CRUZANDO con `users` en la misma consulta. Antes se pedía la
+     * lista de cuentas públicas y se metía en un `in(...)`, y eso se rompe solo:
+     * con unos cientos de usuarios la dirección de la petición pasa de los
+     * kilobytes y el servidor la rechaza. El cruce interno no crece con el
+     * número de cuentas.
+     */
+    q = q.eq('visibility', 'public')
+      .eq('author.is_private', false)
+      .eq('author.is_active', true)
   }
 
   const { data, error } = await q
@@ -353,8 +368,15 @@ export async function getUserPosts(req: Request, res: Response): Promise<void> {
 
 // ── Una publicación ──────────────────────────────────────────────────────────
 
-/** Carga una publicación comprobando que quien pregunta puede verla. */
-async function loadVisible(viewerId: string, postId: string) {
+/**
+ * Carga una publicación comprobando que quien pregunta puede verla.
+ *
+ * Se exporta porque el módulo antiguo `communityController` —que el web de
+ * producción todavía usa— tiene que aplicar exactamente esta misma regla. Que
+ * la llame en vez de reescribirla es lo que garantiza que las dos puertas se
+ * cierren con la misma llave.
+ */
+export async function loadVisible(viewerId: string, postId: string) {
   const { data, error } = await supabase.from('posts').select(POST_COLS).eq('id', postId).maybeSingle()
   if (error || !data) return { post: null as any, why: 'no existe' }
 
@@ -433,6 +455,14 @@ export async function unlike(req: Request, res: Response): Promise<void> {
 
   await supabase.from('post_likes').delete()
     .eq('post_id', req.params.id).eq('user_id', viewerId)
+
+  // Se retira también el aviso: dejar «a fulano le gustó tu foto» después de
+  // que fulano lo quitara es enseñar algo que ya no es verdad. Hace falta saber
+  // a quién avisamos, y eso es el autor de la publicación.
+  const { data: p } = await supabase.from('posts')
+    .select('user_id').eq('id', req.params.id).maybeSingle()
+  if (p) await unnotify(p.user_id, viewerId, 'like', { postId: req.params.id })
+
   res.json({ success: true, data: { liked: false } } satisfies ApiResponse)
 }
 
@@ -455,11 +485,16 @@ export async function getComments(req: Request, res: Response): Promise<void> {
     return fail(res, 500, 'No pudimos cargar los comentarios')
   }
 
+  const autores = await signAvatars(
+    (data ?? []).filter((c: any) => c.author).map((c: any) => toPublicProfile(c.author)),
+  )
+  const porAutor = new Map(autores.map(a => [a.id, a]))
+
   res.json({
     success: true,
     data: (data ?? []).map((c: any) => ({
       id: c.id, content: c.content, createdAt: c.created_at,
-      author: c.author ? toPublicProfile(c.author) : null,
+      author: c.author ? porAutor.get(c.author.id) ?? null : null,
       isMine: c.user_id === viewerId,
     })),
   } satisfies ApiResponse)
