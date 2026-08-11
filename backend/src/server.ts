@@ -11,6 +11,7 @@ import helmet from 'helmet'
 import { securityHeaders, apiLimiter, suspiciousActivityLogger, enforceHTTPS } from './middleware/security'
 import { errorHandler, notFound } from './middleware/errorHandler'
 import routes from './routes'
+import { purgeExpiredStories } from './controllers/socialContentController'
 import { initializeFirebase } from './services/notificationService'
 import { testConnection } from './config/supabase'
 import { raw } from 'express'
@@ -107,6 +108,23 @@ async function startServer(): Promise<void> {
       logger.info(`📋 Entorno: ${env.NODE_ENV}`)
       logger.info(`🔒 CORS: ${[...allowedOrigins].join(', ')}`)
     })
+
+    /**
+     * Limpieza de historias caducadas, cada hora.
+     *
+     * No afecta a lo que se ve —las historias vencidas ya quedan fuera por la
+     * consulta, que filtra por fecha— sino al almacenamiento: sin esto el
+     * bucket crece para siempre con vídeos que nadie puede abrir.
+     *
+     * Un `setInterval` basta y evita meter una dependencia de planificador. Si
+     * algún día hay varias instancias, correrá en todas a la vez y no pasa
+     * nada: borrar lo que ya está caducado es idempotente.
+     */
+    const purga = setInterval(() => {
+      purgeExpiredStories().catch(e =>
+        logger.warn(`historias caducadas: ${(e as Error).message}`))
+    }, 60 * 60 * 1000)
+    purga.unref()   // no mantiene vivo el proceso al cerrar
 
     const shutdown = (signal: string) => {
       logger.info(`${signal} recibido. Cerrando servidor...`)

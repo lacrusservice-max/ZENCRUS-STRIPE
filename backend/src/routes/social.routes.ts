@@ -19,6 +19,13 @@ import {
   listRequests, acceptRequest, rejectRequest,
   listFollowers, listFollowing,
 } from '../controllers/socialController'
+import {
+  mediaTicket, ticketSchema,
+  createPost, createPostSchema, getPost, deletePost,
+  getFeed, getStories, getUserPosts,
+  like, unlike,
+  getComments, addComment, commentSchema, deleteComment,
+} from '../controllers/socialContentController'
 
 const router = Router()
 
@@ -34,8 +41,24 @@ router.get('/requests', listRequests)
 router.post('/requests/:id/accept', acceptRequest)
 router.post('/requests/:id/reject', rejectRequest)
 
+// ── Muros e historias ────────────────────────────────────────────────────────
+router.get('/feed', getFeed)
+router.get('/stories', getStories)
+
+// ── Medios y publicaciones ───────────────────────────────────────────────────
+router.post('/media/ticket', validate(ticketSchema), mediaTicket)
+router.post('/posts', validate(createPostSchema), createPost)
+router.get('/posts/:id', getPost)
+router.delete('/posts/:id', deletePost)
+router.post('/posts/:id/like', like)
+router.delete('/posts/:id/like', unlike)
+router.get('/posts/:id/comments', getComments)
+router.post('/posts/:id/comments', validate(commentSchema), addComment)
+router.delete('/comments/:id', deleteComment)
+
 // ── Otras personas ───────────────────────────────────────────────────────────
 router.get('/users/:id', getProfile)
+router.get('/users/:id/posts', getUserPosts)
 router.get('/users/:id/followers', listFollowers)
 router.get('/users/:id/following', listFollowing)
 router.post('/users/:id/follow', follow)
