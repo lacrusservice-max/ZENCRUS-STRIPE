@@ -18,6 +18,7 @@ import {
   PUBLIC_FIELDS, toPublicProfile, relationOf, accessTo, signAvatar, signAvatars,
 } from '../services/socialAccess'
 import { confirmUpload, typeFromKey, isStoredKey, remove } from '../services/media'
+import { pushTo, TEXTOS, nombreDe } from '../services/push'
 
 const uid = (req: Request) => req.user?.userId ?? req.user?.id
 
@@ -475,6 +476,14 @@ export async function notify(
     post_id: extra.postId ?? null, comment_id: extra.commentId ?? null,
   })
   if (error) logger.warn(`social · notify ${type} → ${userId}: ${error.message}`)
+
+  // El aviso al teléfono va DESPUÉS de guardarlo y sin esperar a que termine:
+  // que el push tarde o falle no puede retrasar la respuesta de un me gusta.
+  // Si no llega, el aviso sigue estando en la bandeja al abrir la app.
+  pushTo(userId, {
+    ...TEXTOS[type](await nombreDe(actorId)),
+    data: { tipo: type, actor: actorId, ...(extra.postId ? { post: extra.postId } : {}) },
+  }).catch(() => { /* ya se registra dentro */ })
 }
 
 /**

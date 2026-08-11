@@ -34,6 +34,7 @@ import {
 import { PostCard } from '@/components/social/PostCard'
 import type { FeedScope, Post, StoryGroup } from '@/services/socialService'
 import { errorText } from '@/services/socialService'
+import { registerForPush, listenToPushTaps } from '@/services/pushService'
 
 // ── Selector de muro ─────────────────────────────────────────────────────────
 
@@ -279,6 +280,16 @@ export default function SocialScreen() {
     if (Date.now() - feed.fetchedAt > 300_000) loadFeed(scope, 'first')
     loadStories()
   }, [scope]))
+
+  /**
+   * El permiso de avisos se pide AQUÍ, al entrar en la comunidad, no al abrir
+   * la app. Un permiso pedido nada más instalar, sin que se entienda para qué,
+   * se deniega — y en iOS solo se puede preguntar una vez.
+   */
+  useEffect(() => {
+    registerForPush()
+    return listenToPushTaps()
+  }, [])
 
   useEffect(() => {
     if (!feed.posts.length && !feed.loading) loadFeed(scope, 'first')

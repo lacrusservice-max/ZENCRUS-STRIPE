@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import * as SecureStore from 'expo-secure-store'
 import api from '../services/api'
 import { useSocialStore } from './socialStore'
+import { unregisterPush } from '../services/pushService'
 
 export interface User {
   id: string
@@ -137,6 +138,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   logout: async () => {
+    // Antes de soltar la sesión, porque hace falta el token para borrarlo: si
+    // no, este teléfono seguiría recibiendo los avisos —y los nombres— de quien
+    // acaba de salir.
+    await unregisterPush()
     try {
       await api.post('/auth/logout')
     } catch {}

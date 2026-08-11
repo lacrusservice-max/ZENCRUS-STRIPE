@@ -40,6 +40,7 @@ import {
 import {
   confirmUpload, isAllowedType, kindOf, readUrls, remove, AllowedType,
 } from '../services/media'
+import { pushTo, TEXTOS, nombreDe } from '../services/push'
 
 const uid = (req: Request) => req.user?.userId ?? req.user?.id
 
@@ -488,6 +489,24 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
     .update({ ...estado, last_message_at: msg.created_at })
     .eq('id', acc.conv.id)
   if (e2) logger.warn(`social · sendMessage bump ${acc.conv.id}: ${e2.message}`)
+
+  /**
+   * Aviso al teléfono del destinatario.
+   *
+   * Los mensajes no pasan por `notify()`: `social_notifications.type` no admite
+   * `'message'` y ampliarlo pedía una migración para algo que la bandeja ya
+   * cuenta. El push sí hace falta, porque sin él un mensaje con la app cerrada
+   * no produce absolutamente nada.
+   *
+   * El TEXTO del mensaje no viaja en el aviso: aparecería en la pantalla
+   * bloqueada de un teléfono que puede estar sobre una mesa. Se dice que hay
+   * mensaje, no lo que dice.
+   */
+  const esSolicitud = (estado.status ?? acc.conv.status) === 'pending'
+  pushTo(acc.other!, {
+    ...(esSolicitud ? TEXTOS.message_request : TEXTOS.message)(await nombreDe(me)),
+    data: { tipo: 'message', conversacion: acc.conv.id },
+  }).catch(() => { /* ya se registra dentro */ })
 
   const firmadas = mediaUrl ? await readUrls([mediaUrl]) : new Map<string, string>()
   res.status(201).json({
