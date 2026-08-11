@@ -34,7 +34,7 @@
 
 import {
   S3Client, PutObjectCommand, GetObjectCommand,
-  DeleteObjectCommand, DeleteObjectsCommand, HeadObjectCommand,
+  DeleteObjectCommand, DeleteObjectsCommand, HeadObjectCommand, ListObjectsV2Command,
 } from '@aws-sdk/client-s3'
 import { getSignedUrl } from '@aws-sdk/s3-request-presigner'
 import { randomUUID } from 'crypto'
@@ -261,6 +261,37 @@ export async function remove(key: string): Promise<void> {
  * para siempre con archivos que ya nadie puede ver — que es justo lo que hace
  * cara una app de medios.
  */
+/**
+ * Todo lo que cuelga de una ruta.
+ *
+ * Se pregunta al almacén en vez de seguir las filas de la base porque así
+ * aparecen también los archivos que se subieron y nunca llegaron a enlazarse
+ * con nada: una subida a medias, un envío que falló. Por eso las claves llevan
+ * el identificador de la persona en la ruta (`post/<id>/…`).
+ *
+ * Se pagina: R2 devuelve mil objetos por respuesta.
+ */
+export async function listByPrefix(prefix: string): Promise<string[]> {
+  if (!configured) return []
+  const claves: string[] = []
+  let token: string | undefined
+
+  do {
+    const lista = await client().send(new ListObjectsV2Command({
+      Bucket: env.R2_BUCKET, Prefix: prefix, ContinuationToken: token,
+    }))
+    for (const o of lista.Contents ?? []) if (o.Key) claves.push(o.Key)
+    token = lista.IsTruncated ? lista.NextContinuationToken : undefined
+  } while (token)
+
+  return claves
+}
+
+/** Borra todo lo que cuelgue de una ruta. Lo usa la baja de una cuenta. */
+export async function removeByPrefix(prefix: string): Promise<number> {
+  return removeMany(await listByPrefix(prefix))
+}
+
 export async function removeMany(keys: string[]): Promise<number> {
   if (!keys.length) return 0
   let borradas = 0

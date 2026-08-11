@@ -29,7 +29,7 @@ import {
   PUBLIC_FIELDS, toPublicProfile, accessTo, visibleAuthorIds, signAvatars,
 } from '../services/socialAccess'
 import {
-  createUploadTicket, confirmUpload, readUrls, removeMany,
+  createUploadTicket, confirmUpload, readUrls, removeMany, removeByPrefix,
   isAllowedType, kindOf, mediaReady, MAX_VIDEO_SECONDS, AllowedType,
 } from '../services/media'
 import { notify, unnotify } from './socialController'
@@ -543,6 +543,51 @@ export async function deleteComment(req: Request, res: Response): Promise<void> 
 
   await supabase.from('post_comments').delete().eq('id', c.id)
   res.json({ success: true, data: { deleted: true } } satisfies ApiResponse)
+}
+
+// ── Baja de una cuenta ───────────────────────────────────────────────────────
+
+/**
+ * Retira el rastro de alguien que se da de baja.
+ *
+ * `DELETE /users/me` decía «Tu cuenta ha sido eliminada» y solo apagaba
+ * `is_active`: las fotos, los vídeos, las historias y los adjuntos de sus chats
+ * se quedaban en el bucket para siempre. Esto lo cumple.
+ *
+ * ── Qué se borra y qué no ───────────────────────────────────────────────────
+ * Se borra lo que es SUYO y solo suyo: publicaciones, historias, avatar y todos
+ * sus archivos. De los mensajes se borra el archivo adjunto, pero el texto se
+ * queda: lo que le escribiste a alguien también es la conversación de esa otra
+ * persona, y vaciársela sin avisar es decidir por ella.
+ *
+ * ── Por qué NO se llama desde la suspensión del administrador ───────────────
+ * Suspender y darse de baja apagan la misma columna, pero no son lo mismo: la
+ * suspensión se revierte, y borrar los archivos de alguien a quien mañana vas a
+ * readmitir es destruir lo que no toca. Esto se llama solo desde la baja
+ * voluntaria, que sí es definitiva.
+ */
+export async function purgeUserContent(userId: string): Promise<{ posts: number; files: number }> {
+  // Las publicaciones primero: la cascada se lleva medios, me gusta,
+  // comentarios y avisos asociados.
+  const { data: borradas, error } = await supabase.from('posts')
+    .delete().eq('user_id', userId).select('id')
+  if (error) logger.error(`social · purgeUserContent posts ${userId}: ${error.message}`)
+
+  // Los mensajes se quedan, pero sin apuntar a un archivo que ya no existe.
+  const { error: e2 } = await supabase.from('direct_messages')
+    .update({ media_url: null, media_type: null })
+    .eq('sender_id', userId).not('media_url', 'is', null)
+  if (e2) logger.error(`social · purgeUserContent mensajes ${userId}: ${e2.message}`)
+
+  // Se pregunta al almacén en vez de seguir las filas: así también caen las
+  // subidas que quedaron a medias y nunca llegaron a enlazarse con nada.
+  let files = 0
+  for (const ambito of ['post', 'story', 'avatar', 'dm']) {
+    files += await removeByPrefix(`${ambito}/${userId}/`)
+  }
+
+  logger.info(`social · baja de ${userId}: ${(borradas ?? []).length} publicaciones, ${files} archivos`)
+  return { posts: (borradas ?? []).length, files }
 }
 
 // ── Limpieza de historias vencidas ───────────────────────────────────────────

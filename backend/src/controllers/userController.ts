@@ -3,7 +3,9 @@ import { z } from 'zod'
 import { supabase } from '../config/supabase'
 import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
-import { calcularNutricion, PerfilUsuario, calcularFaseCiclo } from '../services/nutritionCalculator'
+import { calcularNutricion, PerfilUsuario } from '../services/nutritionCalculator'
+import { listByPrefix, readUrls } from '../services/media'
+import { purgeUserContent } from './socialContentController'
 
 export const updateProfileSchema = z.object({
   body: z.object({
@@ -69,12 +71,28 @@ export async function updateProfile(req: Request, res: Response): Promise<void> 
   res.status(200).json({ success: true, message: 'Perfil actualizado correctamente', data } satisfies ApiResponse)
 }
 
+/**
+ * DELETE /users/me
+ *
+ * La cuenta se apaga y se anonimiza el correo. Además se retira el contenido de
+ * la comunidad —publicaciones, historias y TODOS los archivos del bucket—:
+ * antes esto decía «Tu cuenta ha sido eliminada» y dejaba cada foto y cada
+ * vídeo en el almacén para siempre, que es una promesa a medias.
+ *
+ * `refresh_token_family` a null cierra la sesión en el acto: sin eso, el token
+ * de refresco que ya tuviera seguiría sirviendo.
+ */
 export async function deleteAccount(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
 
   const { error } = await supabase
     .from('users')
-    .update({ is_active: false, email: `deleted_${userId}@deleted.com` })
+    .update({
+      is_active: false,
+      email: `deleted_${userId}@deleted.com`,
+      profile_picture: null,
+      refresh_token_family: null,
+    })
     .eq('id', userId)
 
   if (error) {
@@ -82,25 +100,78 @@ export async function deleteAccount(req: Request, res: Response): Promise<void> 
     return
   }
 
-  logger.info(`Cuenta desactivada: ${userId}`)
+  // Después de apagar la cuenta, nunca antes: si la baja fallara, se habrían
+  // borrado los archivos de alguien que sigue dentro.
+  const { posts, files } = await purgeUserContent(userId)
+
+  logger.info(`Cuenta dada de baja: ${userId} · ${posts} publicaciones, ${files} archivos`)
   res.status(200).json({ success: true, message: 'Tu cuenta ha sido eliminada.' } satisfies ApiResponse)
 }
 
+/**
+ * GET /users/me/export
+ *
+ * Se anunciaba como «exportación completa» y traía solo perfil, dietas y
+ * entrenamientos: desde que existe la comunidad, eso dejaba fuera todo lo que
+ * la gente escribe, publica y conversa. Ahora va también.
+ *
+ * Las conversaciones incluyen lo que la otra persona escribió: forma parte de
+ * TU conversación tanto como lo tuyo, y sin ello la exportación es un
+ * monólogo. Los archivos no se meten dentro del fichero —serían cientos de
+ * megas— sino como enlaces firmados, que caducan en una hora; el aviso lo dice.
+ */
 export async function exportData(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
 
-  const [userRes, dietRes, workoutRes] = await Promise.all([
-    supabase.from('users').select(SAFE_COLUMNS).eq('id', userId).single(),
-    supabase.from('diet_plans').select('*').eq('user_id', userId),
-    supabase.from('workout_plans').select('*').eq('user_id', userId),
-  ])
+  const [userRes, dietRes, workoutRes, postsRes, comentRes, seguidoresRes, siguiendoRes, convRes, avisosRes] =
+    await Promise.all([
+      supabase.from('users').select(SAFE_COLUMNS).eq('id', userId).single(),
+      supabase.from('diet_plans').select('*').eq('user_id', userId),
+      supabase.from('workout_plans').select('*').eq('user_id', userId),
+      supabase.from('posts')
+        .select('id, content, kind, visibility, likes_count, comments_count, expires_at, created_at')
+        .eq('user_id', userId).order('created_at', { ascending: false }),
+      supabase.from('post_comments').select('id, post_id, content, created_at')
+        .eq('user_id', userId).order('created_at', { ascending: false }),
+      supabase.from('follows').select('follower_id, status, created_at').eq('following_id', userId),
+      supabase.from('follows').select('following_id, status, created_at').eq('follower_id', userId),
+      supabase.from('conversations').select('id, user_lo, user_hi, status, created_at')
+        .or(`user_lo.eq.${userId},user_hi.eq.${userId}`),
+      supabase.from('social_notifications')
+        .select('id, actor_id, type, post_id, is_read, created_at').eq('user_id', userId),
+    ])
+
+  const convIds = (convRes.data ?? []).map(c => c.id)
+  const { data: mensajes } = convIds.length
+    ? await supabase.from('direct_messages')
+        .select('id, conversation_id, sender_id, body, media_type, read_at, created_at')
+        .in('conversation_id', convIds).order('created_at', { ascending: true })
+    : { data: [] as any[] }
+
+  // Los archivos, como enlaces temporales. Se piden al almacén y no a la base
+  // para que salgan también los que quedaron sin enlazar.
+  const claves: string[] = []
+  for (const ambito of ['post', 'story', 'avatar', 'dm']) {
+    claves.push(...await listByPrefix(`${ambito}/${userId}/`))
+  }
+  const firmadas = await readUrls(claves)
 
   const exportData = {
     profile: userRes.data,
     dietPlans: dietRes.data ?? [],
     workoutRoutines: workoutRes.data ?? [],
+    community: {
+      posts: postsRes.data ?? [],
+      comments: comentRes.data ?? [],
+      followers: seguidoresRes.data ?? [],
+      following: siguiendoRes.data ?? [],
+      conversations: convRes.data ?? [],
+      messages: mensajes ?? [],
+      notifications: avisosRes.data ?? [],
+    },
+    files: claves.map(k => ({ key: k, url: firmadas.get(k) ?? null })),
     exportedAt: new Date().toISOString(),
-    note: 'Exportación completa de tus datos — NutriAI Fit',
+    note: 'Exportación completa de tus datos — ZENCRUS. Los enlaces de «files» caducan una hora después de la fecha de exportación.',
   }
 
   res.setHeader('Content-Type', 'application/json')

@@ -330,6 +330,20 @@ export async function refreshTokens(req: Request, res: Response): Promise<void> 
       throw new AppError(401, 'Token de refresco comprometido. Inicia sesión nuevamente.')
     }
 
+    // El inicio de sesión ya lo comprobaba, pero el refresco no, y sin esto la
+    // suspensión no suspendía nada: quien tuviera un token de refresco seguía
+    // renovando sesión indefinidamente y usando la app entera aunque el
+    // administrador le hubiera cerrado la cuenta o él mismo la hubiera borrado.
+    //
+    // Va DESPUÉS de la comprobación de token comprometido para no saltársela:
+    // que la cuenta esté apagada no es motivo para dejar de invalidar una
+    // familia de tokens que ha sido robada.
+    //
+    // Quien se queda fuera no ve aquí el motivo —este endpoint responde igual
+    // ante cualquier fallo de token, a propósito— pero lo lee en cuanto vuelve
+    // a iniciar sesión, que es a donde va la app a continuación.
+    if (!user.is_active) throw new AppError(401, 'Esta cuenta está desactivada')
+
     const newTokenFamily = uuidv4()
     await supabase.from('users').update({ refresh_token_family: newTokenFamily }).eq('id', user.id)
 
