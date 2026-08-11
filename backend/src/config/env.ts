@@ -22,6 +22,15 @@ const envSchema = z.object({
   SUPABASE_ANON_KEY: z.string().min(1),
   SUPABASE_SERVICE_ROLE_KEY: z.string().optional(),
 
+  // ── Cloudflare R2 · medios de la comunidad ────────────────────────────────
+  // Opcionales a propósito: sin ellas la app arranca igual y solo se cae la
+  // subida de fotos y vídeos, que responde 503. Obligarlas dejaría el servidor
+  // sin arrancar en cualquier entorno donde aún no se hayan configurado.
+  R2_ACCOUNT_ID: z.string().optional(),
+  R2_BUCKET: z.string().optional(),
+  R2_ACCESS_KEY_ID: z.string().optional(),
+  R2_SECRET_ACCESS_KEY: z.string().optional(),
+
   // FatSecret — catálogo de alimentos. Solo aquí: la API exige lista blanca de
   // IP, así que las llamadas salen del backend y el secreto nunca toca la app.
   FATSECRET_CLIENT_ID: z.string().optional(),
