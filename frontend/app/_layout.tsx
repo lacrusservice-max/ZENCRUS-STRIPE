@@ -46,7 +46,6 @@ export default function RootLayout() {
   const initialize = useAuthStore(s => s.initialize)
   const loadChallenges = useChallengeStore(s => s.load)
   const loadPremium = usePremiumStore(s => s.load)
-  const loadSocial = useSocialStore(s => s.load)
   const loadAchievements = useAchievementStore(s => s.load)
   const loadHealthTracker = useHealthTrackerStore(s => s.load)
   const loadMeasurements = useBodyMeasurementsStore(s => s.load)
@@ -69,7 +68,9 @@ export default function RootLayout() {
     initialize()
     loadChallenges()
     loadPremium()
-    loadSocial()
+    // La comunidad NO se carga aquí: necesita sesión, sus datos no se guardan
+    // en disco y solo hacen falta al entrar en la sección. Cargarla al arrancar
+    // era una petición desperdiciada en cada apertura de la app.
     loadAchievements()
     loadHealthTracker()
     loadMeasurements()

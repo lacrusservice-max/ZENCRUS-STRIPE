@@ -1,6 +1,7 @@
 import { create } from 'zustand'
 import * as SecureStore from 'expo-secure-store'
 import api from '../services/api'
+import { useSocialStore } from './socialStore'
 
 export interface User {
   id: string
@@ -141,6 +142,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {}
     await SecureStore.deleteItemAsync('accessToken').catch(() => {})
     await SecureStore.deleteItemAsync('refreshToken').catch(() => {})
+
+    // La comunidad vive en memoria y hay que vaciarla a mano. Sin esto, quien
+    // entrara después en el mismo teléfono vería un instante el muro, los chats
+    // y los avisos de la persona anterior mientras cargan los suyos.
+    useSocialStore.getState().reset()
+
     set({ user: null, accessToken: null, isAuthenticated: false })
   },
 

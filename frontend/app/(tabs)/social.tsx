@@ -1,380 +1,414 @@
-import { useState, useEffect, useCallback } from 'react'
+/**
+ * COMUNIDAD · PANTALLA PRINCIPAL
+ * ──────────────────────────────
+ * El centro de la sección: historias arriba, los dos muros debajo y el menú
+ * propio de Social en la cabecera.
+ *
+ * ── Por qué los dos muros son una sola lista ────────────────────────────────
+ * «Para ti» y «Amigos» comparten componente y se intercambian con un selector.
+ * Cada uno guarda su posición y su cursor en el store, así que volver de un
+ * perfil no manda a nadie de vuelta arriba del todo — que es lo que más molesta
+ * de un muro.
+ *
+ * ── El menú de la sección ───────────────────────────────────────────────────
+ * Buscar, avisos y mensajes viven en la cabecera y no en la barra de abajo: la
+ * barra es de la app entera y ya tiene cinco pestañas. Meter ahí lo de la
+ * comunidad la convertiría en un cajón de sastre.
+ */
+
+import { useCallback, useEffect, useRef, useState } from 'react'
 import {
-  View, Text, FlatList, StyleSheet, TouchableOpacity, TextInput,
-  Modal, KeyboardAvoidingView, Platform, ActivityIndicator, RefreshControl, Alert,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl,
+  ActivityIndicator, Animated, ScrollView, Alert, Pressable,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { useFocusEffect, router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useAuthStore } from '@/store/authStore'
-import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
-import { Screen, ScreenHeader } from '@/components/ui/Screen'
+import * as Haptics from 'expo-haptics'
+import { Screen } from '@/components/ui/Screen'
+import { useAppTheme } from '@/context/ThemeContext'
+import { useSocialStore } from '@/store/socialStore'
+import { Typography } from '@/constants/theme'
 import {
-  fetchFeed, createPost, deletePost, likePost, unlikePost,
-  fetchComments, addComment, CommunityPost, CommunityComment, FeedScope,
-} from '@/services/communityService'
+  Avatar, Badge, Empty, FeedSkeleton, BrandRing, timeAgo,
+} from '@/components/social/Bits'
+import { PostCard } from '@/components/social/PostCard'
+import type { FeedScope, Post, StoryGroup } from '@/services/socialService'
+import { errorText } from '@/services/socialService'
 
-function timeAgo(iso: string): string {
-  const d = (Date.now() - new Date(iso).getTime()) / 1000
-  if (d < 60) return 'ahora'
-  if (d < 3600) return `${Math.floor(d / 60)}m`
-  if (d < 86400) return `${Math.floor(d / 3600)}h`
-  return `${Math.floor(d / 86400)}d`
-}
+// ── Selector de muro ─────────────────────────────────────────────────────────
 
-const initials = (name?: string | null) => (name?.trim()?.[0] ?? 'Z').toUpperCase()
+/**
+ * Los dos muros, con el indicador deslizándose entre ellos.
+ *
+ * Dibujado a mano y no un control nativo: en Android el segmentado del sistema
+ * no existe y en iOS impone su propio aspecto, así que la sección se vería
+ * distinta en cada teléfono.
+ */
+function WallPicker({
+  value, onChange,
+}: { value: FeedScope; onChange: (v: FeedScope) => void }) {
+  const T = useAppTheme()
+  const pos = useRef(new Animated.Value(value === 'foryou' ? 0 : 1)).current
+  const [ancho, setAncho] = useState(0)
 
-// ── Avatar ──────────────────────────────────────────────────────────────────
-function Avatar({ name, size = 40 }: { name?: string | null; size?: number }) {
-  return (
-    <View style={[av.wrap, { width: size, height: size, borderRadius: size / 2 }]}>
-      <Text style={[av.txt, { fontSize: size * 0.4 }]}>{initials(name)}</Text>
-    </View>
-  )
-}
-const av = StyleSheet.create({
-  wrap: { backgroundColor: Colors.primary[600], alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: `${Colors.primary[400]}55` },
-  txt: { color: '#fff', fontWeight: '800' },
-})
+  useEffect(() => {
+    Animated.spring(pos, {
+      toValue: value === 'foryou' ? 0 : 1,
+      useNativeDriver: true, tension: 260, friction: 22,
+    }).start()
+  }, [value])
 
-// ── Post Card ───────────────────────────────────────────────────────────────
-function PostCard({ post, onLike, onComment, onDelete, isMine }: {
-  post: CommunityPost
-  onLike: (p: CommunityPost) => void
-  onComment: (p: CommunityPost) => void
-  onDelete: (p: CommunityPost) => void
-  isMine: boolean
-}) {
-  const name = post.author?.full_name ?? 'Usuario ZENCRUS'
-  const streak = post.metadata?.streak
-  const achievement = post.metadata?.achievement
+  const opciones: { key: FeedScope; label: string; icon: any }[] = [
+    { key: 'foryou', label: 'Para ti', icon: 'sparkles' },
+    { key: 'friends', label: 'Amigos', icon: 'people' },
+  ]
 
   return (
-    <View style={pc.card}>
-      <View style={pc.head}>
-        <Avatar name={name} />
-        <View style={{ flex: 1 }}>
-          <Text style={pc.name}>{name}</Text>
-          <Text style={pc.time}>{timeAgo(post.created_at)}</Text>
-        </View>
-        {isMine && (
-          <TouchableOpacity onPress={() => onDelete(post)} hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}>
-            <Ionicons name="ellipsis-horizontal" size={18} color="rgba(255,255,255,0.4)" />
-          </TouchableOpacity>
-        )}
-      </View>
-
-      {!!post.content && <Text style={pc.content}>{post.content}</Text>}
-
-      {(streak || achievement) && (
-        <View style={pc.badges}>
-          {streak ? (
-            <View style={pc.badge}><Ionicons name="flame" size={13} color={Colors.accent.orange} /><Text style={pc.badgeTxt}>Racha de {streak} días</Text></View>
-          ) : null}
-          {achievement ? (
-            <View style={pc.badge}><Ionicons name="trophy" size={13} color={Colors.accent.yellow} /><Text style={[pc.badgeTxt, { color: Colors.accent.yellow }]}>{achievement}</Text></View>
-          ) : null}
-        </View>
-      )}
-
-      <View style={pc.actions}>
-        <TouchableOpacity style={pc.action} onPress={() => onLike(post)} activeOpacity={0.7}>
-          <Ionicons name={post.liked ? 'heart' : 'heart-outline'} size={20} color={post.liked ? Colors.accent.red : 'rgba(255,255,255,0.6)'} />
-          <Text style={[pc.actionTxt, post.liked && { color: Colors.accent.red }]}>{post.likes_count}</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={pc.action} onPress={() => onComment(post)} activeOpacity={0.7}>
-          <Ionicons name="chatbubble-outline" size={19} color="rgba(255,255,255,0.6)" />
-          <Text style={pc.actionTxt}>{post.comments_count}</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  )
-}
-
-// ── Screen ──────────────────────────────────────────────────────────────────
-export default function SocialScreen() {
-  const { user } = useAuthStore()
-  const [scope, setScope] = useState<FeedScope>('all')
-  const [posts, setPosts] = useState<CommunityPost[]>([])
-  const [loading, setLoading] = useState(true)
-  const [refreshing, setRefreshing] = useState(false)
-
-  const [composerOpen, setComposerOpen] = useState(false)
-  const [draft, setDraft] = useState('')
-  const [posting, setPosting] = useState(false)
-
-  const [commentsFor, setCommentsFor] = useState<CommunityPost | null>(null)
-
-  const load = useCallback(async (s: FeedScope) => {
-    try {
-      const data = await fetchFeed(s)
-      setPosts(data)
-    } catch {
-      // feed vacío ante error
-    } finally {
-      setLoading(false)
-      setRefreshing(false)
-    }
-  }, [])
-
-  useEffect(() => { setLoading(true); load(scope) }, [scope, load])
-
-  const onRefresh = () => { setRefreshing(true); load(scope) }
-
-  const handleLike = async (p: CommunityPost) => {
-    const liked = !p.liked
-    setPosts(prev => prev.map(x => x.id === p.id ? { ...x, liked, likes_count: x.likes_count + (liked ? 1 : -1) } : x))
-    try { liked ? await likePost(p.id) : await unlikePost(p.id) }
-    catch { setPosts(prev => prev.map(x => x.id === p.id ? { ...x, liked: !liked, likes_count: x.likes_count + (liked ? -1 : 1) } : x)) }
-  }
-
-  const handlePost = async () => {
-    const content = draft.trim()
-    if (!content || posting) return
-    setPosting(true)
-    try {
-      const created = await createPost({ content, kind: 'post' })
-      setPosts(prev => [created, ...prev])
-      setDraft('')
-      setComposerOpen(false)
-    } catch {
-      Alert.alert('Error', 'No se pudo publicar. Intenta de nuevo.')
-    } finally {
-      setPosting(false)
-    }
-  }
-
-  const handleDelete = (p: CommunityPost) => {
-    Alert.alert('Eliminar publicación', '¿Seguro que quieres eliminarla?', [
-      { text: 'Cancelar', style: 'cancel' },
-      { text: 'Eliminar', style: 'destructive', onPress: async () => {
-        setPosts(prev => prev.filter(x => x.id !== p.id))
-        try { await deletePost(p.id) } catch { load(scope) }
-      } },
-    ])
-  }
-
-  return (
-    <Screen tint={Colors.accent.green}>
-      <ScreenHeader
-        eyebrow="Zencrus · Comunidad"
-        title="Comunidad"
-        subtitle="Comparte tu progreso y motiva a otros"
-        icon="people"
-        color={Colors.accent.green}
-        right={
-          <TouchableOpacity style={s.newBtn} onPress={() => setComposerOpen(true)} activeOpacity={0.85}>
-            <Ionicons name="add" size={20} color="#fff" />
-          </TouchableOpacity>
-        }
-      />
-
-      {/* Scope tabs */}
-      <View style={s.tabs}>
-        {(['all', 'following'] as FeedScope[]).map(sc => (
-          <TouchableOpacity key={sc} style={[s.tab, scope === sc && s.tabOn]} onPress={() => setScope(sc)}>
-            <Text style={[s.tabTxt, scope === sc && s.tabTxtOn]}>{sc === 'all' ? 'Explorar' : 'Siguiendo'}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {loading ? (
-        <View style={s.center}><ActivityIndicator color={Colors.primary[400]} size="large" /></View>
-      ) : (
-        <FlatList
-          data={posts}
-          keyExtractor={p => p.id}
-          contentContainerStyle={{ padding: Spacing[4], paddingBottom: 120 }}
-          refreshControl={<RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor={Colors.primary[400]} />}
-          renderItem={({ item }) => (
-            <PostCard
-              post={item}
-              isMine={item.user_id === user?.id}
-              onLike={handleLike}
-              onComment={setCommentsFor}
-              onDelete={handleDelete}
-            />
-          )}
-          ListEmptyComponent={
-            <View style={s.empty}>
-              <Ionicons name="people-outline" size={48} color="rgba(255,255,255,0.25)" />
-              <Text style={s.emptyTitle}>{scope === 'following' ? 'Aún no sigues a nadie' : 'Sé el primero en publicar'}</Text>
-              <Text style={s.emptyBody}>{scope === 'following' ? 'Sigue cuentas para ver su progreso aquí.' : 'Comparte tu progreso y motiva a la comunidad ZENCRUS.'}</Text>
-              <TouchableOpacity style={s.emptyBtn} onPress={() => setComposerOpen(true)}>
-                <Text style={s.emptyBtnTxt}>Crear publicación</Text>
-              </TouchableOpacity>
-            </View>
-          }
+    <View
+      style={[wp.wrap, { backgroundColor: T.glass, borderColor: T.glassBorder }]}
+      onLayout={e => setAncho(e.nativeEvent.layout.width - 8)}
+    >
+      {ancho > 0 && (
+        <Animated.View
+          style={[
+            wp.pill,
+            {
+              width: ancho / 2,
+              backgroundColor: `${T.accent}22`,
+              borderColor: `${T.accent}3A`,
+              transform: [{ translateX: pos.interpolate({ inputRange: [0, 1], outputRange: [0, ancho / 2] }) }],
+            },
+          ]}
+          pointerEvents="none"
         />
       )}
+      {opciones.map(o => {
+        const activo = value === o.key
+        return (
+          <TouchableOpacity
+            key={o.key}
+            style={wp.opt}
+            activeOpacity={0.8}
+            onPress={() => {
+              if (activo) return
+              Haptics.selectionAsync().catch(() => {})
+              onChange(o.key)
+            }}
+          >
+            <Ionicons name={o.icon} size={14} color={activo ? T.accent : T.ink3} />
+            <Text style={[wp.txt, { color: activo ? T.accent : T.ink3 }]}>{o.label}</Text>
+          </TouchableOpacity>
+        )
+      })}
+    </View>
+  )
+}
 
-      {/* Composer */}
-      <Modal visible={composerOpen} animationType="slide" transparent onRequestClose={() => setComposerOpen(false)}>
-        <KeyboardAvoidingView style={cm.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-          <View style={cm.sheet}>
-            <View style={cm.head}>
-              <TouchableOpacity onPress={() => setComposerOpen(false)}><Text style={cm.cancel}>Cancelar</Text></TouchableOpacity>
-              <Text style={cm.title}>Nueva publicación</Text>
-              <TouchableOpacity onPress={handlePost} disabled={!draft.trim() || posting}>
-                {posting ? <ActivityIndicator color={Colors.primary[400]} /> : <Text style={[cm.post, (!draft.trim()) && { opacity: 0.4 }]}>Publicar</Text>}
-              </TouchableOpacity>
-            </View>
-            <View style={cm.body}>
-              <Avatar name={user?.full_name ?? user?.email} size={38} />
-              <TextInput
-                style={cm.input}
-                placeholder="¿Qué quieres compartir con la comunidad?"
-                placeholderTextColor="rgba(255,255,255,0.35)"
-                value={draft}
-                onChangeText={setDraft}
-                multiline
-                autoFocus
-                maxLength={2000}
-              />
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+const wp = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row', marginHorizontal: 16, marginBottom: 14,
+    padding: 4, borderRadius: 15, borderWidth: 1,
+  },
+  pill: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: 12, borderWidth: 1 },
+  opt: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9 },
+  txt: { fontSize: 13, fontWeight: '700' },
+})
 
-      {/* Comments */}
-      {commentsFor && (
-        <CommentsModal post={commentsFor} onClose={() => setCommentsFor(null)} onAdded={() => {
-          setPosts(prev => prev.map(x => x.id === commentsFor.id ? { ...x, comments_count: x.comments_count + 1 } : x))
-        }} me={user} />
-      )}
+// ── Carrusel de historias ────────────────────────────────────────────────────
+
+function Stories({ groups, loading }: { groups: StoryGroup[]; loading: boolean }) {
+  const T = useAppTheme()
+  const me = useSocialStore(s => s.me)
+  const vistas = useSocialStore(s => s.seenStories)
+
+  const mias = groups.find(g => g.isMine)
+  const ajenas = groups.filter(g => !g.isMine)
+
+  return (
+    <ScrollView
+      horizontal
+      showsHorizontalScrollIndicator={false}
+      contentContainerStyle={st.row}
+    >
+      {/* La mía siempre primero, y si no tengo, el botón de crear. */}
+      <TouchableOpacity
+        style={st.item}
+        activeOpacity={0.8}
+        onPress={() => mias
+          ? router.push({ pathname: '/social/story', params: { authorId: mias.author.id } })
+          : router.push({ pathname: '/social/compose', params: { kind: 'story' } })}
+      >
+        <View>
+          {mias
+            ? <Avatar profile={mias.author} size={58} ring={vistas.has(mias.author.id) ? T.ink4 : T.accent} />
+            : <Avatar profile={me} size={58} />}
+          {!mias && (
+            <View style={[st.plus, { backgroundColor: T.accent, borderColor: T.bg }]}>
+              <Ionicons name="add" size={14} color="#fff" />
+            </View>
+          )}
+        </View>
+        <Text style={[st.name, { color: T.ink2 }]} numberOfLines={1}>Tu historia</Text>
+      </TouchableOpacity>
+
+      {loading && !groups.length && [0, 1, 2, 3].map(i => (
+        <View key={i} style={st.item}>
+          <View style={[st.fantasma, { backgroundColor: T.ink4 }]} />
+          <View style={[st.fantasmaTxt, { backgroundColor: T.ink4 }]} />
+        </View>
+      ))}
+
+      {ajenas.map(g => (
+        <TouchableOpacity
+          key={g.author.id}
+          style={st.item}
+          activeOpacity={0.8}
+          onPress={() => router.push({ pathname: '/social/story', params: { authorId: g.author.id } })}
+        >
+          {vistas.has(g.author.id) ? (
+            <Avatar profile={g.author} size={58} ring={T.ink4} />
+          ) : (
+            <BrandRing size={65}>
+              <View style={{ borderRadius: 32, borderWidth: 2.5, borderColor: T.bg }}>
+                <Avatar profile={g.author} size={57} />
+              </View>
+            </BrandRing>
+          )}
+          <Text style={[st.name, { color: T.ink2 }]} numberOfLines={1}>
+            {g.author.username ?? g.author.fullName ?? '—'}
+          </Text>
+        </TouchableOpacity>
+      ))}
+    </ScrollView>
+  )
+}
+
+const st = StyleSheet.create({
+  row: { paddingHorizontal: 16, gap: 14, paddingBottom: 16 },
+  item: { alignItems: 'center', width: 68, gap: 7 },
+  name: { fontSize: 11, fontWeight: '600' },
+  plus: {
+    position: 'absolute', bottom: -2, right: -2,
+    width: 21, height: 21, borderRadius: 11, borderWidth: 2.5,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  fantasma: { width: 58, height: 58, borderRadius: 29 },
+  fantasmaTxt: { width: 44, height: 9, borderRadius: 5 },
+})
+
+// ── Cabecera ─────────────────────────────────────────────────────────────────
+
+function Header() {
+  const T = useAppTheme()
+  const me = useSocialStore(s => s.me)
+  const badges = useSocialStore(s => s.badges)
+
+  const boton = (icon: any, onPress: () => void, count = 0) => (
+    <TouchableOpacity
+      style={[hd.btn, { backgroundColor: T.glass, borderColor: T.glassBorder }]}
+      onPress={onPress}
+      activeOpacity={0.75}
+    >
+      <Ionicons name={icon} size={19} color={T.ink} />
+      {count > 0 && <Badge count={count} style={hd.badge} />}
+    </TouchableOpacity>
+  )
+
+  return (
+    <View style={hd.wrap}>
+      <View style={{ flex: 1 }}>
+        <Text style={[hd.eyebrow, { color: T.accent }]}>COMUNIDAD</Text>
+        <Text style={[hd.title, { color: T.ink }]}>Social</Text>
+      </View>
+      <View style={hd.acciones}>
+        {boton('search', () => router.push('/social/search'))}
+        {boton('notifications-outline', () => router.push('/social/notifications'),
+          badges.notifications + badges.followRequests)}
+        {boton('chatbubble-outline', () => router.push('/social/messages'),
+          badges.messages + badges.messageRequests)}
+        <TouchableOpacity
+          onPress={() => router.push('/social/me')}
+          activeOpacity={0.75}
+          style={{ marginLeft: 2 }}
+        >
+          <Avatar profile={me} size={38} />
+        </TouchableOpacity>
+      </View>
+    </View>
+  )
+}
+
+const hd = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row', alignItems: 'center',
+    paddingHorizontal: 20, paddingTop: 6, paddingBottom: 16, gap: 8,
+  },
+  eyebrow: { fontSize: 10, fontWeight: '900', letterSpacing: 3, marginBottom: 3 },
+  title: { fontFamily: Typography.fontFamily.display, fontSize: 32, letterSpacing: 0.2 },
+  acciones: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  btn: {
+    width: 38, height: 38, borderRadius: 13, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  badge: { position: 'absolute', top: -5, right: -5 },
+})
+
+// ── Pantalla ─────────────────────────────────────────────────────────────────
+
+export default function SocialScreen() {
+  const T = useAppTheme()
+  const [scope, setScope] = useState<FeedScope>('foryou')
+
+  const feeds = useSocialStore(s => s.feeds)
+  const stories = useSocialStore(s => s.stories)
+  const storiesLoading = useSocialStore(s => s.storiesLoading)
+  const loadFeed = useSocialStore(s => s.loadFeed)
+  const loadStories = useSocialStore(s => s.loadStories)
+  const loadMe = useSocialStore(s => s.loadMe)
+  const loadBadges = useSocialStore(s => s.loadBadges)
+  const toggleLike = useSocialStore(s => s.toggleLike)
+  const removePost = useSocialStore(s => s.removePost)
+
+  const feed = feeds[scope]
+
+  // Al entrar en la sección se refresca lo que esté rancio. Cinco minutos es el
+  // punto en que volver a pedir deja de ser molesto y empieza a ser útil.
+  useFocusEffect(useCallback(() => {
+    loadMe()
+    loadBadges()
+    if (Date.now() - feed.fetchedAt > 300_000) loadFeed(scope, 'first')
+    loadStories()
+  }, [scope]))
+
+  useEffect(() => {
+    if (!feed.posts.length && !feed.loading) loadFeed(scope, 'first')
+  }, [scope])
+
+  const opciones = useCallback((post: Post) => {
+    const acciones: any[] = []
+    if (post.isMine) {
+      acciones.push({
+        text: 'Eliminar publicación',
+        style: 'destructive',
+        onPress: () => {
+          Alert.alert('Eliminar', '¿Seguro que quieres eliminarla? No se puede deshacer.', [
+            { text: 'Cancelar', style: 'cancel' },
+            {
+              text: 'Eliminar',
+              style: 'destructive',
+              onPress: () => removePost(post.id).catch(e => Alert.alert('Ups', errorText(e))),
+            },
+          ])
+        },
+      })
+    } else if (post.author) {
+      acciones.push({ text: 'Ver perfil', onPress: () => router.push(`/social/profile/${post.author!.id}`) })
+    }
+    acciones.push({ text: 'Cancelar', style: 'cancel' })
+    Alert.alert('Publicación', undefined, acciones)
+  }, [removePost])
+
+  return (
+    <Screen>
+      <FlatList
+        data={feed.posts}
+        keyExtractor={p => p.id}
+        renderItem={({ item }) => (
+          <PostCard
+            post={item}
+            onLike={toggleLike}
+            onComment={p => router.push(`/social/comments/${p.id}`)}
+            onProfile={id => router.push(`/social/profile/${id}`)}
+            onOptions={opciones}
+          />
+        )}
+        ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
+        ListHeaderComponent={
+          <>
+            <Header />
+            <Stories groups={stories} loading={storiesLoading} />
+            <WallPicker value={scope} onChange={setScope} />
+          </>
+        }
+        ListEmptyComponent={
+          feed.loading ? <FeedSkeleton /> : feed.error ? (
+            <Empty
+              icon="cloud-offline-outline"
+              title="No pudimos cargar el muro"
+              text={feed.error}
+              action="Reintentar"
+              onAction={() => loadFeed(scope, 'first')}
+            />
+          ) : (
+            <Empty
+              icon={scope === 'foryou' ? 'sparkles-outline' : 'people-outline'}
+              title={scope === 'foryou' ? 'Aún no hay nada por aquí' : 'Tu muro está tranquilo'}
+              text={scope === 'foryou'
+                ? 'Cuando alguien publique algo abierto, aparecerá aquí.'
+                : 'Sigue a más gente para ver lo que comparte, o publica tú algo.'}
+              action={scope === 'foryou' ? 'Buscar gente' : 'Publicar algo'}
+              onAction={() => router.push(scope === 'foryou' ? '/social/search' : '/social/compose')}
+            />
+          )
+        }
+        ListFooterComponent={
+          feed.loadingMore
+            ? <ActivityIndicator color={T.accent} style={{ marginVertical: 22 }} />
+            : <View style={{ height: 8 }} />
+        }
+        refreshControl={
+          <RefreshControl
+            refreshing={feed.refreshing}
+            onRefresh={() => { loadFeed(scope, 'refresh'); loadStories(); loadBadges() }}
+            tintColor={T.accent}
+            colors={[T.accent]}
+          />
+        }
+        onEndReached={() => loadFeed(scope, 'more')}
+        onEndReachedThreshold={0.6}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 120 }}
+        // Sin esto, en listas largas con imágenes la memoria se dispara.
+        removeClippedSubviews
+        windowSize={9}
+        maxToRenderPerBatch={6}
+      />
+
+      <Compose />
     </Screen>
   )
 }
 
-// ── Comments Modal ──────────────────────────────────────────────────────────
-function CommentsModal({ post, onClose, onAdded, me }: {
-  post: CommunityPost; onClose: () => void; onAdded: () => void; me: any
-}) {
-  const [comments, setComments] = useState<CommunityComment[]>([])
-  const [loading, setLoading] = useState(true)
-  const [draft, setDraft] = useState('')
-  const [sending, setSending] = useState(false)
+// ── Botón de publicar ────────────────────────────────────────────────────────
 
-  useEffect(() => {
-    fetchComments(post.id).then(setComments).catch(() => {}).finally(() => setLoading(false))
-  }, [post.id])
-
-  const send = async () => {
-    const content = draft.trim()
-    if (!content || sending) return
-    setSending(true)
-    try {
-      const c = await addComment(post.id, content)
-      setComments(prev => [...prev, c])
-      setDraft('')
-      onAdded()
-    } catch {
-      Alert.alert('Error', 'No se pudo comentar.')
-    } finally {
-      setSending(false)
-    }
-  }
+/** Flotante sobre el muro, por encima de la barra de pestañas. */
+function Compose() {
+  const T = useAppTheme()
+  const escala = useRef(new Animated.Value(1)).current
 
   return (
-    <Modal visible animationType="slide" transparent onRequestClose={onClose}>
-      <KeyboardAvoidingView style={cm.overlay} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <View style={[cm.sheet, { maxHeight: '80%' }]}>
-          <View style={cm.head}>
-            <View style={{ width: 60 }} />
-            <Text style={cm.title}>Comentarios</Text>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" /></TouchableOpacity>
-          </View>
-
-          {loading ? (
-            <View style={{ padding: Spacing[8] }}><ActivityIndicator color={Colors.primary[400]} /></View>
-          ) : (
-            <FlatList
-              data={comments}
-              keyExtractor={c => c.id}
-              style={{ maxHeight: 380 }}
-              contentContainerStyle={{ padding: Spacing[4], gap: Spacing[4] }}
-              renderItem={({ item }) => (
-                <View style={cx.row}>
-                  <Avatar name={item.author?.full_name} size={32} />
-                  <View style={{ flex: 1 }}>
-                    <Text style={cx.name}>{item.author?.full_name ?? 'Usuario'} <Text style={cx.time}>· {timeAgo(item.created_at)}</Text></Text>
-                    <Text style={cx.content}>{item.content}</Text>
-                  </View>
-                </View>
-              )}
-              ListEmptyComponent={<Text style={cx.emptyTxt}>Sé el primero en comentar.</Text>}
-            />
-          )}
-
-          <View style={cx.inputRow}>
-            <TextInput
-              style={cx.input}
-              placeholder="Escribe un comentario…"
-              placeholderTextColor="rgba(255,255,255,0.35)"
-              value={draft}
-              onChangeText={setDraft}
-              maxLength={1000}
-            />
-            <TouchableOpacity onPress={send} disabled={!draft.trim() || sending} style={cx.sendBtn}>
-              {sending ? <ActivityIndicator color="#fff" size="small" /> : <Ionicons name="send" size={18} color={draft.trim() ? '#fff' : 'rgba(255,255,255,0.4)'} />}
-            </TouchableOpacity>
-          </View>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
+    <Animated.View style={[cp.wrap, { transform: [{ scale: escala }] }]}>
+      <Pressable
+        onPress={() => {
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
+          router.push('/social/compose')
+        }}
+        onPressIn={() => Animated.spring(escala, { toValue: 0.9, useNativeDriver: true, tension: 400, friction: 12 }).start()}
+        onPressOut={() => Animated.spring(escala, { toValue: 1, useNativeDriver: true, tension: 300, friction: 10 }).start()}
+        style={[cp.btn, { backgroundColor: T.accent, shadowColor: T.accent }]}
+      >
+        <Ionicons name="add" size={26} color="#FFFFFF" />
+      </Pressable>
+    </Animated.View>
   )
 }
 
-// ── Styles ──────────────────────────────────────────────────────────────────
-const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080808' },
-  header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing[5], paddingVertical: Spacing[3] },
-  headerTitle: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize['2xl'] + 4, letterSpacing: 0.2, color: '#fff' },
-  newBtn: { width: 38, height: 38, borderRadius: 12, backgroundColor: Colors.primary[500], alignItems: 'center', justifyContent: 'center' },
-  tabs: { flexDirection: 'row', gap: Spacing[2], paddingHorizontal: Spacing[5], paddingBottom: Spacing[3] },
-  tab: { paddingHorizontal: Spacing[4], paddingVertical: Spacing[2], borderRadius: BorderRadius.full, backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder },
-  tabOn: { backgroundColor: Glass.purpleTint, borderColor: Glass.purpleBorder },
-  tabTxt: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.55)', fontWeight: '700' },
-  tabTxtOn: { color: Colors.primary[400] },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  empty: { alignItems: 'center', paddingVertical: Spacing[16], paddingHorizontal: Spacing[6], gap: Spacing[3] },
-  emptyTitle: { fontSize: Typography.fontSize.lg, fontWeight: '800', color: '#fff', marginTop: Spacing[2] },
-  emptyBody: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.45)', textAlign: 'center', lineHeight: 20 },
-  emptyBtn: { marginTop: Spacing[3], backgroundColor: Colors.primary[500], borderRadius: BorderRadius.full, paddingHorizontal: Spacing[6], paddingVertical: Spacing[3] },
-  emptyBtnTxt: { color: '#fff', fontWeight: '800', fontSize: Typography.fontSize.sm },
-})
-
-const pc = StyleSheet.create({
-  card: { backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder, borderRadius: BorderRadius.lg, padding: Spacing[4], marginBottom: Spacing[3] },
-  head: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], marginBottom: Spacing[3] },
-  name: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
-  time: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.4)', marginTop: 1 },
-  content: { fontSize: Typography.fontSize.base, color: 'rgba(255,255,255,0.9)', lineHeight: 22, marginBottom: Spacing[3] },
-  badges: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2], marginBottom: Spacing[3] },
-  badge: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: Glass.elevated, borderRadius: BorderRadius.full, paddingHorizontal: Spacing[3], paddingVertical: 5 },
-  badgeTxt: { fontSize: Typography.fontSize.xs, color: Colors.accent.orange, fontWeight: '700' },
-  actions: { flexDirection: 'row', gap: Spacing[5], borderTopWidth: 1, borderTopColor: Glass.cardBorder, paddingTop: Spacing[3] },
-  action: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  actionTxt: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.6)', fontWeight: '700' },
-})
-
-const cm = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderColor: Glass.cardBorder, paddingBottom: Spacing[8] },
-  head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing[4], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
-  cancel: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
-  title: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
-  post: { fontSize: Typography.fontSize.sm, color: Colors.primary[400], fontWeight: '800' },
-  body: { flexDirection: 'row', gap: Spacing[3], padding: Spacing[4] },
-  input: { flex: 1, fontSize: Typography.fontSize.base, color: '#fff', minHeight: 100, textAlignVertical: 'top' },
-})
-
-const cx = StyleSheet.create({
-  row: { flexDirection: 'row', gap: Spacing[3], alignItems: 'flex-start' },
-  name: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#fff' },
-  time: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.4)', fontWeight: '400' },
-  content: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.85)', lineHeight: 19, marginTop: 2 },
-  emptyTxt: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.4)', textAlign: 'center', paddingVertical: Spacing[6] },
-  inputRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], padding: Spacing[4], borderTopWidth: 1, borderTopColor: Glass.cardBorder },
-  input: { flex: 1, backgroundColor: Glass.card, borderRadius: BorderRadius.full, paddingHorizontal: Spacing[4], paddingVertical: Spacing[3], color: '#fff', fontSize: Typography.fontSize.sm },
-  sendBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.primary[500], alignItems: 'center', justifyContent: 'center' },
+const cp = StyleSheet.create({
+  wrap: { position: 'absolute', right: 20, bottom: 104 },
+  btn: {
+    width: 56, height: 56, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center',
+    shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 16,
+    elevation: 12,
+  },
 })
