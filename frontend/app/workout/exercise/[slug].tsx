@@ -18,7 +18,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
-  useWindowDimensions, ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
