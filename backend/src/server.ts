@@ -12,6 +12,7 @@ import { securityHeaders, apiLimiter, contentLimiter, suspiciousActivityLogger, 
 import { errorHandler, notFound } from './middleware/errorHandler'
 import routes from './routes'
 import { purgeExpiredStories } from './controllers/socialContentController'
+import { cerrarSesionesOlvidadas } from './services/workoutSessions'
 import { initializeFirebase } from './services/notificationService'
 import { testConnection } from './config/supabase'
 import { raw } from 'express'
@@ -66,8 +67,11 @@ app.use(morgan('combined', {
 }))
 app.use(suspiciousActivityLogger)
 // La biblioteca y la comunidad se navegan mucho: contador propio y generoso.
+// Entrenar también: una sesión manda una petición POR SERIE, y cuarenta series
+// más el resto de la app se comen el tope general antes de acabar el circuito.
 app.use('/api/social', contentLimiter)
 app.use('/api/exercises', contentLimiter)
+app.use('/api/workout', contentLimiter)
 app.use('/api', apiLimiter)
 
 // ── Panel Admin — CSP relajado para CDNs (solo /admin) ───────────────────────
@@ -128,6 +132,21 @@ async function startServer(): Promise<void> {
         logger.warn(`historias caducadas: ${(e as Error).message}`))
     }, 60 * 60 * 1000)
     purga.unref()   // no mantiene vivo el proceso al cerrar
+
+    /**
+     * Sesiones de entrenamiento que se quedaron abiertas, cada hora.
+     *
+     * La base solo admite UNA sesión activa por persona —es lo que hace que
+     * «reanudar» no sea ambiguo— y el precio es que una sesión que nadie cerró
+     * bloquearía la siguiente para siempre. Esto la desatasca: con series se da
+     * por terminada en la última que se registró, y sin series se borra.
+     */
+    const olvidadas = setInterval(() => {
+      cerrarSesionesOlvidadas()
+        .then(n => { if (n > 0) logger.info(`Sesiones de entrenamiento olvidadas cerradas: ${n}`) })
+        .catch(e => logger.warn(`sesiones olvidadas: ${(e as Error).message}`))
+    }, 60 * 60 * 1000)
+    olvidadas.unref()
 
     const shutdown = (signal: string) => {
       logger.info(`${signal} recibido. Cerrando servidor...`)

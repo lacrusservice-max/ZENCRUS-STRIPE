@@ -63,9 +63,11 @@ export const apiLimiter = rateLimit({
   max: env.RATE_LIMIT_MAX,
   standardHeaders: true,
   legacyHeaders: false,
-  // Esas dos tienen su propio contador: sin esta exclusión gastarían también
+  // Esas tres tienen su propio contador: sin esta exclusión gastarían también
   // el general y el tope estricto seguiría mandando.
-  skip: req => req.path.startsWith('/social') || req.path.startsWith('/exercises'),
+  skip: req => req.path.startsWith('/social')
+            || req.path.startsWith('/exercises')
+            || req.path.startsWith('/workout'),
   message: {
     success: false,
     message: 'Demasiadas solicitudes. Intenta nuevamente más tarde.',
