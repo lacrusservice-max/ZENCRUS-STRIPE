@@ -127,6 +127,7 @@ const OVERRIDES = {
   'decline-push-ups':'Flexiones declinadas',
   'plate-front-raise':'Elevación frontal con disco',
   'pull-up-assisted':'Dominada asistida',
+  'barbell-spinal-jefferson-curl':'Jefferson curl con barra',
   'hand-plank':'Plancha con manos',
   'dumbbell-goblet-alternating-curtsy-lunge':'Zancada curtsy alternada goblet con mancuerna',
   'dumbbell-goblet-bulgarian-split-squat':'Sentadilla búlgara goblet con mancuerna',

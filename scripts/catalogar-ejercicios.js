@@ -59,6 +59,10 @@ const GRUPOS = [
   ['chest',      'Pecho',       /bench-press|chest|fly|flye|pec|push-up|pushup|dip|pullover/],
   ['back',       'Espalda',     /row|pulldown|pull-up|chin-up|lat-|shrug|inverted|deadlift|rack-pull|superman|back-extension/],
   ['shoulders',  'Hombro',      /shoulder|lateral-raise|front-raise|overhead-press|military|face-pull|upright|arnold|rear-delt|reverse-fly|clean-and-press|push-press/],
+  // El Jefferson curl NO es de bíceps: es una flexión de columna para femoral
+  // y espalda. La palabra «curl» lo metía ahí y salía como sustituto de un
+  // curl de bíceps, que es justo lo que un sustituto no debe hacer.
+  ['hamstrings', 'Femoral',     /jefferson/],
   ['biceps',     'Bíceps',      /curl(?!-up)|bicep|hammer|preacher|concentration|drag-curl/],
   ['triceps',    'Tríceps',     /tricep|pushdown|push-down|skull|overhead-extension|kickback|close-grip|diamond|french/],
   ['forearms',   'Antebrazo',   /wrist|forearm|grip/],
@@ -75,7 +79,7 @@ const PATRONES = [
   ['pull-horizontal', /row|face-pull|rear-delt|inverted/],
   ['pull-vertical',   /pulldown|pull-up|chin-up|pullover/],
   ['squat',           /squat|leg-press|lunge|step-up|split|sissy|wall-sit/],
-  ['hinge',           /deadlift|rack-pull|romanian|good-morning|hip-thrust|swing|back-extension/],
+  ['hinge',           /jefferson|deadlift|rack-pull|romanian|good-morning|hip-thrust|swing|back-extension/],
   ['core',            /side-bend|windmill|sit-?up|knee-raise|toe-touch/],
   ['carry',           /carry|farmer|suitcase/],
   ['isolation',       /curl|extension|raise|calf|fly|flye|shrug|kickback|pushdown/],

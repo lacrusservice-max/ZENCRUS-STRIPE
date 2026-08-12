@@ -234,7 +234,7 @@ export default function LibraryScreen() {
       />
 
       {/* Grupos musculares: cada uno con su color, el mismo en toda la app */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipsScroll} contentContainerStyle={s.chips}>
         {(filtros?.muscles ?? []).map(m => {
           const on = grupo === m.id
           const col = E.colorDe(m.id)
@@ -257,7 +257,7 @@ export default function LibraryScreen() {
       </ScrollView>
 
       {/* Material */}
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={s.chips}>
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipsScroll} contentContainerStyle={s.chips}>
         {(filtros?.equipment ?? []).map(m => {
           const on = material === m.id
           return (
@@ -345,7 +345,10 @@ const s = StyleSheet.create({
     borderRadius: 15, borderWidth: 1,
   },
   input: { flex: 1, fontSize: 15 },
-  chips: { paddingHorizontal: 20, gap: 7, paddingVertical: 10 },
+  // Un ScrollView horizontal dentro de una columna flexible se estira y
+  // arrastra a sus hijos: hay que fijarle el alto y no dejarle crecer.
+  chipsScroll: { flexGrow: 0, flexShrink: 0 },
+  chips: { paddingHorizontal: 20, gap: 7, paddingVertical: 10, alignItems: 'center' },
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     paddingHorizontal: 11, paddingVertical: 7,
