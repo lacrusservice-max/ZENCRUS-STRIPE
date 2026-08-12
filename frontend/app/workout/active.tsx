@@ -251,7 +251,18 @@ export default function SesionActiva() {
   const [huecos, setHuecos] = useState<Hueco[]>([])
   const [actual, setActual] = useState(0)
   const [buscando, setBuscando] = useState(false)
-  const [terminada, setTerminada] = useState<{ duracion: number; series: number; volumen: number } | null>(null)
+  const [terminada, setTerminada] = useState<{
+    duracion: number; series: number; volumen: number
+    /**
+     * Las marcas se COPIAN aquí al cerrar, no se leen del store.
+     *
+     * `terminar()` vacía el store —tiene que hacerlo: la sesión ya no está
+     * abierta— y eso borraba los récords justo antes de que el resumen los
+     * pintara. Se batían dos marcas y la pantalla de felicitación salía
+     * vacía, que es el peor momento posible para perder ese dato.
+     */
+    marcas: typeof marcas
+  } | null>(null)
   const [reloj, setReloj] = useState(0)
 
   // Entradas de la serie en curso
@@ -425,6 +436,9 @@ export default function SesionActiva() {
       return
     }
 
+    // Se copian ANTES de cerrar: `terminar` limpia el store.
+    const marcasDeLaSesion = [...marcas]
+
     const guardada = await terminar()
     if (!guardada) {
       Alert.alert(
@@ -435,8 +449,8 @@ export default function SesionActiva() {
     }
 
     await markActivity(new Date().toISOString().slice(0, 10), { loggedWorkout: true })
-    await addXP(25 + marcas.length * 15)
-    setTerminada({ duracion, series: totalSeries, volumen })
+    await addXP(25 + marcasDeLaSesion.length * 15)
+    setTerminada({ duracion, series: totalSeries, volumen, marcas: marcasDeLaSesion })
   }
 
   const salir = () => {
@@ -455,7 +469,7 @@ export default function SesionActiva() {
 
   if (!sesion && !rutina && !mode) return <ElegirModo onElegir={m => router.setParams({ mode: m })} />
 
-  if (terminada) return <Resumen datos={terminada} marcas={marcas} titulo={sesion?.title ?? 'Entrenamiento'} />
+  if (terminada) return <Resumen datos={terminada} marcas={terminada.marcas} titulo={sesion?.title ?? 'Entrenamiento'} />
 
   if (!sesion) {
     return (
@@ -788,10 +802,18 @@ const f = StyleSheet.create({
   pendiente: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.neon.red },
 })
 
-/** Lo que se hizo, al terminar. */
-function Resumen({ datos, marcas, titulo }: {
+/**
+ * Lo que se hizo, al terminar.
+ *
+ * `marcas` lleva valor por defecto: es una lista opcional y una pantalla de
+ * felicitación no puede reventar por no haber batido ningún récord. Sin el
+ * defecto, cualquier camino que no la pasara —un estado recuperado, una
+ * versión anterior de la app— tiraba la pantalla entera con «Cannot read
+ * property 'length' of undefined».
+ */
+function Resumen({ datos, marcas = [], titulo }: {
   datos: { duracion: number; series: number; volumen: number }
-  marcas: { metric: string; value: number; previous: number | null; exerciseName: string }[]
+  marcas?: { metric: string; value: number; previous: number | null; exerciseName: string }[]
   titulo: string
 }) {
   const NOMBRE_METRICA: Record<string, string> = {

@@ -99,7 +99,9 @@ export default function Cuerpo() {
       <CabeceraSeccion
         titulo="Cuerpo"
         subtitulo={
-          datos ? `${datos.totalSeries} series en ${dias} días` : 'Carga y recuperación por grupo'
+          datos
+            ? `${datos.totalSeries} ${datos.totalSeries === 1 ? 'serie' : 'series'} en ${dias} días`
+            : 'Carga y recuperación por grupo'
         }
       />
       <MenuSeccion activo="cuerpo" />
@@ -222,7 +224,7 @@ export default function Cuerpo() {
                   >
                     <View style={[s.filaPunto, { backgroundColor: COLOR_GRUPO[g.grupo] ?? Colors.neon.steel }]} />
                     <Text style={s.filaNombre}>{NOMBRE_GRUPO[g.grupo] ?? g.grupo}</Text>
-                    <Text style={s.filaSeries}>{g.series > 0 ? `${g.series} series` : '—'}</Text>
+                    <Text style={s.filaSeries}>{g.series > 0 ? `${g.series} ${g.series === 1 ? 'serie' : 'series'}` : '—'}</Text>
                     <Text style={s.filaVolumen}>{g.volumen > 0 ? kilosCorto(g.volumen) : ''}</Text>
                   </TouchableOpacity>
                 ))}

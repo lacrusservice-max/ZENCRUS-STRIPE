@@ -146,7 +146,7 @@ const s = StyleSheet.create({
   chipBarraTxtOn: { color: Colors.neon.white },
 
   escena: {
-    minHeight: 116, justifyContent: 'center',
+    justifyContent: 'center',
     borderRadius: BorderRadius.lg,
     backgroundColor: 'rgba(0,0,0,0.28)',
     borderWidth: 1, borderColor: Colors.neon.edge,
@@ -157,14 +157,36 @@ const s = StyleSheet.create({
     textAlign: 'center', paddingHorizontal: Spacing[4], lineHeight: 20,
   },
 
-  barraFila: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing[2] },
+  // Centrado: con dos discos, pegado a la izquierda dejaba medio panel vacío y
+  // parecía que faltaba algo por cargar.
+  barraFila: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: Spacing[2],
+  },
   manguito: { width: 26, height: 9, backgroundColor: Colors.neon.steelSoft, borderRadius: 2 },
   tope: { width: 12, height: 26, backgroundColor: Colors.neon.steel, borderRadius: 3, marginLeft: 2 },
-  discosScroll: { flexGrow: 0 },
+  discosScroll: { flexGrow: 0, flexShrink: 1 },
   discosFila: { flexDirection: 'row', alignItems: 'center', gap: 3, paddingHorizontal: 2 },
-  discoCol: { alignItems: 'center', gap: 4 },
+
+  /**
+   * Altura fija en la columna del disco, con el número abajo del todo.
+   *
+   * Los discos van centrados sobre el eje de la barra, que es donde están de
+   * verdad, y por eso uno de 25 y uno de 5 empiezan y acaban a alturas
+   * distintas. Si el número colgara justo debajo de cada disco, los números
+   * quedarían escalonados y el conjunto se leería como desordenado. Con la
+   * columna de altura fija, los discos siguen centrados y los números caen
+   * todos en la misma línea.
+   */
+  discoCol: {
+    alignItems: 'center', justifyContent: 'center',
+    height: ALTO_MAX + 16,
+  },
   disco: { width: 15, borderRadius: 3, borderWidth: 1 },
-  discoKg: { fontSize: 9, fontWeight: '700', color: Colors.neon.w3 },
+  discoKg: {
+    position: 'absolute', bottom: 0,
+    fontSize: 9, fontWeight: '700', color: Colors.neon.w3,
+  },
 
   cuenta: {
     flexDirection: 'row', alignItems: 'center',

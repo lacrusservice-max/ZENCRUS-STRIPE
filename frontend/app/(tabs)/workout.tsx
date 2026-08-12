@@ -299,7 +299,7 @@ function FilaSesion({ sesion }: { sesion: Sesion }) {
         <Text style={s.filaTitulo} numberOfLines={1}>{sesion.title}</Text>
         <Text style={s.filaSub}>
           {desdeCuando(sesion.started_at)}
-          {sesion.total_sets > 0 ? ` · ${sesion.total_sets} series` : ''}
+          {sesion.total_sets > 0 ? ` · ${sesion.total_sets} ${sesion.total_sets === 1 ? 'serie' : 'series'}` : ''}
           {min > 0 ? ` · ${min} min` : ''}
         </Text>
       </View>

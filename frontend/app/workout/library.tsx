@@ -23,6 +23,7 @@ import {
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams } from 'expo-router'
+import { volverAEntrena } from '@/components/workout/MenuSeccion'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
@@ -208,6 +209,7 @@ export default function LibraryScreen() {
     <Screen>
       <ScreenHeader
         back
+        onBack={volverAEntrena}
         eyebrow="ENTRENA"
         title="Biblioteca"
         subtitle={filtros ? `${filtros.total} ejercicios · ${filtros.home} sin gimnasio` : undefined}

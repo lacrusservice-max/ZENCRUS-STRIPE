@@ -71,21 +71,35 @@ interface ScreenHeaderProps {
   color?: string
   /** Muestra flecha de regreso. */
   back?: boolean
+  /**
+   * A dónde va esa flecha. Por defecto vuelve atrás, y si NO HAY atrás sale a
+   * la portada de la app.
+   *
+   * Esa comprobación no es un lujo: una pantalla a la que se llega con
+   * `router.replace` —como las del menú de Entrena, que reemplaza para no
+   * apilar— se queda sin historial, y un `router.back()` a secas revienta con
+   * «GO_BACK was not handled by any navigator» dejando el botón muerto.
+   */
+  onBack?: () => void
   /** Contenido a la derecha (botón de acción, badge, etc). */
   right?: React.ReactNode
 }
 
 export function ScreenHeader({
-  eyebrow, title, subtitle, icon, color, back, right,
+  eyebrow, title, subtitle, icon, color, back, onBack, right,
 }: ScreenHeaderProps) {
   const T = useAppTheme()
   const c = color ?? T.accent
+  const volver = onBack ?? (() => {
+    if (router.canGoBack()) router.back()
+    else router.replace('/')
+  })
   return (
     <View style={sh.wrap}>
       {back && (
         <TouchableOpacity
           style={[sh.backBtn, { backgroundColor: T.glass, borderColor: T.glassBorder }]}
-          onPress={() => router.back()}
+          onPress={volver}
           activeOpacity={0.7}
         >
           <Ionicons name="chevron-back" size={20} color={T.ink2} />

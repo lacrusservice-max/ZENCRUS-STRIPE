@@ -141,7 +141,7 @@ function Tarjeta({ sesion }: { sesion: Sesion }) {
         </Text>
 
         <View style={s.datos}>
-          {sesion.total_sets > 0 && <Dato texto={`${sesion.total_sets} series`} />}
+          {sesion.total_sets > 0 && <Dato texto={`${sesion.total_sets} ${sesion.total_sets === 1 ? 'serie' : 'series'}`} />}
           {min > 0 && <Dato texto={`${min} min`} />}
           {Number(sesion.total_volume_kg) > 0 && <Dato texto={kilosCorto(Number(sesion.total_volume_kg))} />}
           {sesion.distance_m ? <Dato texto={`${(sesion.distance_m / 1000).toFixed(1).replace('.', ',')} km`} /> : null}

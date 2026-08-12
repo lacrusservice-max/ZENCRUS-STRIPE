@@ -23,6 +23,7 @@ import {
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useVideoPlayer, VideoView } from 'expo-video'
+import { volverAEntrena } from '@/components/workout/MenuSeccion'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Screen } from '@/components/ui/Screen'
@@ -92,7 +93,7 @@ export default function ExerciseScreen() {
     return (
       <Screen>
         <View style={s.volverSolo}>
-          <TouchableOpacity onPress={() => router.back()} hitSlop={12}>
+          <TouchableOpacity onPress={volverAEntrena} hitSlop={12}>
             <Ionicons name="chevron-back" size={24} color={T.ink} />
           </TouchableOpacity>
         </View>
@@ -126,7 +127,7 @@ export default function ExerciseScreen() {
             pointerEvents="none"
           />
 
-          <TouchableOpacity style={s.volver} onPress={() => router.back()} hitSlop={12} activeOpacity={0.75}>
+          <TouchableOpacity style={s.volver} onPress={volverAEntrena} hitSlop={12} activeOpacity={0.75}>
             <Ionicons name="chevron-back" size={22} color="#fff" />
           </TouchableOpacity>
 
