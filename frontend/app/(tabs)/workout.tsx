@@ -39,7 +39,7 @@ import { TiraSemana } from '@/components/workout/TiraSemana'
 import { Cifra } from '@/components/workout/Charts'
 import { useSessionStore } from '@/store/sessionStore'
 import {
-  getResumen, getVolumen, Resumen, Semana,
+  getResumen, getDias, Resumen, Dia,
   kilosCorto, minutosCorto, desdeCuando,
 } from '@/services/statsService'
 import { listarSesiones, Sesion } from '@/services/sessionService'
@@ -68,7 +68,7 @@ export default function EntrenaHoy() {
   const { sesion, series, restaurar } = useSessionStore()
 
   const [resumen, setResumen] = useState<Resumen | null>(null)
-  const [semanas, setSemanas] = useState<Semana[]>([])
+  const [dias, setDias] = useState<Dia[]>([])
   const [recientes, setRecientes] = useState<Sesion[]>([])
   const [propuesta, setPropuesta] = useState<Generado | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -78,12 +78,12 @@ export default function EntrenaHoy() {
     try {
       const [r, v, h, g] = await Promise.all([
         getResumen(28).catch(() => null),
-        getVolumen(56).catch(() => null),
+        getDias(7).catch(() => null),
         listarSesiones({ limit: 3 }).catch(() => null),
         getEntrenamiento(PROPUESTA.region, PROPUESTA.minutos, PROPUESTA.lugar).catch(() => null),
       ])
       setResumen(r)
-      setSemanas(v?.semanas ?? [])
+      setDias(v?.dias ?? [])
       setRecientes(h?.sessions ?? [])
       setPropuesta(g)
     } finally {
@@ -194,7 +194,7 @@ export default function EntrenaHoy() {
             {/* ── La semana, en una tira ───────────────────────────────── */}
             <Animated.View entering={FadeInDown.delay(80).duration(380)} style={s.bloque}>
               <TiraSemana
-                semanas={semanas}
+                dias={dias}
                 sesionesSemana={sesionesSemana}
                 objetivo={OBJETIVO_SEMANA}
                 racha={resumen?.racha ?? 0}

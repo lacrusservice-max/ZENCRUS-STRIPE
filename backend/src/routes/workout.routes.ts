@@ -28,7 +28,7 @@ import {
 } from '../controllers/workoutSessionController'
 import {
   resumen, porMusculo, volumenPorSemana, ejerciciosMasHechos, curvaEjercicio,
-  ventanaSchema, curvaSchema,
+  porDia, ventanaSchema, curvaSchema, diasSchema,
 } from '../controllers/workoutStatsController'
 import { authenticate } from '../middleware/auth'
 import { validate } from '../middleware/validate'
@@ -57,6 +57,7 @@ router.get('/exercise-history/:key', validate(historialEjercicioSchema), histori
 router.get('/stats/summary', validate(ventanaSchema), resumen)
 router.get('/stats/muscles', validate(ventanaSchema), porMusculo)
 router.get('/stats/volume', validate(ventanaSchema), volumenPorSemana)
+router.get('/stats/days', validate(diasSchema), porDia)
 router.get('/stats/exercises', validate(ventanaSchema), ejerciciosMasHechos)
 router.get('/stats/curve/:key', validate(curvaSchema), curvaEjercicio)
 

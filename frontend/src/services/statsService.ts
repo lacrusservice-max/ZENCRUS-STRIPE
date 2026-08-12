@@ -46,6 +46,15 @@ export interface Musculos {
   grupos: CargaGrupo[]
 }
 
+export interface Dia {
+  /** YYYY-MM-DD en el huso del móvil, no en UTC. */
+  fecha: string
+  sesiones: number
+  series: number
+  volumen: number
+  minutos: number
+}
+
 export interface Semana {
   lunes: string
   volumen: number
@@ -89,6 +98,17 @@ export const getMusculos = async (days = 7): Promise<Musculos> =>
 
 export const getVolumen = async (days = 84): Promise<{ semanas: Semana[] }> =>
   unwrap(await apiGet('/workout/stats/volume', { params: { days } }))
+
+/**
+ * Día a día, para la tira de la semana.
+ *
+ * Va el desplazamiento horario del móvil porque la base guarda UTC: sin él,
+ * entrenar a las once de la noche se marcaría en el día siguiente.
+ */
+export const getDias = async (days = 7): Promise<{ dias: Dia[] }> =>
+  unwrap(await apiGet('/workout/stats/days', {
+    params: { days, tzOffset: new Date().getTimezoneOffset() },
+  }))
 
 export const getEjercicios = async (days = 90): Promise<{ ejercicios: EjercicioHecho[] }> =>
   unwrap(await apiGet('/workout/stats/exercises', { params: { days } }))

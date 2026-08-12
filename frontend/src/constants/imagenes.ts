@@ -1,8 +1,8 @@
 /**
  * IMÁGENES DE ENTRENA
  * ───────────────────
- * Las fotografías de portada de la sección. Ocho, tratadas todas con el mismo
- * duotono de marca.
+ * Las fotografías de portada de la sección. Ocho, en color y tratadas todas
+ * igual para que funcionen como fondo bajo texto blanco.
  *
  * ── VAN EMPAQUETADAS, no en R2 ──────────────────────────────────────────────
  * Los medios de la comunidad viven en el bucket con URL firmadas de una hora,
@@ -26,13 +26,18 @@
  * pago. La procedencia de cada una queda anotada abajo por si algún día hay que
  * justificarla.
  *
- * ── Y por qué están teñidas ─────────────────────────────────────────────────
- * El problema de las fotos de licencia libre no es la calidad de cada una: es
- * que vienen de sitios distintos y juntas parecen un collage. Todas pasan por
- * el mismo mapa de gradiente —negro en las sombras, rojo de marca solo en las
- * luces altas— así que una foto de un gimnasio con fluorescentes y una de una
- * montaña nevada acaban en la misma escala. El script está en
- * `scratchpad/procesar.py` del día que se hicieron.
+ * ── Cómo están tratadas ─────────────────────────────────────────────────────
+ * EN COLOR. Hubo una versión teñida de rojo con un duotono de marca: unificaba,
+ * pero a costa de tirar la fotografía entera —un gimnasio y una montaña
+ * acababan siendo la misma mancha— y lo que se ganaba en coherencia se perdía
+ * en que ninguna imagen decía ya nada. Descartada.
+ *
+ * Lo que llevan es el tratamiento que no se nota precisamente porque está bien
+ * hecho: exposición bajada al 62 %, contraste y saturación subidos ANTES de
+ * oscurecer —al revés se realza una foto ya apagada y sale ruido—, las sombras
+ * un punto frías para que sus negros peguen con el #050506 de la app en vez de
+ * tirar a marrón, y viñeta en las esquinas para que el texto tenga fondo venga
+ * la foto que venga. El script queda en `scratchpad/procesar.py`.
  */
 
 import { ImageSourcePropType } from 'react-native'

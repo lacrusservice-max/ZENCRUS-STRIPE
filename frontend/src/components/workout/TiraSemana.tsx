@@ -18,31 +18,32 @@
 
 import { View, Text, StyleSheet } from 'react-native'
 import Animated, { FadeInDown } from 'react-native-reanimated'
-import { Semana } from '@/services/statsService'
+import { Dia } from '@/services/statsService'
 import { Colors, Typography, Spacing } from '@/constants/theme'
 
 const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
 interface Props {
-  /** Semanas del servidor; se usa la última para repartir por días. */
-  semanas: Semana[]
+  /** Los siete últimos días, del servidor y ya en huso local. */
+  dias: Dia[]
   sesionesSemana: number
   objetivo: number
   racha: number
 }
 
-export function TiraSemana({ semanas, sesionesSemana, objetivo, racha }: Props) {
+export function TiraSemana({ dias, sesionesSemana, objetivo, racha }: Props) {
   /**
-   * El reparto por día del que hay dato.
+   * Los siete días REALES, no un reparto aproximado.
    *
-   * El servidor agrega por SEMANA, no por día, así que aquí no se puede pintar
-   * cada día por separado con exactitud. Se usa el total de la semana en curso
-   * para llenar los días ya pasados de izquierda a derecha, que es una
-   * aproximación honesta mientras el endpoint no devuelva el desglose diario:
-   * el número de días llenos es exacto, su colocación no.
+   * La primera versión rellenaba de izquierda a derecha con el total de la
+   * semana: marcaba el lunes cuando se había entrenado el miércoles. Un dato
+   * aproximado que se ve a simple vista no es una aproximación, es un error, y
+   * en una tira de siete casillas se ve a la primera.
+   *
+   * El servidor los devuelve en orden y con la fecha ya en el huso del móvil.
    */
-  const hoy = (new Date().getDay() + 6) % 7   // 0 = lunes
-  const llenos = Math.min(sesionesSemana, hoy + 1)
+  const ultimos = dias.slice(-7)
+  const hoy = ultimos.length - 1
 
   const frase = sesionesSemana === 0
     ? 'Todavía sin entrenar esta semana'
@@ -68,13 +69,17 @@ export function TiraSemana({ semanas, sesionesSemana, objetivo, racha }: Props) 
       </View>
 
       <View style={s.tira}>
-        {DIAS.map((d, i) => {
-          const pasado = i <= hoy
-          const lleno = i < llenos
+        {ultimos.map((dia, i) => {
+          const lleno = dia.sesiones > 0
           const esHoy = i === hoy
+          const pasado = i <= hoy
+          // La inicial del día sale de la FECHA, no de una lista fija: la tira
+          // son los últimos siete días, no la semana natural, así que el
+          // primero no es siempre lunes.
+          const inicial = DIAS[(new Date(dia.fecha + 'T12:00:00').getDay() + 6) % 7]
           return (
             <Animated.View
-              key={d}
+              key={dia.fecha}
               entering={FadeInDown.delay(i * 40).duration(320)}
               style={s.columna}
             >
@@ -86,7 +91,7 @@ export function TiraSemana({ semanas, sesionesSemana, objetivo, racha }: Props) 
               ]}>
                 {lleno && <View style={s.brillo} />}
               </View>
-              <Text style={[s.dia, esHoy && s.diaHoy]}>{d}</Text>
+              <Text style={[s.dia, esHoy && s.diaHoy]}>{inicial}</Text>
             </Animated.View>
           )
         })}

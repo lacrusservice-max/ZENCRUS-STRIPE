@@ -391,3 +391,75 @@ export async function ejerciciosMasHechos(req: Request, res: Response): Promise<
       .slice(0, 40),
   })
 }
+
+
+// ── Día a día ────────────────────────────────────────────────────────────────
+
+/**
+ * Sesiones por DÍA, no por semana.
+ *
+ * La tira de siete días de la portada necesita saber qué días exactamente se
+ * entrenó. Con el agregado semanal solo se sabe CUÁNTOS, y rellenar de
+ * izquierda a derecha pintaba el lunes cuando se había entrenado el miércoles.
+ * Un dato aproximado que se ve a simple vista no es una aproximación, es un
+ * error.
+ *
+ * El día se calcula en el HUSO DEL CLIENTE, que llega como desplazamiento en
+ * minutos: la base guarda UTC y a las once de la noche en México eso ya es el
+ * día siguiente en Londres. Sin el ajuste, entrenar de noche marcaría mañana.
+ */
+export const diasSchema = z.object({
+  query: z.object({
+    days: z.coerce.number().int().min(1).max(90).optional(),
+    /** `new Date().getTimezoneOffset()` del móvil. Positivo al oeste. */
+    tzOffset: z.coerce.number().int().min(-840).max(840).optional(),
+  }),
+})
+
+export async function porDia(req: Request, res: Response): Promise<void> {
+  const userId = req.user!.userId
+  const dias = Number(req.query.days ?? 7)
+  const offsetMin = Number(req.query.tzOffset ?? 0)
+
+  const { data, error } = await supabase
+    .from('workout_sessions')
+    .select('started_at, duration_seconds, total_sets, total_volume_kg, mode')
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+    .gte('started_at', desde(dias + 1))
+    .order('started_at', { ascending: true })
+
+  if (error) { fail(res, 500, 'No se pudo leer el detalle por día'); return }
+
+  /** La fecha local de una marca de tiempo UTC. */
+  const diaLocal = (iso: string): string =>
+    new Date(new Date(iso).getTime() - offsetMin * 60_000).toISOString().slice(0, 10)
+
+  const mapa = new Map<string, { sesiones: number; series: number; volumen: number; minutos: number }>()
+
+  // Se siembran TODOS los días de la ventana, también los vacíos: la tira
+  // dibuja los siete y necesita saber cuáles no tuvieron nada, que es
+  // información distinta de «no vino en la respuesta».
+  const hoyLocal = new Date(Date.now() - offsetMin * 60_000)
+  for (let i = 0; i < dias; i++) {
+    const d = new Date(hoyLocal)
+    d.setUTCDate(d.getUTCDate() - i)
+    mapa.set(d.toISOString().slice(0, 10), { sesiones: 0, series: 0, volumen: 0, minutos: 0 })
+  }
+
+  for (const s of data ?? []) {
+    const k = diaLocal(s.started_at)
+    const acc = mapa.get(k)
+    if (!acc) continue                     // cae fuera de la ventana local
+    acc.sesiones += 1
+    acc.series += s.total_sets ?? 0
+    acc.volumen += Number(s.total_volume_kg ?? 0)
+    acc.minutos += Math.round((s.duration_seconds ?? 0) / 60)
+  }
+
+  ok(res, {
+    dias: [...mapa.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([fecha, v]) => ({ fecha, ...v, volumen: Math.round(v.volumen) })),
+  })
+}

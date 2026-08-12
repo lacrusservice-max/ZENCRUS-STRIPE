@@ -114,9 +114,9 @@ export function HeroCard({
         {/* ── Fondo ──────────────────────────────────────────────────────── */}
         <Animated.View style={[StyleSheet.absoluteFill, estiloParallax]}>
           {foto ? (
-            // La foto va casi entera: ya viene oscurecida y con viñeta del
-            // proceso, así que aquí no hace falta apagarla otra vez.
-            <Image source={foto} style={{ flex: 1, opacity: 0.92 }} contentFit="cover" transition={280} />
+            // Entera y sin apagar: ya viene oscurecida y con viñeta del
+            // proceso. Bajarle aquí la opacidad otra vez la dejaría gris.
+            <Image source={foto} style={{ flex: 1 }} contentFit="cover" transition={280} />
           ) : usables.length > 0 ? (
             <View style={s.collage}>
               {usables.map((uri, i) => (
@@ -153,18 +153,11 @@ export function HeroCard({
 
         {/* Velo: sin esto el texto blanco sobre pósters claros no se lee. */}
         <LinearGradient
-          colors={['rgba(5,5,6,0.40)', 'rgba(5,5,6,0.78)', 'rgba(5,5,6,0.97)']}
+          colors={['rgba(5,5,6,0.10)', 'rgba(5,5,6,0.62)', 'rgba(5,5,6,0.95)']}
           locations={[0, 0.45, 1]}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />
-        <LinearGradient
-          colors={['rgba(255,31,61,0.22)', 'transparent']}
-          start={{ x: 1, y: 0 }} end={{ x: 0.15, y: 0.7 }}
-          style={StyleSheet.absoluteFill}
-          pointerEvents="none"
-        />
-
         {/* ── Contenido ──────────────────────────────────────────────────── */}
         <View style={s.dentro}>
           {badge ? (
@@ -244,7 +237,7 @@ export function ColeccionCard({ titulo, cuenta, foto, posters = [], onPress, anc
       >
         <View style={c.fondo}>
           {foto ? (
-            <Image source={foto} style={{ flex: 1, opacity: 0.9 }} contentFit="cover" transition={240} />
+            <Image source={foto} style={{ flex: 1 }} contentFit="cover" transition={240} />
           ) : usables.length > 0 ? (
             <View style={{ flex: 1, flexDirection: 'row' }}>
               {usables.map((uri, i) => (
