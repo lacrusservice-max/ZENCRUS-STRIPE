@@ -22,7 +22,7 @@ import {
 } from 'react-native'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
@@ -137,9 +137,15 @@ export default function LibraryScreen() {
   const T = useAppTheme()
   const { width } = useWindowDimensions()
 
+  // El mapa del cuerpo entra aquí con el grupo ya elegido
+  // (`/workout/library?muscle=chest`). Se lee UNA vez, como valor inicial, y no
+  // en un efecto que lo reimponga: si se reimpusiera, quitar el filtro a mano
+  // volvería a ponerlo solo y el filtro se quedaría atascado.
+  const { muscle } = useLocalSearchParams<{ muscle?: string }>()
+
   const [filtros, setFiltros] = useState<E.Filters | null>(null)
   const [lugar, setLugar] = useState<'todo' | 'home'>('todo')
-  const [grupo, setGrupo] = useState<string | null>(null)
+  const [grupo, setGrupo] = useState<string | null>(muscle ?? null)
   const [material, setMaterial] = useState<string | null>(null)
   const [texto, setTexto] = useState('')
 

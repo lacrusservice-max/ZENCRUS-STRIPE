@@ -1,660 +1,381 @@
-import { useState, useEffect } from 'react'
+/**
+ * ENTRENA · PORTADA
+ * ─────────────────
+ * La entrada a la sección de entrenamiento. Contesta tres preguntas y en este
+ * orden, que es el orden en que se hacen de verdad:
+ *
+ *   1 · ¿Tengo algo a medias?      → la sesión abierta, arriba del todo
+ *   2 · ¿Qué puedo entrenar hoy?   → el cuerpo, teñido por recuperación
+ *   3 · ¿Cómo voy?                 → la semana en cifras
+ *
+ * ── Lo que se quitó de la versión anterior, y por qué ───────────────────────
+ * · Diez tipos de entrenamiento con emoji (🏋️🔥⚔️🏃…). Un emoji no es un icono:
+ *   cambia de dibujo en cada sistema, no se puede teñir y en una app de
+ *   entrenamiento serio parece una lista de la compra. Ahora hay iconografía
+ *   propia, dibujada, que hereda el color del tema.
+ * · Listas de nombres de ejercicios ESCRITAS A MANO en el código («Press de
+ *   banca», «Sentadilla»…). Existiendo un catálogo de 206 fichas con vídeo,
+ *   músculo y material, ofrecer doce nombres sueltos era peor que no ofrecer
+ *   nada: no llevaban a ninguna ficha y se quedaban desactualizados solos.
+ * · El historial en memoria del teléfono. Ahora viene del servidor, que es
+ *   donde de verdad está.
+ *
+ * ── El menú de la sección ───────────────────────────────────────────────────
+ * Entrena tiene cinco sitios y no caben en la barra de abajo, que es de la app
+ * entera. El menú propio va aquí arriba y es el índice de la sección: los
+ * cinco visibles siempre, sin desplegables.
+ */
+
+import { useState, useCallback } from 'react'
 import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  TextInput, Modal, Alert, KeyboardAvoidingView, Platform,
-  FlatList,
+  View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator,
 } from 'react-native'
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
+import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useWorkoutStore, Exercise, Routine } from '@/store/workoutStore'
-import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import Animated, { FadeInDown } from 'react-native-reanimated'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
+import { BodyMap } from '@/components/workout/BodyMap'
+import { Anillo, Cifra, Vacio } from '@/components/workout/Charts'
+import { MenuSeccion } from '@/components/workout/MenuSeccion'
+import { useSessionStore } from '@/store/sessionStore'
+import {
+  getResumen, getMusculos, Resumen, Musculos,
+  kilosCorto, minutosCorto, desdeCuando,
+} from '@/services/statsService'
+import { listarSesiones, Sesion } from '@/services/sessionService'
+import { NOMBRE_GRUPO, Vista } from '@/components/workout/anatomy'
+import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
-// La rejilla de accesos (Progreso, Medidas, Ciclo macro, Salud, Duelos) se
-// retiró de aquí: cada una de esas cosas ya vive en su propia sección —Progreso,
-// Salud, Comunidad— y repetirlas en Entrena convertía la pantalla en un índice
-// de la app en vez de en el sitio donde se entrena.
+/**
+ * Objetivo de sesiones por semana.
+ *
+ * Cuatro. No es una cifra sacada del aire: por debajo de tres la frecuencia por
+ * grupo muscular no da para progresar, y por encima de cinco la mayoría no
+ * sostiene el ritmo más de un mes. El anillo mide contra esto y no contra un
+ * objetivo que el usuario ponga a ojo, que siempre acaba siendo diez.
+ */
+const OBJETIVO_SEMANA = 4
 
-// ── Constants ────────────────────────────────────────────────────────────────
+export default function EntrenaPortada() {
+  const { sesion, series, restaurar } = useSessionStore()
 
-const TRAINING_TYPES = [
-  { id: 'gym',        label: 'Gym',         emoji: '🏋️' },
-  { id: 'hyrox',      label: 'Hyrox',       emoji: '🔥' },
-  { id: 'crossfit',   label: 'CrossFit',    emoji: '⚔️' },
-  { id: 'running',    label: 'Running',     emoji: '🏃' },
-  { id: 'cycling',    label: 'Ciclismo',    emoji: '🚴' },
-  { id: 'calistenia', label: 'Calistenia',  emoji: '🤸' },
-  { id: 'yoga',       label: 'Yoga',        emoji: '🧘' },
-  { id: 'natacion',   label: 'Natación',    emoji: '🏊' },
-  { id: 'combat',     label: 'Artes marciales', emoji: '🥊' },
-  { id: 'hiking',     label: 'Hiking',      emoji: '🥾' },
-]
+  const [resumen, setResumen] = useState<Resumen | null>(null)
+  const [musculos, setMusculos] = useState<Musculos | null>(null)
+  const [recientes, setRecientes] = useState<Sesion[]>([])
+  const [vista, setVista] = useState<Vista>('frente')
+  const [cargando, setCargando] = useState(true)
+  const [refrescando, setRefrescando] = useState(false)
 
-const EXERCISE_SUGGESTIONS: Record<string, string[]> = {
-  gym:        ['Press de banca', 'Sentadilla', 'Peso muerto', 'Press militar', 'Jalones al pecho', 'Remo con barra', 'Curl de bíceps', 'Extensión de tríceps', 'Leg press', 'Hip thrust', 'Face pull', 'Fondos en paralelas'],
-  hyrox:      ['Ski erg', 'Sled push', 'Sled pull', 'Burpee broad jump', 'Rowing', 'Farmer carry', 'Sandbag lunges', 'Wall balls', 'Running 1km'],
-  crossfit:   ['Thruster', 'Clean & jerk', 'Snatch', 'Muscle-up', 'Box jump', 'Double-under', 'Handstand push-up', 'Kettlebell swing', 'Wall ball', 'Bar muscle-up'],
-  running:    ['Carrera continua', 'Intervalos 400m', 'Fartlek', 'Tempo run', 'Rodaje largo', 'Series 1km', 'Cuestas', 'Carrera regenerativa'],
-  calistenia: ['Dominadas', 'Fondos', 'Flexiones', 'Pistol squat', 'L-sit', 'Muscle-up', 'Planche', 'Front lever', 'Handstand', 'Dips'],
-  default:    ['Sentadilla', 'Plancha', 'Zancadas', 'Flexiones', 'Burpees', 'Mountain climbers', 'Jumping jacks', 'Salto a cuerda'],
-}
-
-// ── Add Exercise Modal ────────────────────────────────────────────────────────
-
-interface AddExerciseModalProps {
-  visible: boolean
-  trainingType: string
-  onClose: () => void
-  onAdd: (ex: Exercise) => void
-  initial?: Exercise | null
-}
-
-function AddExerciseModal({ visible, trainingType, onClose, onAdd, initial }: AddExerciseModalProps) {
-  const [tab, setTab] = useState<'search' | 'manual'>('search')
-  const [name, setName]     = useState(initial?.name ?? '')
-  const [sets, setSets]     = useState(String(initial?.sets ?? '3'))
-  const [reps, setReps]     = useState(initial?.reps ?? '10')
-  const [weight, setWeight] = useState(initial?.weight ?? '')
-  const [rest, setRest]     = useState(String(initial?.rest ?? '90'))
-  const [notes, setNotes]   = useState(initial?.notes ?? '')
-  const [query, setQuery]   = useState('')
-
-  useEffect(() => {
-    if (initial) {
-      setName(initial.name); setSets(String(initial.sets)); setReps(initial.reps)
-      setWeight(initial.weight); setRest(String(initial.rest)); setNotes(initial.notes ?? '')
+  const cargar = useCallback(async () => {
+    try {
+      const [r, m, h] = await Promise.all([
+        getResumen(28).catch(() => null),
+        getMusculos(7).catch(() => null),
+        listarSesiones({ limit: 4 }).catch(() => null),
+      ])
+      setResumen(r)
+      setMusculos(m)
+      setRecientes(h?.sessions ?? [])
+    } finally {
+      setCargando(false)
+      setRefrescando(false)
     }
-  }, [initial])
+  }, [])
 
-  const suggestions = EXERCISE_SUGGESTIONS[trainingType] ?? EXERCISE_SUGGESTIONS.default
-  const filtered = query.length > 1
-    ? suggestions.filter(s => s.toLowerCase().includes(query.toLowerCase()))
-    : suggestions
+  // Al volver a la pestaña, no solo al montar: se entra aquí justo después de
+  // cerrar un entrenamiento y los números tienen que estar ya actualizados.
+  useFocusEffect(useCallback(() => {
+    void restaurar()
+    void cargar()
+  }, [restaurar, cargar]))
 
-  const pickSuggestion = (s: string) => { setName(s); setTab('manual') }
-
-  const handleAdd = () => {
-    if (!name.trim()) { Alert.alert('Nombre requerido'); return }
-    onAdd({
-      id: initial?.id ?? Date.now().toString(),
-      name: name.trim(), sets: parseInt(sets) || 3,
-      reps: reps || '10', weight: weight || 'bodyweight',
-      rest: parseInt(rest) || 90, notes: notes || undefined,
+  /**
+   * Lo que está listo para entrenar hoy.
+   *
+   * Se ordena por recuperación y se queda con los tres primeros. Los que nunca
+   * se han entrenado van al principio: un grupo sin datos no es que esté
+   * fresco, es que lleva sin tocarse desde siempre, y eso es lo más urgente.
+   */
+  const listos = (musculos?.grupos ?? [])
+    .filter(g => g.grupo !== 'fullbody')
+    .sort((a, b) => {
+      if (a.recuperacion === null && b.recuperacion === null) return 0
+      if (a.recuperacion === null) return -1
+      if (b.recuperacion === null) return 1
+      return b.recuperacion - a.recuperacion
     })
-    setName(''); setSets('3'); setReps('10'); setWeight(''); setRest('90'); setNotes(''); setTab('search')
-    onClose()
-  }
+    .slice(0, 3)
 
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-        <SafeAreaView style={ae.container}>
-          <View style={ae.header}>
-            <Text style={ae.title}>{initial ? 'Editar ejercicio' : 'Agregar ejercicio'}</Text>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" /></TouchableOpacity>
-          </View>
-
-          <View style={ae.tabs}>
-            <TouchableOpacity style={[ae.tab, { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }, tab === 'search' && ae.tabOn]} onPress={() => setTab('search')}>
-              <Ionicons name="search" size={14} color={tab === 'search' ? Colors.primary[400] : Colors.dark.textSecondary} />
-              <Text style={[ae.tabTxt, tab === 'search' && ae.tabTxtOn]}>Ejercicios frecuentes</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[ae.tab, { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }, tab === 'manual' && ae.tabOn]} onPress={() => setTab('manual')}>
-              <Ionicons name="create" size={14} color={tab === 'manual' ? Colors.primary[400] : Colors.dark.textSecondary} />
-              <Text style={[ae.tabTxt, tab === 'manual' && ae.tabTxtOn]}>Personalizar</Text>
-            </TouchableOpacity>
-          </View>
-
-          {tab === 'search' && (
-            <View style={{ flex: 1 }}>
-              <TextInput
-                style={ae.searchInput}
-                value={query}
-                onChangeText={setQuery}
-                placeholder="Buscar ejercicio..."
-                placeholderTextColor={Colors.neutral[500]}
-              />
-              <FlatList
-                data={filtered}
-                keyExtractor={(_, i) => String(i)}
-                renderItem={({ item }) => (
-                  <TouchableOpacity style={ae.suggRow} onPress={() => pickSuggestion(item)}>
-                    <Text style={ae.suggName}>{item}</Text>
-                    <Text style={ae.suggArrow}>›</Text>
-                  </TouchableOpacity>
-                )}
-                keyboardShouldPersistTaps="handled"
-              />
-            </View>
-          )}
-
-          {tab === 'manual' && (
-            <ScrollView contentContainerStyle={{ padding: Spacing[5] }} keyboardShouldPersistTaps="handled">
-              <Text style={ae.fieldLabel}>Nombre del ejercicio *</Text>
-              <TextInput style={ae.input} value={name} onChangeText={setName} placeholder="Ej. Press de banca" placeholderTextColor={Colors.neutral[600]} />
-
-              <View style={ae.row3}>
-                <View style={{ flex: 1 }}>
-                  <Text style={ae.fieldLabel}>Series</Text>
-                  <TextInput style={ae.input} value={sets} onChangeText={setSets} keyboardType="number-pad" placeholder="3" placeholderTextColor={Colors.neutral[600]} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={ae.fieldLabel}>Reps</Text>
-                  <TextInput style={ae.input} value={reps} onChangeText={setReps} placeholder="8-12" placeholderTextColor={Colors.neutral[600]} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={ae.fieldLabel}>Descanso</Text>
-                  <TextInput style={ae.input} value={rest} onChangeText={setRest} keyboardType="number-pad" placeholder="90s" placeholderTextColor={Colors.neutral[600]} />
-                </View>
-              </View>
-
-              <Text style={ae.fieldLabel}>Peso / Resistencia</Text>
-              <TextInput style={ae.input} value={weight} onChangeText={setWeight} placeholder="ej. 60kg, bodyweight, banda" placeholderTextColor={Colors.neutral[600]} />
-
-              <Text style={ae.fieldLabel}>Notas (opcional)</Text>
-              <TextInput style={[ae.input, { height: 70, textAlignVertical: 'top' }]} value={notes} onChangeText={setNotes} multiline placeholder="Técnica, variación, cómo progresar..." placeholderTextColor={Colors.neutral[600]} />
-
-              <TouchableOpacity style={ae.addBtn} onPress={handleAdd}>
-                <Text style={ae.addBtnTxt}>{initial ? 'Guardar cambios' : 'Agregar ejercicio'}</Text>
-              </TouchableOpacity>
-            </ScrollView>
-          )}
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-    </Modal>
-  )
-}
-
-const ae = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.dark.background },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[5], borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
-  title: { fontSize: Typography.fontSize.xl, fontWeight: '700', color: Colors.dark.text },
-  close: { fontSize: 22, color: Colors.dark.textSecondary, padding: Spacing[2] },
-  tabs: { flexDirection: 'row', borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
-  tab: { flex: 1, paddingVertical: Spacing[3], alignItems: 'center' },
-  tabOn: { borderBottomWidth: 2, borderBottomColor: Colors.primary[500] },
-  tabTxt: { fontSize: Typography.fontSize.sm, color: Colors.dark.textSecondary, fontWeight: '600' },
-  tabTxtOn: { color: Colors.primary[400] },
-  searchInput: { margin: Spacing[4], backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.md, padding: Spacing[4], fontSize: Typography.fontSize.base, color: Colors.dark.text, borderWidth: 1, borderColor: Colors.dark.border },
-  suggRow: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing[5], paddingVertical: Spacing[3], borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
-  suggName: { flex: 1, fontSize: Typography.fontSize.sm, fontWeight: '600', color: Colors.dark.text },
-  suggArrow: { fontSize: 20, color: Colors.dark.textTertiary },
-  row3: { flexDirection: 'row', gap: Spacing[3], marginBottom: Spacing[3] },
-  fieldLabel: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: Colors.dark.textSecondary, marginBottom: Spacing[2], textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { backgroundColor: Colors.dark.surface, borderWidth: 1.5, borderColor: Colors.dark.border, borderRadius: BorderRadius.md, padding: Spacing[3], fontSize: Typography.fontSize.base, color: Colors.dark.text, marginBottom: Spacing[3] },
-  addBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.lg, padding: Spacing[4], alignItems: 'center', marginTop: Spacing[2] },
-  addBtnTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
-})
-
-// ── Routine Editor Modal ─────────────────────────────────────────────────────
-
-interface RoutineEditorProps {
-  visible: boolean
-  initial: Partial<Routine> | null
-  onClose: () => void
-  onSave: (r: Routine) => void
-}
-
-function RoutineEditorModal({ visible, initial, onClose, onSave }: RoutineEditorProps) {
-  const insets = useSafeAreaInsets()
-  const [name, setName]               = useState('')
-  const [trainingType, setTrainingType] = useState('gym')
-  const [exercises, setExercises]     = useState<Exercise[]>([])
-  const [minutes, setMinutes]         = useState('60')
-  const [notes, setNotes]             = useState('')
-  const [addExOpen, setAddExOpen]     = useState(false)
-  const [editEx, setEditEx]           = useState<Exercise | null>(null)
-
-  useEffect(() => {
-    if (initial) {
-      setName(initial.name ?? '')
-      setTrainingType(initial.trainingType ?? 'gym')
-      setExercises(initial.exercises ?? [])
-      setMinutes(String(initial.estimatedMinutes ?? 60))
-      setNotes(initial.notes ?? '')
-    } else {
-      setName(''); setTrainingType('gym'); setExercises([]); setMinutes('60'); setNotes('')
-    }
-  }, [initial, visible])
-
-  const handleAddEx = (ex: Exercise) => {
-    if (editEx) {
-      setExercises(prev => prev.map(e => e.id === ex.id ? ex : e))
-      setEditEx(null)
-    } else {
-      setExercises(prev => [...prev, ex])
-    }
-  }
-
-  const removeEx = (id: string) => setExercises(prev => prev.filter(e => e.id !== id))
-
-  const handleSave = () => {
-    if (!name.trim()) { Alert.alert('Nombre requerido', 'Dale un nombre a tu rutina'); return }
-    if (exercises.length === 0) { Alert.alert('Sin ejercicios', 'Agrega al menos un ejercicio'); return }
-    const tt = TRAINING_TYPES.find(t => t.id === trainingType)
-    onSave({
-      id: initial?.id ?? Date.now().toString(),
-      name: name.trim(),
-      trainingType,
-      emoji: tt?.emoji ?? '💪',
-      exercises,
-      estimatedMinutes: parseInt(minutes) || 60,
-      notes: notes || undefined,
-      createdAt: initial?.createdAt ?? Date.now(),
-    })
-    onClose()
-  }
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onClose}>
-      <SafeAreaView style={re.container} edges={['bottom', 'left', 'right']}>
-        <View style={[re.header, { paddingTop: insets.top + Spacing[3] }]}>
-          <TouchableOpacity onPress={onClose} hitSlop={8}><Text style={re.cancel}>Cancelar</Text></TouchableOpacity>
-          <Text style={re.title}>{initial?.id ? 'Editar rutina' : 'Nueva rutina'}</Text>
-          <TouchableOpacity onPress={handleSave} hitSlop={8}><Text style={re.save}>Guardar</Text></TouchableOpacity>
-        </View>
-
-        <ScrollView showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled" contentContainerStyle={{ paddingBottom: 80 }}>
-          {/* Nombre */}
-          <View style={re.section}>
-            <Text style={re.fieldLabel}>Nombre de la rutina *</Text>
-            <TextInput style={re.input} value={name} onChangeText={setName} placeholder="Ej. Push A - Pecho y Tríceps" placeholderTextColor={Colors.neutral[600]} />
-          </View>
-
-          {/* Tipo de entrenamiento */}
-          <View style={re.section}>
-            <Text style={re.fieldLabel}>Tipo de entrenamiento</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View style={re.typeRow}>
-                {TRAINING_TYPES.map(t => (
-                  <TouchableOpacity
-                    key={t.id}
-                    style={[re.typeChip, trainingType === t.id && re.typeChipOn]}
-                    onPress={() => setTrainingType(t.id)}
-                  >
-                    <Text style={re.typeEmoji}>{t.emoji}</Text>
-                    <Text style={[re.typeLabel, trainingType === t.id && re.typeLabelOn]}>{t.label}</Text>
-                  </TouchableOpacity>
-                ))}
-              </View>
-            </ScrollView>
-          </View>
-
-          {/* Duración estimada */}
-          <View style={re.section}>
-            <Text style={re.fieldLabel}>Duración estimada (min)</Text>
-            <TextInput style={[re.input, { width: 120 }]} value={minutes} onChangeText={setMinutes} keyboardType="number-pad" placeholder="60" placeholderTextColor={Colors.neutral[600]} />
-          </View>
-
-          {/* Ejercicios */}
-          <View style={re.section}>
-            <View style={re.exHeader}>
-              <Text style={re.fieldLabel}>Ejercicios ({exercises.length})</Text>
-              <TouchableOpacity style={re.addExBtn} onPress={() => { setEditEx(null); setAddExOpen(true) }}>
-                <Text style={re.addExBtnTxt}>+ Agregar</Text>
-              </TouchableOpacity>
-            </View>
-
-            {exercises.length === 0 ? (
-              <TouchableOpacity style={re.emptyEx} onPress={() => { setEditEx(null); setAddExOpen(true) }}>
-                <Text style={re.emptyExTxt}>Toca "+ Agregar" para añadir ejercicios</Text>
-              </TouchableOpacity>
-            ) : (
-              exercises.map((ex, i) => (
-                <View key={ex.id} style={re.exRow}>
-                  <View style={re.exNum}><Text style={re.exNumTxt}>{i + 1}</Text></View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={re.exName}>{ex.name}</Text>
-                    <Text style={re.exDetail}>{ex.sets} × {ex.reps} · {ex.weight || 'bodyweight'} · {ex.rest}s descanso</Text>
-                    {ex.notes ? <Text style={re.exNotes}>{ex.notes}</Text> : null}
-                  </View>
-                  <TouchableOpacity style={re.exEdit} onPress={() => { setEditEx(ex); setAddExOpen(true) }}>
-                    <Ionicons name="create-outline" size={17} color={Colors.primary[400]} />
-                  </TouchableOpacity>
-                  <TouchableOpacity style={re.exDel} onPress={() => removeEx(ex.id)}>
-                    <Ionicons name="close" size={17} color={Colors.accent.red} />
-                  </TouchableOpacity>
-                </View>
-              ))
-            )}
-          </View>
-
-          {/* Notas */}
-          <View style={re.section}>
-            <Text style={re.fieldLabel}>Notas (opcional)</Text>
-            <TextInput
-              style={[re.input, { height: 80, textAlignVertical: 'top' }]}
-              value={notes} onChangeText={setNotes}
-              multiline placeholder="Notas generales sobre la rutina..."
-              placeholderTextColor={Colors.neutral[600]}
-            />
-          </View>
-
-          <TouchableOpacity style={re.saveBtn} onPress={handleSave}>
-            <Text style={re.saveBtnTxt}>Guardar rutina</Text>
-          </TouchableOpacity>
-        </ScrollView>
-
-        <AddExerciseModal
-          visible={addExOpen}
-          trainingType={trainingType}
-          onClose={() => { setAddExOpen(false); setEditEx(null) }}
-          onAdd={handleAddEx}
-          initial={editEx}
-        />
-      </SafeAreaView>
-    </Modal>
-  )
-}
-
-const re = StyleSheet.create({
-  container: { flex: 1, backgroundColor: Colors.dark.background },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[5], borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
-  cancel: { fontSize: Typography.fontSize.base, color: Colors.dark.textSecondary },
-  title: { fontSize: Typography.fontSize.base, fontWeight: '700', color: Colors.dark.text },
-  save: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.primary[400] },
-  section: { paddingHorizontal: Spacing[5], paddingTop: Spacing[5] },
-  fieldLabel: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: Colors.dark.textSecondary, marginBottom: Spacing[2], textTransform: 'uppercase', letterSpacing: 0.5 },
-  input: { backgroundColor: Colors.dark.surface, borderWidth: 1.5, borderColor: Colors.dark.border, borderRadius: BorderRadius.md, padding: Spacing[3], fontSize: Typography.fontSize.base, color: Colors.dark.text },
-  typeRow: { flexDirection: 'row', gap: Spacing[2], paddingRight: Spacing[5] },
-  typeChip: { alignItems: 'center', paddingHorizontal: Spacing[3], paddingVertical: Spacing[2], borderRadius: BorderRadius.md, backgroundColor: Colors.dark.surface, borderWidth: 1.5, borderColor: Colors.dark.border, minWidth: 70 },
-  typeChipOn: { backgroundColor: Colors.primary[900] + '60', borderColor: Colors.primary[500] },
-  typeEmoji: { fontSize: 20, marginBottom: 2 },
-  typeLabel: { fontSize: 10, color: Colors.dark.textSecondary, fontWeight: '600' },
-  typeLabelOn: { color: Colors.primary[400] },
-  exHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: Spacing[3] },
-  addExBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.base, paddingHorizontal: Spacing[4], paddingVertical: Spacing[2] },
-  addExBtnTxt: { fontSize: Typography.fontSize.sm, color: '#fff', fontWeight: '700' },
-  emptyEx: { borderWidth: 2, borderColor: Colors.dark.border, borderStyle: 'dashed', borderRadius: BorderRadius.md, padding: Spacing[6], alignItems: 'center' },
-  emptyExTxt: { fontSize: Typography.fontSize.sm, color: Colors.dark.textTertiary },
-  exRow: { flexDirection: 'row', alignItems: 'center', backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.md, padding: Spacing[3], marginBottom: Spacing[2], borderWidth: 1, borderColor: Colors.dark.border, gap: Spacing[2] },
-  exNum: { width: 28, height: 28, borderRadius: 14, backgroundColor: Colors.primary[500] + '30', alignItems: 'center', justifyContent: 'center' },
-  exNumTxt: { fontSize: Typography.fontSize.xs, fontWeight: '800', color: Colors.primary[400] },
-  exName: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.dark.text },
-  exDetail: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, marginTop: 2 },
-  exNotes: { fontSize: 10, color: Colors.dark.textTertiary, marginTop: 2, fontStyle: 'italic' },
-  exEdit: { padding: Spacing[2] },
-  exEditTxt: { fontSize: 16 },
-  exDel: { padding: Spacing[2] },
-  exDelTxt: { fontSize: 14, color: Colors.accent.red, fontWeight: '700' },
-  saveBtn: { marginHorizontal: Spacing[5], marginTop: Spacing[5], backgroundColor: Colors.primary[500], borderRadius: BorderRadius.lg, padding: Spacing[4], alignItems: 'center' },
-  saveBtnTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
-})
-
-// ── Routine Card ──────────────────────────────────────────────────────────────
-
-function RoutineCard({ routine, onEdit, onDelete, onStart }: {
-  routine: Routine
-  onEdit: () => void
-  onDelete: () => void
-  onStart: () => void
-}) {
-  const [open, setOpen] = useState(false)
-  return (
-    <View style={rc.wrap}>
-      <TouchableOpacity style={rc.header} onPress={() => setOpen(v => !v)}>
-        <Text style={rc.emoji}>{routine.emoji}</Text>
-        <View style={{ flex: 1 }}>
-          <Text style={rc.name}>{routine.name}</Text>
-          <Text style={rc.sub}>{routine.exercises.length} ejercicios · ~{routine.estimatedMinutes} min</Text>
-        </View>
-        <TouchableOpacity style={rc.startBtn} onPress={onStart}>
-          <Text style={rc.startBtnTxt}>▶ Empezar</Text>
-        </TouchableOpacity>
-        <Text style={[rc.chevron, open && { transform: [{ rotate: '90deg' }] }]}>›</Text>
-      </TouchableOpacity>
-
-      {open && (
-        <View style={rc.body}>
-          {routine.exercises.map((ex, i) => (
-            <View key={ex.id} style={rc.exRow}>
-              <Text style={rc.exNum}>{i + 1}</Text>
-              <View style={{ flex: 1 }}>
-                <Text style={rc.exName}>{ex.name}</Text>
-                <Text style={rc.exDetail}>{ex.sets}×{ex.reps} · {ex.weight || 'bodyweight'} · {ex.rest}s</Text>
-              </View>
-            </View>
-          ))}
-
-          <View style={rc.actions}>
-            <TouchableOpacity style={[rc.editBtn, { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }]} onPress={onEdit}>
-              <Ionicons name="create-outline" size={15} color={Colors.primary[400]} />
-              <Text style={rc.editBtnTxt}>Editar rutina</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={[rc.delBtn, { flexDirection: 'row', gap: 6, alignItems: 'center', justifyContent: 'center' }]} onPress={() => Alert.alert('Eliminar rutina', `¿Eliminar "${routine.name}"?`, [
-              { text: 'Cancelar', style: 'cancel' },
-              { text: 'Eliminar', style: 'destructive', onPress: onDelete },
-            ])}>
-              <Ionicons name="trash-outline" size={15} color={Colors.accent.red} />
-              <Text style={rc.delBtnTxt}>Eliminar</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      )}
-    </View>
-  )
-}
-
-const rc = StyleSheet.create({
-  wrap: { backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.lg, marginBottom: Spacing[3], overflow: 'hidden', borderWidth: 1, borderColor: Colors.dark.border },
-  header: { flexDirection: 'row', alignItems: 'center', padding: Spacing[4], gap: Spacing[3] },
-  emoji: { fontSize: 28 },
-  name: { fontSize: Typography.fontSize.base, fontWeight: '700', color: Colors.dark.text },
-  sub: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, marginTop: 2 },
-  startBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.base, paddingHorizontal: Spacing[3], paddingVertical: Spacing[2] },
-  startBtnTxt: { fontSize: Typography.fontSize.xs, color: '#fff', fontWeight: '800' },
-  chevron: { fontSize: 20, color: Colors.dark.textTertiary },
-  body: { borderTopWidth: 1, borderTopColor: Colors.dark.border, padding: Spacing[4] },
-  exRow: { flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing[2], gap: Spacing[3], borderBottomWidth: 1, borderBottomColor: Colors.dark.border + '50' },
-  exNum: { fontSize: Typography.fontSize.xs, fontWeight: '800', color: Colors.primary[400], width: 20 },
-  exName: { fontSize: Typography.fontSize.sm, fontWeight: '600', color: Colors.dark.text },
-  exDetail: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, marginTop: 1 },
-  actions: { flexDirection: 'row', gap: Spacing[3], marginTop: Spacing[4] },
-  editBtn: { flex: 1, backgroundColor: Colors.primary[900] + '60', borderRadius: BorderRadius.base, padding: Spacing[3], alignItems: 'center', borderWidth: 1, borderColor: Colors.primary[500] + '40' },
-  editBtnTxt: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: Colors.primary[400] },
-  delBtn: { flex: 1, backgroundColor: Colors.accent.red + '15', borderRadius: BorderRadius.base, padding: Spacing[3], alignItems: 'center', borderWidth: 1, borderColor: Colors.accent.red + '30' },
-  delBtnTxt: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: Colors.accent.red },
-})
-
-// ── Main Screen ───────────────────────────────────────────────────────────────
-
-export default function WorkoutScreen() {
-  const { routines, logs, loadAll, saveRoutine, deleteRoutine } = useWorkoutStore()
-  const [activeTab, setActiveTab] = useState<'routines' | 'history'>('routines')
-  const [editorVisible, setEditorVisible]   = useState(false)
-  const [editingRoutine, setEditingRoutine] = useState<Partial<Routine> | null>(null)
-
-  useEffect(() => { loadAll() }, [])
-
-  const openCreate = () => { setEditingRoutine(null); setEditorVisible(true) }
-  const openEdit   = (r: Routine) => { setEditingRoutine(r); setEditorVisible(true) }
-
-  const handleSave = async (r: Routine) => {
-    await saveRoutine(r)
-    setEditorVisible(false)
-    Alert.alert('Rutina guardada', r.name)
-  }
-
-  const handleStart = (r: Routine) => {
-    router.push(`/workout/active?routineId=${r.id}`)
-  }
-
-  const todayStr = new Date().toISOString().slice(0, 10)
-  const todayLogs = logs.filter(l => l.date === todayStr)
-  const recentLogs = logs.slice(-10).reverse()
-  const weekAgoStr = new Date(Date.now() - 6 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-  const weekSessions = logs.filter(l => l.date >= weekAgoStr).length
+  const sesionesSemana = resumen?.sesionesSemana ?? 0
 
   return (
     <Screen>
       <ScreenHeader
-        eyebrow="Zencrus · Entrenamiento"
-        title="Rutina"
-        subtitle={new Date().toLocaleDateString('es-MX', { weekday: 'long', month: 'long', day: 'numeric' })}
+        eyebrow="Zencrus"
+        title="Entrena"
+        subtitle={new Date().toLocaleDateString('es-MX', { weekday: 'long', day: 'numeric', month: 'long' })}
         icon="barbell"
-        right={
-          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
-            <TouchableOpacity
-              style={ws.libraryBtn}
-              onPress={() => router.push('/workout/library')}
-              activeOpacity={0.75}
-            >
-              <Ionicons name="library-outline" size={17} color={Colors.primary[400]} />
-            </TouchableOpacity>
-            <TouchableOpacity style={ws.createBtn} onPress={openCreate}>
-              <Text style={ws.createBtnTxt}>+ Nueva</Text>
-            </TouchableOpacity>
-          </View>
-        }
       />
 
-      {/* Semana */}
-      <View style={ws.weekStat}>
-        <View style={ws.weekStatNum}>
-          <Text style={ws.weekStatNumTxt}>{weekSessions}</Text>
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={ws.weekStatLabel}>Sesiones esta semana</Text>
-          <Text style={ws.weekStatSub}>{weekSessions === 0 ? 'Aún no entrenas esta semana' : weekSessions >= 4 ? 'Ritmo excelente' : 'Vas bien, sigue así'}</Text>
-        </View>
-      </View>
+      <MenuSeccion activo="hoy" />
 
-      {/* Today status */}
-      {todayLogs.length > 0 && (
-        <View style={ws.todayBanner}>
-          <Ionicons name="flame" size={20} color={Colors.accent.orange} style={ws.todayEmoji} />
-          <Text style={ws.todayTxt}>
-            {todayLogs.length} sesión{todayLogs.length > 1 ? 'es' : ''} hoy: {todayLogs.map(l => l.routineName).join(', ')}
-          </Text>
-        </View>
-      )}
-
-      {/* Tabs */}
-      <View style={ws.tabs}>
-        <TouchableOpacity style={[ws.tab, activeTab === 'routines' && ws.tabOn]} onPress={() => setActiveTab('routines')}>
-          <Text style={[ws.tabTxt, activeTab === 'routines' && ws.tabTxtOn]}>Mis rutinas ({routines.length})</Text>
-        </TouchableOpacity>
-        <TouchableOpacity style={[ws.tab, activeTab === 'history' && ws.tabOn]} onPress={() => setActiveTab('history')}>
-          <Text style={[ws.tabTxt, activeTab === 'history' && ws.tabTxtOn]}>Historial ({logs.length})</Text>
-        </TouchableOpacity>
-      </View>
-
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ padding: Spacing[5], paddingBottom: 100 }}>
-
-        {activeTab === 'routines' && (
-          <>
-            {routines.length === 0 ? (
-              <View style={ws.empty}>
-                <Ionicons name="barbell" size={44} color="rgba(255,255,255,0.25)" style={ws.emptyEmoji} />
-                <Text style={ws.emptyTitle}>Sin rutinas todavía</Text>
-                <Text style={ws.emptyBody}>Crea tu primera rutina de entrenamiento. Tú decides los ejercicios, series, repeticiones y descansos.</Text>
-                <TouchableOpacity style={ws.emptyBtn} onPress={openCreate}>
-                  <Text style={ws.emptyBtnTxt}>Crear primera rutina</Text>
-                </TouchableOpacity>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: Spacing[4], paddingBottom: 110, gap: Spacing[4] }}
+        refreshControl={
+          <RefreshControl
+            refreshing={refrescando}
+            onRefresh={() => { setRefrescando(true); void cargar() }}
+            tintColor={Colors.neon.w3}
+          />
+        }
+      >
+        {/* ── Sesión a medias ──────────────────────────────────────────── */}
+        {sesion && (
+          <Animated.View entering={FadeInDown.duration(360)}>
+            <TouchableOpacity
+              style={s.enCurso}
+              onPress={() => router.push('/workout/active')}
+              activeOpacity={0.88}
+            >
+              <View style={s.enCursoPunto} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.enCursoTitulo}>{sesion.title}</Text>
+                <Text style={s.enCursoSub}>
+                  {series.length} {series.length === 1 ? 'serie registrada' : 'series registradas'} · sigue abierto
+                </Text>
               </View>
-            ) : (
-              routines.map(r => (
-                <RoutineCard
-                  key={r.id}
-                  routine={r}
-                  onEdit={() => openEdit(r)}
-                  onDelete={() => deleteRoutine(r.id)}
-                  onStart={() => handleStart(r)}
-                />
-              ))
-            )}
-          </>
+              <Ionicons name="arrow-forward" size={18} color={Colors.neon.white} />
+            </TouchableOpacity>
+          </Animated.View>
         )}
 
-        {activeTab === 'history' && (
+        {/* ── Empezar ──────────────────────────────────────────────────── */}
+        {!sesion && (
+          <Animated.View entering={FadeInDown.duration(360)}>
+            <TouchableOpacity
+              style={s.empezar}
+              onPress={() => router.push('/workout/active')}
+              activeOpacity={0.88}
+            >
+              <Ionicons name="play" size={18} color="#fff" />
+              <Text style={s.empezarTxt}>Empezar a entrenar</Text>
+            </TouchableOpacity>
+          </Animated.View>
+        )}
+
+        {cargando ? (
+          <View style={s.cargando}><ActivityIndicator color={Colors.neon.w3} /></View>
+        ) : (
           <>
-            {recentLogs.length === 0 ? (
-              <View style={ws.empty}>
-                <Ionicons name="clipboard-outline" size={44} color="rgba(255,255,255,0.25)" style={ws.emptyEmoji} />
-                <Text style={ws.emptyTitle}>Sin sesiones registradas</Text>
-                <Text style={ws.emptyBody}>Cuando completes una rutina, aparecerá aquí tu historial de entrenamientos.</Text>
-              </View>
-            ) : (
-              recentLogs.map(log => (
-                <View key={log.id} style={ws.logCard}>
-                  <View style={ws.logLeft}>
-                    <Text style={ws.logDate}>{new Date(log.completedAt).toLocaleDateString('es-MX', { weekday: 'short', month: 'short', day: 'numeric' })}</Text>
+            {/* ── La semana ────────────────────────────────────────────── */}
+            <Animated.View entering={FadeInDown.delay(60).duration(360)} style={s.tarjeta}>
+              <View style={s.semanaFila}>
+                <Anillo pct={sesionesSemana / OBJETIVO_SEMANA} tam={92} grosor={8}>
+                  <View style={{ alignItems: 'center' }}>
+                    <Text style={s.anilloNum}>{sesionesSemana}</Text>
+                    <Text style={s.anilloDe}>de {OBJETIVO_SEMANA}</Text>
                   </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={ws.logName}>{log.routineName}</Text>
-                    <Text style={ws.logSub}>{log.exercises.length} ejercicios{log.durationMinutes ? ` · ${log.durationMinutes} min` : ''}</Text>
-                  </View>
-                  <Ionicons name="checkmark-circle" size={22} color={Colors.accent.green} />
+                </Anillo>
+
+                <View style={{ flex: 1, gap: 3 }}>
+                  <Text style={s.semanaTitulo}>Últimos 7 días</Text>
+                  <Text style={s.semanaFrase}>
+                    {sesionesSemana === 0 ? 'Todavía sin entrenar esta semana.'
+                      : sesionesSemana >= OBJETIVO_SEMANA ? 'Semana completa. Así se construye.'
+                      : `Te faltan ${OBJETIVO_SEMANA - sesionesSemana} para cerrar la semana.`}
+                  </Text>
+                  {(resumen?.racha ?? 0) > 1 && (
+                    <Text style={s.racha}>{resumen!.racha} días seguidos</Text>
+                  )}
                 </View>
-              ))
-            )}
+              </View>
+
+              <View style={s.cifras}>
+                <Cifra valor={String(resumen?.seriesSemana ?? 0)} etiqueta="SERIES" />
+                <Cifra valor={kilosCorto(resumen?.volumenSemana ?? 0)} etiqueta="MOVIDOS" />
+                <Cifra valor={minutosCorto(resumen?.minutosSemana ?? 0)} etiqueta="TIEMPO" />
+              </View>
+            </Animated.View>
+
+            {/* ── Qué está listo ───────────────────────────────────────── */}
+            <Animated.View entering={FadeInDown.delay(120).duration(360)} style={s.tarjeta}>
+              <View style={s.tituloFila}>
+                <Text style={s.tarjetaTitulo}>Qué está listo hoy</Text>
+                <TouchableOpacity onPress={() => router.push('/workout/cuerpo')} hitSlop={8}>
+                  <Text style={s.enlace}>Ver el cuerpo</Text>
+                </TouchableOpacity>
+              </View>
+
+              {(musculos?.totalSeries ?? 0) === 0 ? (
+                <Vacio texto="Cuando registres tu primera sesión, aquí verás qué grupos tienes descansados y cuáles todavía no." />
+              ) : (
+                <View style={s.listos}>
+                  {listos.map(g => (
+                    <View key={g.grupo} style={s.listoItem}>
+                      <View style={[s.listoPunto, {
+                        backgroundColor: g.recuperacion === null ? Colors.neon.w4
+                          : g.recuperacion >= 1 ? Colors.neon.white
+                          : g.recuperacion >= 0.6 ? Colors.neon.steelSoft
+                          : Colors.neon.red,
+                      }]} />
+                      <Text style={s.listoNombre}>{NOMBRE_GRUPO[g.grupo] ?? g.grupo}</Text>
+                      <Text style={s.listoCuando}>
+                        {g.ultimaVez === null ? 'sin registrar' : desdeCuando(g.ultimaVez)}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              <TouchableOpacity onPress={() => router.push('/workout/cuerpo')} activeOpacity={0.9}>
+                <BodyMap
+                  grupos={musculos?.grupos ?? []}
+                  vista={vista}
+                  lectura="frescura"
+                  onVista={setVista}
+                  ancho={190}
+                />
+              </TouchableOpacity>
+            </Animated.View>
+
+            {/* ── Últimos entrenamientos ───────────────────────────────── */}
+            <Animated.View entering={FadeInDown.delay(180).duration(360)} style={s.tarjeta}>
+              <View style={s.tituloFila}>
+                <Text style={s.tarjetaTitulo}>Últimos entrenamientos</Text>
+                {recientes.length > 0 && (
+                  <TouchableOpacity onPress={() => router.push('/workout/history')} hitSlop={8}>
+                    <Text style={s.enlace}>Ver todos</Text>
+                  </TouchableOpacity>
+                )}
+              </View>
+
+              {recientes.length === 0 ? (
+                <Vacio texto="Ninguno todavía. El primero se registra empezando arriba." />
+              ) : (
+                recientes.map(x => <FilaSesion key={x.id} sesion={x} />)
+              )}
+            </Animated.View>
+
+            {/* ── Rutinas ──────────────────────────────────────────────── */}
+            <TouchableOpacity
+              style={s.accesoRutinas}
+              onPress={() => router.push('/workout/routines')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="list-outline" size={18} color={Colors.neon.w2} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.accesoTitulo}>Mis rutinas</Text>
+                <Text style={s.accesoSub}>Guarda una sesión que repitas y empiézala de un toque</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.neon.w3} />
+            </TouchableOpacity>
           </>
         )}
       </ScrollView>
-
-      <RoutineEditorModal
-        visible={editorVisible}
-        initial={editingRoutine}
-        onClose={() => setEditorVisible(false)}
-        onSave={handleSave}
-      />
     </Screen>
   )
 }
 
-const ws = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080808' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[5] },
-  brand: { fontSize: Typography.fontSize.xs, fontWeight: '800', color: Colors.primary[400], letterSpacing: 3 },
-  mainTitle: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize['2xl'] + 4, letterSpacing: 0.2, color: '#fff', marginTop: 2 },
-  date: { fontSize: Typography.fontSize.sm, fontWeight: '600', color: 'rgba(255,255,255,0.5)', marginTop: 2, textTransform: 'capitalize' },
-  weekStat: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder, borderRadius: BorderRadius.lg, padding: Spacing[4], marginHorizontal: Spacing[4], marginBottom: Spacing[4] },
-  weekStatNum: { width: 48, height: 48, borderRadius: 14, backgroundColor: Glass.purpleTint, borderWidth: 1, borderColor: Glass.purpleBorder, alignItems: 'center', justifyContent: 'center' },
-  weekStatNumTxt: { fontFamily: Typography.fontFamily.display, fontSize: 22, color: Colors.primary[400] },
-  weekStatLabel: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
-  weekStatSub: { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
-  libraryBtn: {
-    width: 34, height: 34, borderRadius: 11,
-    backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder,
+// ── Piezas ───────────────────────────────────────────────────────────────────
+
+const ICONO_MODO: Record<string, keyof typeof Ionicons.glyphMap> = {
+  gym: 'barbell-outline', home: 'home-outline',
+  outdoor: 'trail-sign-outline', class: 'play-circle-outline',
+}
+
+function FilaSesion({ sesion }: { sesion: Sesion }) {
+  const min = Math.round((sesion.duration_seconds ?? 0) / 60)
+  return (
+    <TouchableOpacity
+      style={s.filaSesion}
+      onPress={() => router.push(`/workout/session/${sesion.id}`)}
+      activeOpacity={0.8}
+    >
+      <View style={s.filaIcono}>
+        <Ionicons name={ICONO_MODO[sesion.mode] ?? 'barbell-outline'} size={16} color={Colors.neon.w2} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={s.filaTitulo} numberOfLines={1}>{sesion.title}</Text>
+        <Text style={s.filaSub}>
+          {desdeCuando(sesion.started_at)}
+          {sesion.total_sets > 0 ? ` · ${sesion.total_sets} series` : ''}
+          {min > 0 ? ` · ${min} min` : ''}
+        </Text>
+      </View>
+      {Number(sesion.total_volume_kg) > 0 && (
+        <Text style={s.filaVolumen}>{kilosCorto(Number(sesion.total_volume_kg))}</Text>
+      )}
+    </TouchableOpacity>
+  )
+}
+
+const s = StyleSheet.create({
+  cargando: { paddingVertical: Spacing[8], alignItems: 'center' },
+
+  tarjeta: {
+    gap: Spacing[4], padding: Spacing[4],
+    backgroundColor: Colors.neon.pane,
+    borderRadius: 22,
+    borderWidth: 1, borderColor: Colors.neon.edge,
+  },
+  tituloFila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  tarjetaTitulo: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.neon.white },
+  enlace: { fontSize: 12, fontWeight: '700', color: Colors.neon.red },
+
+  empezar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing[2],
+    backgroundColor: Colors.neon.red,
+    borderRadius: BorderRadius.lg, paddingVertical: Spacing[4],
+  },
+  empezarTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
+
+  enCurso: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+    padding: Spacing[4],
+    backgroundColor: Colors.neon.redDim,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1, borderColor: 'rgba(255,31,61,0.38)',
+  },
+  enCursoPunto: { width: 9, height: 9, borderRadius: 5, backgroundColor: Colors.neon.red },
+  enCursoTitulo: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.neon.white },
+  enCursoSub: { fontSize: 12, color: Colors.neon.redCore, marginTop: 1 },
+
+  semanaFila: { flexDirection: 'row', alignItems: 'center', gap: Spacing[4] },
+  anilloNum: { fontSize: 26, fontWeight: '800', color: Colors.neon.white, letterSpacing: -1 },
+  anilloDe: { fontSize: 10, fontWeight: '700', color: Colors.neon.w3, marginTop: -2 },
+  semanaTitulo: { fontSize: 10, fontWeight: '700', color: Colors.neon.w3, letterSpacing: 1.4 },
+  semanaFrase: { fontSize: Typography.fontSize.sm, color: Colors.neon.white, fontWeight: '600', lineHeight: 19 },
+  racha: { fontSize: 11, fontWeight: '700', color: Colors.neon.red, marginTop: 2 },
+  cifras: { flexDirection: 'row', gap: Spacing[2] },
+
+  listos: { gap: Spacing[2] },
+  listoItem: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
+  listoPunto: { width: 8, height: 8, borderRadius: 4 },
+  listoNombre: { flex: 1, fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
+  listoCuando: { fontSize: 11, color: Colors.neon.w3 },
+
+  filaSesion: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+    paddingVertical: Spacing[3],
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.055)',
+  },
+  filaIcono: {
+    width: 32, height: 32, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.06)',
   },
-  createBtn: {
-    backgroundColor: Colors.primary[500], borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing[4], paddingVertical: Spacing[2],
-    shadowColor: Colors.primary[500], shadowOpacity: 0.35, shadowRadius: 8,
+  filaTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
+  filaSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
+  filaVolumen: { fontSize: 12, fontWeight: '800', color: Colors.neon.w2 },
+
+  accesoRutinas: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+    padding: Spacing[4],
+    backgroundColor: Colors.neon.pane,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1, borderColor: Colors.neon.edge,
   },
-  createBtnTxt: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
-  todayBanner: {
-    flexDirection: 'row', alignItems: 'center', marginHorizontal: Spacing[5],
-    marginBottom: Spacing[3], backgroundColor: Glass.purpleTint, borderRadius: BorderRadius.md,
-    padding: Spacing[3], gap: Spacing[2], borderWidth: 1, borderColor: Glass.purpleBorder,
-  },
-  todayEmoji: { fontSize: 20 },
-  todayTxt: { fontSize: Typography.fontSize.sm, color: Colors.primary[300], fontWeight: '600', flex: 1 },
-  tabs: {
-    flexDirection: 'row', marginHorizontal: Spacing[5], marginBottom: Spacing[2],
-    backgroundColor: Glass.card, borderRadius: BorderRadius.md,
-    overflow: 'hidden', borderWidth: 1, borderColor: Glass.cardBorder,
-  },
-  tab: { flex: 1, paddingVertical: Spacing[3], alignItems: 'center' },
-  tabOn: { backgroundColor: Colors.primary[500] },
-  tabTxt: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: 'rgba(255,255,255,0.42)' },
-  tabTxtOn: { color: '#fff' },
-  empty: { alignItems: 'center', paddingTop: Spacing[12], paddingHorizontal: Spacing[8] },
-  emptyEmoji: { fontSize: 56, marginBottom: Spacing[4] },
-  emptyTitle: { fontSize: Typography.fontSize.xl, fontWeight: '800', color: '#fff', marginBottom: Spacing[3] },
-  emptyBody: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.45)', textAlign: 'center', lineHeight: 22, marginBottom: Spacing[8] },
-  emptyBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.lg, paddingHorizontal: Spacing[8], paddingVertical: Spacing[4] },
-  emptyBtnTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
-  logCard: {
-    flexDirection: 'row', alignItems: 'center', backgroundColor: Glass.card,
-    borderRadius: BorderRadius.md, padding: Spacing[4], marginBottom: Spacing[3],
-    borderWidth: 1, borderColor: Glass.cardBorder, gap: Spacing[3],
-  },
-  logLeft: { width: 56, alignItems: 'center' },
-  logDate: { fontSize: 10, color: 'rgba(255,255,255,0.32)', textAlign: 'center', fontWeight: '700', textTransform: 'uppercase' },
-  logName: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#fff' },
-  logSub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
-  logCheck: { fontSize: 20 },
+  accesoTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
+  accesoSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
 })
