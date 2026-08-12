@@ -18,12 +18,16 @@
  *   node scripts/subir-biblioteca-r2.js --forzar   (vuelve a subirlo todo)
  */
 
-require('dotenv').config({ path: require('path').join(__dirname, '..', 'backend', '.env') })
 const fs = require('fs')
 const path = require('path')
+
+// Este guion vive en `scripts/`, que no tiene dependencias propias: se usan las
+// del backend por ruta absoluta en vez de duplicar un package.json entero.
+const MOD = path.join(__dirname, '..', 'backend', 'node_modules')
+require(path.join(MOD, 'dotenv')).config({ path: path.join(__dirname, '..', 'backend', '.env') })
 const {
   S3Client, PutObjectCommand, HeadObjectCommand,
-} = require(path.join(__dirname, '..', 'backend', 'node_modules', '@aws-sdk', 'client-s3'))
+} = require(path.join(MOD, '@aws-sdk', 'client-s3'))
 
 const RAIZ = '/Users/sergio/Desktop/APP C+E/EJERCICIOS CONTENIDO'
 const ORIGEN = {
