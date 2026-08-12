@@ -22,7 +22,7 @@ import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
-export type Destino = 'hoy' | 'cuerpo' | 'biblioteca' | 'progreso' | 'records'
+export type Destino = 'hoy' | 'descubre' | 'cuerpo' | 'progreso' | 'records'
 
 /**
  * Volver, venga uno de donde venga.
@@ -42,11 +42,14 @@ export function volverAEntrena(): void {
 }
 
 const DESTINOS: { id: Destino; label: string; icono: keyof typeof Ionicons.glyphMap; ruta: string }[] = [
-  { id: 'hoy',        label: 'Hoy',        icono: 'today-outline',    ruta: '/(tabs)/workout' },
-  { id: 'cuerpo',     label: 'Cuerpo',     icono: 'body-outline',     ruta: '/workout/cuerpo' },
-  { id: 'biblioteca', label: 'Biblioteca', icono: 'library-outline',  ruta: '/workout/library' },
-  { id: 'progreso',   label: 'Progreso',   icono: 'trending-up',      ruta: '/workout/stats' },
-  { id: 'records',    label: 'Récords',    icono: 'trophy-outline',   ruta: '/workout/records' },
+  { id: 'hoy',      label: 'Hoy',      icono: 'today-outline',    ruta: '/(tabs)/workout' },
+  // Descubre sustituye a Biblioteca en el menú y la contiene: el camino corto
+  // es que te monten la sesión, no recorrer 206 fichas. Los 206 siguen a un
+  // toque desde dentro, pero dejan de ser lo primero que se ofrece.
+  { id: 'descubre', label: 'Descubre', icono: 'compass-outline',  ruta: '/workout/descubre' },
+  { id: 'cuerpo',   label: 'Cuerpo',   icono: 'body-outline',     ruta: '/workout/cuerpo' },
+  { id: 'progreso', label: 'Progreso', icono: 'trending-up',      ruta: '/workout/stats' },
+  { id: 'records',  label: 'Récords',  icono: 'trophy-outline',   ruta: '/workout/records' },
 ]
 
 export function MenuSeccion({ activo }: { activo: Destino }) {

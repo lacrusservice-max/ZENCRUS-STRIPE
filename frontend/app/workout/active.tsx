@@ -39,6 +39,7 @@ import { useAchievementStore } from '@/store/achievementStore'
 import { historialEjercicio } from '@/services/sessionService'
 import type { Modo, TipoCarga, TipoSerie, Serie, Marca } from '@/services/sessionService'
 import { listExercises, ExerciseCard, colorDe } from '@/services/exerciseService'
+import { getEntrenamiento, leerReceta } from '@/services/quickService'
 import { RestTimer } from '@/components/workout/RestTimer'
 import { PlateCalculator } from '@/components/workout/PlateCalculator'
 import { EffortPicker } from '@/components/workout/EffortPicker'
@@ -234,7 +235,7 @@ function ElegirModo({ onElegir }: { onElegir: (m: Modo) => void }) {
 export default function SesionActiva() {
   useKeepAwake()   // la pantalla no se apaga a mitad de una serie
 
-  const { routineId, mode } = useLocalSearchParams<{ routineId?: string; mode?: Modo }>()
+  const { routineId, mode, quick } = useLocalSearchParams<{ routineId?: string; mode?: Modo; quick?: string }>()
   const { routines } = useWorkoutStore()
   const { markActivity } = useStreakStore()
   const { addXP } = useAchievementStore()
@@ -265,6 +266,18 @@ export default function SesionActiva() {
   } | null>(null)
   const [reloj, setReloj] = useState(0)
 
+  /**
+   * Un entrenamiento generado llega como RECETA («upper-15-home»), no como
+   * lista.
+   *
+   * Se vuelve a pedir al servidor en vez de arrastrar seis ejercicios por la
+   * barra de direcciones o meter un estado global para pasar datos de una
+   * pantalla a la de al lado. Funciona porque el generador es determinista: la
+   * misma receta el mismo día da exactamente los mismos ejercicios.
+   */
+  const [tituloGenerado, setTituloGenerado] = useState<string | null>(null)
+
+
   // Entradas de la serie en curso
   const [peso, setPeso] = useState('')
   const [reps, setReps] = useState('')
@@ -282,12 +295,12 @@ export default function SesionActiva() {
 
   useEffect(() => {
     if (sesion || cargando) return
-    if (!rutina && !mode) return   // sin nada que abrir: se pregunta el modo
+    if (!rutina && !mode && !quick) return   // sin nada que abrir: se pregunta el modo
 
     void empezar({
       mode: (mode as Modo) ?? 'gym',
       source: rutina ? 'routine' : 'freestyle',
-      title: rutina?.name ?? 'Entrenamiento libre',
+      title: tituloGenerado ?? rutina?.name ?? 'Entrenamiento libre',
       routineId: rutina?.id,
     }).then(({ reanudada }) => {
       if (reanudada) {
@@ -297,7 +310,30 @@ export default function SesionActiva() {
         )
       }
     })
-  }, [sesion, cargando, rutina, mode, empezar])
+  }, [sesion, cargando, rutina, mode, quick, tituloGenerado, empezar])
+
+  useEffect(() => {
+    if (!quick || huecos.length > 0) return
+    const receta = leerReceta(quick)
+    if (!receta) return
+    let vivo = true
+    getEntrenamiento(receta.region, receta.minutos, receta.lugar)
+      .then(g => {
+        if (!vivo) return
+        setTituloGenerado(g.titulo)
+        setHuecos(g.ejercicios.map((e, i) => ({
+          orderIndex: i,
+          slug: e.slug,
+          nombre: e.nombre,
+          muscle: e.muscle,
+          seriesObjetivo: e.series,
+          repsObjetivo: e.reps,
+          descanso: e.descanso,
+        })))
+      })
+      .catch(() => {})
+    return () => { vivo = false }
+  }, [quick, huecos.length])
 
   // Los huecos salen de la rutina; en libre se van añadiendo.
   useEffect(() => {
@@ -467,7 +503,7 @@ export default function SesionActiva() {
 
   // ── Pantallas ──────────────────────────────────────────────────────────────
 
-  if (!sesion && !rutina && !mode) return <ElegirModo onElegir={m => router.setParams({ mode: m })} />
+  if (!sesion && !rutina && !mode && !quick) return <ElegirModo onElegir={m => router.setParams({ mode: m })} />
 
   if (terminada) return <Resumen datos={terminada} marcas={terminada.marcas} titulo={sesion?.title ?? 'Entrenamiento'} />
 

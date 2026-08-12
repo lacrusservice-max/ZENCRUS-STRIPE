@@ -30,6 +30,7 @@ import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
 import { readUrls, readUrl, mediaReady } from '../services/media'
 import catalogo from '../data/exercises.json'
+import { generar, DURACIONES, REGIONES } from '../services/generador'
 
 // ── Forma de una ficha ───────────────────────────────────────────────────────
 
@@ -230,5 +231,76 @@ export async function getFilters(_req: Request, res: Response): Promise<void> {
       equipment: contar('equipment', 'equipmentEs'),
       patterns: contar('pattern'),
     },
+  } satisfies ApiResponse)
+}
+
+
+// ── Entrenamientos generados ─────────────────────────────────────────────────
+
+export const rapidoSchema = z.object({
+  query: z.object({
+    region: z.string().max(20).optional(),
+    minutes: z.coerce.number().int().min(5).max(90).optional(),
+    place: z.enum(['home', 'gym', 'todo']).optional(),
+    level: z.enum(['beginner', 'intermediate', 'advanced']).optional(),
+  }),
+})
+
+/**
+ * Un entrenamiento hecho a medida, del catálogo, en el momento.
+ *
+ * Los pósters se firman como en el resto: el bucket es privado y estas URL
+ * caducan en una hora. El vídeo NO se firma aquí —son seis o siete ejercicios y
+ * nadie los reproduce desde la lista—; se firma al abrir la ficha.
+ */
+export async function entrenamientoRapido(req: Request, res: Response): Promise<void> {
+  const plan = generar({
+    region: (req.query.region as string) ?? 'fullbody',
+    minutos: Number(req.query.minutes ?? 20),
+    lugar: (req.query.place as 'home' | 'gym' | 'todo') ?? 'todo',
+    nivel: (req.query.level as 'beginner' | 'intermediate' | 'advanced') ?? 'intermediate',
+  })
+
+  if (!plan) {
+    fail(res, 404, 'No hay ejercicios suficientes para esa combinación. Prueba con más material o con otra zona.')
+    return
+  }
+
+  // `readUrls` devuelve un MAPA por clave, no una lista por posición: si se
+  // trata como lista, un póster que falle desplaza a todos los siguientes y
+  // cada ejercicio acaba con la imagen del de al lado.
+  const firmadas = mediaReady()
+    ? await readUrls(plan.ejercicios.map(e => `library/poster/${e.poster}`))
+    : new Map<string, string>()
+
+  res.status(200).json({
+    success: true,
+    data: {
+      ...plan,
+      ejercicios: plan.ejercicios.map(e => ({
+        ...e,
+        poster: firmadas.get(`library/poster/${e.poster}`) ?? null,
+      })),
+    },
+  } satisfies ApiResponse)
+}
+
+/**
+ * El menú de Descubre: qué combinaciones existen.
+ *
+ * Se calcula del catálogo en vez de escribirse a mano, para que una región que
+ * se quede sin ejercicios suficientes deje de ofrecerse sola en vez de llevar a
+ * una pantalla vacía.
+ */
+export async function opcionesRapidas(_req: Request, res: Response): Promise<void> {
+  const disponibles = Object.entries(REGIONES).map(([id, musculos]) => {
+    const total = TODOS.filter(e => e.muscle && musculos.includes(e.muscle)).length
+    const casa = TODOS.filter(e => e.muscle && musculos.includes(e.muscle) && e.home).length
+    return { region: id, ejercicios: total, enCasa: casa }
+  }).filter(r => r.ejercicios >= 3)
+
+  res.status(200).json({
+    success: true,
+    data: { duraciones: DURACIONES, regiones: disponibles },
   } satisfies ApiResponse)
 }

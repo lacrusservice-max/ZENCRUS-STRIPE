@@ -1,0 +1,335 @@
+/**
+ * DESCUBRE
+ * ────────
+ * «No sé qué hacer hoy». Esta pantalla lo resuelve en tres toques: dónde estás,
+ * cuánto tiempo tienes y qué zona quieres.
+ *
+ * ── El orden de las preguntas no es casual ──────────────────────────────────
+ * DÓNDE primero, porque es lo que ya sabes sin pensar y lo que más recorta el
+ * catálogo. TIEMPO después, porque es la restricción real: la gente no decide
+ * «hoy pecho», decide «tengo veinte minutos». La ZONA va la última porque es la
+ * única de las tres que se puede negociar.
+ *
+ * ── El entrenamiento se genera, no se elige de una lista ────────────────────
+ * Al tocar una región no se abre un catálogo: sale una sesión montada con tus
+ * ejercicios, sus series y sus descansos, lista para empezar. Cambia cada día y
+ * se adapta al material, cosa que un vídeo pregrabado no hace.
+ *
+ * ── Y el catálogo sigue estando ─────────────────────────────────────────────
+ * Quien quiera elegir a mano tiene los 206 a un toque. Generar es el camino
+ * corto, no el único.
+ */
+
+import { useState, useCallback, useEffect } from 'react'
+import {
+  View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
+} from 'react-native'
+import { router, useFocusEffect } from 'expo-router'
+import { Ionicons } from '@expo/vector-icons'
+import * as Haptics from 'expo-haptics'
+import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated'
+import { Screen } from '@/components/ui/Screen'
+import { MenuSeccion, CabeceraSeccion } from '@/components/workout/MenuSeccion'
+import { RegionGrid, Region, CargaPorGrupo } from '@/components/workout/RegionGrid'
+import { HeroCard } from '@/components/workout/HeroCard'
+import { Vacio } from '@/components/workout/Charts'
+import { MaterialIcon } from '@/components/workout/Kit'
+import {
+  getOpciones, getEntrenamiento, recetaDe, resumenDe,
+  Opciones, Generado, Lugar,
+} from '@/services/quickService'
+import { getMusculos } from '@/services/statsService'
+import { COLOR_GRUPO } from '@/services/exerciseService'
+import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+
+const LUGARES: { id: Lugar; label: string; icono: keyof typeof Ionicons.glyphMap }[] = [
+  { id: 'todo', label: 'Donde sea', icono: 'earth' },
+  { id: 'home', label: 'En casa', icono: 'home' },
+  { id: 'gym', label: 'Gimnasio', icono: 'barbell' },
+]
+
+const NOMBRE_REGION: Record<string, string> = {
+  fullbody: 'Cuerpo entero', upper: 'Tren superior', arms: 'Brazos',
+  chest: 'Pecho', legs: 'Glúteos y piernas', back: 'Espalda',
+  shoulders: 'Hombros', core: 'Core',
+}
+
+export default function Descubre() {
+  const [opciones, setOpciones] = useState<Opciones | null>(null)
+  const [carga, setCarga] = useState<CargaPorGrupo | undefined>()
+  const [lugar, setLugar] = useState<Lugar>('todo')
+  const [minutos, setMinutos] = useState(20)
+  const [region, setRegion] = useState<string | null>(null)
+  const [plan, setPlan] = useState<Generado | null>(null)
+  const [cargando, setCargando] = useState(true)
+  const [generando, setGenerando] = useState(false)
+
+  useFocusEffect(useCallback(() => {
+    let vivo = true
+    Promise.all([
+      getOpciones().catch(() => null),
+      getMusculos(14).catch(() => null),
+    ]).then(([o, m]) => {
+      if (!vivo) return
+      setOpciones(o)
+      // La rejilla se tiñe con lo entrenado en dos semanas. Se normaliza contra
+      // el grupo MÁS trabajado, no contra un absoluto: lo que interesa ver es
+      // el reparto, no cuántos kilos se movieron.
+      if (m) {
+        const max = Math.max(...m.grupos.map(g => g.series), 1)
+        setCarga(Object.fromEntries(m.grupos.map(g => [g.grupo, g.series / max])))
+      }
+      setCargando(false)
+    })
+    return () => { vivo = false }
+  }, []))
+
+  // Al cambiar cualquiera de los tres mandos, se rehace el entrenamiento.
+  useEffect(() => {
+    if (!region) { setPlan(null); return }
+    let vivo = true
+    setGenerando(true)
+    getEntrenamiento(region, minutos, lugar)
+      .then(g => { if (vivo) setPlan(g) })
+      .catch(() => { if (vivo) setPlan(null) })
+      .finally(() => { if (vivo) setGenerando(false) })
+    return () => { vivo = false }
+  }, [region, minutos, lugar])
+
+  const elegirRegion = (r: Region) => {
+    setRegion(prev => prev === r.id ? null : r.id)
+  }
+
+  const empezar = () => {
+    if (!region) return
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    router.push(`/workout/active?quick=${recetaDe(region, minutos, lugar)}&mode=${lugar === 'home' ? 'home' : 'gym'}`)
+  }
+
+  return (
+    <Screen>
+      <CabeceraSeccion titulo="Descubre" subtitulo="Dime dónde estás y cuánto tienes" />
+      <MenuSeccion activo="descubre" />
+
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ padding: Spacing[4], paddingBottom: 130, gap: Spacing[5] }}
+      >
+        {cargando ? (
+          <View style={s.cargando}><ActivityIndicator color={Colors.neon.w3} /></View>
+        ) : !opciones ? (
+          <Vacio texto="No se pudo cargar el catálogo. Tira hacia abajo para reintentar." />
+        ) : (
+          <>
+            {/* ── 1 · Dónde ────────────────────────────────────────────── */}
+            <Animated.View entering={FadeInDown.duration(340)} style={{ gap: Spacing[3] }}>
+              <Paso n={1} titulo="Dónde entrenas" />
+              <View style={s.lugares}>
+                {LUGARES.map(l => {
+                  const on = lugar === l.id
+                  return (
+                    <TouchableOpacity
+                      key={l.id}
+                      style={[s.lugar, on && s.lugarOn]}
+                      onPress={() => { void Haptics.selectionAsync(); setLugar(l.id) }}
+                      activeOpacity={0.85}
+                    >
+                      <Ionicons name={l.icono} size={17} color={on ? Colors.neon.white : Colors.neon.w3} />
+                      <Text style={[s.lugarTxt, on && { color: Colors.neon.white }]}>{l.label}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </Animated.View>
+
+            {/* ── 2 · Cuánto ───────────────────────────────────────────── */}
+            <Animated.View entering={FadeInDown.delay(60).duration(340)} style={{ gap: Spacing[3] }}>
+              <Paso n={2} titulo="Cuánto tiempo tienes" />
+              <View style={s.minutos}>
+                {opciones.duraciones.map(m => {
+                  const on = minutos === m
+                  return (
+                    <TouchableOpacity
+                      key={m}
+                      style={[s.minuto, on && s.minutoOn]}
+                      onPress={() => { void Haptics.selectionAsync(); setMinutos(m) }}
+                      activeOpacity={0.85}
+                    >
+                      <Text style={[s.minutoNum, on && { color: Colors.neon.white }]}>{m}</Text>
+                      <Text style={[s.minutoTxt, on && { color: Colors.neon.redCore }]}>min</Text>
+                      {/* Por debajo de 18 min el generador monta circuito, y
+                          conviene decirlo: cambia lo que te vas a encontrar. */}
+                      <Text style={s.minutoEstilo}>{m <= 18 ? 'circuito' : 'fuerza'}</Text>
+                    </TouchableOpacity>
+                  )
+                })}
+              </View>
+            </Animated.View>
+
+            {/* ── 3 · Qué ──────────────────────────────────────────────── */}
+            <Animated.View entering={FadeInDown.delay(120).duration(340)} style={{ gap: Spacing[2] }}>
+              <Paso n={3} titulo="Qué quieres trabajar" />
+              <Text style={s.pista}>
+                Las zonas se encienden según lo que has entrenado estas dos semanas.
+                Lo apagado es lo que llevas tiempo sin tocar.
+              </Text>
+              <RegionGrid carga={carga} onElegir={elegirRegion} />
+            </Animated.View>
+
+            {/* ── El resultado ─────────────────────────────────────────── */}
+            {region && (
+              <Animated.View entering={FadeIn.duration(320)} style={{ gap: Spacing[3] }}>
+                {generando ? (
+                  <View style={s.cargandoPlan}><ActivityIndicator color={Colors.neon.red} /></View>
+                ) : !plan ? (
+                  <Vacio texto="No hay ejercicios suficientes para esa combinación. Prueba con otro sitio o con otra zona." />
+                ) : (
+                  <>
+                    <HeroCard
+                      badge="Hecho para ti ahora"
+                      titulo={plan.titulo}
+                      subtitulo={resumenDe(plan)}
+                      datos={[
+                        { icono: 'time-outline', valor: `${plan.minutosReales} min`, etiqueta: 'Duración real' },
+                        { icono: 'flash-outline', valor: plan.estilo === 'circuito' ? 'Circuito' : 'Fuerza', etiqueta: 'Formato' },
+                        { icono: 'body-outline', valor: NOMBRE_REGION[plan.region] ?? plan.region, etiqueta: 'Zona' },
+                        { icono: 'layers-outline', valor: `${plan.series}`, etiqueta: 'Series en total' },
+                      ]}
+                      cta="Empezar ahora"
+                      onPress={empezar}
+                      posters={plan.ejercicios.map(e => e.poster)}
+                      alto={330}
+                    />
+
+                    <View style={s.lista}>
+                      <View style={s.listaCabecera}>
+                        <Text style={s.listaTitulo}>Los {plan.ejercicios.length} ejercicios</Text>
+                        <TouchableOpacity
+                          onPress={() => { void Haptics.selectionAsync(); setRegion(r => r) ; setMinutos(m => m) }}
+                          hitSlop={8}
+                        >
+                          <Text style={s.listaNota}>Cambia cada día</Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      {plan.ejercicios.map((e, i) => (
+                        <Animated.View key={e.slug} entering={FadeInDown.delay(i * 45).duration(300)}>
+                          <TouchableOpacity
+                            style={s.fila}
+                            onPress={() => router.push(`/workout/exercise/${e.slug}`)}
+                            activeOpacity={0.8}
+                          >
+                            <Text style={s.filaNum}>{i + 1}</Text>
+                            <View style={[s.filaPunto, { backgroundColor: COLOR_GRUPO[e.muscle ?? ''] ?? Colors.neon.steel }]} />
+                            <View style={{ flex: 1 }}>
+                              <Text style={s.filaNombre} numberOfLines={1}>{e.nombre}</Text>
+                              <Text style={s.filaSub}>
+                                {e.series} × {e.reps} · {e.descanso}s descanso
+                              </Text>
+                            </View>
+                            <MaterialIcon id={e.equipment} size={17} color={Colors.neon.w3} />
+                          </TouchableOpacity>
+                        </Animated.View>
+                      ))}
+                    </View>
+                  </>
+                )}
+              </Animated.View>
+            )}
+
+            {/* ── El catálogo entero ───────────────────────────────────── */}
+            <TouchableOpacity
+              style={s.catalogo}
+              onPress={() => router.push('/workout/library')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="library-outline" size={19} color={Colors.neon.w2} />
+              <View style={{ flex: 1 }}>
+                <Text style={s.catalogoTitulo}>Los 206 ejercicios</Text>
+                <Text style={s.catalogoSub}>Con su vídeo, su músculo y sus alternativas</Text>
+              </View>
+              <Ionicons name="chevron-forward" size={16} color={Colors.neon.w3} />
+            </TouchableOpacity>
+          </>
+        )}
+      </ScrollView>
+    </Screen>
+  )
+}
+
+function Paso({ n, titulo }: { n: number; titulo: string }) {
+  return (
+    <View style={s.paso}>
+      <View style={s.pasoNum}><Text style={s.pasoNumTxt}>{n}</Text></View>
+      <Text style={s.pasoTitulo}>{titulo}</Text>
+    </View>
+  )
+}
+
+const s = StyleSheet.create({
+  cargando: { paddingVertical: Spacing[8], alignItems: 'center' },
+  cargandoPlan: { paddingVertical: Spacing[7], alignItems: 'center' },
+
+  paso: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
+  pasoNum: {
+    width: 20, height: 20, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.neon.redDim,
+    borderWidth: 1, borderColor: 'rgba(255,31,61,0.35)',
+  },
+  pasoNumTxt: { fontSize: 10, fontWeight: '800', color: Colors.neon.redCore },
+  pasoTitulo: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.neon.white },
+  pista: { fontSize: 11, color: Colors.neon.w3, lineHeight: 16 },
+
+  lugares: { flexDirection: 'row', gap: Spacing[2] },
+  lugar: {
+    flex: 1, alignItems: 'center', gap: 5, paddingVertical: Spacing[3],
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1, borderColor: Colors.neon.edge,
+    backgroundColor: Colors.neon.pane,
+  },
+  lugarOn: { borderColor: 'rgba(255,31,61,0.5)', backgroundColor: Colors.neon.redDim },
+  lugarTxt: { fontSize: 11, fontWeight: '700', color: Colors.neon.w3 },
+
+  minutos: { flexDirection: 'row', gap: Spacing[2] },
+  minuto: {
+    flex: 1, alignItems: 'center', paddingVertical: Spacing[3],
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1, borderColor: Colors.neon.edge,
+    backgroundColor: Colors.neon.pane,
+  },
+  minutoOn: { borderColor: 'rgba(255,31,61,0.5)', backgroundColor: Colors.neon.redDim },
+  minutoNum: { fontSize: 26, fontWeight: '800', color: Colors.neon.w2, letterSpacing: -1 },
+  minutoTxt: { fontSize: 10, fontWeight: '700', color: Colors.neon.w3, marginTop: -3 },
+  minutoEstilo: { fontSize: 9, color: Colors.neon.w4, marginTop: 3, letterSpacing: 0.5 },
+
+  lista: {
+    gap: Spacing[2], padding: Spacing[4],
+    backgroundColor: Colors.neon.pane,
+    borderRadius: 20,
+    borderWidth: 1, borderColor: Colors.neon.edge,
+  },
+  listaCabecera: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  listaTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: Colors.neon.white },
+  listaNota: { fontSize: 10, color: Colors.neon.w3, fontStyle: 'italic' },
+
+  fila: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+    paddingVertical: Spacing[3],
+    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.055)',
+  },
+  filaNum: { width: 14, fontSize: 11, fontWeight: '800', color: Colors.neon.w4 },
+  filaPunto: { width: 8, height: 8, borderRadius: 4 },
+  filaNombre: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
+  filaSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
+
+  catalogo: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+    padding: Spacing[4],
+    backgroundColor: Colors.neon.pane,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1, borderColor: Colors.neon.edge,
+  },
+  catalogoTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
+  catalogoSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
+})

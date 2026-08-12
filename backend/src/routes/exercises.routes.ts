@@ -14,6 +14,7 @@ import { authenticate } from '../middleware/auth'
 import { validate } from '../middleware/validate'
 import {
   listExercises, listSchema, getExercise, getFilters,
+  entrenamientoRapido, rapidoSchema, opcionesRapidas,
 } from '../controllers/exerciseLibraryController'
 
 const router = Router()
@@ -21,6 +22,9 @@ const router = Router()
 router.use(authenticate)
 
 router.get('/filters', getFilters)
+// Antes que `/:slug`, o buscaría ejercicios llamados «quick» y «quick-options».
+router.get('/quick/options', opcionesRapidas)
+router.get('/quick', validate(rapidoSchema), entrenamientoRapido)
 router.get('/', validate(listSchema), listExercises)
 router.get('/:slug', getExercise)
 
