@@ -8,7 +8,7 @@ import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useNutritionStore } from '@/store/nutritionStore'
-import { useWorkoutStore } from '@/store/workoutStore'
+import { useEntrenoResumen } from '@/hooks/useEntreno'
 import { useHealthStore } from '@/store/healthStore'
 import { useStreakStore } from '@/store/streakStore'
 import { usePremiumStore } from '@/store/premiumStore'
@@ -111,7 +111,7 @@ const pg = StyleSheet.create({
 
 export default function ChatScreen() {
   const { totalCalories, totalProtein, waterGlasses } = useNutritionStore()
-  const { logs } = useWorkoutStore()
+  const { entrenadoHoy } = useEntrenoResumen()
   const { checkInDone, todayCheckIn, scoreHistory } = useHealthStore()
   const { currentStreak } = useStreakStore()
   const { canUseAI, incrementAI, isPremium, aiMessagesToday } = usePremiumStore()
@@ -122,7 +122,6 @@ export default function ChatScreen() {
   const scrollRef = useRef<ScrollView>(null)
 
   const today = new Date().toISOString().slice(0, 10)
-  const workedOut = logs.some(l => l.date === today)
   const healthScore = scoreHistory.find(s => (s as any).date === today)?.total
     ?? scoreHistory[0]?.total ?? 0
 
@@ -134,7 +133,7 @@ export default function ChatScreen() {
     waterGlasses,
     currentStreak,
     healthScore,
-    workedOut,
+    workedOut: entrenadoHoy,
     checkInDone,
     mood: todayCheckIn?.mood,
     sleep: todayCheckIn?.sleep,

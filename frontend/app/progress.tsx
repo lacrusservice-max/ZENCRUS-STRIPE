@@ -11,7 +11,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { ActivityRings, RingsLegend } from '@/components/ui/ActivityRings'
 import { useAuthStore } from '@/store/authStore'
 import { useNutritionStore } from '@/store/nutritionStore'
-import { useWorkoutStore } from '@/store/workoutStore'
+import { useEntrenoResumen } from '@/hooks/useEntreno'
 import { useHealthStore } from '@/store/healthStore'
 import { useStreakStore } from '@/store/streakStore'
 import { useProgressStore } from '@/store/progressStore'
@@ -584,7 +584,7 @@ export default function ProgressScreen() {
     waterGlasses, meals, loadToday: loadNutrition,
     addWater, removeWater,
   } = useNutritionStore()
-  const { logs, loadAll: loadWorkouts } = useWorkoutStore()
+  const { datos: entreno } = useEntrenoResumen()
   const {
     checkInDone, todayCheckIn, scoreHistory,
     loadToday: loadHealth, computeAndSaveScore,
@@ -610,8 +610,8 @@ export default function ProgressScreen() {
   const mealsPerDay    = goals.meals_per_day ?? 3
 
   const today = new Date().toISOString().slice(0, 10)
-  const workedOut = logs.some(l => l.date === today)
-  const todayLog  = logs.find(l => l.date === today)
+  const workedOut = entreno?.entrenadoHoy ?? false
+  const todayLog  = entreno?.hoy ?? null
 
   const trackerProgress = getTodayProgress()
   const restHR = getRestingHeartRate()
@@ -633,7 +633,6 @@ export default function ProgressScreen() {
     loadHealth()
     loadStreak()
     loadProgress()
-    loadWorkouts()
     loadChallenges()
     loadHealthTracker()
     loadDuels()
@@ -826,10 +825,10 @@ export default function ProgressScreen() {
               </View>
               <Text style={act.label}>Entrenamiento</Text>
               <Text style={[act.status, { color: workedOut ? Colors.accent.green : 'rgba(255,255,255,0.3)' }]}>
-                {workedOut ? todayLog?.routineName ?? 'Completado' : 'Pendiente'}
+                {workedOut ? todayLog?.title ?? 'Completado' : 'Pendiente'}
               </Text>
               {workedOut && todayLog && (
-                <Text style={act.sub}>{todayLog.exercises.length} ejercicios</Text>
+                <Text style={act.sub}>{todayLog.total_sets} series</Text>
               )}
               {!workedOut && (
                 <View style={[act.cta]}>

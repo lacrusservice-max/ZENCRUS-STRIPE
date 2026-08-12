@@ -6,7 +6,7 @@ import { useProgressStore } from '@/store/progressStore'
 import { useAchievementStore } from '@/store/achievementStore'
 import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
 import { useHealthTrackerStore } from '@/store/healthTrackerStore'
-import { useWorkoutStore } from '@/store/workoutStore'
+import { useEntrenoResumen } from '@/hooks/useEntreno'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
 import {
@@ -25,12 +25,13 @@ const TAB_LABELS: Record<StatsTab, { icon: keyof typeof Ionicons.glyphMap; label
 // ── Totales de entrenamiento ───────────────────────────────────────────────────
 
 function TrainingTotals() {
-  const { logs } = useWorkoutStore()
+  const { datos } = useEntrenoResumen()
   const { getWeeklySummary } = useHealthTrackerStore()
 
-  const totalWorkouts = logs.length
-  const totalMinutes = logs.reduce((sum, l) => sum + (l.durationMinutes ?? 0), 0)
-  const totalHours = Math.round((totalMinutes / 60) * 10) / 10
+  // Del servidor: es donde vive el historial desde que lo realizado dejó de
+  // guardarse en el teléfono.
+  const totalWorkouts = datos?.historico.sesiones ?? 0
+  const totalHours = Math.round(((datos?.historico.minutos ?? 0) / 60) * 10) / 10
   // Aproximación de calorías totales quemadas a partir del historial diario de salud.
   const totalCalories = getWeeklySummary().reduce((sum, d) => sum + d.caloriesBurned, 0) * 4 // ~ extrapolado a un mes de historial disponible
 
@@ -384,7 +385,6 @@ export default function ProfileStatsScreen() {
   const { load: loadAchievements } = useAchievementStore()
   const { load: loadMeasurements } = useBodyMeasurementsStore()
   const { load: loadHealthTracker } = useHealthTrackerStore()
-  const { loadAll: loadWorkout } = useWorkoutStore()
 
   const [weightModal, setWeightModal] = useState(false)
   const [measureModal, setMeasureModal] = useState(false)
@@ -395,7 +395,6 @@ export default function ProfileStatsScreen() {
     loadAchievements()
     loadMeasurements()
     loadHealthTracker()
-    loadWorkout()
   }, [])
 
   return (
