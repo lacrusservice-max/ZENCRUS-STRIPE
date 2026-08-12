@@ -1,10 +1,10 @@
 {
-  "generado": "2026-08-12T06:01:46.377Z",
+  "generado": "2026-08-12T06:10:25.751Z",
   "total": 206,
   "ejercicios": [
     {
       "slug": "abdominals-stretch-variation-four",
-      "nombre": "Abdominals estiramiento variante IV",
+      "nombre": "Estiramiento abdominal",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "core",
@@ -17,7 +17,7 @@
     },
     {
       "slug": "abdominals-stretch-variation-one",
-      "nombre": "Abdominals estiramiento variante I",
+      "nombre": "Estiramiento abdominal",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "core",
@@ -30,7 +30,7 @@
     },
     {
       "slug": "abdominals-stretch-variation-three",
-      "nombre": "Abdominals estiramiento variante III",
+      "nombre": "Estiramiento abdominal",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "core",
@@ -43,7 +43,7 @@
     },
     {
       "slug": "abdominals-stretch-variation-two",
-      "nombre": "Abdominals estiramiento variante II",
+      "nombre": "Estiramiento abdominal",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "core",
@@ -56,7 +56,7 @@
     },
     {
       "slug": "band-curl",
-      "nombre": "Con banda curl",
+      "nombre": "Curl con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "biceps",
@@ -69,7 +69,7 @@
     },
     {
       "slug": "band-high-face-pull",
-      "nombre": "Con banda high face pull",
+      "nombre": "Face pull alto con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "shoulders",
@@ -82,7 +82,7 @@
     },
     {
       "slug": "band-hip-abduction",
-      "nombre": "Con banda hip abduction",
+      "nombre": "Abducción de cadera con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "glutes",
@@ -95,7 +95,7 @@
     },
     {
       "slug": "band-kneeling-pulldown",
-      "nombre": "Con banda de rodillas jalón",
+      "nombre": "Jalón de rodillas con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "back",
@@ -108,7 +108,7 @@
     },
     {
       "slug": "band-lateral-raise",
-      "nombre": "Con banda lateral elevación",
+      "nombre": "Elevación lateral con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "shoulders",
@@ -121,7 +121,7 @@
     },
     {
       "slug": "band-pullover",
-      "nombre": "Con banda pullover",
+      "nombre": "Pullover con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "chest",
@@ -134,7 +134,7 @@
     },
     {
       "slug": "band-romanian-deadlift",
-      "nombre": "Con banda rumano peso muerto",
+      "nombre": "Peso muerto rumano con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "hamstrings",
@@ -147,7 +147,7 @@
     },
     {
       "slug": "band-row",
-      "nombre": "Con banda remo",
+      "nombre": "Remo con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "back",
@@ -160,7 +160,7 @@
     },
     {
       "slug": "band-seated-pulldown",
-      "nombre": "Con banda sentado jalón",
+      "nombre": "Jalón sentado con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "back",
@@ -173,7 +173,7 @@
     },
     {
       "slug": "band-shrug",
-      "nombre": "Con banda encogimiento",
+      "nombre": "Encogimiento con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "back",
@@ -186,7 +186,7 @@
     },
     {
       "slug": "band-single-arm-lateral-raise",
-      "nombre": "Con banda single arm lateral elevación",
+      "nombre": "Elevación lateral a una mana con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "shoulders",
@@ -199,7 +199,7 @@
     },
     {
       "slug": "band-wood-chopper",
-      "nombre": "Con banda wood chopper",
+      "nombre": "Leñador con banda",
       "equipment": "band",
       "equipmentEs": "Banda",
       "muscle": "core",
@@ -212,7 +212,7 @@
     },
     {
       "slug": "barbell-banded-back-squat",
-      "nombre": "Con barra banded trasero sentadilla",
+      "nombre": "Sentadilla con banda trasera con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "quads",
@@ -225,7 +225,7 @@
     },
     {
       "slug": "barbell-behind-the-back-30-degree-shrug",
-      "nombre": "Con barra behind the trasero 30 degree encogimiento",
+      "nombre": "Encogimiento 30° tras la espalda con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "back",
@@ -238,7 +238,7 @@
     },
     {
       "slug": "barbell-bench-press",
-      "nombre": "Con barra banca press",
+      "nombre": "Press de banca con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "chest",
@@ -251,7 +251,7 @@
     },
     {
       "slug": "barbell-bent-over-row",
-      "nombre": "Con barra bent over remo",
+      "nombre": "Remo inclinado con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "back",
@@ -264,7 +264,7 @@
     },
     {
       "slug": "barbell-clean-and-press",
-      "nombre": "Con barra clean and press",
+      "nombre": "Cargada y press con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "shoulders",
@@ -277,7 +277,7 @@
     },
     {
       "slug": "barbell-close-grip-bench-press",
-      "nombre": "Con barra cerrado grip banca press",
+      "nombre": "Press de banca agarre cerrado con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "chest",
@@ -290,7 +290,7 @@
     },
     {
       "slug": "barbell-curl",
-      "nombre": "Con barra curl",
+      "nombre": "Curl con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "biceps",
@@ -303,7 +303,7 @@
     },
     {
       "slug": "barbell-deadlift",
-      "nombre": "Con barra peso muerto",
+      "nombre": "Peso muerto con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "hamstrings",
@@ -316,7 +316,7 @@
     },
     {
       "slug": "barbell-drag-curl",
-      "nombre": "Con barra drag curl",
+      "nombre": "Curl drag con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "biceps",
@@ -329,7 +329,7 @@
     },
     {
       "slug": "barbell-front-rack-step-up-knee-drive",
-      "nombre": "Con barra frontal rack step up knee drive",
+      "nombre": "Empuje de rodilla frontal rack subidacajon con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "quads",
@@ -342,7 +342,7 @@
     },
     {
       "slug": "barbell-high-incline-bench-press",
-      "nombre": "Con barra high inclinado banca press",
+      "nombre": "Press de banca alto inclinado con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "chest",
@@ -355,7 +355,7 @@
     },
     {
       "slug": "barbell-incline-bench-press",
-      "nombre": "Con barra inclinado banca press",
+      "nombre": "Press de banca inclinado con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "chest",
@@ -368,7 +368,7 @@
     },
     {
       "slug": "barbell-muscle-snatch",
-      "nombre": "Con barra muscle snatch",
+      "nombre": "Muscle snatch con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "fullbody",
@@ -381,7 +381,7 @@
     },
     {
       "slug": "barbell-overhead-press",
-      "nombre": "Con barra sobre la cabeza press",
+      "nombre": "Press sobre la cabeza con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "shoulders",
@@ -394,7 +394,7 @@
     },
     {
       "slug": "barbell-power-snatch",
-      "nombre": "Con barra power snatch",
+      "nombre": "Arrancada de potencia con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "fullbody",
@@ -407,7 +407,7 @@
     },
     {
       "slug": "barbell-pullover",
-      "nombre": "Con barra pullover",
+      "nombre": "Pullover con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "chest",
@@ -420,7 +420,7 @@
     },
     {
       "slug": "barbell-rack-pull",
-      "nombre": "Con barra rack pull",
+      "nombre": "Ejercicio rack pull con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "back",
@@ -433,7 +433,7 @@
     },
     {
       "slug": "barbell-shrug",
-      "nombre": "Con barra encogimiento",
+      "nombre": "Encogimiento con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "back",
@@ -446,7 +446,7 @@
     },
     {
       "slug": "barbell-snatch",
-      "nombre": "Con barra snatch",
+      "nombre": "Arrancada con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "fullbody",
@@ -459,7 +459,7 @@
     },
     {
       "slug": "barbell-spinal-jefferson-curl",
-      "nombre": "Con barra spinal jefferson curl",
+      "nombre": "Curl espinal Jefferson con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "biceps",
@@ -472,7 +472,7 @@
     },
     {
       "slug": "barbell-split-squat",
-      "nombre": "Con barra split sentadilla",
+      "nombre": "Sentadilla dividida con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "quads",
@@ -485,7 +485,7 @@
     },
     {
       "slug": "barbell-squat",
-      "nombre": "Con barra sentadilla",
+      "nombre": "Sentadilla con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "quads",
@@ -498,7 +498,7 @@
     },
     {
       "slug": "barbell-step-up-knee-drive",
-      "nombre": "Con barra step up knee drive",
+      "nombre": "Empuje de rodilla subidacajon con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "quads",
@@ -511,7 +511,7 @@
     },
     {
       "slug": "barbell-stiff-leg-deadlifts",
-      "nombre": "Con barra stiff leg deadlifts",
+      "nombre": "Peso muerto de pierna con piernas rígidas con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "hamstrings",
@@ -524,7 +524,7 @@
     },
     {
       "slug": "barbell-thruster",
-      "nombre": "Con barra thruster",
+      "nombre": "Thruster con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "fullbody",
@@ -537,7 +537,7 @@
     },
     {
       "slug": "barbell-upright-row",
-      "nombre": "Con barra upright remo",
+      "nombre": "Remo upright con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "back",
@@ -550,7 +550,7 @@
     },
     {
       "slug": "barbell-wrist-curl",
-      "nombre": "Con barra wrist curl",
+      "nombre": "Curl de muñeca con barra",
       "equipment": "barbell",
       "equipmentEs": "Barra",
       "muscle": "biceps",
@@ -563,7 +563,7 @@
     },
     {
       "slug": "bench-dips",
-      "nombre": "Banca dips",
+      "nombre": "Fondos de banca",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "chest",
@@ -576,7 +576,7 @@
     },
     {
       "slug": "bodyweight-alternating-lateral-lunge",
-      "nombre": "Peso corporal alternating lateral zancada",
+      "nombre": "Zancada alternada lateral",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "quads",
@@ -589,7 +589,7 @@
     },
     {
       "slug": "bodyweight-alternating-reverse-lunges",
-      "nombre": "Peso corporal alternating inverso lunges",
+      "nombre": "Zancada alternada inversa",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "quads",
@@ -602,7 +602,7 @@
     },
     {
       "slug": "bodyweight-box-squat",
-      "nombre": "Peso corporal box sentadilla",
+      "nombre": "Sentadilla al cajón",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "quads",
@@ -615,7 +615,7 @@
     },
     {
       "slug": "bodyweight-deadlift",
-      "nombre": "Peso corporal peso muerto",
+      "nombre": "Peso muerto",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "hamstrings",
@@ -628,7 +628,7 @@
     },
     {
       "slug": "bodyweight-donkey-calf-raise",
-      "nombre": "Peso corporal donkey gemelo elevación",
+      "nombre": "Elevación de gemelo burro",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "calves",
@@ -641,7 +641,7 @@
     },
     {
       "slug": "bodyweight-elevated-push-up",
-      "nombre": "Peso corporal elevated push up",
+      "nombre": "Ejercicio elevado push",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "chest",
@@ -654,7 +654,7 @@
     },
     {
       "slug": "bodyweight-hip-abduction",
-      "nombre": "Peso corporal hip abduction",
+      "nombre": "Abducción de cadera",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "glutes",
@@ -667,7 +667,7 @@
     },
     {
       "slug": "bodyweight-knee-push-ups",
-      "nombre": "Peso corporal knee push ups",
+      "nombre": "Ejercicio knee push",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "chest",
@@ -680,7 +680,7 @@
     },
     {
       "slug": "bodyweight-reverse-lunge",
-      "nombre": "Peso corporal inverso zancada",
+      "nombre": "Zancada inversa",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "quads",
@@ -693,7 +693,7 @@
     },
     {
       "slug": "bodyweight-russian-twist",
-      "nombre": "Peso corporal russian twist",
+      "nombre": "Giro ruso",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "core",
@@ -706,7 +706,7 @@
     },
     {
       "slug": "bodyweight-spinal-jefferson-curl",
-      "nombre": "Peso corporal spinal jefferson curl",
+      "nombre": "Curl espinal Jefferson",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "biceps",
@@ -719,7 +719,7 @@
     },
     {
       "slug": "bodyweight-squat",
-      "nombre": "Peso corporal sentadilla",
+      "nombre": "Sentadilla",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "quads",
@@ -732,7 +732,7 @@
     },
     {
       "slug": "box-jump",
-      "nombre": "Box jump",
+      "nombre": "Salto al cajón",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "quads",
@@ -745,7 +745,7 @@
     },
     {
       "slug": "bulgarian-split-squat",
-      "nombre": "Búlgara split sentadilla",
+      "nombre": "Sentadilla búlgara dividida",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "quads",
@@ -771,7 +771,7 @@
     },
     {
       "slug": "cable-30-degree-shrug",
-      "nombre": "En polea 30 degree encogimiento",
+      "nombre": "Encogimiento 30° en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "back",
@@ -784,7 +784,7 @@
     },
     {
       "slug": "cable-bar-curl",
-      "nombre": "En polea bar curl",
+      "nombre": "Curl en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "biceps",
@@ -797,7 +797,7 @@
     },
     {
       "slug": "cable-bar-face-pull",
-      "nombre": "En polea bar face pull",
+      "nombre": "Face pull en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "shoulders",
@@ -810,7 +810,7 @@
     },
     {
       "slug": "cable-bar-pushdown",
-      "nombre": "En polea bar pushdown",
+      "nombre": "Extensión en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "triceps",
@@ -823,7 +823,7 @@
     },
     {
       "slug": "cable-bench-chest-fly",
-      "nombre": "En polea banca chest apertura",
+      "nombre": "Apertura de banca de pecho en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "chest",
@@ -836,7 +836,7 @@
     },
     {
       "slug": "cable-bench-press",
-      "nombre": "En polea banca press",
+      "nombre": "Press de banca en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "chest",
@@ -849,7 +849,7 @@
     },
     {
       "slug": "cable-bench-straight-leg-kickback",
-      "nombre": "En polea banca straight leg kickback",
+      "nombre": "Patada de banca de pierna recta en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "glutes",
@@ -862,7 +862,7 @@
     },
     {
       "slug": "cable-chest-press",
-      "nombre": "En polea chest press",
+      "nombre": "Press de pecho en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "chest",
@@ -875,7 +875,7 @@
     },
     {
       "slug": "cable-decline-bench-press",
-      "nombre": "En polea declinado banca press",
+      "nombre": "Press de banca declinado en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "chest",
@@ -888,7 +888,7 @@
     },
     {
       "slug": "cable-incline-bench-press",
-      "nombre": "En polea inclinado banca press",
+      "nombre": "Press de banca inclinado en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "chest",
@@ -901,7 +901,7 @@
     },
     {
       "slug": "cable-overhead-press",
-      "nombre": "En polea sobre la cabeza press",
+      "nombre": "Press sobre la cabeza en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "shoulders",
@@ -914,7 +914,7 @@
     },
     {
       "slug": "cable-pec-fly",
-      "nombre": "En polea pec apertura",
+      "nombre": "Apertura en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "chest",
@@ -927,7 +927,7 @@
     },
     {
       "slug": "cable-rope-kneeling-face-pull",
-      "nombre": "En polea rope de rodillas face pull",
+      "nombre": "Face pull con cuerda de rodillas en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "shoulders",
@@ -940,7 +940,7 @@
     },
     {
       "slug": "cable-rope-pushdown",
-      "nombre": "En polea rope pushdown",
+      "nombre": "Extensión con cuerda en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "triceps",
@@ -953,7 +953,7 @@
     },
     {
       "slug": "cable-row-bar-standing-row",
-      "nombre": "En polea remo bar de pie remo",
+      "nombre": "Remo row de pie en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "back",
@@ -966,7 +966,7 @@
     },
     {
       "slug": "cable-seated-rope-face-pull",
-      "nombre": "En polea sentado rope face pull",
+      "nombre": "Face pull sentado con cuerda en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "shoulders",
@@ -979,7 +979,7 @@
     },
     {
       "slug": "cable-side-bend",
-      "nombre": "En polea side bend",
+      "nombre": "Flexión lateral lateral en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "core",
@@ -992,7 +992,7 @@
     },
     {
       "slug": "cable-single-arm-neutral-grip-row",
-      "nombre": "En polea single arm neutral grip remo",
+      "nombre": "Remo con agarre neutro a una mano en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "back",
@@ -1005,7 +1005,7 @@
     },
     {
       "slug": "cable-single-arm-rope-pushdown",
-      "nombre": "En polea single arm rope pushdown",
+      "nombre": "Extensión con cuerda a una mana en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "triceps",
@@ -1018,7 +1018,7 @@
     },
     {
       "slug": "cable-single-arm-underhand-grip-row",
-      "nombre": "En polea single arm underhand grip remo",
+      "nombre": "Remo con agarre supino a una mano en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "back",
@@ -1031,7 +1031,7 @@
     },
     {
       "slug": "cable-standing-low-to-high-wood-chopper",
-      "nombre": "En polea de pie low to high wood chopper",
+      "nombre": "Leñador de pie bajo alto en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "core",
@@ -1044,7 +1044,7 @@
     },
     {
       "slug": "cable-standing-single-arm-chest-press",
-      "nombre": "En polea de pie single arm chest press",
+      "nombre": "Press de pecho de pie a una mano en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "chest",
@@ -1057,7 +1057,7 @@
     },
     {
       "slug": "cable-supinating-row",
-      "nombre": "En polea supinating remo",
+      "nombre": "Remo con supinación en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "back",
@@ -1070,7 +1070,7 @@
     },
     {
       "slug": "cable-wood-chopper",
-      "nombre": "En polea wood chopper",
+      "nombre": "Leñador en polea",
       "equipment": "cable",
       "equipmentEs": "Polea",
       "muscle": "core",
@@ -1083,7 +1083,7 @@
     },
     {
       "slug": "chin-ups",
-      "nombre": "Chin ups",
+      "nombre": "Dominadas supinas",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "back",
@@ -1096,7 +1096,7 @@
     },
     {
       "slug": "decline-push-up",
-      "nombre": "Declinado push up",
+      "nombre": "Ejercicio declinado push",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "chest",
@@ -1109,7 +1109,7 @@
     },
     {
       "slug": "diamond-push-ups",
-      "nombre": "Diamond push ups",
+      "nombre": "Flexiones diamante",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "chest",
@@ -1122,7 +1122,7 @@
     },
     {
       "slug": "dumbbell-alternating-forward-lunge",
-      "nombre": "Con mancuerna alternating forward zancada",
+      "nombre": "Zancada alternada al frente con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "quads",
@@ -1135,7 +1135,7 @@
     },
     {
       "slug": "dumbbell-bench-press",
-      "nombre": "Con mancuerna banca press",
+      "nombre": "Press de banca con mancuernas",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "chest",
@@ -1148,7 +1148,7 @@
     },
     {
       "slug": "dumbbell-bulgarian-split-squat",
-      "nombre": "Con mancuerna búlgara split sentadilla",
+      "nombre": "Sentadilla búlgara dividida con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "quads",
@@ -1161,7 +1161,7 @@
     },
     {
       "slug": "dumbbell-chest-fly",
-      "nombre": "Con mancuerna chest apertura",
+      "nombre": "Apertura de pecho con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "chest",
@@ -1174,7 +1174,7 @@
     },
     {
       "slug": "dumbbell-concentration-curl",
-      "nombre": "Con mancuerna concentration curl",
+      "nombre": "Curl concentrado con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "biceps",
@@ -1187,7 +1187,7 @@
     },
     {
       "slug": "dumbbell-cross-body-romanian-deadlift",
-      "nombre": "Con mancuerna cross body rumano peso muerto",
+      "nombre": "Peso muerto cruzado rumano con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "hamstrings",
@@ -1200,7 +1200,7 @@
     },
     {
       "slug": "dumbbell-curl",
-      "nombre": "Con mancuerna curl",
+      "nombre": "Curl con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "biceps",
@@ -1213,7 +1213,7 @@
     },
     {
       "slug": "dumbbell-decline-bench-press",
-      "nombre": "Con mancuerna declinado banca press",
+      "nombre": "Press de banca declinado con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "chest",
@@ -1226,7 +1226,7 @@
     },
     {
       "slug": "dumbbell-decline-chest-fly",
-      "nombre": "Con mancuerna declinado chest apertura",
+      "nombre": "Apertura de pecho declinada con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "chest",
@@ -1239,7 +1239,7 @@
     },
     {
       "slug": "dumbbell-decline-skullcrusher",
-      "nombre": "Con mancuerna declinado skullcrusher",
+      "nombre": "Press francés declinado con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "triceps",
@@ -1252,7 +1252,7 @@
     },
     {
       "slug": "dumbbell-feet-elevated-glute-bridge",
-      "nombre": "Con mancuerna feet elevated glute bridge",
+      "nombre": "Puente de glúteo elevado con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "glutes",
@@ -1265,7 +1265,7 @@
     },
     {
       "slug": "dumbbell-figure-four-heels-elevated-hip-thrust",
-      "nombre": "Con mancuerna figure IV heels elevated hip thrust",
+      "nombre": "Empuje de cadera elevado con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "glutes",
@@ -1278,7 +1278,7 @@
     },
     {
       "slug": "dumbbell-front-raise",
-      "nombre": "Con mancuerna frontal elevación",
+      "nombre": "Elevación frontal con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "shoulders",
@@ -1291,7 +1291,7 @@
     },
     {
       "slug": "dumbbell-goblet-alternating-curtsy-lunge",
-      "nombre": "Con mancuerna goblet alternating curtsy zancada",
+      "nombre": "Zancada curtsy alternada goblet con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "quads",
@@ -1304,7 +1304,7 @@
     },
     {
       "slug": "dumbbell-goblet-bulgarian-split-squat",
-      "nombre": "Con mancuerna goblet búlgara split sentadilla",
+      "nombre": "Sentadilla búlgara goblet con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "quads",
@@ -1317,7 +1317,7 @@
     },
     {
       "slug": "dumbbell-goblet-forward-lunge",
-      "nombre": "Con mancuerna goblet forward zancada",
+      "nombre": "Zancada goblet al frente con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "quads",
@@ -1330,7 +1330,7 @@
     },
     {
       "slug": "dumbbell-goblet-reverse-lunge",
-      "nombre": "Con mancuerna goblet inverso zancada",
+      "nombre": "Zancada goblet inversa con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "quads",
@@ -1343,7 +1343,7 @@
     },
     {
       "slug": "dumbbell-goblet-split-squat",
-      "nombre": "Con mancuerna goblet split sentadilla",
+      "nombre": "Sentadilla goblet dividida con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "quads",
@@ -1356,7 +1356,7 @@
     },
     {
       "slug": "dumbbell-goblet-squat",
-      "nombre": "Con mancuerna goblet sentadilla",
+      "nombre": "Sentadilla goblet con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "quads",
@@ -1369,7 +1369,7 @@
     },
     {
       "slug": "dumbbell-hammer-curl",
-      "nombre": "Con mancuerna martillo curl",
+      "nombre": "Curl martillo con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "biceps",
@@ -1382,7 +1382,7 @@
     },
     {
       "slug": "dumbbell-heels-elevated-hip-thrust",
-      "nombre": "Con mancuerna heels elevated hip thrust",
+      "nombre": "Empuje de cadera elevado con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "glutes",
@@ -1395,7 +1395,7 @@
     },
     {
       "slug": "dumbbell-incline-bench-press",
-      "nombre": "Con mancuerna inclinado banca press",
+      "nombre": "Press de banca inclinado con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "chest",
@@ -1408,7 +1408,7 @@
     },
     {
       "slug": "dumbbell-incline-chest-fly",
-      "nombre": "Con mancuerna inclinado chest apertura",
+      "nombre": "Apertura de pecho inclinada con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "chest",
@@ -1421,7 +1421,7 @@
     },
     {
       "slug": "dumbbell-incline-curl",
-      "nombre": "Con mancuerna inclinado curl",
+      "nombre": "Curl inclinado con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "biceps",
@@ -1434,7 +1434,7 @@
     },
     {
       "slug": "dumbbell-incline-front-raise",
-      "nombre": "Con mancuerna inclinado frontal elevación",
+      "nombre": "Elevación inclinada frontal con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "shoulders",
@@ -1447,7 +1447,7 @@
     },
     {
       "slug": "dumbbell-incline-hammer-curl",
-      "nombre": "Con mancuerna inclinado martillo curl",
+      "nombre": "Curl inclinado martillo con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "biceps",
@@ -1460,7 +1460,7 @@
     },
     {
       "slug": "dumbbell-lateral-raise",
-      "nombre": "Con mancuerna lateral elevación",
+      "nombre": "Elevación lateral con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "shoulders",
@@ -1473,7 +1473,7 @@
     },
     {
       "slug": "dumbbell-laying-reverse-fly",
-      "nombre": "Con mancuerna laying inverso apertura",
+      "nombre": "Apertura tumbada inversa con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "chest",
@@ -1486,7 +1486,7 @@
     },
     {
       "slug": "dumbbell-leg-curl",
-      "nombre": "Con mancuerna leg curl",
+      "nombre": "Curl de pierna con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "hamstrings",
@@ -1499,7 +1499,7 @@
     },
     {
       "slug": "dumbbell-preacher-curl",
-      "nombre": "Con mancuerna predicador curl",
+      "nombre": "Curl predicador con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "biceps",
@@ -1512,7 +1512,7 @@
     },
     {
       "slug": "dumbbell-rear-delt-fly",
-      "nombre": "Con mancuerna posterior delt apertura",
+      "nombre": "Apertura de deltoides posterior con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "chest",
@@ -1525,7 +1525,7 @@
     },
     {
       "slug": "dumbbell-row-bilateral",
-      "nombre": "Con mancuerna remo bilateral",
+      "nombre": "Remo bilateral con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "back",
@@ -1538,7 +1538,7 @@
     },
     {
       "slug": "dumbbell-row-unilateral",
-      "nombre": "Con mancuerna remo unilateral",
+      "nombre": "Remo unilateral con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "back",
@@ -1551,7 +1551,7 @@
     },
     {
       "slug": "dumbbell-russian-twist",
-      "nombre": "Con mancuerna russian twist",
+      "nombre": "Giro ruso con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "core",
@@ -1564,7 +1564,7 @@
     },
     {
       "slug": "dumbbell-seated-overhead-press",
-      "nombre": "Con mancuerna sentado sobre la cabeza press",
+      "nombre": "Press sentado sobre la cabeza con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "shoulders",
@@ -1577,7 +1577,7 @@
     },
     {
       "slug": "dumbbell-seated-overhead-tricep-extension",
-      "nombre": "Con mancuerna sentado sobre la cabeza tricep extensión",
+      "nombre": "Extensión de tríceps sentada sobre la cabeza con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "triceps",
@@ -1590,7 +1590,7 @@
     },
     {
       "slug": "dumbbell-seated-rear-delt-fly",
-      "nombre": "Con mancuerna sentado posterior delt apertura",
+      "nombre": "Apertura de deltoides sentada posterior con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "chest",
@@ -1603,7 +1603,7 @@
     },
     {
       "slug": "dumbbell-seated-shrug",
-      "nombre": "Con mancuerna sentado encogimiento",
+      "nombre": "Encogimiento sentado con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "back",
@@ -1616,7 +1616,7 @@
     },
     {
       "slug": "dumbbell-shrug",
-      "nombre": "Con mancuerna encogimiento",
+      "nombre": "Encogimiento con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "back",
@@ -1629,7 +1629,7 @@
     },
     {
       "slug": "dumbbell-side-bend",
-      "nombre": "Con mancuerna side bend",
+      "nombre": "Flexión lateral lateral con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "core",
@@ -1642,7 +1642,7 @@
     },
     {
       "slug": "dumbbell-single-arm-chest-press",
-      "nombre": "Con mancuerna single arm chest press",
+      "nombre": "Press de pecho a una mano con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "chest",
@@ -1655,7 +1655,7 @@
     },
     {
       "slug": "dumbbell-single-arm-clean-and-press",
-      "nombre": "Con mancuerna single arm clean and press",
+      "nombre": "Press clean a una mano con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "shoulders",
@@ -1668,7 +1668,7 @@
     },
     {
       "slug": "dumbbell-single-arm-row",
-      "nombre": "Con mancuerna single arm remo",
+      "nombre": "Remo a una mano con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "back",
@@ -1681,7 +1681,7 @@
     },
     {
       "slug": "dumbbell-single-leg-calf-raise",
-      "nombre": "Con mancuerna single leg gemelo elevación",
+      "nombre": "Elevación de gemelo a una pierna con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "calves",
@@ -1694,7 +1694,7 @@
     },
     {
       "slug": "dumbbell-situp",
-      "nombre": "Con mancuerna situp",
+      "nombre": "Abdominal con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "core",
@@ -1707,7 +1707,7 @@
     },
     {
       "slug": "dumbbell-skullcrusher",
-      "nombre": "Con mancuerna skullcrusher",
+      "nombre": "Press francés con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "triceps",
@@ -1720,7 +1720,7 @@
     },
     {
       "slug": "dumbbell-spinal-jefferson-curl",
-      "nombre": "Con mancuerna spinal jefferson curl",
+      "nombre": "Curl espinal Jefferson con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "biceps",
@@ -1733,7 +1733,7 @@
     },
     {
       "slug": "dumbbell-standing-single-arm-curl",
-      "nombre": "Con mancuerna de pie single arm curl",
+      "nombre": "Curl de pie a una mano con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "biceps",
@@ -1746,7 +1746,7 @@
     },
     {
       "slug": "dumbbell-standing-single-arm-hammer-curl",
-      "nombre": "Con mancuerna de pie single arm martillo curl",
+      "nombre": "Curl de pie martillo a una mano con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "biceps",
@@ -1759,7 +1759,7 @@
     },
     {
       "slug": "dumbbell-sumo-squat",
-      "nombre": "Con mancuerna sumo sentadilla",
+      "nombre": "Sentadilla sumo con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "quads",
@@ -1772,7 +1772,7 @@
     },
     {
       "slug": "dumbbell-superman",
-      "nombre": "Con mancuerna superman",
+      "nombre": "Superman con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "back",
@@ -1785,7 +1785,7 @@
     },
     {
       "slug": "dumbbell-thruster",
-      "nombre": "Con mancuerna thruster",
+      "nombre": "Thruster con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "fullbody",
@@ -1798,7 +1798,7 @@
     },
     {
       "slug": "dumbbell-tricep-kickback",
-      "nombre": "Con mancuerna tricep kickback",
+      "nombre": "Patada de tríceps con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "glutes",
@@ -1811,7 +1811,7 @@
     },
     {
       "slug": "dumbbell-upright-row",
-      "nombre": "Con mancuerna upright remo",
+      "nombre": "Remo upright con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "back",
@@ -1824,7 +1824,7 @@
     },
     {
       "slug": "dumbbell-wrist-curl",
-      "nombre": "Con mancuerna wrist curl",
+      "nombre": "Curl de muñeca con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "biceps",
@@ -1837,7 +1837,7 @@
     },
     {
       "slug": "dumbbell-wrist-extension",
-      "nombre": "Con mancuerna wrist extensión",
+      "nombre": "Extensión de muñeca con mancuerna",
       "equipment": "dumbbell",
       "equipmentEs": "Mancuernas",
       "muscle": "forearms",
@@ -1850,7 +1850,7 @@
     },
     {
       "slug": "elbow-side-plank",
-      "nombre": "Elbow side plancha",
+      "nombre": "Plancha de codo lateral",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "core",
@@ -1863,7 +1863,7 @@
     },
     {
       "slug": "ez-bar-preacher-curl",
-      "nombre": "Con barra Z bar predicador curl",
+      "nombre": "Curl predicador con barra Z",
       "equipment": "barbell",
       "equipmentEs": "Barra Z",
       "muscle": "biceps",
@@ -1876,7 +1876,7 @@
     },
     {
       "slug": "ez-bar-reverse-preacher-curl",
-      "nombre": "Con barra Z bar inverso predicador curl",
+      "nombre": "Curl inverso predicador con barra Z",
       "equipment": "barbell",
       "equipmentEs": "Barra Z",
       "muscle": "biceps",
@@ -1889,7 +1889,7 @@
     },
     {
       "slug": "forward-lunge",
-      "nombre": "Forward zancada",
+      "nombre": "Zancada al frente",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "quads",
@@ -1902,7 +1902,7 @@
     },
     {
       "slug": "good-mornings",
-      "nombre": "Good mornings",
+      "nombre": "Buenos días con barra",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "hamstrings",
@@ -1915,7 +1915,7 @@
     },
     {
       "slug": "hand-plank",
-      "nombre": "Hand plancha",
+      "nombre": "Plancha con manos",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "core",
@@ -1928,7 +1928,7 @@
     },
     {
       "slug": "hanging-knee-raises",
-      "nombre": "Hanging knee raises",
+      "nombre": "Elevación de rodillas colgado",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "core",
@@ -1941,7 +1941,7 @@
     },
     {
       "slug": "incline-push-up",
-      "nombre": "Inclinado push up",
+      "nombre": "Ejercicio inclinado push",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "chest",
@@ -1954,7 +1954,7 @@
     },
     {
       "slug": "inverted-row",
-      "nombre": "Inverted remo",
+      "nombre": "Remo invertido",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "back",
@@ -1967,7 +1967,7 @@
     },
     {
       "slug": "jump-squats",
-      "nombre": "Jump squats",
+      "nombre": "Sentadillas con salto",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "quads",
@@ -1980,7 +1980,7 @@
     },
     {
       "slug": "kettlebell-alternating-curtsy-lunge",
-      "nombre": "Con pesa rusa alternating curtsy zancada",
+      "nombre": "Zancada alternada reverencia con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "quads",
@@ -1993,7 +1993,7 @@
     },
     {
       "slug": "kettlebell-assisted-bulgarian-split-squat",
-      "nombre": "Con pesa rusa assisted búlgara split sentadilla",
+      "nombre": "Sentadilla asistida búlgara dividida con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "quads",
@@ -2006,7 +2006,7 @@
     },
     {
       "slug": "kettlebell-bench-press",
-      "nombre": "Con pesa rusa banca press",
+      "nombre": "Press de banca con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "chest",
@@ -2019,7 +2019,7 @@
     },
     {
       "slug": "kettlebell-calf-raise",
-      "nombre": "Con pesa rusa gemelo elevación",
+      "nombre": "Elevación de gemelo con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "calves",
@@ -2032,7 +2032,7 @@
     },
     {
       "slug": "kettlebell-curl",
-      "nombre": "Con pesa rusa curl",
+      "nombre": "Curl con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "biceps",
@@ -2045,7 +2045,7 @@
     },
     {
       "slug": "kettlebell-farmers-carry",
-      "nombre": "Con pesa rusa farmers carry",
+      "nombre": "Paseo del granjero con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "fullbody",
@@ -2058,7 +2058,7 @@
     },
     {
       "slug": "kettlebell-front-raise",
-      "nombre": "Con pesa rusa frontal elevación",
+      "nombre": "Elevación frontal con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "shoulders",
@@ -2071,7 +2071,7 @@
     },
     {
       "slug": "kettlebell-goblet-curl",
-      "nombre": "Con pesa rusa goblet curl",
+      "nombre": "Curl goblet con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "biceps",
@@ -2084,7 +2084,7 @@
     },
     {
       "slug": "kettlebell-gorilla-row",
-      "nombre": "Con pesa rusa gorilla remo",
+      "nombre": "Remo gorila con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "back",
@@ -2097,7 +2097,7 @@
     },
     {
       "slug": "kettlebell-hip-thrust",
-      "nombre": "Con pesa rusa hip thrust",
+      "nombre": "Empuje de cadera con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "glutes",
@@ -2110,7 +2110,7 @@
     },
     {
       "slug": "kettlebell-incline-bench-press",
-      "nombre": "Con pesa rusa inclinado banca press",
+      "nombre": "Press de banca inclinado con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "chest",
@@ -2123,7 +2123,7 @@
     },
     {
       "slug": "kettlebell-push-press",
-      "nombre": "Con pesa rusa push press",
+      "nombre": "Press push con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "shoulders",
@@ -2136,7 +2136,7 @@
     },
     {
       "slug": "kettlebell-romanian-deadlift",
-      "nombre": "Con pesa rusa rumano peso muerto",
+      "nombre": "Peso muerto rumano con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "hamstrings",
@@ -2149,7 +2149,7 @@
     },
     {
       "slug": "kettlebell-row",
-      "nombre": "Con pesa rusa remo",
+      "nombre": "Remo con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "back",
@@ -2162,7 +2162,7 @@
     },
     {
       "slug": "kettlebell-row-single",
-      "nombre": "Con pesa rusa remo single",
+      "nombre": "Remo a una pierna con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "back",
@@ -2175,7 +2175,7 @@
     },
     {
       "slug": "kettlebell-seated-overhead-press",
-      "nombre": "Con pesa rusa sentado sobre la cabeza press",
+      "nombre": "Press sentado sobre la cabeza con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "shoulders",
@@ -2188,7 +2188,7 @@
     },
     {
       "slug": "kettlebell-shrug",
-      "nombre": "Con pesa rusa encogimiento",
+      "nombre": "Encogimiento con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "back",
@@ -2201,7 +2201,7 @@
     },
     {
       "slug": "kettlebell-single-arm-row",
-      "nombre": "Con pesa rusa single arm remo",
+      "nombre": "Remo a una mano con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "back",
@@ -2214,7 +2214,7 @@
     },
     {
       "slug": "kettlebell-spinal-jefferson-curl",
-      "nombre": "Con pesa rusa spinal jefferson curl",
+      "nombre": "Curl espinal Jefferson con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "biceps",
@@ -2227,7 +2227,7 @@
     },
     {
       "slug": "kettlebell-sumo-deadlift",
-      "nombre": "Con pesa rusa sumo peso muerto",
+      "nombre": "Peso muerto sumo con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "hamstrings",
@@ -2240,7 +2240,7 @@
     },
     {
       "slug": "kettlebell-swing",
-      "nombre": "Con pesa rusa swing",
+      "nombre": "Swing con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "hamstrings",
@@ -2253,7 +2253,7 @@
     },
     {
       "slug": "kettlebell-thruster",
-      "nombre": "Con pesa rusa thruster",
+      "nombre": "Thruster con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "fullbody",
@@ -2266,7 +2266,7 @@
     },
     {
       "slug": "kettlebell-windmill",
-      "nombre": "Con pesa rusa windmill",
+      "nombre": "Molino con pesa rusa",
       "equipment": "kettlebell",
       "equipmentEs": "Pesa rusa",
       "muscle": "core",
@@ -2279,7 +2279,7 @@
     },
     {
       "slug": "landmine-t-bar-rows",
-      "nombre": "Landmine t bar rows",
+      "nombre": "Remo con barra T en landmine",
       "equipment": "landmine",
       "equipmentEs": "Landmine",
       "muscle": "back",
@@ -2292,7 +2292,7 @@
     },
     {
       "slug": "lunge-walking",
-      "nombre": "Zancada walking",
+      "nombre": "Zancadas caminando",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "quads",
@@ -2305,7 +2305,7 @@
     },
     {
       "slug": "machine-45-degree-back-extension",
-      "nombre": "En máquina 45 degree trasero extensión",
+      "nombre": "Extensión 45° trasera en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "back",
@@ -2318,7 +2318,7 @@
     },
     {
       "slug": "machine-cable-v-bar-push-downs",
-      "nombre": "En máquina en polea v bar push downs",
+      "nombre": "Extensión en máquina push con barra V en polea",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "triceps",
@@ -2331,7 +2331,7 @@
     },
     {
       "slug": "machine-chest-press",
-      "nombre": "En máquina chest press",
+      "nombre": "Press de pecho en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "chest",
@@ -2344,7 +2344,7 @@
     },
     {
       "slug": "machine-crunch",
-      "nombre": "En máquina encogimiento abdominal",
+      "nombre": "Encogimiento abdominal en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "core",
@@ -2357,7 +2357,7 @@
     },
     {
       "slug": "machine-dips",
-      "nombre": "En máquina dips",
+      "nombre": "Fondos en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "chest",
@@ -2370,7 +2370,7 @@
     },
     {
       "slug": "machine-face-pulls",
-      "nombre": "En máquina face pulls",
+      "nombre": "Ejercicio facepulls en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "shoulders",
@@ -2383,7 +2383,7 @@
     },
     {
       "slug": "machine-front-military-press",
-      "nombre": "En máquina frontal military press",
+      "nombre": "Press frontal militar en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "shoulders",
@@ -2396,7 +2396,7 @@
     },
     {
       "slug": "machine-leg-extension",
-      "nombre": "En máquina leg extensión",
+      "nombre": "Extensión de pierna en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "quads",
@@ -2409,7 +2409,7 @@
     },
     {
       "slug": "machine-leg-press",
-      "nombre": "En máquina leg press",
+      "nombre": "Press de pierna en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "quads",
@@ -2422,7 +2422,7 @@
     },
     {
       "slug": "machine-neutral-row",
-      "nombre": "En máquina neutral remo",
+      "nombre": "Remo neutro en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "back",
@@ -2435,7 +2435,7 @@
     },
     {
       "slug": "machine-pec-fly",
-      "nombre": "En máquina pec apertura",
+      "nombre": "Apertura en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "chest",
@@ -2448,7 +2448,7 @@
     },
     {
       "slug": "machine-plate-loaded-leg-extension",
-      "nombre": "En máquina con disco loaded leg extensión",
+      "nombre": "Extensión de pierna en máquina cargada con disco",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "quads",
@@ -2461,7 +2461,7 @@
     },
     {
       "slug": "machine-plate-loaded-t-bar-row",
-      "nombre": "En máquina con disco loaded t bar remo",
+      "nombre": "Remo en máquina cargado con barra T con disco",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "back",
@@ -2474,7 +2474,7 @@
     },
     {
       "slug": "machine-pulldown",
-      "nombre": "En máquina jalón",
+      "nombre": "Jalón en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "back",
@@ -2487,7 +2487,7 @@
     },
     {
       "slug": "machine-seated-cable-row",
-      "nombre": "En máquina sentado en polea remo",
+      "nombre": "Remo en máquina sentado en polea",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "back",
@@ -2500,7 +2500,7 @@
     },
     {
       "slug": "machine-underhand-row",
-      "nombre": "En máquina underhand remo",
+      "nombre": "Remo supino en máquina",
       "equipment": "machine",
       "equipmentEs": "Máquina",
       "muscle": "back",
@@ -2513,7 +2513,7 @@
     },
     {
       "slug": "mountain-climber",
-      "nombre": "Mountain climber",
+      "nombre": "Escalador",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "core",
@@ -2526,7 +2526,7 @@
     },
     {
       "slug": "narrow-pulldown",
-      "nombre": "Estrecho jalón",
+      "nombre": "Jalón estrecho",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "back",
@@ -2539,7 +2539,7 @@
     },
     {
       "slug": "parralel-bar-dips",
-      "nombre": "Parralel bar dips",
+      "nombre": "Fondos en paralelas",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "chest",
@@ -2552,7 +2552,7 @@
     },
     {
       "slug": "plate-forward-lunge",
-      "nombre": "Con disco forward zancada",
+      "nombre": "Zancada al frente con disco",
       "equipment": "plate",
       "equipmentEs": "Disco",
       "muscle": "quads",
@@ -2565,7 +2565,7 @@
     },
     {
       "slug": "pull-ups",
-      "nombre": "Pull ups",
+      "nombre": "Dominadas",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "back",
@@ -2578,7 +2578,7 @@
     },
     {
       "slug": "push-up",
-      "nombre": "Push up",
+      "nombre": "Ejercicio push",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "chest",
@@ -2591,7 +2591,7 @@
     },
     {
       "slug": "single-legged-romanian-deadlifts",
-      "nombre": "Single legged rumano deadlifts",
+      "nombre": "Peso muerto unapiernaged rumano",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "hamstrings",
@@ -2604,7 +2604,7 @@
     },
     {
       "slug": "smith-machine-close-grip-bench-press",
-      "nombre": "En multipower en máquina cerrado grip banca press",
+      "nombre": "Press de banca smith con agarre cerrado en máquina",
       "equipment": "machine",
       "equipmentEs": "Multipower",
       "muscle": "chest",
@@ -2617,7 +2617,7 @@
     },
     {
       "slug": "smith-machine-incline-bench-press",
-      "nombre": "En multipower en máquina inclinado banca press",
+      "nombre": "Press de banca smith inclinado en máquina",
       "equipment": "machine",
       "equipmentEs": "Multipower",
       "muscle": "chest",
@@ -2630,7 +2630,7 @@
     },
     {
       "slug": "smith-machine-standing-shrugs",
-      "nombre": "En multipower en máquina de pie shrugs",
+      "nombre": "Encogimiento smith de pie en máquina",
       "equipment": "machine",
       "equipmentEs": "Multipower",
       "muscle": "back",
@@ -2643,7 +2643,7 @@
     },
     {
       "slug": "smith-machine-sumo-romanian-deadlift",
-      "nombre": "En multipower en máquina sumo rumano peso muerto",
+      "nombre": "Peso muerto smith sumo rumano en máquina",
       "equipment": "machine",
       "equipmentEs": "Multipower",
       "muscle": "hamstrings",
@@ -2656,7 +2656,7 @@
     },
     {
       "slug": "supermans",
-      "nombre": "Supermans",
+      "nombre": "Superman",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "back",
@@ -2669,7 +2669,7 @@
     },
     {
       "slug": "wall-sit",
-      "nombre": "Wall sit",
+      "nombre": "Sentadilla isométrica en pared",
       "equipment": "bodyweight",
       "equipmentEs": "Peso corporal",
       "muscle": "quads",
