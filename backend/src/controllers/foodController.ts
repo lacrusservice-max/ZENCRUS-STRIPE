@@ -129,7 +129,8 @@ export async function search(req: Request, res: Response) {
 
 export async function barcode(req: Request, res: Response) {
   const code = String(req.params.code)
-  const region = typeof req.query.region === 'string' ? req.query.region.toUpperCase() : 'MX'
+  // La consulta admite `region`, pero el catálogo todavía no distingue por
+  // país: se deja de leer hasta que haya datos regionales que devolver.
 
   // El catálogo propio hoy solo tiene SR Legacy (sin códigos de barras: son
   // alimentos genéricos, no productos envasados) y FatSecret no incluye el

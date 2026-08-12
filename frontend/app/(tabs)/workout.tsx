@@ -460,7 +460,7 @@ const rc = StyleSheet.create({
 // ── Main Screen ───────────────────────────────────────────────────────────────
 
 export default function WorkoutScreen() {
-  const { routines, logs, loadAll, saveRoutine, deleteRoutine, addLog } = useWorkoutStore()
+  const { routines, logs, loadAll, saveRoutine, deleteRoutine } = useWorkoutStore()
   const [activeTab, setActiveTab] = useState<'routines' | 'history'>('routines')
   const [editorVisible, setEditorVisible]   = useState(false)
   const [editingRoutine, setEditingRoutine] = useState<Partial<Routine> | null>(null)

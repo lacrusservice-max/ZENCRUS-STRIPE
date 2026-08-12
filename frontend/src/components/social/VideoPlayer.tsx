@@ -18,7 +18,7 @@
  * ellos, un vídeo de veinte segundos se cortaría a los cinco.
  */
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, Pressable, ActivityIndicator, ViewStyle } from 'react-native'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { useEventListener } from 'expo'

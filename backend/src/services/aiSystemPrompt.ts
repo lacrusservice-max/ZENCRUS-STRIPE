@@ -4,7 +4,7 @@
  * El perfil del usuario se inyecta dinámicamente en cada conversación
  */
 
-import { calcularNutricion, PerfilUsuario, ResultadoNutricional } from './nutritionCalculator'
+import { PerfilUsuario, ResultadoNutricional } from './nutritionCalculator'
 
 // ── Base de conocimiento fija (módulos 01-04) ─────────────────────────────────
 
