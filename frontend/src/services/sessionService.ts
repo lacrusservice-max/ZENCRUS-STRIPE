@@ -76,6 +76,8 @@ export interface Marca {
   weight_kg: number | null
   reps: number | null
   achieved_at: string
+  /** Póster firmado del catálogo. Null si el ejercicio se escribió a mano. */
+  poster?: string | null
 }
 
 export interface MarcaNueva {

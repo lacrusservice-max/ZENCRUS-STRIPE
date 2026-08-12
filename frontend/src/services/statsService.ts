@@ -86,6 +86,8 @@ export interface EjercicioHecho {
   volumen: number
   ultimaVez: string
   mejor1RM: number
+  /** Póster firmado del catálogo. Null si el ejercicio se escribió a mano. */
+  poster: string | null
 }
 
 // ── Llamadas ─────────────────────────────────────────────────────────────────

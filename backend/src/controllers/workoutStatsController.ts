@@ -20,6 +20,8 @@ import { Request, Response } from 'express'
 import { z } from 'zod'
 import { ApiResponse } from '../models/types'
 import { supabase } from '../config/supabase'
+import { posterDe } from '../services/workoutSessions'
+import { readUrls, mediaReady } from '../services/media'
 
 const ok = <T>(res: Response, data: T) =>
   res.status(200).json({ success: true, data } satisfies ApiResponse)
@@ -384,11 +386,23 @@ export async function ejerciciosMasHechos(req: Request, res: Response): Promise<
     porEjercicio.set(s.exercise_key, acc)
   }
 
+  const lista = [...porEjercicio.values()]
+    .map(e => ({ ...e, volumen: Math.round(e.volumen) }))
+    .sort((a, b) => b.series - a.series)
+    .slice(0, 40)
+
+  // Los pósters, firmados de una tacada. Sin imagen, una lista de ejercicios
+  // obliga a leer cada nombre para saber de qué se habla.
+  const claves = lista.map(e => posterDe(e.exerciseKey)).filter((p): p is string => !!p)
+  const firmadas = mediaReady() && claves.length
+    ? await readUrls(claves.map(p => `library/poster/${p}`))
+    : new Map<string, string>()
+
   ok(res, {
-    ejercicios: [...porEjercicio.values()]
-      .map(e => ({ ...e, volumen: Math.round(e.volumen) }))
-      .sort((a, b) => b.series - a.series)
-      .slice(0, 40),
+    ejercicios: lista.map(e => {
+      const poster = posterDe(e.exerciseKey)
+      return { ...e, poster: poster ? firmadas.get(`library/poster/${poster}`) ?? null : null }
+    }),
   })
 }
 

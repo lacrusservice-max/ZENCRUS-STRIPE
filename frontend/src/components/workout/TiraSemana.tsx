@@ -24,14 +24,21 @@ import { Colors, Typography, Spacing } from '@/constants/theme'
 const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
 interface Props {
-  /** Los siete últimos días, del servidor y ya en huso local. */
-  dias: Dia[]
+  /**
+   * Los siete últimos días, del servidor y ya en huso local.
+   *
+   * Con valor por defecto a propósito. Una pantalla entera no puede caerse
+   * porque una lista llegue vacía un instante —pasó con un desajuste de recarga
+   * en caliente, y el ErrorBoundary se tragó Progreso entera—. Sin datos la
+   * tira se dibuja vacía, que es exactamente lo que hay que enseñar.
+   */
+  dias?: Dia[]
   sesionesSemana: number
   objetivo: number
   racha: number
 }
 
-export function TiraSemana({ dias, sesionesSemana, objetivo, racha }: Props) {
+export function TiraSemana({ dias = [], sesionesSemana, objetivo, racha }: Props) {
   /**
    * Los siete días REALES, no un reparto aproximado.
    *
@@ -42,7 +49,7 @@ export function TiraSemana({ dias, sesionesSemana, objetivo, racha }: Props) {
    *
    * El servidor los devuelve en orden y con la fecha ya en el huso del móvil.
    */
-  const ultimos = dias.slice(-7)
+  const ultimos = (dias ?? []).slice(-7)
   const hoy = ultimos.length - 1
 
   const frase = sesionesSemana === 0

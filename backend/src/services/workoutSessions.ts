@@ -42,6 +42,22 @@ const MUSCULO_POR_SLUG = new Map<string, string | null>(
  * Pasa si se renombra un vídeo del catálogo sin migrar las series que ya lo
  * referenciaban, o si una versión vieja de la app manda un slug retirado.
  */
+/**
+ * El póster de un ejercicio del catálogo, por su clave.
+ *
+ * La clave de agrupación ES el slug cuando el ejercicio vino de la biblioteca,
+ * así que con ella basta para encontrar la imagen. Lo escrito a mano no tiene
+ * póster y devuelve null, que es lo honesto: la app pinta un hueco con su icono
+ * en vez de inventarse una foto de otro ejercicio parecido.
+ */
+const POSTER_POR_CLAVE = new Map<string, string>(
+  (catalogo.ejercicios as { slug: string; poster: string }[])
+    .map(e => [e.slug, e.poster]),
+)
+
+export const posterDe = (clave: string): string | null =>
+  POSTER_POR_CLAVE.get(clave) ?? null
+
 export const musculoDe = (slug?: string | null): string | null => {
   if (!slug) return null
   const m = MUSCULO_POR_SLUG.get(slug)

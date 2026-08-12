@@ -31,10 +31,11 @@ import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
 import { supabase } from '../config/supabase'
 import {
-  claveEjercicio, musculoDe, completarEsfuerzo, estimar1RM,
+  claveEjercicio, musculoDe, posterDe, completarEsfuerzo, estimar1RM,
   refrescarTotales, registrarRecords, rehacerRecords, calcularTotales,
   SerieGuardada,
 } from '../services/workoutSessions'
+import { readUrls, mediaReady } from '../services/media'
 
 const fail = (res: Response, code: number, message: string) => {
   res.status(code).json({ success: false, message } satisfies ApiResponse)
@@ -507,7 +508,16 @@ export async function listarRecords(req: Request, res: Response): Promise<void> 
 
   if (error) { fail(res, 500, 'No se pudieron leer tus récords'); return }
 
-  ok(res, data ?? [])
+  const marcas = data ?? []
+  const claves = [...new Set(marcas.map(m => posterDe(m.exercise_key)).filter((p): p is string => !!p))]
+  const firmadas = mediaReady() && claves.length
+    ? await readUrls(claves.map(p => `library/poster/${p}`))
+    : new Map<string, string>()
+
+  ok(res, marcas.map(m => {
+    const poster = posterDe(m.exercise_key)
+    return { ...m, poster: poster ? firmadas.get(`library/poster/${poster}`) ?? null : null }
+  }))
 }
 
 /**
