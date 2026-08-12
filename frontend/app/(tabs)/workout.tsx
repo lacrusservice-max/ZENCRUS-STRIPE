@@ -494,9 +494,18 @@ export default function WorkoutScreen() {
         subtitle={new Date().toLocaleDateString('es-MX', { weekday: 'long', month: 'long', day: 'numeric' })}
         icon="barbell"
         right={
-          <TouchableOpacity style={ws.createBtn} onPress={openCreate}>
-            <Text style={ws.createBtnTxt}>+ Nueva</Text>
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 8, alignItems: 'center' }}>
+            <TouchableOpacity
+              style={ws.libraryBtn}
+              onPress={() => router.push('/workout/library')}
+              activeOpacity={0.75}
+            >
+              <Ionicons name="library-outline" size={17} color={Colors.primary[400]} />
+            </TouchableOpacity>
+            <TouchableOpacity style={ws.createBtn} onPress={openCreate}>
+              <Text style={ws.createBtnTxt}>+ Nueva</Text>
+            </TouchableOpacity>
+          </View>
         }
       />
 
@@ -605,6 +614,11 @@ const ws = StyleSheet.create({
   weekStatNumTxt: { fontFamily: Typography.fontFamily.display, fontSize: 22, color: Colors.primary[400] },
   weekStatLabel: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
   weekStatSub: { fontSize: 11, color: 'rgba(255,255,255,0.45)', marginTop: 2 },
+  libraryBtn: {
+    width: 34, height: 34, borderRadius: 11,
+    backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder,
+    alignItems: 'center', justifyContent: 'center',
+  },
   createBtn: {
     backgroundColor: Colors.primary[500], borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing[4], paddingVertical: Spacing[2],
