@@ -11,6 +11,7 @@ import onboardingRoutes from './onboarding.routes'
 import communityRoutes from './community.routes'
 import foodRoutes from './food.routes'
 import socialRoutes from './social.routes'
+import exerciseRoutes from './exercises.routes'
 import { getPublicFlags } from '../controllers/adminController'
 import { ApiResponse } from '../models/types'
 import { supabase } from '../config/supabase'
@@ -63,5 +64,6 @@ router.use('/onboarding', onboardingRoutes)
 router.use('/community', communityRoutes)
 router.use('/foods', foodRoutes)
 router.use('/social', socialRoutes)
+router.use('/exercises', exerciseRoutes)
 
 export default router

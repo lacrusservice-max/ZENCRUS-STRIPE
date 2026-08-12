@@ -24,7 +24,7 @@
 
 const fs = require('fs')
 const path = require('path')
-const CATALOGO = path.join(__dirname, '..', 'database', 'exercises.json')
+const CATALOGO = path.join(__dirname, '..', 'backend', 'src', 'data', 'exercises.json')
 
 // ── Movimientos: sustantivo y género ────────────────────────────────────────
 const MOV = {

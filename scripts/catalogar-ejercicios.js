@@ -23,7 +23,7 @@ const path = require('path')
 const RAIZ = '/Users/sergio/Desktop/APP C+E/EJERCICIOS CONTENIDO'
 const VIDEOS = path.join(RAIZ, 'full-library-NTRkdOevZfhYISO5pBWekIctpb7YNr')
 const POSTERS = path.join(RAIZ, 'posters')
-const SALIDA = path.join(__dirname, '..', 'database', 'exercises.json')
+const SALIDA = path.join(__dirname, '..', 'backend', 'src', 'data', 'exercises.json')
 
 // ── Material ────────────────────────────────────────────────────────────────
 // El primer token del nombre casi siempre lo dice. Lo que no empieza por uno
