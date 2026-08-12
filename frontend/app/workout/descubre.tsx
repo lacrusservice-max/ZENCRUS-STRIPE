@@ -25,12 +25,13 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
+import { Image } from 'expo-image'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated'
 import { Screen } from '@/components/ui/Screen'
 import { MenuSeccion, CabeceraSeccion } from '@/components/workout/MenuSeccion'
-import { RegionGrid, Region, CargaPorGrupo } from '@/components/workout/RegionGrid'
+import { RegionCards, Zona } from '@/components/workout/RegionCards'
 import { HeroCard } from '@/components/workout/HeroCard'
 import { Vacio } from '@/components/workout/Charts'
 import { MaterialIcon } from '@/components/workout/Kit'
@@ -38,8 +39,7 @@ import {
   getOpciones, getEntrenamiento, recetaDe, resumenDe,
   Opciones, Generado, Lugar,
 } from '@/services/quickService'
-import { getMusculos } from '@/services/statsService'
-import { COLOR_GRUPO } from '@/services/exerciseService'
+import { FOTOS, FOTO_REGION } from '@/constants/imagenes'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 const LUGARES: { id: Lugar; label: string; icono: keyof typeof Ionicons.glyphMap }[] = [
@@ -56,7 +56,6 @@ const NOMBRE_REGION: Record<string, string> = {
 
 export default function Descubre() {
   const [opciones, setOpciones] = useState<Opciones | null>(null)
-  const [carga, setCarga] = useState<CargaPorGrupo | undefined>()
   const [lugar, setLugar] = useState<Lugar>('todo')
   const [minutos, setMinutos] = useState(20)
   const [region, setRegion] = useState<string | null>(null)
@@ -66,21 +65,10 @@ export default function Descubre() {
 
   useFocusEffect(useCallback(() => {
     let vivo = true
-    Promise.all([
-      getOpciones().catch(() => null),
-      getMusculos(14).catch(() => null),
-    ]).then(([o, m]) => {
-      if (!vivo) return
-      setOpciones(o)
-      // La rejilla se tiñe con lo entrenado en dos semanas. Se normaliza contra
-      // el grupo MÁS trabajado, no contra un absoluto: lo que interesa ver es
-      // el reparto, no cuántos kilos se movieron.
-      if (m) {
-        const max = Math.max(...m.grupos.map(g => g.series), 1)
-        setCarga(Object.fromEntries(m.grupos.map(g => [g.grupo, g.series / max])))
-      }
-      setCargando(false)
-    })
+    getOpciones()
+      .then(o => { if (vivo) setOpciones(o) })
+      .catch(() => {})
+      .finally(() => { if (vivo) setCargando(false) })
     return () => { vivo = false }
   }, []))
 
@@ -96,8 +84,8 @@ export default function Descubre() {
     return () => { vivo = false }
   }, [region, minutos, lugar])
 
-  const elegirRegion = (r: Region) => {
-    setRegion(prev => prev === r.id ? null : r.id)
+  const elegirRegion = (z: Zona) => {
+    setRegion(prev => prev === z.id ? null : z.id)
   }
 
   const empezar = () => {
@@ -169,11 +157,7 @@ export default function Descubre() {
             {/* ── 3 · Qué ──────────────────────────────────────────────── */}
             <Animated.View entering={FadeInDown.delay(120).duration(340)} style={{ gap: Spacing[2] }}>
               <Paso n={3} titulo="Qué quieres trabajar" />
-              <Text style={s.pista}>
-                Las zonas se encienden según lo que has entrenado estas dos semanas.
-                Lo apagado es lo que llevas tiempo sin tocar.
-              </Text>
-              <RegionGrid carga={carga} onElegir={elegirRegion} />
+              <RegionCards elegida={region} onElegir={elegirRegion} />
             </Animated.View>
 
             {/* ── El resultado ─────────────────────────────────────────── */}
@@ -197,6 +181,7 @@ export default function Descubre() {
                       ]}
                       cta="Empezar ahora"
                       onPress={empezar}
+                      foto={FOTOS[FOTO_REGION[plan.region] ?? 'gimnasio']?.fuente}
                       posters={plan.ejercicios.map(e => e.poster)}
                       alto={330}
                     />
@@ -220,7 +205,18 @@ export default function Descubre() {
                             activeOpacity={0.8}
                           >
                             <Text style={s.filaNum}>{i + 1}</Text>
-                            <View style={[s.filaPunto, { backgroundColor: COLOR_GRUPO[e.muscle ?? ''] ?? Colors.neon.steel }]} />
+                            {/* La MINIATURA del ejercicio, no un punto de
+                                color. Un punto obliga a leer el nombre para
+                                saber qué es; la imagen se reconoce antes. */}
+                            <View style={s.filaFoto}>
+                              {e.poster ? (
+                                <Image source={{ uri: e.poster }} style={s.filaImg} contentFit="cover" transition={180} />
+                              ) : (
+                                <View style={s.filaImgVacia}>
+                                  <Ionicons name="barbell-outline" size={15} color={Colors.neon.w4} />
+                                </View>
+                              )}
+                            </View>
                             <View style={{ flex: 1 }}>
                               <Text style={s.filaNombre} numberOfLines={1}>{e.nombre}</Text>
                               <Text style={s.filaSub}>
@@ -319,7 +315,13 @@ const s = StyleSheet.create({
     borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.055)',
   },
   filaNum: { width: 14, fontSize: 11, fontWeight: '800', color: Colors.neon.w4 },
-  filaPunto: { width: 8, height: 8, borderRadius: 4 },
+  filaFoto: {
+    width: 46, height: 46, borderRadius: 12, overflow: 'hidden',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: Colors.neon.edge,
+  },
+  filaImg: { width: '100%', height: '100%' },
+  filaImgVacia: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   filaNombre: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
   filaSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
 

@@ -1,16 +1,16 @@
 /**
  * MENÚ DE LA SECCIÓN ENTRENA
  * ──────────────────────────
- * El índice de la sección: cinco sitios, siempre visibles, siempre en el mismo
+ * El índice de la sección: cuatro sitios, siempre visibles, siempre en el mismo
  * orden y en el mismo lugar de la pantalla.
  *
  * ── Por qué un menú propio y no más pestañas abajo ──────────────────────────
  * La barra inferior es de la APP —Inicio, Nutrición, Entrena, Progreso,
- * Comunidad, Perfil— y meterle cinco destinos más de una sola sección la
+ * Comunidad, Perfil— y meterle cuatro destinos más de una sola sección la
  * convertiría en un listado. Este menú vive dentro de Entrena y solo habla de
  * Entrena: al salir de la sección desaparece, que es lo que se espera.
  *
- * ── Los cinco caben sin desplegar ───────────────────────────────────────────
+ * ── Los cuatro caben sin desplegar ──────────────────────────────────────────
  * Nada de «más…» ni de menú hamburguesa. Un destino que hay que buscar detrás
  * de un botón es un destino que no se visita: la biblioteca de 206 ejercicios
  * lleva meses construida y sin una entrada visible casi nadie llegaría a ella.
@@ -22,7 +22,7 @@ import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
-export type Destino = 'hoy' | 'descubre' | 'cuerpo' | 'progreso' | 'records'
+export type Destino = 'hoy' | 'descubre' | 'progreso' | 'records'
 
 /**
  * Volver, venga uno de donde venga.
@@ -47,7 +47,6 @@ const DESTINOS: { id: Destino; label: string; icono: keyof typeof Ionicons.glyph
   // es que te monten la sesión, no recorrer 206 fichas. Los 206 siguen a un
   // toque desde dentro, pero dejan de ser lo primero que se ofrece.
   { id: 'descubre', label: 'Descubre', icono: 'compass-outline',  ruta: '/workout/descubre' },
-  { id: 'cuerpo',   label: 'Cuerpo',   icono: 'body-outline',     ruta: '/workout/cuerpo' },
   { id: 'progreso', label: 'Progreso', icono: 'trending-up',      ruta: '/workout/stats' },
   { id: 'records',  label: 'Récords',  icono: 'trophy-outline',   ruta: '/workout/records' },
 ]

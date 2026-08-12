@@ -37,6 +37,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withSpring, withTiming,
   interpolate, Extrapolation, SharedValue,
 } from 'react-native-reanimated'
+import { ImageSourcePropType } from 'react-native'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 const MuelleSuave = { damping: 15, stiffness: 180, mass: 0.6 }
@@ -54,7 +55,13 @@ interface Props {
   datos: DatoHero[]
   cta: string
   onPress: () => void
-  /** URLs firmadas de pósters del catálogo. Se usan las tres primeras. */
+  /**
+   * Fotografía de marca, ya tratada con el duotono. Es lo PRIMERO que se busca:
+   * una foto de verdad manda sobre un collage de fichas, y como va empaquetada
+   * aparece sin esperar a la red.
+   */
+  foto?: ImageSourcePropType
+  /** URLs firmadas de pósters del catálogo. El respaldo cuando no hay foto. */
   posters?: (string | null)[]
   /** Progreso 0..1. Si va, se dibuja una barra fina bajo el título. */
   avance?: number
@@ -71,7 +78,7 @@ interface Props {
 
 export function HeroCard({
   badge, titulo, subtitulo, datos, cta, onPress,
-  posters = [], avance, alto = 340, scroll, offsetY = 0,
+  foto, posters = [], avance, alto = 340, scroll, offsetY = 0,
 }: Props) {
   const presion = useSharedValue(0)
 
@@ -106,7 +113,11 @@ export function HeroCard({
       >
         {/* ── Fondo ──────────────────────────────────────────────────────── */}
         <Animated.View style={[StyleSheet.absoluteFill, estiloParallax]}>
-          {usables.length > 0 ? (
+          {foto ? (
+            // La foto va casi entera: ya viene oscurecida y con viñeta del
+            // proceso, así que aquí no hace falta apagarla otra vez.
+            <Image source={foto} style={{ flex: 1, opacity: 0.92 }} contentFit="cover" transition={280} />
+          ) : usables.length > 0 ? (
             <View style={s.collage}>
               {usables.map((uri, i) => (
                 <Image
@@ -211,9 +222,10 @@ export function HeroCard({
  * Sin rejilla de datos —no cabe— pero con la misma composición de fondo, para
  * que una fila de colecciones y el héroe se lean como la misma familia.
  */
-export function ColeccionCard({ titulo, cuenta, posters = [], onPress, ancho = 220 }: {
+export function ColeccionCard({ titulo, cuenta, foto, posters = [], onPress, ancho = 220 }: {
   titulo: string
   cuenta: string
+  foto?: ImageSourcePropType
   posters?: (string | null)[]
   onPress: () => void
   ancho?: number
@@ -231,7 +243,9 @@ export function ColeccionCard({ titulo, cuenta, posters = [], onPress, ancho = 2
         style={[c.marco, { width: ancho }]}
       >
         <View style={c.fondo}>
-          {usables.length > 0 ? (
+          {foto ? (
+            <Image source={foto} style={{ flex: 1, opacity: 0.9 }} contentFit="cover" transition={240} />
+          ) : usables.length > 0 ? (
             <View style={{ flex: 1, flexDirection: 'row' }}>
               {usables.map((uri, i) => (
                 <Image key={i} source={{ uri }} style={{ flex: 1, opacity: 0.34 }} contentFit="cover" transition={200} />
