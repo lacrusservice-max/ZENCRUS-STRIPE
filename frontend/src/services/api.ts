@@ -108,6 +108,29 @@ api.interceptors.request.use(
   (error) => Promise.reject(error)
 )
 
+// ── Aviso de sesión caducada ─────────────────────────────────────────────────
+
+/**
+ * A quién avisar cuando el servidor rechaza definitivamente las credenciales.
+ *
+ * Es un callback y no un `import` del store porque el store ya importa esto:
+ * importarlo de vuelta sería un ciclo. Lo registra `authStore` al arrancar.
+ *
+ * ── Por qué hace falta ──────────────────────────────────────────────────────
+ * Sin este aviso, perder la sesión a mitad de uso dejaba la app en un LIMBO:
+ * `initialize()` solo corre al arrancar, así que nadie se enteraba de que ya no
+ * había credenciales. La app seguía enseñando las pantallas privadas —parecías
+ * estar dentro— pero cada petición fallaba en silencio y todo salía vacío o
+ * «sin conexión», sin llevarte nunca al login. Es el peor fallo posible: no
+ * parece un fallo de sesión, parece que la app está rota.
+ */
+type AvisoSesion = () => void
+let avisarSesionCaducada: AvisoSesion | null = null
+
+export function alCaducarLaSesion(cb: AvisoSesion): void {
+  avisarSesionCaducada = cb
+}
+
 // ── Response interceptor — refresh tokens + circuit breaker ──────────────────
 
 let isRefreshing = false
@@ -164,8 +187,50 @@ api.interceptors.response.use(
         return api(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError, null)
-        await SecureStore.deleteItemAsync('accessToken').catch(() => {})
-        await SecureStore.deleteItemAsync('refreshToken').catch(() => {})
+
+        /**
+         * Las credenciales SOLO se borran si el servidor las ha rechazado.
+         *
+         * Antes se borraban ante cualquier fallo, y eso incluía quedarse sin
+         * cobertura un segundo, un backend lento —el `timeout` son 10 s— o un
+         * despliegue a mitad de petición. Como el token de refresco es de un
+         * solo uso y no hay copia, perderlo así deja la app en un limbo del que
+         * no se sale: sigue enseñando las pantallas privadas porque
+         * `initialize()` solo corre al arrancar, pero cada petición falla en
+         * silencio y todo se ve vacío o «sin conexión».
+         *
+         * Un fallo de red es TEMPORAL y la sesión tiene que sobrevivirlo: la
+         * siguiente petición volverá a intentarlo. Solo un 401 del propio
+         * `/auth/refresh` significa de verdad «esta sesión ya no vale».
+         */
+        const st = (refreshError as AxiosError)?.response?.status
+        /**
+         * Sin token de refresco guardado no hay nada que reintentar NUNCA.
+         *
+         * Es distinto de un fallo de red: la red vuelve, pero un token que no
+         * está no va a aparecer. Conservar la sesión en este caso deja la app
+         * en el mismo limbo que se quería evitar —dentro, pero sin poder cargar
+         * nada— y encima para siempre. Aquí la única salida honesta es pedir
+         * que se vuelva a entrar.
+         */
+        const sinTokenGuardado = (refreshError as Error)?.message === 'No refresh token'
+        const rechazadoPorElServidor = st === 401 || st === 403 || sinTokenGuardado
+
+        if (rechazadoPorElServidor) {
+          await SecureStore.deleteItemAsync('accessToken').catch(() => {})
+          await SecureStore.deleteItemAsync('refreshToken').catch(() => {})
+          // Y se avisa, para que la app vaya al login en vez de quedarse
+          // enseñando pantallas privadas que ya no puede cargar.
+          avisarSesionCaducada?.()
+        } else {
+          // Sin este aviso, el síntoma —pantallas vacías— parece un fallo de
+          // los datos y se busca en el sitio equivocado. Costó media sesión.
+          console.warn(
+            '[auth] no se pudo refrescar la sesión, pero se CONSERVA para reintentar:',
+            (refreshError as Error)?.message ?? refreshError,
+          )
+        }
+
         return Promise.reject(refreshError)
       } finally {
         isRefreshing = false

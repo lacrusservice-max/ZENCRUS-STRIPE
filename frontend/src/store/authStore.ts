@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import * as SecureStore from 'expo-secure-store'
-import api from '../services/api'
+import api, { alCaducarLaSesion } from '../services/api'
 import { useSocialStore } from './socialStore'
 import { unregisterPush } from '../services/pushService'
 
@@ -77,13 +77,60 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         set({ isLoading: false, isAuthenticated: false })
         return
       }
-      // Validate token by fetching profile
+      // Se valida pidiendo el perfil. Si el token de acceso ha caducado, el
+      // interceptor lo refresca solo y esto ni se entera.
       const { data } = await api.get('/users/profile')
       set({ user: data.data, accessToken: token, isAuthenticated: true, isLoading: false })
-    } catch {
-      await SecureStore.deleteItemAsync('accessToken').catch(() => {})
-      await SecureStore.deleteItemAsync('refreshToken').catch(() => {})
-      set({ isLoading: false, isAuthenticated: false, user: null, accessToken: null })
+    } catch (e) {
+      /**
+       * Solo se cierra la sesión si el servidor RECHAZÓ las credenciales.
+       *
+       * Antes se borraban ante cualquier fallo, red incluida. Eso significaba
+       * que abrir la app sin cobertura —en un gimnasio en un sótano, que es el
+       * caso de uso central— te echaba y te obligaba a escribir la contraseña,
+       * aunque tu sesión siguiera siendo válida treinta días más.
+       *
+       * Si el fallo es de red se conserva TODO y se deja la sesión como estaba:
+       * la app sigue abierta con lo que tenga en memoria y el siguiente intento
+       * la recupera. Perder la sesión es una decisión del servidor, no un
+       * efecto secundario de una mala conexión.
+       */
+      const st = (e as { response?: { status?: number } })?.response?.status
+      const rechazado = st === 401 || st === 403
+
+      if (rechazado) {
+        await SecureStore.deleteItemAsync('accessToken').catch(() => {})
+        await SecureStore.deleteItemAsync('refreshToken').catch(() => {})
+        set({ isLoading: false, isAuthenticated: false, user: null, accessToken: null })
+        return
+      }
+
+      /**
+       * Sin token de REFRESCO no se entra, aunque el fallo haya sido de red.
+       *
+       * El de acceso dura quince minutos: si el de refresco no está, esa sesión
+       * está muerta y dejar entrar solo consigue una app que parece funcionar y
+       * no carga nada. Se comprueban los dos, no solo el de acceso.
+       */
+      const [acceso, refresco] = await Promise.all([
+        SecureStore.getItemAsync('accessToken').catch(() => null),
+        SecureStore.getItemAsync('refreshToken').catch(() => null),
+      ])
+
+      if (!refresco) {
+        await SecureStore.deleteItemAsync('accessToken').catch(() => {})
+        set({ isLoading: false, isAuthenticated: false, user: null, accessToken: null })
+        return
+      }
+
+      console.warn('[auth] arranque sin red: la sesión se conserva', (e as Error)?.message)
+      set({
+        isLoading: false,
+        // Con las dos credenciales se entra igual: sin conexión la app funciona
+        // con lo que tiene en el teléfono y sincroniza cuando vuelva la red.
+        isAuthenticated: !!acceso,
+        accessToken: acceso,
+      })
     }
   },
 
@@ -158,3 +205,24 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   setUser: (user) => set({ user }),
 }))
+
+/**
+ * Cuando el servidor rechaza definitivamente las credenciales, la app tiene que
+ * ENTERARSE, no solo quedarse sin poder cargar nada.
+ *
+ * Va aquí —al cargarse el módulo, no dentro de `initialize()`— a propósito: si
+ * se registrara en `initialize`, una app que arranca sin conexión no llegaría a
+ * registrarlo nunca y el limbo volvería justo en el caso que se quiere evitar.
+ *
+ * No cierra sesión ni borra nada: de eso ya se encargó el interceptor. Aquí
+ * solo se pone el estado al día para que la app lleve al login en vez de seguir
+ * pintando pantallas privadas que ya no puede cargar.
+ */
+alCaducarLaSesion(() => {
+  useAuthStore.setState({
+    isAuthenticated: false,
+    user: null,
+    accessToken: null,
+    isLoading: false,
+  })
+})
