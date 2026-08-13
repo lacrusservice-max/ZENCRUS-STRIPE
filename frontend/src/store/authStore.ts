@@ -1,6 +1,6 @@
 import { create } from 'zustand'
 import * as SecureStore from 'expo-secure-store'
-import api, { alCaducarLaSesion } from '../services/api'
+import api, { alCaducarLaSesion, nuevaGeneracionDeSesion } from '../services/api'
 import { useSocialStore } from './socialStore'
 import { unregisterPush } from '../services/pushService'
 
@@ -133,6 +133,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       if (rechazado) {
         await SecureStore.deleteItemAsync('accessToken').catch(() => {})
         await SecureStore.deleteItemAsync('refreshToken').catch(() => {})
+        nuevaGeneracionDeSesion()
         set({ isLoading: false, isAuthenticated: false, user: null, accessToken: null })
         return
       }
@@ -182,6 +183,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { accessToken, refreshToken } = data.data
     await SecureStore.setItemAsync('accessToken', accessToken, SECURE_OPTS)
     await SecureStore.setItemAsync('refreshToken', refreshToken, SECURE_OPTS)
+    // Desde aquí, cualquier refresco que viniera de antes queda invalidado:
+    // no puede machacar estos tokens, que son los buenos.
+    nuevaGeneracionDeSesion()
     // Fetch profile
     const profileRes = await api.get('/users/profile')
     set({ user: profileRes.data.data, accessToken, isAuthenticated: true })
@@ -197,6 +201,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     const { accessToken, refreshToken } = data.data
     await SecureStore.setItemAsync('accessToken', accessToken, SECURE_OPTS)
     await SecureStore.setItemAsync('refreshToken', refreshToken, SECURE_OPTS)
+    // Desde aquí, cualquier refresco que viniera de antes queda invalidado:
+    // no puede machacar estos tokens, que son los buenos.
+    nuevaGeneracionDeSesion()
     const profileRes = await api.get('/users/profile')
     const pendingProfile = get().pendingProfileData
     set({
@@ -237,6 +244,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     } catch {}
     await SecureStore.deleteItemAsync('accessToken').catch(() => {})
     await SecureStore.deleteItemAsync('refreshToken').catch(() => {})
+    nuevaGeneracionDeSesion()
 
     // La comunidad vive en memoria y hay que vaciarla a mano. Sin esto, quien
     // entrara después en el mismo teléfono vería un instante el muro, los chats

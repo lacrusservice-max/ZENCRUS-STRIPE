@@ -87,8 +87,30 @@ export type Decision =
   | { tipo: 'rotar' }
   /** Es la anterior y hace nada que rotó: la carrera. Se da la actual sin rotar. */
   | { tipo: 'gracia'; familiaActual: string }
-  /** Ni una ni otra: token gastado o robado. Se anula la familia entera. */
-  | { tipo: 'robo' }
+  /**
+   * Es la ANTERIOR pero fuera de la ventana: alguien reusa un token ya gastado,
+   * y eso solo pasa si hay dos copias. Se anula la familia entera.
+   */
+  | { tipo: 'reutilizado' }
+  /**
+   * No es ninguna de las dos. Se rechaza, PERO NO SE ANULA NADA.
+   *
+   * Esta distinción es el arreglo del deslogueo que costó una sesión entera.
+   * Antes cualquier familia que no cuadrara se trataba como robo y se anulaba
+   * la sesión ENTERA. El problema: un token viejo —de una instalación anterior,
+   * de una petición que se quedó en vuelo antes de un login, de otro móvil que
+   * ya no se usa— no prueba nada, y sin embargo te echaba de la sesión que
+   * acababas de abrir. Se veía en el registro:
+   *
+   *     Refresco rechazado: Token de refresco comprometido
+   *
+   * ...con la familia del login intacta en la base, y aun así fuera.
+   *
+   * La reutilización DE VERDAD es otra cosa: presentar la familia que este
+   * mismo servidor acaba de sustituir. Eso sí prueba que hay dos copias del
+   * mismo token. Lo desconocido solo se rechaza, y la sesión buena sigue viva.
+   */
+  | { tipo: 'desconocido' }
 
 export function decidir(
   guardado: string | null | undefined,
@@ -96,14 +118,12 @@ export function decidir(
   ahora = Date.now(),
 ): Decision {
   const f = desempaquetar(guardado)
-  if (!f) return { tipo: 'robo' }
+  if (!f) return { tipo: 'desconocido' }
   if (f.actual === familiaQueLlega) return { tipo: 'rotar' }
-  if (
-    f.anterior
-    && f.anterior === familiaQueLlega
-    && ahora - f.rotadoEn <= VENTANA_GRACIA_MS
-  ) {
-    return { tipo: 'gracia', familiaActual: f.actual }
+  if (f.anterior && f.anterior === familiaQueLlega) {
+    return ahora - f.rotadoEn <= VENTANA_GRACIA_MS
+      ? { tipo: 'gracia', familiaActual: f.actual }
+      : { tipo: 'reutilizado' }
   }
-  return { tipo: 'robo' }
+  return { tipo: 'desconocido' }
 }

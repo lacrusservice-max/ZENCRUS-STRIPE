@@ -136,6 +136,29 @@ export function alCaducarLaSesion(cb: AvisoSesion): void {
 let isRefreshing = false
 let failedQueue: Array<{ resolve: (v: unknown) => void; reject: (r: unknown) => void }> = []
 
+/**
+ * QUÉ SESIÓN ES LA BUENA AHORA MISMO.
+ *
+ * Sube cada vez que se entra o se sale. Sirve para una cosa concreta: que un
+ * refresco lanzado ANTES de un login no escriba su resultado DESPUÉS.
+ *
+ * Ese es el escenario que dejaba a la app con un token de otra vida. Una
+ * petición cualquiera recibe un 401, el interceptor arranca a refrescar, y
+ * mientras tanto el usuario entra con su contraseña —lo que guarda tokens
+ * nuevos y buenos—. El refresco viejo termina uno o dos segundos después, y
+ * como no sabía nada del login, machaca el token bueno con el suyo, que ya no
+ * vale. A partir de ahí cada refresco llega con una familia que el servidor no
+ * reconoce, y antes eso además te cerraba la sesión.
+ *
+ * Con el contador, quien termina tarde compara y se calla.
+ */
+let generacionSesion = 0
+
+/** La llama el store al entrar y al salir. */
+export function nuevaGeneracionDeSesion(): void {
+  generacionSesion += 1
+}
+
 function processQueue(error: unknown, token: string | null = null): void {
   failedQueue.forEach(({ resolve, reject }) => (error ? reject(error) : resolve(token)))
   failedQueue = []
@@ -172,12 +195,32 @@ api.interceptors.response.use(
       isRefreshing = true
 
       try {
+        // Se anota con qué sesión se empezó. Si al volver ya es otra, este
+        // refresco es de una vida anterior y no puede tocar nada.
+        const generacionAlEmpezar = generacionSesion
+
         const refreshToken = await SecureStore.getItemAsync('refreshToken')
         if (!refreshToken) throw new Error('No refresh token')
 
         const SECURE_OPTS = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY }
         const { data } = await axios.post(`${API_URL}/auth/refresh`, { refreshToken }, { timeout: 10_000 })
         const { accessToken, refreshToken: newRT } = data.data
+
+        if (generacionAlEmpezar !== generacionSesion) {
+          /**
+           * Hubo un login (o un logout) mientras esto viajaba.
+           *
+           * Lo que hay guardado ahora es más nuevo que esto, así que NO se
+           * escribe: machacar el token bueno con este dejaría a la app con uno
+           * que el servidor ya no reconoce. Se avisa a la cola con el token que
+           * de verdad vale y se deja como está.
+           */
+          console.warn('[auth] refresco de una sesión anterior: se descarta sin escribir')
+          const vigente = await SecureStore.getItemAsync('accessToken').catch(() => null)
+          processQueue(null, vigente)
+          originalRequest.headers = { ...originalRequest.headers, Authorization: `Bearer ${vigente ?? ''}` }
+          return api(originalRequest)
+        }
 
         await SecureStore.setItemAsync('accessToken', accessToken, SECURE_OPTS)
         await SecureStore.setItemAsync('refreshToken', newRT, SECURE_OPTS)

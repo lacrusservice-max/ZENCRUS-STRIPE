@@ -336,9 +336,22 @@ export async function refreshTokens(req: Request, res: Response): Promise<void> 
      */
     const decision = decidir(user.refresh_token_family, payload.tokenFamily)
 
-    if (decision.tipo === 'robo') {
+    /**
+     * Solo se anula la sesión cuando hay PRUEBA de que hay dos copias del
+     * token, o sea cuando llega la familia que este servidor acaba de
+     * sustituir. Un token desconocido se rechaza y punto: no prueba nada y
+     * echar al dueño por él era el fallo que costó una sesión entera.
+     */
+    if (decision.tipo === 'reutilizado') {
       await supabase.from('users').update({ refresh_token_family: null }).eq('id', user.id)
+      logger.warn(`Token reutilizado fuera de la ventana para ${user.id}: se anula la familia`)
       throw new AppError(401, 'Token de refresco comprometido. Inicia sesión nuevamente.')
+    }
+
+    if (decision.tipo === 'desconocido') {
+      // Ni se toca la familia: la sesión buena, si la hay, sigue viva.
+      logger.info(`Refresco con familia desconocida para ${user.id}: se rechaza sin anular nada`)
+      throw new AppError(401, 'Token inválido. Inicia sesión nuevamente.')
     }
 
     // El inicio de sesión ya lo comprobaba, pero el refresco no, y sin esto la
@@ -404,9 +417,14 @@ export async function refreshTokens(req: Request, res: Response): Promise<void> 
           .from('users').select('refresh_token_family').eq('id', user.id).maybeSingle()
         const segunda = decidir(recargado?.refresh_token_family, payload.tokenFamily)
 
-        if (segunda.tipo !== 'gracia') {
+        if (segunda.tipo === 'reutilizado') {
           await supabase.from('users').update({ refresh_token_family: null }).eq('id', user.id)
           throw new AppError(401, 'Token de refresco comprometido. Inicia sesión nuevamente.')
+        }
+        if (segunda.tipo !== 'gracia') {
+          // Mismo criterio que arriba: se rechaza sin anular. Perder la carrera
+          // y encontrarse algo raro no es motivo para cerrarle la sesión a nadie.
+          throw new AppError(401, 'Token inválido. Inicia sesión nuevamente.')
         }
         familiaVigente = segunda.familiaActual
         logger.info(`Refresco simultáneo para ${user.id}: perdió la carrera y se le da la familia buena`)

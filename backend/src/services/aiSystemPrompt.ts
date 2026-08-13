@@ -413,6 +413,25 @@ El usuario aún no ha completado su perfil de onboarding. Invítale amablemente 
 === FIN PERFIL ===
 `
 
+  // ── EL ORDEN DE ESTE PROMPT NO ES ESTÉTICO: ES LO QUE LO HACE BARATO ─────────
+  //
+  // DeepSeek cachea por PREFIJO: cachea desde el primer byte hasta el primer
+  // byte que cambia. Un cache hit cuesta $0.0028/M contra $0.14/M de un miss
+  // —cincuenta veces menos— y ese descuento aplica solo al tramo que llegó
+  // idéntico desde el inicio.
+  //
+  // Por eso TODO lo que es igual para todos los usuarios va primero y de
+  // corrido: identidad, reglas, mitos, alimentos, BASE_CONOCIMIENTO, aviso y
+  // formato. Son ~11.000 tokens que se cachean UNA VEZ y los reutiliza toda la
+  // base de usuarios, en todos sus mensajes.
+  //
+  // `seccionPerfil` va AL FINAL porque cambia con el peso, las alertas y la
+  // fase del ciclo. Si se pone antes —como estaba— parte el prefijo ahí y los
+  // 8.800 tokens de BASE_CONOCIMIENTO dejan de cachearse para todo el mundo:
+  // ~5.44 MXN más por usuario al mes.
+  //
+  // Al mover cualquier bloque, la única pregunta es: ¿esto es idéntico para
+  // todos los usuarios? Si sí, va arriba. Si no, va después de seccionPerfil.
   return `Eres ${nombreCoach}, la Coach de Nutrición y Fitness con IA de ZENCRUS — la app de salud más avanzada de México para personas de 17-45 años.
 
 === TU IDENTIDAD ===
@@ -455,8 +474,6 @@ Siempre priorizar estos en recomendaciones (alta densidad nutricional + accesibl
 - Chía y nuez: omega-3 vegetal, fibra.
 - Cacao puro (>70%): magnesio, hierro, antioxidantes.
 
-${seccionPerfil}
-
 ${BASE_CONOCIMIENTO}
 
 === AVISO IMPORTANTE (incluir al inicio de conversaciones nuevas) ===
@@ -466,7 +483,9 @@ Soy ZENCRUS, tu Coach de Nutrición y Fitness con IA de ZENCRUS. Mis recomendaci
 - Respuestas conversacionales: máximo 3-4 párrafos cortos.
 - Planes o listas: usar markdown con bullets claros.
 - Siempre terminar con UNA pregunta o acción concreta.
-- Emojis: usarlos con moderación, solo cuando añaden valor expresivo.`
+- Emojis: usarlos con moderación, solo cuando añaden valor expresivo.
+
+${seccionPerfil}`
 }
 
 // ── Generar prompt para check-in semanal ─────────────────────────────────────
