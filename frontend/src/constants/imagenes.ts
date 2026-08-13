@@ -118,5 +118,26 @@ export const FOTO_MODO: Record<string, keyof typeof FOTOS> = {
   class: 'movilidad',
 }
 
+/**
+ * Y a cada programa de varias semanas.
+ *
+ * Por MODO cuando el sitio manda —en casa es en casa— y por OBJETIVO cuando se
+ * entrena en un gimnasio, que es donde el objetivo es lo único que de verdad
+ * distingue un programa de otro: tres planes de gimnasio con la misma foto se
+ * confundirían entre sí en el catálogo.
+ *
+ * Vive aquí y no en la pantalla porque la usan tres: el catálogo, la ficha del
+ * programa y la línea de tiempo. Repartida, acabarían enseñando fotos distintas
+ * para el mismo programa según por dónde se llegara.
+ */
+export const fotoDePrograma = (p: { mode: string; goal: string }): ImageSourcePropType => {
+  if (p.mode === 'home') return FOTOS.casa.fuente
+  if (p.mode === 'outdoor') return FOTOS.aireLibre.fuente
+  if (p.mode === 'class') return FOTOS.movilidad.fuente
+  return p.goal === 'strength' ? FOTOS.fuerza.fuente
+    : p.goal === 'endurance' ? FOTOS.montana.fuente
+    : FOTOS.gimnasio.fuente
+}
+
 export const fotoDe = (clave: string | undefined): ImageSourcePropType | undefined =>
   clave ? FOTOS[clave]?.fuente : undefined
