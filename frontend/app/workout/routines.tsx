@@ -4,34 +4,46 @@
  * Sesiones guardadas para repetir. El PLAN, no lo realizado: lo realizado vive
  * en el historial y casi nunca coincide, que es lo interesante.
  *
- * ── Lo que cambió respecto a la versión anterior ────────────────────────────
+ * ── Rehecha con el sistema de la sección ────────────────────────────────────
+ * · La rutina que más se usa manda: ocupa una pieza entera sobre fotografía con
+ *   su botón de empezar. Antes todas las rutinas eran tarjetas iguales y elegir
+ *   entre cinco cajas idénticas cuesta más que entre una grande y cuatro
+ *   pequeñas, aunque haya la misma información.
+ * · Los ejercicios se enseñan con su IMAGEN, no con una lista de texto ni con
+ *   un punto de color. Una rutina se reconoce por lo que hay dentro.
+ * · La fotografía sale del sitio donde se entrena, que es lo que de verdad
+ *   distingue una rutina de otra al ojearlas.
+ *
+ * ── Lo que ya cambió antes y sigue igual ────────────────────────────────────
  * · Los ejercicios se eligen del CATÁLOGO de 206, con su músculo, su material y
  *   su vídeo. Antes se elegían de una lista de doce nombres escritos a mano en
  *   el código, que no llevaban a ninguna ficha y envejecían solas.
- * · Sin emojis. El tipo de entrenamiento se dice con iconografía propia, que se
- *   tiñe con el tema y se ve igual en todos los teléfonos.
  * · Al guardar un ejercicio se guarda su SLUG, no solo su nombre. Es lo que
  *   hace que al entrenarlo las series entren en el historial de ese ejercicio
  *   y no en el de un nombre parecido.
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
   Modal, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, FlatList,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
+import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
+import { Image } from 'expo-image'
+import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
-import Animated, { FadeInDown } from 'react-native-reanimated'
+import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import { Screen } from '@/components/ui/Screen'
 import { CabeceraSeccion } from '@/components/workout/MenuSeccion'
 import { Vacio } from '@/components/workout/Charts'
 import { MaterialIcon } from '@/components/workout/Kit'
+import { Miniatura, MazoMiniaturas } from '@/components/workout/Miniatura'
 import { NOMBRE_GRUPO } from '@/components/workout/anatomy'
 import { useWorkoutStore, Routine, Exercise } from '@/store/workoutStore'
-import { listExercises, ExerciseCard, colorDe } from '@/services/exerciseService'
+import { listExercises, getPosters, ExerciseCard } from '@/services/exerciseService'
+import { FOTOS, FOTO_MODO } from '@/constants/imagenes'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 /**
@@ -50,12 +62,21 @@ const TIPOS = [
   { id: 'class', label: 'Dirigido', icono: 'bench' },
 ] as const
 
+const NOMBRE_TIPO: Record<string, string> = {
+  gym: 'Gimnasio', home: 'En casa', outdoor: 'Aire libre', class: 'Dirigido',
+}
+
+const fotoDeTipo = (tipo: string) => FOTOS[FOTO_MODO[tipo] ?? 'gimnasio'].fuente
+
+/** A dónde va el botón de empezar. Los dos modos construidos son estos. */
+const modoDe = (tipo: string) => tipo === 'home' ? 'home' : 'gym'
+
 // ── Buscador del catálogo ────────────────────────────────────────────────────
 
 function Buscador({ visible, tipo, onElegir, onCerrar }: {
   visible: boolean
   tipo: string
-  onElegir: (e: { slug?: string; nombre: string; muscle?: string | null }) => void
+  onElegir: (e: { slug?: string; nombre: string; muscle?: string | null; poster?: string | null }) => void
   onCerrar: () => void
 }) {
   const [q, setQ] = useState('')
@@ -115,10 +136,16 @@ function Buscador({ visible, tipo, onElegir, onCerrar }: {
           renderItem={({ item: e }) => (
             <TouchableOpacity
               style={b.fila}
-              onPress={() => { void Haptics.selectionAsync(); onElegir({ slug: e.slug, nombre: e.name, muscle: e.muscle }); setQ('') }}
+              onPress={() => {
+                void Haptics.selectionAsync()
+                onElegir({ slug: e.slug, nombre: e.name, muscle: e.muscle, poster: e.poster })
+                setQ('')
+              }}
               activeOpacity={0.85}
             >
-              <View style={[b.punto, { backgroundColor: colorDe(e.muscle) }]} />
+              {/* La imagen del ejercicio, no un punto de color: quien busca
+                  «press» ve cuál es cuál sin leer las cuatro variantes. */}
+              <Miniatura poster={e.poster} tam={44} />
               <View style={{ flex: 1 }}>
                 <Text style={b.filaNombre}>{e.name}</Text>
                 <Text style={b.filaSub}>{e.muscleEs ?? '—'} · {e.equipmentEs}</Text>
@@ -134,9 +161,10 @@ function Buscador({ visible, tipo, onElegir, onCerrar }: {
 
 // ── Editor ───────────────────────────────────────────────────────────────────
 
-function Editor({ visible, inicial, onGuardar, onCerrar }: {
+function Editor({ visible, inicial, posters, onGuardar, onCerrar }: {
   visible: boolean
   inicial: Routine | null
+  posters: Record<string, string>
   onGuardar: (r: Routine) => void
   onCerrar: () => void
 }) {
@@ -145,14 +173,29 @@ function Editor({ visible, inicial, onGuardar, onCerrar }: {
   const [ejercicios, setEjercicios] = useState<Exercise[]>([])
   const [buscando, setBuscando] = useState(false)
 
+  /**
+   * Las imágenes de lo que se acaba de añadir, solo mientras dura la edición.
+   *
+   * Los pósters que llegan del padre son de las rutinas YA GUARDADAS, así que
+   * un ejercicio recién elegido salía con el hueco vacío hasta guardar y volver
+   * a entrar — justo mientras se está montando la rutina, que es cuando más
+   * falta hace verlo.
+   *
+   * El buscador ya trae la URL firmada, así que se guarda aquí y se acabó. En
+   * memoria y NO en el disco con la rutina: caducan en una hora, y una URL
+   * rescatada al día siguiente sería una imagen rota guardada para siempre.
+   */
+  const [postersNuevos, setPostersNuevos] = useState<Record<string, string>>({})
+
   useEffect(() => {
     if (!visible) return
     setNombre(inicial?.name ?? '')
     setTipo(inicial?.trainingType ?? 'gym')
     setEjercicios(inicial?.exercises ?? [])
+    setPostersNuevos({})
   }, [visible, inicial])
 
-  const anadir = (e: { slug?: string; nombre: string; muscle?: string | null }) => {
+  const anadir = (e: { slug?: string; nombre: string; muscle?: string | null; poster?: string | null }) => {
     setEjercicios(prev => [...prev, {
       id: `${Date.now()}-${prev.length}`,
       slug: e.slug,
@@ -160,6 +203,10 @@ function Editor({ visible, inicial, onGuardar, onCerrar }: {
       name: e.nombre,
       sets: 3, reps: '8-12', weight: '', rest: 90,
     }])
+    if (e.slug && e.poster) {
+      const { slug, poster } = e as { slug: string; poster: string }
+      setPostersNuevos(p => ({ ...p, [slug]: poster }))
+    }
     setBuscando(false)
   }
 
@@ -184,8 +231,18 @@ function Editor({ visible, inicial, onGuardar, onCerrar }: {
 
   return (
     <Modal visible={visible} animationType="slide" presentationStyle="fullScreen" onRequestClose={onCerrar}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <SafeAreaView style={ed.wrap}>
+      {/**
+        * El `SafeAreaProvider` va DENTRO del modal, y hace falta.
+        *
+        * Un `Modal` a pantalla completa monta su propia ventana, fuera del
+        * árbol de la app, así que el `SafeAreaView` de dentro no encontraba
+        * proveedor y sus márgenes salían a cero: «Cancelar» y «Guardar»
+        * aparecían pisados por el reloj y la batería del iPhone, sin forma de
+        * tocarlos bien. El proveedor mide esta ventana y los devuelve.
+        */}
+      <SafeAreaProvider>
+        <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+          <SafeAreaView style={ed.wrap}>
           <View style={ed.cabecera}>
             <TouchableOpacity onPress={onCerrar} hitSlop={10}><Text style={ed.cancelar}>Cancelar</Text></TouchableOpacity>
             <Text style={ed.titulo}>{inicial ? 'Editar rutina' : 'Nueva rutina'}</Text>
@@ -237,6 +294,10 @@ function Editor({ visible, inicial, onGuardar, onCerrar }: {
                   <View key={e.id} style={ed.ejercicio}>
                     <View style={ed.ejercicioCabecera}>
                       <Text style={ed.ejercicioNum}>{i + 1}</Text>
+                      <Miniatura
+                        poster={e.slug ? posters[e.slug] ?? postersNuevos[e.slug] : null}
+                        tam={40}
+                      />
                       <View style={{ flex: 1 }}>
                         <Text style={ed.ejercicioNombre} numberOfLines={1}>{e.name}</Text>
                         {e.muscle ? <Text style={ed.ejercicioSub}>{NOMBRE_GRUPO[e.muscle] ?? e.muscle}</Text> : null}
@@ -257,9 +318,10 @@ function Editor({ visible, inicial, onGuardar, onCerrar }: {
             </View>
           </ScrollView>
 
-          <Buscador visible={buscando} tipo={tipo} onElegir={anadir} onCerrar={() => setBuscando(false)} />
-        </SafeAreaView>
-      </KeyboardAvoidingView>
+            <Buscador visible={buscando} tipo={tipo} onElegir={anadir} onCerrar={() => setBuscando(false)} />
+          </SafeAreaView>
+        </KeyboardAvoidingView>
+      </SafeAreaProvider>
     </Modal>
   )
 }
@@ -288,8 +350,36 @@ export default function Rutinas() {
   const { routines, loadAll, saveRoutine, deleteRoutine } = useWorkoutStore()
   const [editor, setEditor] = useState(false)
   const [editando, setEditando] = useState<Routine | null>(null)
+  const [posters, setPosters] = useState<Record<string, string>>({})
 
   useEffect(() => { void loadAll() }, [loadAll])
+
+  /**
+   * Las imágenes de todos los ejercicios de todas las rutinas, de una vez.
+   *
+   * Las rutinas viven en el TELÉFONO y solo guardan el slug, así que la foto
+   * hay que pedirla. Una petición para todas y no una por tarjeta: con seis
+   * rutinas de seis ejercicios serían treinta y seis peticiones para pintar una
+   * sola pantalla.
+   *
+   * Depende de los slugs y no de `routines`: el objeto de las rutinas cambia de
+   * identidad al guardar cualquier cosa —hasta el nombre— y esto volvería a
+   * pedir las mismas imágenes cada vez.
+   */
+  const slugs = useMemo(
+    () => routines.flatMap(r => r.exercises.map(e => e.slug).filter((x): x is string => !!x)),
+    [routines],
+  )
+  const clave = slugs.join(',')
+
+  useEffect(() => {
+    if (!clave) { setPosters({}); return }
+    let vivo = true
+    getPosters(clave.split(','))
+      .then(p => { if (vivo) setPosters(p) })
+      .catch(() => {})
+    return () => { vivo = false }
+  }, [clave])
 
   const guardar = useCallback(async (r: Routine) => {
     await saveRoutine(r)
@@ -304,11 +394,33 @@ export default function Rutinas() {
     ])
   }
 
+  const empezar = (r: Routine) => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+    router.push(`/workout/active?routineId=${r.id}&mode=${modoDe(r.trainingType)}`)
+  }
+
+  /**
+   * La más reciente va de portada.
+   *
+   * La última que se creó es casi siempre la que se está usando: quien acaba de
+   * montar «Empuje B» va a entrenarla, no a mirar la de hace tres meses.
+   */
+  const ordenadas = useMemo(
+    () => [...routines].sort((a, b) => b.createdAt - a.createdAt),
+    [routines],
+  )
+  const [destacada, ...resto] = ordenadas
+
+  const postersDe = (r: Routine) =>
+    r.exercises.map(e => (e.slug ? posters[e.slug] ?? null : null))
+
   return (
     <Screen>
       <CabeceraSeccion
         titulo="Mis rutinas"
-        subtitulo={routines.length > 0 ? `${routines.length} guardadas` : 'Sesiones que repites'}
+        subtitulo={routines.length > 0
+          ? `${routines.length} ${routines.length === 1 ? 'guardada' : 'guardadas'}`
+          : 'Sesiones que repites'}
         derecha={
           <TouchableOpacity
             style={s.nueva}
@@ -324,63 +436,178 @@ export default function Rutinas() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ padding: Spacing[4], paddingBottom: 110, gap: Spacing[3] }}
       >
-        {routines.length === 0 ? (
+        {!destacada ? (
           <Vacio texto="Sin rutinas todavía. Una rutina es una sesión que repites: la guardas una vez y la empiezas de un toque. No hace falta para entrenar — también puedes ir sobre la marcha." />
         ) : (
-          routines.map((r, i) => (
-            <Animated.View key={r.id} entering={FadeInDown.delay(i * 50).duration(340)}>
-              <View style={s.tarjeta}>
-                <View style={s.tarjetaCabecera}>
-                  <MaterialIcon
-                    id={TIPOS.find(t => t.id === r.trainingType)?.icono ?? 'barbell'}
-                    size={20} color={Colors.neon.w2}
-                  />
-                  <View style={{ flex: 1 }}>
-                    <Text style={s.nombre} numberOfLines={1}>{r.name}</Text>
-                    <Text style={s.sub}>
-                      {r.exercises.length} ejercicios · ~{Math.round(r.estimatedMinutes)} min
-                    </Text>
-                  </View>
-                  <TouchableOpacity onPress={() => { setEditando(r); setEditor(true) }} hitSlop={8} style={{ padding: 4 }}>
-                    <Ionicons name="create-outline" size={18} color={Colors.neon.w3} />
-                  </TouchableOpacity>
-                  <TouchableOpacity onPress={() => borrar(r)} hitSlop={8} style={{ padding: 4 }}>
-                    <Ionicons name="trash-outline" size={17} color={Colors.neon.w4} />
-                  </TouchableOpacity>
-                </View>
+          <>
+            <Portada
+              rutina={destacada}
+              posters={postersDe(destacada)}
+              onEmpezar={() => empezar(destacada)}
+              onEditar={() => { setEditando(destacada); setEditor(true) }}
+              onBorrar={() => borrar(destacada)}
+            />
 
-                <View style={s.lista}>
-                  {r.exercises.slice(0, 4).map(e => (
-                    <Text key={e.id} style={s.listaItem} numberOfLines={1}>
-                      · {e.name} — {e.sets}×{e.reps}
-                    </Text>
-                  ))}
-                  {r.exercises.length > 4 && (
-                    <Text style={s.listaMas}>y {r.exercises.length - 4} más</Text>
-                  )}
-                </View>
+            {resto.length > 0 && <Text style={s.seccion}>LAS DEMÁS</Text>}
 
-                <TouchableOpacity
-                  style={s.empezar}
-                  onPress={() => router.push(`/workout/active?routineId=${r.id}&mode=${r.trainingType === 'home' ? 'home' : 'gym'}`)}
-                  activeOpacity={0.88}
-                >
-                  <Ionicons name="play" size={15} color="#fff" />
-                  <Text style={s.empezarTxt}>Empezar</Text>
-                </TouchableOpacity>
-              </View>
-            </Animated.View>
-          ))
+            {resto.map((r, i) => (
+              <Animated.View key={r.id} entering={FadeInDown.delay(Math.min(80 + i * 50, 380)).duration(340)}>
+                <Tarjeta
+                  rutina={r}
+                  posters={postersDe(r)}
+                  onEmpezar={() => empezar(r)}
+                  onEditar={() => { setEditando(r); setEditor(true) }}
+                  onBorrar={() => borrar(r)}
+                />
+              </Animated.View>
+            ))}
+          </>
         )}
       </ScrollView>
 
       <Editor
         visible={editor}
         inicial={editando}
+        posters={posters}
         onGuardar={guardar}
         onCerrar={() => { setEditor(false); setEditando(null) }}
       />
     </Screen>
+  )
+}
+
+/**
+ * La rutina destacada, sobre su fotografía.
+ *
+ * Lleva los tres primeros ejercicios con su imagen y su prescripción, que es lo
+ * que de verdad se quiere saber antes de pulsar «Empezar»: si hoy toca lo que
+ * uno tenía pensado. Un título y un número de ejercicios no lo contestan.
+ */
+function Portada({ rutina, posters, onEmpezar, onEditar, onBorrar }: {
+  rutina: Routine
+  posters: (string | null)[]
+  onEmpezar: () => void
+  onEditar: () => void
+  onBorrar: () => void
+}) {
+  const series = rutina.exercises.reduce((a, e) => a + e.sets, 0)
+
+  return (
+    <Animated.View entering={FadeIn.duration(420)} style={s.portada}>
+      <Image
+        source={fotoDeTipo(rutina.trainingType)}
+        style={StyleSheet.absoluteFill}
+        contentFit="cover"
+        transition={300}
+      />
+      <LinearGradient
+        colors={['rgba(5,5,6,0.30)', 'rgba(5,5,6,0.80)', 'rgba(5,5,6,0.98)']}
+        locations={[0, 0.42, 1]}
+        style={StyleSheet.absoluteFill}
+        pointerEvents="none"
+      />
+
+      <View style={s.portadaDentro}>
+        <View style={s.portadaArriba}>
+          <View style={s.etiqueta}>
+            <Text style={s.etiquetaTxt}>LA MÁS RECIENTE</Text>
+          </View>
+          {/* Editar Y BORRAR. Con solo editar, quien tuviera una única rutina
+              no tenía forma de quitarla: la papelera vive en las tarjetas de
+              abajo y con una sola rutina no hay tarjetas de abajo. */}
+          <View style={s.accionesPortada}>
+            <TouchableOpacity onPress={onEditar} hitSlop={10} style={s.accionPortada}>
+              <Ionicons name="create-outline" size={17} color={Colors.neon.white} />
+            </TouchableOpacity>
+            <TouchableOpacity onPress={onBorrar} hitSlop={10} style={s.accionPortada}>
+              <Ionicons name="trash-outline" size={16} color={Colors.neon.white} />
+            </TouchableOpacity>
+          </View>
+        </View>
+
+        <View style={{ gap: Spacing[3] }}>
+          <View>
+            <Text style={s.portadaTitulo} numberOfLines={2}>{rutina.name}</Text>
+            <Text style={s.portadaSub}>
+              {NOMBRE_TIPO[rutina.trainingType] ?? rutina.trainingType}
+              {' · '}{rutina.exercises.length} {rutina.exercises.length === 1 ? 'ejercicio' : 'ejercicios'}
+              {' · '}{series} series
+              {' · ~'}{Math.round(rutina.estimatedMinutes)} min
+            </Text>
+          </View>
+
+          <View style={s.portadaLista}>
+            {rutina.exercises.slice(0, 3).map((e, i) => (
+              <View key={e.id} style={s.portadaFila}>
+                <Miniatura poster={posters[i]} tam={38} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.portadaFilaNombre} numberOfLines={1}>{e.name}</Text>
+                  <Text style={s.portadaFilaSub}>{e.sets} × {e.reps}</Text>
+                </View>
+              </View>
+            ))}
+            {rutina.exercises.length > 3 && (
+              <Text style={s.portadaMas}>y {rutina.exercises.length - 3} más</Text>
+            )}
+          </View>
+
+          <TouchableOpacity style={s.cta} onPress={onEmpezar} activeOpacity={0.88}>
+            <Text style={s.ctaTxt}>Empezar</Text>
+            <View style={s.ctaFlecha}>
+              <Ionicons name="play" size={15} color={Colors.neon.void} />
+            </View>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Animated.View>
+  )
+}
+
+function Tarjeta({ rutina, posters, onEmpezar, onEditar, onBorrar }: {
+  rutina: Routine
+  posters: (string | null)[]
+  onEmpezar: () => void
+  onEditar: () => void
+  onBorrar: () => void
+}) {
+  return (
+    <View style={s.tarjeta}>
+      <View style={s.tarjetaCabecera}>
+        <MaterialIcon
+          id={TIPOS.find(t => t.id === rutina.trainingType)?.icono ?? 'barbell'}
+          size={20} color={Colors.neon.w2}
+        />
+        <View style={{ flex: 1 }}>
+          <Text style={s.nombre} numberOfLines={1}>{rutina.name}</Text>
+          <Text style={s.sub}>
+            {rutina.exercises.length} ejercicios · ~{Math.round(rutina.estimatedMinutes)} min
+          </Text>
+        </View>
+        <TouchableOpacity onPress={onEditar} hitSlop={8} style={{ padding: 4 }}>
+          <Ionicons name="create-outline" size={18} color={Colors.neon.w3} />
+        </TouchableOpacity>
+        <TouchableOpacity onPress={onBorrar} hitSlop={8} style={{ padding: 4 }}>
+          <Ionicons name="trash-outline" size={17} color={Colors.neon.w4} />
+        </TouchableOpacity>
+      </View>
+
+      {/* Las imágenes en mazo y los nombres al lado: la lista de texto de antes
+          ocupaba cuatro líneas y aun así no decía de qué iba la rutina. */}
+      <View style={s.resumen}>
+        <MazoMiniaturas posters={posters} tam={40} max={3} />
+        <View style={{ flex: 1 }}>
+          <Text style={s.resumenTxt} numberOfLines={2}>
+            {rutina.exercises.slice(0, 3).map(e => e.name).join(' · ')}
+            {rutina.exercises.length > 3 ? ` y ${rutina.exercises.length - 3} más` : ''}
+          </Text>
+        </View>
+      </View>
+
+      <TouchableOpacity style={s.empezar} onPress={onEmpezar} activeOpacity={0.88}>
+        <Ionicons name="play" size={15} color="#fff" />
+        <Text style={s.empezarTxt}>Empezar</Text>
+      </TouchableOpacity>
+    </View>
   )
 }
 
@@ -390,6 +617,63 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: Colors.neon.red,
   },
+  seccion: { fontSize: 10, fontWeight: '800', color: Colors.neon.w3, letterSpacing: 1.6, marginTop: Spacing[2] },
+
+  // ── Portada ────────────────────────────────────────────────────────────────
+  portada: {
+    borderRadius: 24, overflow: 'hidden',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: Colors.neon.void,
+  },
+  /**
+   * Sin altura fija, al revés que la portada del historial.
+   *
+   * Aquí dentro va una lista de hasta tres ejercicios con nombres de largo
+   * imprevisible; con un alto fijo, «Elevación lateral con mancuernas sentado»
+   * en dos líneas empujaría el botón de empezar fuera de la tarjeta.
+   */
+  portadaDentro: { padding: Spacing[4], gap: Spacing[5], minHeight: 300, justifyContent: 'space-between' },
+  portadaArriba: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  etiqueta: {
+    alignSelf: 'flex-start',
+    paddingHorizontal: Spacing[3], paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+  },
+  etiquetaTxt: { fontSize: 9, fontWeight: '800', color: Colors.neon.void, letterSpacing: 1.1 },
+  accionesPortada: { flexDirection: 'row', gap: Spacing[2] },
+  accionPortada: {
+    width: 34, height: 34, borderRadius: 17,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.14)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+  },
+  portadaTitulo: {
+    fontSize: 28, fontWeight: '800', color: Colors.neon.white,
+    letterSpacing: -0.8, lineHeight: 32,
+  },
+  portadaSub: { fontSize: 12, color: Colors.neon.w2, marginTop: 4 },
+
+  portadaLista: { gap: Spacing[2] },
+  portadaFila: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
+  portadaFilaNombre: { fontSize: 13, fontWeight: '700', color: Colors.neon.white },
+  portadaFilaSub: { fontSize: 11, color: Colors.neon.w2, marginTop: 1 },
+  portadaMas: { fontSize: 11, color: Colors.neon.w3, fontStyle: 'italic', marginLeft: 50 },
+
+  cta: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.neon.white,
+    borderRadius: BorderRadius.full,
+    paddingLeft: Spacing[5], paddingRight: 5, paddingVertical: 5,
+  },
+  ctaTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.neon.void },
+  ctaFlecha: {
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.neon.redCore,
+  },
+
+  // ── Tarjetas ───────────────────────────────────────────────────────────────
   tarjeta: {
     gap: Spacing[3], padding: Spacing[4],
     backgroundColor: Colors.neon.pane,
@@ -399,9 +683,8 @@ const s = StyleSheet.create({
   tarjetaCabecera: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
   nombre: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.neon.white },
   sub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
-  lista: { gap: 2 },
-  listaItem: { fontSize: 12, color: Colors.neon.w2 },
-  listaMas: { fontSize: 11, color: Colors.neon.w3, fontStyle: 'italic' },
+  resumen: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
+  resumenTxt: { fontSize: 12, color: Colors.neon.w2, lineHeight: 17 },
   empezar: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
     paddingVertical: Spacing[3],
@@ -499,7 +782,6 @@ const b = StyleSheet.create({
     paddingVertical: Spacing[3],
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
   },
-  punto: { width: 8, height: 8, borderRadius: 4 },
   filaNombre: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
   filaSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
   vacio: { fontSize: Typography.fontSize.sm, color: Colors.neon.w3, textAlign: 'center', marginTop: Spacing[6] },

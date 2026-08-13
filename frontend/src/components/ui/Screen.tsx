@@ -10,13 +10,33 @@ import { useAppTheme } from '@/context/ThemeContext'
 type IconName = React.ComponentProps<typeof Ionicons>['name']
 
 // ── Screen ────────────────────────────────────────────────────────────────────
-// Fondo ambiental compartido por TODA la app. Reemplaza el negro plano #080808
-// que hacía que cada pantalla se viera idéntica y sin profundidad.
+/**
+ * Fondo ambiental compartido por TODA la app.
+ *
+ * UN SOLO degradado, vertical y a pantalla completa: del acento arriba a
+ * transparente abajo. En tema oscuro eso es negro con rojo; en claro, el
+ * interceptor de `@/theme/remap` gira el rojo al azul de marca y queda blanco
+ * con azul. Un único color de tinte, no dos.
+ *
+ * ── Por qué se quitaron los dos resplandores de antes ───────────────────────
+ * Había un degradado rojo arriba (alto fijo de 420) y otro turquesa a la
+ * derecha (ancho fijo de 260), los dos en rectángulos MÁS PEQUEÑOS que la
+ * pantalla. Un degradado que no acaba en transparente justo en el borde de su
+ * caja se corta en seco ahí, y eso dibujaba dos costuras rectas visibles en
+ * todas las pantallas: una vertical a 260 px del lado derecho —donde moría el
+ * turquesa— y otra horizontal a 420 px de arriba. La app parecía partida en un
+ * cuadrante rojizo y otro azulado.
+ *
+ * Las dos reglas que lo evitan, y que hay que respetar si algún día se añade
+ * otra capa aquí:
+ *   1. La caja del degradado es la PANTALLA ENTERA, no un trozo.
+ *   2. El último color es `transparent`, para que el borde no se note.
+ */
 
 interface ScreenProps {
   children: React.ReactNode
   style?: ViewStyle
-  /** Tinte del resplandor superior. Por defecto el azul de marca. */
+  /** Tinte del fondo. Por defecto el acento de marca. */
   tint?: string
 }
 
@@ -26,21 +46,15 @@ export function Screen({ children, style, tint }: ScreenProps) {
   return (
     <View style={[sc.root, { backgroundColor: T.bg }]}>
       <LinearGradient
-        colors={[`${accent}22`, `${accent}06`, 'transparent']}
-        start={{ x: 0.05, y: 0 }}
-        end={{ x: 0.85, y: 0.55 }}
-        style={sc.glowTop}
+        colors={[`${accent}1F`, `${accent}0A`, 'transparent']}
+        // Se apaga en el primer 55 % de la altura: lo que se busca es que la
+        // cabecera tenga temperatura, no teñir la pantalla entera.
+        locations={[0, 0.22, 0.55]}
+        start={{ x: 0.5, y: 0 }}
+        end={{ x: 0.5, y: 1 }}
+        style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
-      {T.isDark && (
-        <LinearGradient
-          colors={['transparent', 'rgba(0,194,192,0.07)', 'transparent']}
-          start={{ x: 1, y: 0 }}
-          end={{ x: 0.2, y: 0.7 }}
-          style={sc.glowRight}
-          pointerEvents="none"
-        />
-      )}
       <SafeAreaView style={[sc.safe, style]} edges={['top']}>
         {children}
       </SafeAreaView>
@@ -51,8 +65,6 @@ export function Screen({ children, style, tint }: ScreenProps) {
 const sc = StyleSheet.create({
   root: { flex: 1 },
   safe: { flex: 1 },
-  glowTop: { position: 'absolute', top: 0, left: 0, right: 0, height: 420 },
-  glowRight: { position: 'absolute', top: 0, right: 0, width: 260, height: 560 },
 })
 
 // ── ScreenHeader ──────────────────────────────────────────────────────────────

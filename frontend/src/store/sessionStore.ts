@@ -80,6 +80,17 @@ interface SesionLocal {
   source: Origen
   title: string
   routineId?: string
+  /**
+   * De qué día de qué programa es esta sesión.
+   *
+   * Viaja con la sesión —también por disco— porque el servidor la necesita al
+   * CERRARLA para adelantar el programa. Si solo estuviera en la dirección de
+   * la pantalla, cerrar el entrenamiento después de recuperarlo del teléfono no
+   * movería el programa y el día se repetiría para siempre.
+   */
+  programId?: string
+  programWeek?: number
+  programDay?: number
   empezadaEn: number
   /** Segundos que la sesión estuvo pausada. Se restan de la duración. */
   pausadaSegundos: number
@@ -108,7 +119,10 @@ interface Estado {
   pendientes: () => number
 
   restaurar: () => Promise<void>
-  empezar: (o: { mode: Modo; source: Origen; title: string; routineId?: string }) => Promise<{ reanudada: boolean }>
+  empezar: (o: {
+    mode: Modo; source: Origen; title: string; routineId?: string
+    programId?: string; programWeek?: number; programDay?: number
+  }) => Promise<{ reanudada: boolean }>
   anotarSerie: (s: Omit<SerieLocal, 'clientId' | 'pendiente' | 'hechaEn' | 'id' | 'est1RM'>) => Promise<void>
   quitarSerie: (clientId: string) => Promise<void>
   empezarDescanso: (segundos: number) => void
@@ -249,9 +263,10 @@ export const useSessionStore = create<Estado>((set, get) => ({
    * un giro de carga sobre una barra de cobertura. Si el servidor no está, se
    * entrena igual y la sesión se abre en cuanto vuelva la red.
    */
-  empezar: async ({ mode, source, title, routineId }) => {
+  empezar: async ({ mode, source, title, routineId, programId, programWeek, programDay }) => {
     const sesion: SesionLocal = {
       clientId: nuevoClientId(), mode, source, title, routineId,
+      programId, programWeek, programDay,
       empezadaEn: Date.now(), pausadaSegundos: 0, pausadaDesde: null,
     }
     set({ sesion, series: [], marcas: [], descansoHasta: null, ultimaSerieEn: null })
@@ -260,6 +275,7 @@ export const useSessionStore = create<Estado>((set, get) => ({
     try {
       const r = await abrirSesion({
         clientId: sesion.clientId, mode, source, title, routineId,
+        programId, programWeek, programDay,
       })
       // El servidor puede devolver OTRA sesión: la que ya estaba abierta y
       // nadie cerró. Se adopta entera, con sus series, en vez de empezar una
@@ -268,6 +284,12 @@ export const useSessionStore = create<Estado>((set, get) => ({
         clientId: r.session.client_id, id: r.session.id,
         mode: r.session.mode, source: r.session.source, title: r.session.title,
         routineId: r.session.routine_id ?? undefined,
+        // Del SERVIDOR, no de lo que se pidió: si se adoptó otra sesión que ya
+        // estaba abierta, el programa al que pertenece es el suyo, no el que
+        // acabamos de intentar empezar.
+        programId: (r.session as { program_id?: string | null }).program_id ?? undefined,
+        programWeek: (r.session as { program_week?: number | null }).program_week ?? undefined,
+        programDay: (r.session as { program_day?: number | null }).program_day ?? undefined,
         empezadaEn: new Date(r.session.started_at).getTime(),
         pausadaSegundos: 0, pausadaDesde: null,
       }

@@ -28,6 +28,8 @@ import {
   Alert, Modal, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { Image } from 'expo-image'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
@@ -38,12 +40,15 @@ import { useStreakStore } from '@/store/streakStore'
 import { useAchievementStore } from '@/store/achievementStore'
 import { historialEjercicio } from '@/services/sessionService'
 import type { Modo, TipoCarga, TipoSerie, Serie, Marca } from '@/services/sessionService'
-import { listExercises, ExerciseCard, colorDe } from '@/services/exerciseService'
+import { listExercises, getPosters, ExerciseCard } from '@/services/exerciseService'
 import { getEntrenamiento, leerReceta } from '@/services/quickService'
+import { getDia } from '@/services/programService'
 import { RestTimer } from '@/components/workout/RestTimer'
 import { PlateCalculator } from '@/components/workout/PlateCalculator'
 import { EffortPicker } from '@/components/workout/EffortPicker'
+import { Miniatura } from '@/components/workout/Miniatura'
 import { repartirDiscos } from '@/utils/discos'
+import { FOTOS, FOTO_MODO } from '@/constants/imagenes'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 // ── Formas locales ───────────────────────────────────────────────────────────
@@ -63,6 +68,22 @@ interface Hueco {
   seriesObjetivo: number
   repsObjetivo: string
   descanso: number
+  /**
+   * Póster firmado del catálogo.
+   *
+   * Los tres estados son distintos y hacen falta los tres: `undefined` es «aún
+   * no se ha preguntado» —y es lo que dispara la búsqueda—, `null` es «no tiene
+   * imagen» y una cadena es la imagen. Con solo dos estados, un ejercicio
+   * escrito a mano se pediría en bucle para siempre.
+   */
+  poster?: string | null
+  /**
+   * Lo que propone el programa para hoy. Rellena el formulario la primera vez
+   * y no manda: quien entrena lo cambia si hoy no toca eso, y en cuanto hay una
+   * serie registrada gana lo que se hizo de verdad.
+   */
+  pesoSugerido?: number | null
+  cargaSugerida?: TipoCarga
 }
 
 const MODOS: { id: Modo; label: string; icono: keyof typeof Ionicons.glyphMap; listo: boolean }[] = [
@@ -91,10 +112,22 @@ const num = (s: string): number | null => {
   return Number.isFinite(v) ? v : null
 }
 
+/**
+ * El cronómetro de la sesión.
+ *
+ * Pasa a horas al llegar a los sesenta minutos. Sin eso, una sesión larga —o
+ * una que se quedó abierta, que pasa— marcaba «204:53», y un reloj de más de
+ * cien minutos no se lee: hay que dividir mentalmente para saber que son tres
+ * horas y pico.
+ */
 const mmss = (segundos: number) => {
-  const m = Math.floor(segundos / 60)
-  const s = segundos % 60
-  return `${m}:${String(s).padStart(2, '0')}`
+  const s = Math.max(0, Math.round(segundos))
+  const h = Math.floor(s / 3600)
+  const m = Math.floor((s % 3600) / 60)
+  const seg = s % 60
+  return h > 0
+    ? `${h}:${String(m).padStart(2, '0')}:${String(seg).padStart(2, '0')}`
+    : `${m}:${String(seg).padStart(2, '0')}`
 }
 
 // ── Buscador de ejercicios ───────────────────────────────────────────────────
@@ -111,7 +144,7 @@ const mmss = (segundos: number) => {
 function BuscadorEjercicio({ visible, modo, onElegir, onCerrar }: {
   visible: boolean
   modo: Modo
-  onElegir: (e: { slug?: string; nombre: string; muscle?: string | null }) => void
+  onElegir: (e: { slug?: string; nombre: string; muscle?: string | null; poster?: string | null }) => void
   onCerrar: () => void
 }) {
   const [q, setQ] = useState('')
@@ -170,10 +203,16 @@ function BuscadorEjercicio({ visible, modo, onElegir, onCerrar }: {
             <TouchableOpacity
               key={e.slug}
               style={b.fila}
-              onPress={() => { onElegir({ slug: e.slug, nombre: e.name, muscle: e.muscle }); setQ('') }}
+              onPress={() => {
+                onElegir({ slug: e.slug, nombre: e.name, muscle: e.muscle, poster: e.poster })
+                setQ('')
+              }}
               activeOpacity={0.8}
             >
-              <View style={[b.punto, { backgroundColor: colorDe(e.muscle) }]} />
+              {/* La imagen, no un punto de color. Buscando «press» salen ocho
+                  variantes y la foto es lo que distingue la inclinada de la
+                  declinada sin leerse los ocho nombres enteros. */}
+              <Miniatura poster={e.poster} tam={44} />
               <View style={{ flex: 1 }}>
                 <Text style={b.filaNombre}>{e.name}</Text>
                 <Text style={b.filaSub}>{e.muscleEs ?? '—'} · {e.equipmentEs}</Text>
@@ -235,7 +274,12 @@ function ElegirModo({ onElegir }: { onElegir: (m: Modo) => void }) {
 export default function SesionActiva() {
   useKeepAwake()   // la pantalla no se apaga a mitad de una serie
 
-  const { routineId, mode, quick } = useLocalSearchParams<{ routineId?: string; mode?: Modo; quick?: string }>()
+  const {
+    routineId, mode, quick, programId, week, day, title,
+  } = useLocalSearchParams<{
+    routineId?: string; mode?: Modo; quick?: string
+    programId?: string; week?: string; day?: string; title?: string
+  }>()
   const { routines } = useWorkoutStore()
   const { markActivity } = useStreakStore()
   const { addXP } = useAchievementStore()
@@ -255,14 +299,20 @@ export default function SesionActiva() {
   const [terminada, setTerminada] = useState<{
     duracion: number; series: number; volumen: number
     /**
-     * Las marcas se COPIAN aquí al cerrar, no se leen del store.
+     * Las marcas y el título se COPIAN aquí al cerrar, no se leen del store.
      *
      * `terminar()` vacía el store —tiene que hacerlo: la sesión ya no está
      * abierta— y eso borraba los récords justo antes de que el resumen los
      * pintara. Se batían dos marcas y la pantalla de felicitación salía
      * vacía, que es el peor momento posible para perder ese dato.
+     *
+     * Con el título pasaba lo mismo y se veía menos: `sesion` ya era null al
+     * pintar, así que el resumen de una rutina llamada «Empuje A» titulaba
+     * «Entrenamiento», el valor de reserva. No parecía un fallo, solo un
+     * resumen genérico.
      */
     marcas: typeof marcas
+    titulo: string
   } | null>(null)
   const [reloj, setReloj] = useState(0)
 
@@ -293,15 +343,113 @@ export default function SesionActiva() {
   // ── Arranque ───────────────────────────────────────────────────────────────
   useEffect(() => { void restaurar() }, [restaurar])
 
+  /**
+   * Un día de programa se pide igual que una receta: por su semana y su día.
+   *
+   * No se arrastran seis ejercicios con sus pesos por la barra de direcciones.
+   * Y se pide con `week`/`day` explícitos, no «el de hoy», para que repetir un
+   * día pasado desde la línea de tiempo traiga ESE día y no el que toca ahora.
+   */
+  useEffect(() => {
+    if (!programId || huecos.length > 0) return
+    let vivo = true
+    getDia(week ? Number(week) : undefined, day ? Number(day) : undefined)
+      .then(d => {
+        if (!vivo) return
+        setTituloGenerado(d.nombre)
+        setHuecos(d.ejercicios.map((e, i) => ({
+          orderIndex: i,
+          slug: e.slug,
+          nombre: e.nombre,
+          muscle: e.muscle,
+          seriesObjetivo: e.series,
+          repsObjetivo: e.reps ?? (e.duracion ? `${e.duracion}s` : '—'),
+          descanso: e.descanso,
+          poster: (e.slug ? d.posters[e.slug] : null) ?? null,
+          // El peso que propuso el programa, para rellenar el formulario. Es
+          // una sugerencia: quien entrena lo cambia si hoy no toca.
+          pesoSugerido: e.pesoKg,
+          cargaSugerida: e.carga,
+        })))
+      })
+      .catch(() => { if (vivo) setTituloGenerado(title ?? 'Entrenamiento') })
+    return () => { vivo = false }
+  }, [programId, week, day, huecos.length, title])
+
+  /**
+   * Se pidió abrir un entrenamiento y ya había OTRO en curso.
+   *
+   * Pasa más de lo que parece: se deja una sesión a medias —o se queda una
+   * huérfana porque el servidor no respondió al abrirla— y días después se
+   * entra desde el día del programa. Como el store no abre una sesión nueva
+   * mientras haya otra viva, se recuperaba la vieja EN SILENCIO: la pantalla
+   * decía «Empuje» y quien entrenaba creía estar haciendo su día del plan,
+   * pero la sesión no llevaba programa y al terminar el plan no avanzaba.
+   *
+   * Ahora se pregunta. Y no se descarta nada por nuestra cuenta: lo registrado
+   * es trabajo de alguien.
+   */
+  const [conflicto, setConflicto] = useState(false)
+
+  useEffect(() => {
+    if (!sesion || cargando || conflicto) return
+
+    const pedido = programId
+      ? { tipo: 'programa', id: `${programId}:${week}:${day}` }
+      : rutina ? { tipo: 'rutina', id: rutina.id }
+      : quick ? { tipo: 'rapido', id: quick }
+      : null
+    if (!pedido) return
+
+    const enCurso = sesion.programId
+      ? `${sesion.programId}:${sesion.programWeek}:${sesion.programDay}`
+      : sesion.routineId ?? null
+
+    if (enCurso === pedido.id) return   // es el mismo: no hay nada que preguntar
+
+    setConflicto(true)
+    Alert.alert(
+      'Ya tenías un entrenamiento abierto',
+      `Sigue abierto «${sesion.title}»${series.length > 0 ? ` con ${series.length} ${series.length === 1 ? 'serie' : 'series'}` : ' sin series registradas'}. ¿Qué hacemos?`,
+      [
+        { text: `Seguir con «${sesion.title}»`, style: 'cancel' },
+        {
+          text: 'Descartarlo y empezar lo nuevo',
+          style: 'destructive',
+          onPress: async () => { await descartar(); setConflicto(false) },
+        },
+      ],
+    )
+  }, [sesion, cargando, conflicto, programId, week, day, rutina, quick, series.length, descartar])
+
   useEffect(() => {
     if (sesion || cargando) return
-    if (!rutina && !mode && !quick) return   // sin nada que abrir: se pregunta el modo
+    if (!rutina && !mode && !quick && !programId) return   // sin nada que abrir: se pregunta el modo
+
+    /**
+     * Con una receta, se espera al título del generador antes de abrir.
+     *
+     * Los dos efectos —abrir la sesión y pedir el entrenamiento generado—
+     * arrancaban a la vez, y abrir siempre ganaba la carrera: la sesión se
+     * creaba con «Entrenamiento libre» y el título de verdad llegaba un
+     * instante tarde, cuando ya no se vuelve a llamar. Por eso el historial
+     * acababa lleno de entradas idénticas llamadas «Entrenamiento libre», que
+     * es justo lo que hace inútil una lista de entrenamientos.
+     *
+     * La espera son milisegundos y no puede quedarse colgada: si el generador
+     * falla, su `catch` pone un título de reserva y esto sigue.
+     */
+    // Lo mismo para un día de programa: su nombre llega con el día.
+    if ((quick || programId) && !tituloGenerado) return
 
     void empezar({
       mode: (mode as Modo) ?? 'gym',
-      source: rutina ? 'routine' : 'freestyle',
+      source: programId ? 'program' : rutina ? 'routine' : 'freestyle',
       title: tituloGenerado ?? rutina?.name ?? 'Entrenamiento libre',
       routineId: rutina?.id,
+      programId,
+      programWeek: week ? Number(week) : undefined,
+      programDay: day ? Number(day) : undefined,
     }).then(({ reanudada }) => {
       if (reanudada) {
         Alert.alert(
@@ -310,7 +458,7 @@ export default function SesionActiva() {
         )
       }
     })
-  }, [sesion, cargando, rutina, mode, quick, tituloGenerado, empezar])
+  }, [sesion, cargando, rutina, mode, quick, programId, week, day, tituloGenerado, empezar])
 
   useEffect(() => {
     if (!quick || huecos.length > 0) return
@@ -329,9 +477,15 @@ export default function SesionActiva() {
           seriesObjetivo: e.series,
           repsObjetivo: e.reps,
           descanso: e.descanso,
+          // El generador ya devuelve el póster firmado: no hay que volver a
+          // pedirlo. `?? null` para no dejarlo en «sin preguntar».
+          poster: e.poster ?? null,
         })))
       })
-      .catch(() => {})
+      // Si el generador no responde, un título de reserva DESBLOQUEA la
+      // apertura de la sesión. Sin esto, quien pulsara «Empezar ahora» sin
+      // cobertura se quedaría mirando un indicador de carga para siempre.
+      .catch(() => { if (vivo) setTituloGenerado('Entrenamiento libre') })
     return () => { vivo = false }
   }, [quick, huecos.length])
 
@@ -340,12 +494,45 @@ export default function SesionActiva() {
     if (huecos.length > 0 || !rutina) return
     setHuecos(rutina.exercises.map((e, i) => ({
       orderIndex: i,
+      // El slug ESTABA guardado en la rutina y se estaba tirando aquí. Sin él,
+      // las series de un entrenamiento hecho desde una rutina entraban en el
+      // historial por nombre y no por ejercicio del catálogo, así que no
+      // casaban con las mismas hechas desde la biblioteca.
+      slug: e.slug,
+      muscle: e.muscle,
       nombre: e.name,
       seriesObjetivo: e.sets,
       repsObjetivo: e.reps,
       descanso: e.rest,
     })))
   }, [rutina, huecos.length])
+
+  /**
+   * Las imágenes que falten, de una tacada.
+   *
+   * Cubre los dos caminos que no las traen: una rutina guardada en el teléfono
+   * —que solo tiene el slug— y una sesión recuperada del servidor a mitad de
+   * entrenamiento. Los ejercicios escritos a mano no tienen slug y se quedan
+   * fuera de la petición.
+   *
+   * Al responder marca TODOS los pedidos, encontrados o no: un ejercicio sin
+   * imagen pasa de «sin preguntar» a `null` y deja de entrar en la lista, que
+   * es lo que impide que esto se pida en bucle.
+   */
+  useEffect(() => {
+    const faltan = huecos
+      .filter(h => h.slug && h.poster === undefined)
+      .map(h => h.slug as string)
+    if (faltan.length === 0) return
+
+    let vivo = true
+    void getPosters(faltan).then(p => {
+      if (!vivo) return
+      setHuecos(prev => prev.map(h =>
+        h.slug && h.poster === undefined ? { ...h, poster: p[h.slug] ?? null } : h))
+    })
+    return () => { vivo = false }
+  }, [huecos])
 
   // Las series recuperadas del servidor traen huecos que aquí no existen (se
   // cerró la app en mitad de un entrenamiento libre). Se reconstruyen.
@@ -401,11 +588,18 @@ export default function SesionActiva() {
       setPeso(ultima.weightKg != null ? String(ultima.weightKg) : '')
       setReps(ultima.reps != null ? String(ultima.reps) : '')
       setCarga(ultima.loadType)
+    } else if (hueco?.pesoSugerido != null) {
+      // Lo que propone el programa manda sobre «lo que hiciste la última vez»:
+      // es que YA lo ha tenido en cuenta, y encima sabe si toca subir o si esta
+      // semana es de descarga.
+      setPeso(String(hueco.pesoSugerido))
+      setReps(hueco.repsObjetivo.match(/\d+/)?.[0] ?? '')
+      setCarga(hueco.cargaSugerida ?? 'weight')
     } else {
       const previa = ultimaVez?.sets?.[0]
       setPeso(previa?.weight_kg != null ? String(previa.weight_kg) : '')
       setReps(previa?.reps != null ? String(previa.reps) : (hueco?.repsObjetivo.match(/\d+/)?.[0] ?? ''))
-      setCarga(modo === 'home' ? 'bodyweight' : 'weight')
+      setCarga(hueco?.cargaSugerida ?? (modo === 'home' ? 'bodyweight' : 'weight'))
     }
     setRir(null)
     setTipo('normal')
@@ -446,10 +640,12 @@ export default function SesionActiva() {
     setRir(null)
   }, [hueco, reps, peso, carga, tipo, rir, seriesDelHueco.length, anotarSerie, empezarDescanso])
 
-  const anadirHueco = (e: { slug?: string; nombre: string; muscle?: string | null }) => {
+  const anadirHueco = (e: { slug?: string; nombre: string; muscle?: string | null; poster?: string | null }) => {
     const orderIndex = huecos.length === 0 ? 0 : Math.max(...huecos.map(h => h.orderIndex)) + 1
     setHuecos(h => [...h, {
       orderIndex, slug: e.slug, nombre: e.nombre, muscle: e.muscle,
+      // Llega firmado del buscador: pedirlo otra vez sería un viaje de más.
+      poster: e.poster ?? null,
       seriesObjetivo: 3, repsObjetivo: '8-12', descanso: 90,
     }])
     setActual(huecos.length)
@@ -474,6 +670,7 @@ export default function SesionActiva() {
 
     // Se copian ANTES de cerrar: `terminar` limpia el store.
     const marcasDeLaSesion = [...marcas]
+    const tituloDeLaSesion = sesion?.title ?? 'Entrenamiento'
 
     const guardada = await terminar()
     if (!guardada) {
@@ -486,7 +683,10 @@ export default function SesionActiva() {
 
     await markActivity(new Date().toISOString().slice(0, 10), { loggedWorkout: true })
     await addXP(25 + marcasDeLaSesion.length * 15)
-    setTerminada({ duracion, series: totalSeries, volumen, marcas: marcasDeLaSesion })
+    setTerminada({
+      duracion, series: totalSeries, volumen,
+      marcas: marcasDeLaSesion, titulo: tituloDeLaSesion,
+    })
   }
 
   const salir = () => {
@@ -503,9 +703,31 @@ export default function SesionActiva() {
 
   // ── Pantallas ──────────────────────────────────────────────────────────────
 
-  if (!sesion && !rutina && !mode && !quick) return <ElegirModo onElegir={m => router.setParams({ mode: m })} />
+  /**
+   * El RESUMEN manda sobre todo lo demás, y por eso va el primero.
+   *
+   * Estaba por debajo de la pregunta del modo, y eso hacía desaparecer la
+   * pantalla de felicitación entera: `terminar()` vacía el store —tiene que
+   * hacerlo—, así que al cerrar un entrenamiento `sesion` pasa a null; si
+   * además se había entrado sin parámetros en la dirección —que es justo lo que
+   * hace «Seguir entrenando» desde la portada— se cumplía la condición de
+   * «no hay nada que abrir» y la app preguntaba «¿cómo entrenas hoy?» a alguien
+   * que acababa de terminar de entrenar. Las cifras, los récords recién batidos
+   * y el resumen no se veían nunca por ese camino.
+   */
+  if (terminada) {
+    return (
+      <Resumen
+        datos={terminada}
+        marcas={terminada.marcas}
+        titulo={terminada.titulo}
+        modo={modo}
+        posters={huecos.map(h => h.poster ?? null)}
+      />
+    )
+  }
 
-  if (terminada) return <Resumen datos={terminada} marcas={terminada.marcas} titulo={sesion?.title ?? 'Entrenamiento'} />
+  if (!sesion && !rutina && !mode && !quick) return <ElegirModo onElegir={m => router.setParams({ mode: m })} />
 
   if (!sesion) {
     return (
@@ -550,19 +772,33 @@ export default function SesionActiva() {
           {huecos.map((h, i) => {
             const hechas = series.filter(x => x.orderIndex === h.orderIndex).length
             const activo = i === actual
+            const completo = hechas >= h.seriesObjetivo
             return (
               <TouchableOpacity
                 key={h.orderIndex}
                 style={[s.tiraChip, activo && s.tiraChipOn]}
-                onPress={() => setActual(i)}
+                onPress={() => { void Haptics.selectionAsync(); setActual(i) }}
                 activeOpacity={0.85}
               >
-                <Text style={[s.tiraNombre, activo && s.tiraNombreOn]} numberOfLines={1}>
-                  {h.nombre}
-                </Text>
-                <Text style={[s.tiraCuenta, activo && { color: Colors.neon.white }]}>
-                  {hechas}/{h.seriesObjetivo}
-                </Text>
+                {/* La miniatura, que es lo que hace navegable la tira: con seis
+                    ejercicios y nombres cortados a mitad, saber cuál era el
+                    tercero obligaba a tocarlos uno a uno. */}
+                <View>
+                  <Miniatura poster={h.poster} tam={34} />
+                  {completo && (
+                    <View style={s.tiraHecho}>
+                      <Ionicons name="checkmark" size={10} color={Colors.neon.void} />
+                    </View>
+                  )}
+                </View>
+                <View style={{ flexShrink: 1 }}>
+                  <Text style={[s.tiraNombre, activo && s.tiraNombreOn]} numberOfLines={1}>
+                    {h.nombre}
+                  </Text>
+                  <Text style={[s.tiraCuenta, activo && { color: Colors.neon.white }]}>
+                    {hechas}/{h.seriesObjetivo}
+                  </Text>
+                </View>
               </TouchableOpacity>
             )
           })}
@@ -588,21 +824,55 @@ export default function SesionActiva() {
             keyboardShouldPersistTaps="handled"
           >
             {/* ── Ejercicio ──────────────────────────────────────────── */}
-            <Text style={s.ejercicioNombre}>{hueco.nombre}</Text>
-            <Text style={s.ejercicioSub}>
-              {hueco.seriesObjetivo} series objetivo · {hueco.repsObjetivo} reps
-            </Text>
+            {/**
+              * La ficha del ejercicio en curso.
+              *
+              * ── Por qué el póster NO va de fondo a pantalla completa ────────
+              * Se probó y quedaba mal. Los pósters del catálogo son fichas
+              * anatómicas sobre fondo CLARO, y estirado a 148 px de alto el
+              * blanco gana al degradado: en una app negra sale una mancha
+              * luminosa en mitad de la pantalla. Funcionan en pequeño, dentro
+              * de un marco, que es como se usan en todas partes.
+              *
+              * Así que el fondo lo pone la fotografía del sitio donde se
+              * entrena —ya viene oscurecida y con viñeta— y el póster va de
+              * miniatura grande al lado. Se sigue viendo el movimiento y la
+              * pieza pega con el resto de la sección.
+              */}
+            <View style={s.ficha}>
+              <Image
+                source={FOTOS[FOTO_MODO[modo] ?? 'gimnasio'].fuente}
+                style={StyleSheet.absoluteFill}
+                contentFit="cover"
+                transition={220}
+              />
+              <LinearGradient
+                colors={['rgba(5,5,6,0.55)', 'rgba(5,5,6,0.88)']}
+                style={StyleSheet.absoluteFill}
+                pointerEvents="none"
+              />
 
-            {ultimaVez && ultimaVez.sets.length > 0 && (
-              <View style={s.ultimaVez}>
-                <Ionicons name="time-outline" size={14} color={Colors.neon.w3} />
-                <Text style={s.ultimaVezTxt}>
-                  La última vez: {ultimaVez.sets.slice(0, 3).map(x =>
-                    x.weight_kg ? `${x.weight_kg}×${x.reps}` : `${x.reps} reps`,
-                  ).join(' · ')}
-                </Text>
+              <View style={s.fichaDentro}>
+                <Miniatura poster={hueco.poster} tam={72} />
+                <View style={{ flex: 1, gap: 2 }}>
+                  <Text style={s.ejercicioNombre} numberOfLines={2}>{hueco.nombre}</Text>
+                  <Text style={s.ejercicioSub}>
+                    {hueco.seriesObjetivo} series objetivo · {hueco.repsObjetivo} reps
+                  </Text>
+
+                  {ultimaVez && ultimaVez.sets.length > 0 && (
+                    <View style={s.ultimaVez}>
+                      <Ionicons name="time-outline" size={13} color={Colors.neon.w2} />
+                      <Text style={s.ultimaVezTxt} numberOfLines={1}>
+                        La última vez: {ultimaVez.sets.slice(0, 3).map(x =>
+                          x.weight_kg ? `${x.weight_kg}×${x.reps}` : `${x.reps} reps`,
+                        ).join(' · ')}
+                      </Text>
+                    </View>
+                  )}
+                </View>
               </View>
-            )}
+            </View>
 
             {/* ── Series ya hechas ───────────────────────────────────── */}
             {seriesDelHueco.map((x, i) => (
@@ -694,7 +964,11 @@ export default function SesionActiva() {
 
             {actual + 1 < huecos.length && (
               <TouchableOpacity style={s.siguiente} onPress={() => setActual(a => a + 1)} activeOpacity={0.8}>
-                <Text style={s.siguienteTxt}>Siguiente: {huecos[actual + 1].nombre}</Text>
+                <Miniatura poster={huecos[actual + 1].poster} tam={36} />
+                <View style={{ flex: 1 }}>
+                  <Text style={s.siguienteEtiqueta}>SIGUIENTE</Text>
+                  <Text style={s.siguienteTxt} numberOfLines={1}>{huecos[actual + 1].nombre}</Text>
+                </View>
                 <Ionicons name="arrow-forward" size={16} color={Colors.neon.w2} />
               </TouchableOpacity>
             )}
@@ -841,16 +1115,25 @@ const f = StyleSheet.create({
 /**
  * Lo que se hizo, al terminar.
  *
- * `marcas` lleva valor por defecto: es una lista opcional y una pantalla de
- * felicitación no puede reventar por no haber batido ningún récord. Sin el
- * defecto, cualquier camino que no la pasara —un estado recuperado, una
- * versión anterior de la app— tiraba la pantalla entera con «Cannot read
- * property 'length' of undefined».
+ * ── Es el momento con más carga de toda la app ──────────────────────────────
+ * Alguien acaba de terminar de entrenar y esta es la pantalla que se lo
+ * reconoce. Antes era un tic gris y tres cajas: la misma información con la
+ * temperatura de un recibo. Ahora las cifras van sobre la fotografía del sitio
+ * donde se entrenó, con los kilos en grande, porque es el número que la gente
+ * mira.
+ *
+ * ── `marcas` lleva valor por defecto ────────────────────────────────────────
+ * Es una lista opcional y una pantalla de felicitación no puede reventar por no
+ * haber batido ningún récord. Sin el defecto, cualquier camino que no la pasara
+ * —un estado recuperado, una versión anterior de la app— tiraba la pantalla
+ * entera con «Cannot read property 'length' of undefined».
  */
-function Resumen({ datos, marcas = [], titulo }: {
+function Resumen({ datos, marcas = [], titulo, modo, posters = [] }: {
   datos: { duracion: number; series: number; volumen: number }
   marcas?: { metric: string; value: number; previous: number | null; exerciseName: string }[]
   titulo: string
+  modo: Modo
+  posters?: (string | null)[]
 }) {
   const NOMBRE_METRICA: Record<string, string> = {
     est_1rm: '1RM estimado',
@@ -860,86 +1143,142 @@ function Resumen({ datos, marcas = [], titulo }: {
     max_distance: 'distancia',
   }
 
+  const conImagen = posters.filter((p): p is string => !!p)
+
   return (
     <SafeAreaView style={s.contenedor}>
-      <ScrollView contentContainerStyle={r.wrap}>
-        <Ionicons name="checkmark-circle" size={56} color={Colors.neon.white} />
-        <Text style={r.titulo}>Entrenamiento guardado</Text>
-        <Text style={r.sub}>{titulo}</Text>
-
-        <View style={r.rejilla}>
-          <Dato valor={mmss(datos.duracion)} etiqueta="DURACIÓN" />
-          <Dato valor={String(datos.series)} etiqueta="SERIES" />
-          <Dato
-            valor={datos.volumen > 0 ? `${Math.round(datos.volumen).toLocaleString('es-ES')}` : '—'}
-            etiqueta="KG MOVIDOS"
+      <ScrollView contentContainerStyle={r.scroll} showsVerticalScrollIndicator={false}>
+        <View style={r.hero}>
+          <Image
+            source={FOTOS[FOTO_MODO[modo] ?? 'gimnasio'].fuente}
+            style={StyleSheet.absoluteFill}
+            contentFit="cover"
+            transition={320}
           />
+          <LinearGradient
+            colors={['rgba(5,5,6,0.25)', 'rgba(5,5,6,0.78)', 'rgba(5,5,6,0.98)']}
+            locations={[0, 0.45, 1]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
+
+          <View style={r.heroDentro}>
+            <View style={r.sello}>
+              <Ionicons name="checkmark" size={12} color={Colors.neon.void} />
+              <Text style={r.selloTxt}>GUARDADO</Text>
+            </View>
+
+            <View>
+              {/* Los kilos en grande cuando los hay; si no, las series. En un
+                  entrenamiento de peso corporal el volumen es cero, y presidir
+                  la pantalla con un cero después de cuarenta minutos de fondos
+                  es exactamente el mensaje contrario al que toca. */}
+              {datos.volumen > 0 ? (
+                <Text style={r.cifra}>
+                  {Math.round(datos.volumen).toLocaleString('es-ES')}
+                  <Text style={r.cifraUnidad}> kg</Text>
+                </Text>
+              ) : (
+                <Text style={r.cifra}>
+                  {datos.series}
+                  <Text style={r.cifraUnidad}> {datos.series === 1 ? 'serie' : 'series'}</Text>
+                </Text>
+              )}
+              <Text style={r.heroTitulo} numberOfLines={2}>{titulo}</Text>
+              {/* Las series solo si arriba mandan los kilos. Con peso corporal
+                  la cifra grande YA son las series, y repetirlas aquí deja un
+                  «1 serie / 4:38 entrenando · 1 serie» que parece un error. */}
+              <Text style={r.heroPie}>
+                {mmss(datos.duracion)} entrenando
+                {datos.volumen > 0
+                  ? ` · ${datos.series} ${datos.series === 1 ? 'serie' : 'series'}`
+                  : ''}
+              </Text>
+            </View>
+          </View>
         </View>
 
-        {marcas.length > 0 && (
-          <View style={r.marcas}>
-            <Text style={r.marcasTitulo}>
-              {marcas.length === 1 ? 'Un récord nuevo' : `${marcas.length} récords nuevos`}
-            </Text>
-            {marcas.map((m, i) => (
-              <View key={i} style={r.marca}>
-                <Ionicons name="trophy-outline" size={16} color={Colors.neon.red} />
-                <Text style={r.marcaTxt}>
-                  {m.exerciseName} · {NOMBRE_METRICA[m.metric] ?? m.metric} {m.value}
-                  {m.previous ? ` (antes ${m.previous})` : ''}
-                </Text>
-              </View>
-            ))}
-          </View>
-        )}
+        <View style={r.cuerpo}>
+          {conImagen.length > 0 && (
+            <View style={r.tira}>
+              {conImagen.slice(0, 6).map((p, i) => (
+                <Miniatura key={i} poster={p} tam={46} />
+              ))}
+            </View>
+          )}
 
-        <TouchableOpacity style={r.boton} onPress={() => router.replace('/(tabs)/workout')} activeOpacity={0.88}>
-          <Text style={r.botonTxt}>Volver a Entrena</Text>
-        </TouchableOpacity>
+          {marcas.length > 0 && (
+            <View style={r.marcas}>
+              <Text style={r.marcasTitulo}>
+                {marcas.length === 1 ? 'UN RÉCORD NUEVO' : `${marcas.length} RÉCORDS NUEVOS`}
+              </Text>
+              {marcas.map((m, i) => (
+                <View key={i} style={r.marca}>
+                  <Ionicons name="trophy" size={16} color={Colors.neon.red} />
+                  <Text style={r.marcaTxt}>
+                    {m.exerciseName} · {NOMBRE_METRICA[m.metric] ?? m.metric} {m.value}
+                    {m.previous ? ` (antes ${m.previous})` : ''}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          )}
+
+          <TouchableOpacity style={r.boton} onPress={() => router.replace('/(tabs)/workout')} activeOpacity={0.88}>
+            <Text style={r.botonTxt}>Volver a Entrena</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={r.secundario}
+            onPress={() => router.replace('/workout/history')}
+            activeOpacity={0.8}
+          >
+            <Text style={r.secundarioTxt}>Ver el historial</Text>
+          </TouchableOpacity>
+        </View>
       </ScrollView>
     </SafeAreaView>
   )
 }
 
-function Dato({ valor, etiqueta }: { valor: string; etiqueta: string }) {
-  return (
-    <View style={r.dato}>
-      <Text style={r.datoValor}>{valor}</Text>
-      <Text style={r.datoEtiqueta}>{etiqueta}</Text>
-    </View>
-  )
-}
-
 const r = StyleSheet.create({
-  wrap: { alignItems: 'center', padding: Spacing[6], gap: Spacing[4] },
-  titulo: { fontSize: 24, fontWeight: '800', color: Colors.neon.white, marginTop: Spacing[3] },
-  sub: { fontSize: Typography.fontSize.base, color: Colors.neon.w2 },
-  rejilla: { flexDirection: 'row', gap: Spacing[3], width: '100%', marginTop: Spacing[2] },
-  dato: {
-    flex: 1, alignItems: 'center', gap: 3,
-    backgroundColor: Colors.neon.pane,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1, borderColor: Colors.neon.edge,
-    paddingVertical: Spacing[4],
+  scroll: { paddingBottom: Spacing[6] },
+
+  hero: { height: 380, justifyContent: 'flex-end', backgroundColor: Colors.neon.void },
+  heroDentro: { padding: Spacing[5], gap: Spacing[5], justifyContent: 'space-between', flex: 1 },
+  sello: {
+    flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
+    paddingHorizontal: Spacing[3], paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.94)',
   },
-  datoValor: { fontSize: 20, fontWeight: '800', color: Colors.neon.white },
-  datoEtiqueta: { fontSize: 9, fontWeight: '700', color: Colors.neon.w3, letterSpacing: 1 },
+  selloTxt: { fontSize: 9, fontWeight: '800', color: Colors.neon.void, letterSpacing: 1.2 },
+  cifra: { fontSize: 58, fontWeight: '800', color: Colors.neon.white, letterSpacing: -2.4, lineHeight: 62 },
+  cifraUnidad: { fontSize: 22, fontWeight: '700', color: Colors.neon.w2, letterSpacing: 0 },
+  heroTitulo: { fontSize: Typography.fontSize.lg, fontWeight: '800', color: Colors.neon.white, marginTop: 2 },
+  heroPie: { fontSize: 12, color: Colors.neon.w2, marginTop: 4 },
+
+  cuerpo: { padding: Spacing[4], gap: Spacing[4] },
+  tira: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2] },
+
   marcas: {
-    width: '100%', gap: Spacing[2],
+    gap: Spacing[2],
     backgroundColor: Colors.neon.redDim,
     borderWidth: 1, borderColor: 'rgba(255,31,61,0.3)',
     borderRadius: BorderRadius.lg, padding: Spacing[4],
   },
-  marcasTitulo: { fontSize: 11, fontWeight: '800', color: Colors.neon.redCore, letterSpacing: 1 },
+  marcasTitulo: { fontSize: 10, fontWeight: '800', color: Colors.neon.redCore, letterSpacing: 1.3 },
   marca: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
   marcaTxt: { flex: 1, fontSize: Typography.fontSize.sm, color: Colors.neon.white },
+
   boton: {
-    width: '100%', alignItems: 'center',
+    alignItems: 'center',
     backgroundColor: Colors.neon.red,
     borderRadius: BorderRadius.lg, padding: Spacing[4],
-    marginTop: Spacing[2],
   },
   botonTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
+  secundario: { alignItems: 'center', paddingVertical: Spacing[2] },
+  secundarioTxt: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.w2 },
 })
 
 const b = StyleSheet.create({
@@ -970,7 +1309,6 @@ const b = StyleSheet.create({
     paddingVertical: Spacing[3], paddingHorizontal: Spacing[3],
     borderBottomWidth: 1, borderBottomColor: 'rgba(255,255,255,0.05)',
   },
-  punto: { width: 8, height: 8, borderRadius: 4 },
   filaNombre: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
   filaSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
   vacio: { fontSize: Typography.fontSize.sm, color: Colors.neon.w3, textAlign: 'center', marginTop: Spacing[6] },
@@ -996,11 +1334,15 @@ const s = StyleSheet.create({
 
   // El ScrollView horizontal lleva flexGrow:0 o crece dentro de la columna y
   // aplasta a sus hijos hasta dejarlos sin texto.
-  tira: { flexGrow: 0, borderBottomWidth: 1, borderBottomColor: Colors.neon.edge },
+  // Las DOS propiedades: `flexGrow:0` impide que crezca y aplaste a sus hijos,
+  // `flexShrink:0` impide que el contenido de debajo la comprima y corte las
+  // pastillas por la mitad. Es el mismo tropiezo que el menú de la sección.
+  tira: { flexGrow: 0, flexShrink: 0, borderBottomWidth: 1, borderBottomColor: Colors.neon.edge },
   tiraContenido: { paddingHorizontal: Spacing[4], paddingVertical: Spacing[3], gap: Spacing[2], alignItems: 'center' },
   tiraChip: {
-    maxWidth: 150,
-    paddingHorizontal: Spacing[3], paddingVertical: Spacing[2],
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[2],
+    maxWidth: 190,
+    paddingHorizontal: Spacing[2], paddingVertical: Spacing[2],
     borderRadius: BorderRadius.md,
     backgroundColor: Colors.neon.pane,
     borderWidth: 1, borderColor: Colors.neon.edge,
@@ -1009,6 +1351,14 @@ const s = StyleSheet.create({
   tiraNombre: { fontSize: 12, fontWeight: '700', color: Colors.neon.w2 },
   tiraNombreOn: { color: Colors.neon.white },
   tiraCuenta: { fontSize: 10, fontWeight: '700', color: Colors.neon.w3, marginTop: 1 },
+  /** El tic de «ya está», sobre la esquina de la miniatura. */
+  tiraHecho: {
+    position: 'absolute', right: -4, bottom: -4,
+    width: 16, height: 16, borderRadius: 8,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.neon.white,
+    borderWidth: 1.5, borderColor: Colors.neon.void,
+  },
   tiraAnadir: {
     width: 38, height: 38, borderRadius: BorderRadius.md,
     alignItems: 'center', justifyContent: 'center',
@@ -1016,17 +1366,35 @@ const s = StyleSheet.create({
     backgroundColor: Colors.neon.pane,
   },
 
-  ejercicioNombre: { fontSize: 22, fontWeight: '800', color: Colors.neon.white, letterSpacing: -0.4 },
-  ejercicioSub: { fontSize: Typography.fontSize.sm, color: Colors.neon.w3, marginTop: 2, marginBottom: Spacing[3] },
-  ultimaVez: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing[2],
-    paddingVertical: Spacing[2], paddingHorizontal: Spacing[3],
-    backgroundColor: Colors.neon.pane,
-    borderRadius: BorderRadius.md,
+  /**
+   * Alto por el CONTENIDO, no fijo.
+   *
+   * Un nombre como «Press de banca alto inclinado con barra» ocupa dos líneas y
+   * con altura fija se comía la línea de «la última vez», que es el dato por el
+   * que existe esta pieza. La miniatura de 72 px marca el mínimo.
+   */
+  ficha: {
+    borderRadius: 20, overflow: 'hidden',
     borderWidth: 1, borderColor: Colors.neon.edge,
+    backgroundColor: Colors.neon.void,
     marginBottom: Spacing[3],
   },
-  ultimaVezTxt: { flex: 1, fontSize: 11, color: Colors.neon.w2 },
+  fichaDentro: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+    padding: Spacing[3] + 2,
+  },
+  ejercicioNombre: { fontSize: 19, fontWeight: '800', color: Colors.neon.white, letterSpacing: -0.4, lineHeight: 23 },
+  ejercicioSub: { fontSize: Typography.fontSize.sm, color: Colors.neon.w2 },
+  ultimaVez: {
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    alignSelf: 'flex-start',
+    paddingVertical: 5, paddingHorizontal: Spacing[2] + 2,
+    backgroundColor: 'rgba(0,0,0,0.45)',
+    borderRadius: BorderRadius.full,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
+    marginTop: 6,
+  },
+  ultimaVezTxt: { flexShrink: 1, fontSize: 11, fontWeight: '600', color: Colors.neon.white },
 
   formulario: { gap: Spacing[3], marginTop: Spacing[3] },
   entradas: { flexDirection: 'row', gap: Spacing[3] },
@@ -1062,10 +1430,14 @@ const s = StyleSheet.create({
   registrarTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
 
   siguiente: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing[2],
-    marginTop: Spacing[5], paddingVertical: Spacing[3],
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+    marginTop: Spacing[5], padding: Spacing[3],
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1, borderColor: Colors.neon.edge,
+    backgroundColor: Colors.neon.pane,
   },
-  siguienteTxt: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.w2 },
+  siguienteEtiqueta: { fontSize: 9, fontWeight: '800', color: Colors.neon.w3, letterSpacing: 1.2 },
+  siguienteTxt: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white, marginTop: 1 },
 
   descansoPanel: {
     position: 'absolute', left: 0, right: 0, bottom: 0,

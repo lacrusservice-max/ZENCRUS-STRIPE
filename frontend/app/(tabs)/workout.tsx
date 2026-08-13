@@ -1,25 +1,32 @@
 /**
  * ENTRENA · HOY
  * ─────────────
- * La portada de la sección. Rehecha entera: la versión anterior era una pila de
- * tarjetas grises con texto, correcta y olvidable.
+ * La portada de la sección. Es el CENTRO DE MANDO, no un escaparate: quien
+ * entra tiene que saber qué hacer sin leer, sin elegir y sin buscar.
  *
- * ── La jerarquía es la de una portada, no la de un panel ────────────────────
- * Lo primero que se ve ocupa media pantalla y es UNA sola cosa: o el
- * entrenamiento a medias, o el de hoy. Debajo, y solo debajo, las cifras. Un
- * panel que enseña seis bloques del mismo tamaño obliga a decidir dónde mirar;
- * una portada ya ha decidido por ti.
+ * ── Qué se quitó, y por qué ─────────────────────────────────────────────────
+ * Había un bloque llamado «Empieza por aquí» con cuatro entrenamientos sueltos.
+ * Eso es una portada de tienda: ofrece opciones a alguien que ya sabe lo que
+ * quiere. Y encima la pieza grande proponía un entrenamiento generado al azar,
+ * o sea que quien seguía un plan veía en primer lugar algo que NO era su plan.
+ * «Mis rutinas» y «Programas» estaban al fondo, después de todo.
  *
- * ── Con fotografía de verdad ────────────────────────────────────────────────
- * Las imágenes van tratadas con el duotono de marca y empaquetadas con la app,
- * así que la portada aparece entera en el primer fotograma. Ver
- * `constants/imagenes.ts` para el porqué de cada decisión.
+ * ── La única pregunta que contesta esta pantalla ────────────────────────────
+ * «¿Qué hago hoy?». Y solo hay UNA respuesta a la vez, que decide el servidor
+ * en `/workout/today`:
  *
- * ── Se quitó el mapa del cuerpo ─────────────────────────────────────────────
- * La figura anatómica y su pantalla se retiraron por decisión de producto. Lo
- * que contestaban —qué llevo entrenado y qué tengo abandonado— se contesta
- * ahora con datos en la tira de la semana y en Progreso, que es donde la gente
- * los busca.
+ *   · Dejaste algo a medias  → seguir, y manda sobre todo lo demás.
+ *   · Te toca este día       → sus ejercicios, sus series y el botón.
+ *   · Ya entrenaste hoy      → lo que hiciste, sin ofrecerte repetirlo.
+ *   · No sigues ningún plan  → montar uno, o entrenar suelto hoy.
+ *
+ * Debajo, y solo debajo, la semana entera como un mapa vertical: qué toca cada
+ * día, cuáles están hechos y cuál es hoy. Y después, los accesos.
+ *
+ * ── Todo lo que se registra aquí viaja solo ─────────────────────────────────
+ * Las series que se anotan al entrenar alimentan el historial, las
+ * estadísticas y los récords sin que haya que copiarlas a ningún sitio: la
+ * sesión es la única fuente y las demás pantallas la consultan.
  */
 
 import { useState, useCallback } from 'react'
@@ -31,20 +38,22 @@ import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import * as Haptics from 'expo-haptics'
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated'
 import { Screen } from '@/components/ui/Screen'
-import { HeroCard } from '@/components/workout/HeroCard'
 import { MenuSeccion } from '@/components/workout/MenuSeccion'
 import { TiraSemana } from '@/components/workout/TiraSemana'
 import { Cifra } from '@/components/workout/Charts'
+import { Miniatura } from '@/components/workout/Miniatura'
+import { NOMBRE_GRUPO } from '@/components/workout/anatomy'
 import { useSessionStore } from '@/store/sessionStore'
 import {
   getResumen, getDias, Resumen, Dia,
   kilosCorto, minutosCorto, desdeCuando,
 } from '@/services/statsService'
-import { listarSesiones, Sesion } from '@/services/sessionService'
-import { getEntrenamiento, recetaDe, Generado } from '@/services/quickService'
-import { FOTOS, FOTO_MODO } from '@/constants/imagenes'
+import { queTocaHoy, Hoy, DiaDeLaSemana, prescripcion } from '@/services/programService'
+import { recetaDe } from '@/services/quickService'
+import { FOTOS, FOTO_MODO, fotoDePrograma } from '@/constants/imagenes'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 /**
@@ -55,37 +64,25 @@ import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
  */
 const OBJETIVO_SEMANA = 4
 
-/**
- * Qué entrenamiento se propone en la portada.
- *
- * Veinte minutos de cuerpo entero. Es la propuesta que menos supone: no exige
- * saber qué toca hoy ni tener material, y veinte minutos caben en casi
- * cualquier día. Quien quiera elegir tiene Descubre a un toque.
- */
-const PROPUESTA = { region: 'fullbody', minutos: 20, lugar: 'todo' as const }
-
 export default function EntrenaHoy() {
-  const { sesion, series, restaurar } = useSessionStore()
+  const { restaurar } = useSessionStore()
 
+  const [hoy, setHoy] = useState<Hoy | null>(null)
   const [resumen, setResumen] = useState<Resumen | null>(null)
   const [dias, setDias] = useState<Dia[]>([])
-  const [recientes, setRecientes] = useState<Sesion[]>([])
-  const [propuesta, setPropuesta] = useState<Generado | null>(null)
   const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
 
   const cargar = useCallback(async () => {
     try {
-      const [r, v, h, g] = await Promise.all([
+      const [h, r, v] = await Promise.all([
+        queTocaHoy().catch(() => null),
         getResumen(28).catch(() => null),
         getDias(7).catch(() => null),
-        listarSesiones({ limit: 3 }).catch(() => null),
-        getEntrenamiento(PROPUESTA.region, PROPUESTA.minutos, PROPUESTA.lugar).catch(() => null),
       ])
+      setHoy(h)
       setResumen(r)
       setDias(v?.dias ?? [])
-      setRecientes(h?.sessions ?? [])
-      setPropuesta(g)
     } finally {
       setCargando(false)
       setRefrescando(false)
@@ -97,14 +94,11 @@ export default function EntrenaHoy() {
     void cargar()
   }, [restaurar, cargar]))
 
-  const sesionesSemana = resumen?.sesionesSemana ?? 0
   const hora = new Date().getHours()
   const saludo = hora < 6 ? 'De madrugada' : hora < 13 ? 'Buenos días' : hora < 21 ? 'Buenas tardes' : 'Buenas noches'
 
   return (
     <Screen>
-      {/* Cabecera propia: más corta que la genérica, para que la portada
-          empiece cuanto antes. */}
       <View style={s.cabecera}>
         <View style={{ flex: 1 }}>
           <Text style={s.saludo}>{saludo.toUpperCase()}</Text>
@@ -136,70 +130,84 @@ export default function EntrenaHoy() {
           <View style={s.cargando}><ActivityIndicator color={Colors.neon.red} /></View>
         ) : (
           <>
-            {/* ── LO PRIMERO: una sola cosa ────────────────────────────── */}
+            {/* ── 1 · QUÉ HAGO HOY ─────────────────────────────────────── */}
             <Animated.View entering={FadeIn.duration(420)} style={s.zonaHero}>
-              {sesion ? (
-                <HeroCard
-                  badge="Lo dejaste a medias"
-                  titulo={sesion.title}
-                  subtitulo={`${series.length} ${series.length === 1 ? 'serie registrada' : 'series registradas'} · sigue abierto`}
-                  datos={[
-                    { icono: 'barbell-outline', valor: String(series.length), etiqueta: 'Series' },
-                    { icono: 'time-outline', valor: desdeCuando(new Date(sesion.empezadaEn).toISOString()), etiqueta: 'Empezado' },
-                    { icono: 'location-outline', valor: sesion.mode === 'home' ? 'En casa' : 'Gimnasio', etiqueta: 'Dónde' },
-                    { icono: 'flame-outline', valor: 'Abierto', etiqueta: 'Estado' },
-                  ]}
-                  cta="Seguir entrenando"
-                  onPress={() => router.push('/workout/active')}
-                  foto={FOTOS[FOTO_MODO[sesion.mode] ?? 'gimnasio']?.fuente}
-                  alto={330}
-                />
-              ) : propuesta ? (
-                <HeroCard
-                  badge="Tu entrenamiento de hoy"
-                  titulo={propuesta.titulo}
-                  subtitulo={`${propuesta.ejercicios.length} ejercicios · ${propuesta.series} series · cambia cada día`}
-                  datos={[
-                    { icono: 'time-outline', valor: `${propuesta.minutosReales} min`, etiqueta: 'Duración' },
-                    { icono: 'flash-outline', valor: propuesta.estilo === 'circuito' ? 'Circuito' : 'Fuerza', etiqueta: 'Formato' },
-                    { icono: 'body-outline', valor: 'Cuerpo entero', etiqueta: 'Zona' },
-                    { icono: 'layers-outline', valor: String(propuesta.series), etiqueta: 'Series' },
-                  ]}
-                  cta="Empezar ahora"
-                  onPress={() => router.push(
-                    `/workout/active?quick=${recetaDe(PROPUESTA.region, PROPUESTA.minutos, PROPUESTA.lugar)}&mode=gym`,
-                  )}
-                  foto={FOTOS.gimnasio.fuente}
-                  alto={340}
-                />
-              ) : (
-                <HeroCard
-                  badge="Empieza"
-                  titulo="Tu primer entrenamiento"
-                  subtitulo="Registra una serie y todo lo demás empieza a existir"
-                  datos={[
-                    { icono: 'barbell-outline', valor: '206', etiqueta: 'Ejercicios' },
-                    { icono: 'videocam-outline', valor: 'Con vídeo', etiqueta: 'Cada uno' },
-                    { icono: 'home-outline', valor: '125', etiqueta: 'Sin gimnasio' },
-                    { icono: 'timer-outline', valor: '10-30', etiqueta: 'Minutos' },
-                  ]}
-                  cta="Empezar a entrenar"
-                  onPress={() => router.push('/workout/active')}
-                  foto={FOTOS.gimnasio.fuente}
-                  alto={340}
-                />
-              )}
+              <Hero hoy={hoy} />
             </Animated.View>
 
-            {/* ── La semana, en una tira ───────────────────────────────── */}
-            <Animated.View entering={FadeInDown.delay(80).duration(380)} style={s.bloque}>
+            {/* ── 2 · TU SEMANA, EN VERTICAL ───────────────────────────── */}
+            {hoy?.semana && hoy.programa && (
+              <Animated.View entering={FadeInDown.delay(70).duration(380)} style={s.bloque}>
+                <View style={s.seccionFila}>
+                  <Text style={s.seccion}>
+                    TU SEMANA {hoy.semana.numero} DE {hoy.semana.de}
+                  </Text>
+                  <TouchableOpacity onPress={() => router.push('/workout/program/plan')} hitSlop={8}>
+                    <Text style={s.enlace}>El plan entero</Text>
+                  </TouchableOpacity>
+                </View>
+
+                {hoy.semana.esDescarga && (
+                  <View style={s.descarga}>
+                    <Ionicons name="battery-half-outline" size={15} color={Colors.neon.redCore} />
+                    <Text style={s.descargaTxt}>
+                      Semana suave: menos series y algo menos de peso. Toca recuperar.
+                    </Text>
+                  </View>
+                )}
+
+                <View style={s.mapa}>
+                  {hoy.semana.dias.map((d, i) => (
+                    <FilaDia
+                      key={d.dia}
+                      d={d}
+                      ultimo={i === hoy.semana!.dias.length - 1}
+                      semana={hoy.semana!.numero}
+                    />
+                  ))}
+                </View>
+              </Animated.View>
+            )}
+
+            {/**
+              * Sin plan, aquí no se deja un hueco: se explica qué se está
+              * perdiendo y se ofrece montarlo.
+              *
+              * Este es el sitio donde iría su semana, así que es exactamente
+              * donde tiene sentido contarlo. Un espacio vacío no comunica que
+              * falta algo, comunica que la app no tiene nada que ofrecer.
+              */}
+            {hoy && !hoy.programa && (
+              <Animated.View entering={FadeInDown.delay(70).duration(380)} style={s.bloque}>
+                <Text style={s.seccion}>TU SEMANA</Text>
+                <TouchableOpacity
+                  style={s.montar}
+                  onPress={() => router.push('/workout/programs')}
+                  activeOpacity={0.85}
+                >
+                  <View style={s.montarIcono}>
+                    <Ionicons name="calendar-outline" size={20} color={Colors.neon.redCore} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.montarTitulo}>Todavía no sigues ningún plan</Text>
+                    <Text style={s.montarSub}>
+                      Con un plan, esta pantalla te dice cada día qué toca, cuánto peso
+                      poner y cuándo subirlo. Se monta en un toque.
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={16} color={Colors.neon.w3} />
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+
+            {/* ── 3 · CÓMO VA LA SEMANA ────────────────────────────────── */}
+            <Animated.View entering={FadeInDown.delay(130).duration(380)} style={s.bloque}>
               <TiraSemana
                 dias={dias}
-                sesionesSemana={sesionesSemana}
+                sesionesSemana={resumen?.sesionesSemana ?? 0}
                 objetivo={OBJETIVO_SEMANA}
                 racha={resumen?.racha ?? 0}
               />
-
               <View style={s.cifras}>
                 <Cifra valor={String(resumen?.seriesSemana ?? 0)} etiqueta="SERIES" />
                 <Cifra valor={kilosCorto(resumen?.volumenSemana ?? 0)} etiqueta="MOVIDOS" />
@@ -207,73 +215,31 @@ export default function EntrenaHoy() {
               </View>
             </Animated.View>
 
-            {/* ── Atajos ───────────────────────────────────────────────── */}
-            <Animated.View entering={FadeInDown.delay(140).duration(380)} style={s.bloque}>
-              <Text style={s.seccion}>EMPIEZA POR AQUÍ</Text>
-              <View style={s.atajos}>
-                <Atajo
-                  foto={FOTOS.casa.fuente}
-                  titulo="En casa"
-                  pie="Sin material"
-                  onPress={() => router.push(`/workout/active?quick=${recetaDe('fullbody', 20, 'home')}&mode=home`)}
-                />
-                <Atajo
-                  foto={FOTOS.fuerza.fuente}
-                  titulo="Fuerza"
-                  pie="30 min de gimnasio"
-                  onPress={() => router.push(`/workout/active?quick=${recetaDe('fullbody', 30, 'gym')}&mode=gym`)}
-                />
-              </View>
-              <View style={s.atajos}>
-                <Atajo
-                  foto={FOTOS.brazos.fuente}
-                  titulo="Tren superior"
-                  pie="20 min"
-                  onPress={() => router.push(`/workout/active?quick=${recetaDe('upper', 20, 'todo')}&mode=gym`)}
-                />
-                <Atajo
-                  foto={FOTOS.movilidad.fuente}
-                  titulo="Core"
-                  pie="10 min · circuito"
-                  onPress={() => router.push(`/workout/active?quick=${recetaDe('core', 10, 'home')}&mode=home`)}
-                />
-              </View>
-            </Animated.View>
+            {/* ── 4 · TODO LO DEMÁS, A LA VISTA ────────────────────────── */}
+            <Animated.View entering={FadeInDown.delay(190).duration(380)} style={[s.bloque, { gap: Spacing[2] }]}>
+              <Text style={s.seccion}>TU MATERIAL</Text>
 
-            {/* ── Lo último ────────────────────────────────────────────── */}
-            {recientes.length > 0 && (
-              <Animated.View entering={FadeInDown.delay(200).duration(380)} style={s.bloque}>
-                <View style={s.seccionFila}>
-                  <Text style={s.seccion}>LO ÚLTIMO</Text>
-                  <TouchableOpacity onPress={() => router.push('/workout/history')} hitSlop={8}>
-                    <Text style={s.enlace}>Ver todo</Text>
-                  </TouchableOpacity>
-                </View>
-                {recientes.map((x, i) => (
-                  <Animated.View key={x.id} entering={FadeInDown.delay(240 + i * 50).duration(340)}>
-                    <FilaSesion sesion={x} />
-                  </Animated.View>
-                ))}
-              </Animated.View>
-            )}
-
-            {/* ── Rutinas ──────────────────────────────────────────────── */}
-            <View style={s.bloque}>
-              <TouchableOpacity
-                style={s.acceso}
+              <Acceso
+                icono="map-outline"
+                titulo={hoy?.programa ? 'Cambiar de plan' : 'Planes de varias semanas'}
+                sub={hoy?.programa
+                  ? `Ahora sigues «${hoy.programa.nombre}»`
+                  : 'Que alguien decida por ti qué toca cada día'}
+                onPress={() => router.push('/workout/programs')}
+              />
+              <Acceso
+                icono="bookmark-outline"
+                titulo="Mis rutinas"
+                sub="Sesiones que repites, listas de un toque"
                 onPress={() => router.push('/workout/routines')}
-                activeOpacity={0.85}
-              >
-                <View style={s.accesoIcono}>
-                  <Ionicons name="bookmark-outline" size={18} color={Colors.neon.w2} />
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={s.accesoTitulo}>Mis rutinas</Text>
-                  <Text style={s.accesoSub}>Guarda una sesión que repitas y empiézala de un toque</Text>
-                </View>
-                <Ionicons name="chevron-forward" size={16} color={Colors.neon.w3} />
-              </TouchableOpacity>
-            </View>
+              />
+              <Acceso
+                icono="library-outline"
+                titulo="Los 206 ejercicios"
+                sub="Con su vídeo, su músculo y cómo se hacen"
+                onPress={() => router.push('/workout/library')}
+              />
+            </Animated.View>
           </>
         )}
       </ScrollView>
@@ -281,95 +247,375 @@ export default function EntrenaHoy() {
   )
 }
 
-// ── Piezas ───────────────────────────────────────────────────────────────────
+// ── La pieza grande ──────────────────────────────────────────────────────────
 
 /**
- * Atajo con foto.
+ * Lo primero que se ve. UNA sola cosa, la que toque.
  *
- * La imagen ocupa la tarjeta entera y el texto va encima sobre un degradado.
- * Un icono en un círculo gris —lo que había antes— es un botón; una foto es un
- * sitio al que se quiere ir.
+ * El orden no es negociable y lo decide el servidor: una sesión a medias manda
+ * sobre el día del plan, y el día del plan manda sobre cualquier propuesta
+ * suelta. Enseñar dos a la vez obliga a elegir, que es justo lo que esta
+ * pantalla viene a evitar.
  */
-function Atajo({ foto, titulo, pie, onPress }: {
-  foto: ImageSourcePropType
+function Hero({ hoy }: { hoy: Hoy | null }) {
+  if (!hoy) return <SinConexion />
+
+  if (hoy.estado === 'abierta' && hoy.abierta) return <AMedias s={hoy.abierta} />
+  if (hoy.estado === 'toca' && hoy.dia) return <TocaHoy hoy={hoy} />
+  if (hoy.estado === 'hecho') return <YaEstá hoy={hoy} />
+  return <SinPlan />
+}
+
+/** Dejaste algo abierto. Es lo único que importa hasta que se cierre. */
+function AMedias({ s: sesion }: { s: NonNullable<Hoy['abierta']> }) {
+  return (
+    <View style={h.marco}>
+      <Image
+        source={FOTOS[FOTO_MODO[sesion.mode] ?? 'gimnasio'].fuente}
+        style={StyleSheet.absoluteFill} contentFit="cover" transition={280}
+      />
+      <Velo />
+      <View style={h.dentro}>
+        <Etiqueta texto="LO DEJASTE A MEDIAS" tono="aviso" />
+        <View style={{ gap: Spacing[3] }}>
+          <View>
+            <Text style={h.titulo} numberOfLines={2}>{sesion.title}</Text>
+            <Text style={h.sub}>
+              {sesion.total_sets} {sesion.total_sets === 1 ? 'serie registrada' : 'series registradas'}
+              {' · empezado '}{desdeCuando(sesion.started_at)}
+            </Text>
+          </View>
+          <Boton
+            texto="Seguir entrenando"
+            onPress={() => router.push('/workout/active')}
+          />
+        </View>
+      </View>
+    </View>
+  )
+}
+
+/**
+ * El día del plan, con sus ejercicios delante.
+ *
+ * Los ejercicios se enseñan AQUÍ y no detrás de un toque: la pregunta de quien
+ * abre la app en el vestuario es «¿qué me toca?», y contestarla con un título
+ * obliga a entrar para saberlo.
+ */
+function TocaHoy({ hoy }: { hoy: Hoy }) {
+  const d = hoy.dia!
+  const p = hoy.programa!
+
+  return (
+    <View style={h.marco}>
+      <Image source={fotoDePrograma(p)} style={StyleSheet.absoluteFill} contentFit="cover" transition={280} />
+      <Velo />
+      <View style={h.dentro}>
+        <Etiqueta texto={d.esDescarga ? 'HOY · SEMANA SUAVE' : 'TE TOCA HOY'} tono="hoy" />
+
+        <View style={{ gap: Spacing[3] }}>
+          <View>
+            <Text style={h.titulo} numberOfLines={2}>{d.nombre}</Text>
+            <Text style={h.sub}>
+              {p.nombre} · semana {d.semana} de {p.semanas} · {d.ejercicios.length} ejercicios
+            </Text>
+          </View>
+
+          {/* Los tres primeros con su imagen y su prescripción. Tres y no
+              todos: con seis, la pieza se convierte en una lista y deja de
+              ser una portada. */}
+          <View style={h.lista}>
+            {d.ejercicios.slice(0, 3).map((e, i) => (
+              <View key={`${e.slug ?? e.nombre}-${i}`} style={h.fila}>
+                <Miniatura poster={e.slug ? d.posters[e.slug] : null} tam={38} />
+                <View style={{ flex: 1 }}>
+                  <Text style={h.filaNombre} numberOfLines={1}>{e.nombre}</Text>
+                  <Text style={h.filaSub}>
+                    {prescripcion(e)}
+                    {e.pesoKg != null ? ` · ${e.pesoKg} kg` : ''}
+                  </Text>
+                </View>
+              </View>
+            ))}
+            {d.ejercicios.length > 3 && (
+              <Text style={h.mas}>y {d.ejercicios.length - 3} más</Text>
+            )}
+          </View>
+
+          <Boton
+            texto="Empezar"
+            onPress={() => router.push('/workout/program/day')}
+          />
+        </View>
+      </View>
+    </View>
+  )
+}
+
+/**
+ * Ya entrenaste hoy.
+ *
+ * No se esconde ni se ofrece repetir: se enseña lo hecho. Alguien que ya ha
+ * cumplido no necesita que le empujen otra vez, necesita ver que cuenta.
+ */
+function YaEstá({ hoy }: { hoy: Hoy }) {
+  const total = hoy.hechasHoy.reduce(
+    (a, x) => ({
+      series: a.series + (x.total_sets ?? 0),
+      volumen: a.volumen + Number(x.total_volume_kg ?? 0),
+      minutos: a.minutos + Math.round((x.duration_seconds ?? 0) / 60),
+    }),
+    { series: 0, volumen: 0, minutos: 0 },
+  )
+  const quedaDia = hoy.semana?.dias.some(d => !d.hecho && !d.esHoy)
+
+  return (
+    <View style={h.marco}>
+      <Image
+        source={hoy.programa ? fotoDePrograma(hoy.programa) : FOTOS.gimnasio.fuente}
+        style={StyleSheet.absoluteFill} contentFit="cover" transition={280}
+      />
+      <Velo />
+      <View style={h.dentro}>
+        <Etiqueta texto="HOY YA ESTÁ" tono="hecho" />
+
+        <View style={{ gap: Spacing[3] }}>
+          <View>
+            <Text style={h.titulo} numberOfLines={2}>
+              {hoy.hechasHoy[0]?.title ?? 'Entrenado'}
+            </Text>
+            <Text style={h.sub}>
+              {total.series} {total.series === 1 ? 'serie' : 'series'}
+              {total.minutos > 0 ? ` · ${minutosCorto(total.minutos)}` : ''}
+              {total.volumen > 0 ? ` · ${kilosCorto(total.volumen)}` : ''}
+              {hoy.hechasHoy.length > 1 ? ` · ${hoy.hechasHoy.length} sesiones` : ''}
+            </Text>
+          </View>
+
+          <View style={h.acciones}>
+            <TouchableOpacity
+              style={h.botonSec}
+              onPress={() => router.push('/workout/history')}
+              activeOpacity={0.85}
+            >
+              <Ionicons name="time-outline" size={15} color={Colors.neon.w2} />
+              <Text style={h.botonSecTxt}>Ver el detalle</Text>
+            </TouchableOpacity>
+
+            {/**
+              * Sin plan, el segundo botón lleva a montarlo.
+              *
+              * Antes, quien no seguía nada y ya había entrenado veía «hoy ya
+              * está» y NADA MÁS: ni qué toca mañana, ni cómo organizarse. La
+              * portada se quedaba muda justo con quien más falta le hace que
+              * hable, que es el que aún no tiene plan.
+              */}
+            {hoy.programa ? (
+              quedaDia && (
+                <TouchableOpacity
+                  style={h.botonSec}
+                  onPress={() => router.push('/workout/program/plan')}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="calendar-outline" size={15} color={Colors.neon.w2} />
+                  <Text style={h.botonSecTxt}>Lo que queda</Text>
+                </TouchableOpacity>
+              )
+            ) : (
+              <TouchableOpacity
+                style={h.botonSec}
+                onPress={() => router.push('/workout/programs')}
+                activeOpacity={0.85}
+              >
+                <Ionicons name="map-outline" size={15} color={Colors.neon.w2} />
+                <Text style={h.botonSecTxt}>Montar mi plan</Text>
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+/**
+ * No sigues ningún plan.
+ *
+ * Es el ÚNICO estado en el que la portada ofrece elegir, porque es el único en
+ * el que hay algo que decidir. Dos caminos y no seis: montar el plan —lo que
+ * de verdad resuelve el problema— o entrenar hoy sin más, para quien ha abierto
+ * la app con la bolsa ya en el hombro.
+ */
+function SinPlan() {
+  return (
+    <View style={h.marco}>
+      <Image source={FOTOS.gimnasio.fuente} style={StyleSheet.absoluteFill} contentFit="cover" transition={280} />
+      <Velo />
+      <View style={h.dentro}>
+        <Etiqueta texto="EMPIEZA POR AQUÍ" tono="hoy" />
+
+        <View style={{ gap: Spacing[3] }}>
+          <View>
+            <Text style={h.titulo}>Monta tu semana</Text>
+            <Text style={h.sub}>
+              Elige un plan y la app te dirá qué toca cada día, cuánto peso poner
+              y cuándo subirlo. No tendrás que volver a decidir nada.
+            </Text>
+          </View>
+
+          <Boton texto="Elegir mi plan" onPress={() => router.push('/workout/programs')} />
+
+          <TouchableOpacity
+            style={h.botonSec}
+            onPress={() => {
+              void Haptics.selectionAsync()
+              router.push(`/workout/active?quick=${recetaDe('fullbody', 20, 'todo')}&mode=gym`)
+            }}
+            activeOpacity={0.85}
+          >
+            <Ionicons name="flash-outline" size={15} color={Colors.neon.w2} />
+            <Text style={h.botonSecTxt}>Hoy solo quiero entrenar algo</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+function SinConexion() {
+  return (
+    <View style={[h.marco, { justifyContent: 'center', alignItems: 'center', padding: Spacing[5] }]}>
+      <Ionicons name="cloud-offline-outline" size={34} color={Colors.neon.w3} />
+      <Text style={[h.sub, { textAlign: 'center', marginTop: Spacing[3] }]}>
+        No se pudo cargar tu día. Tira hacia abajo para reintentar — lo que
+        entrenes sin conexión se guarda igual.
+      </Text>
+    </View>
+  )
+}
+
+// ── El mapa vertical de la semana ────────────────────────────────────────────
+
+/**
+ * Un día de la semana, con su estado.
+ *
+ * Tres FORMAS distintas, no tres colores: tic para lo hecho, aro relleno para
+ * hoy y aro vacío para lo que viene. Un rojo y un gris a 12 px son el mismo
+ * punto para mucha gente, y aquí saber por dónde vas es todo el contenido.
+ */
+function FilaDia({ d, ultimo, semana }: { d: DiaDeLaSemana; ultimo: boolean; semana: number }) {
+  return (
+    <TouchableOpacity
+      style={m.fila}
+      onPress={() => {
+        void Haptics.selectionAsync()
+        router.push(`/workout/program/day?week=${semana}&day=${d.dia}`)
+      }}
+      activeOpacity={0.8}
+    >
+      <View style={m.rail}>
+        {d.hecho ? (
+          <View style={[m.nodo, m.hecho]}>
+            <Ionicons name="checkmark" size={12} color={Colors.neon.void} />
+          </View>
+        ) : d.esHoy ? (
+          <View style={[m.nodo, m.hoy]}><View style={m.centro} /></View>
+        ) : (
+          <View style={[m.nodo, m.porHacer]} />
+        )}
+        {!ultimo && <View style={[m.hilo, !!d.hecho && m.hiloHecho]} />}
+      </View>
+
+      <View style={m.cuerpo}>
+        <Text style={[m.nombre, !d.esHoy && !d.hecho && { color: Colors.neon.w2 }]}>
+          {d.nombre}
+        </Text>
+        <Text style={m.sub}>
+          {d.hecho
+            ? `${d.hecho.series} series${d.hecho.volumen > 0 ? ` · ${kilosCorto(d.hecho.volumen)}` : ''}`
+            : `${d.ejercicios} ejercicios · ${d.series} series${d.foco ? ` · ${NOMBRE_GRUPO[d.foco] ?? d.foco}` : ''}`}
+        </Text>
+      </View>
+
+      {d.esHoy && !d.hecho && <View style={m.hoyPastilla}><Text style={m.hoyTxt}>HOY</Text></View>}
+      <Ionicons name="chevron-forward" size={15} color={Colors.neon.w4} />
+    </TouchableOpacity>
+  )
+}
+
+// ── Piezas sueltas ───────────────────────────────────────────────────────────
+
+const Velo = () => (
+  <LinearGradient
+    colors={['rgba(5,5,6,0.28)', 'rgba(5,5,6,0.80)', 'rgba(5,5,6,0.98)']}
+    locations={[0, 0.42, 1]}
+    style={StyleSheet.absoluteFill}
+    pointerEvents="none"
+  />
+)
+
+function Etiqueta({ texto, tono }: { texto: string; tono: 'hoy' | 'aviso' | 'hecho' }) {
+  return (
+    <View style={[
+      h.etiqueta,
+      tono === 'hoy' && h.etiquetaHoy,
+      tono === 'hecho' && h.etiquetaHecho,
+    ]}>
+      {tono === 'hecho' && <Ionicons name="checkmark" size={11} color={Colors.neon.void} />}
+      {tono === 'aviso' && <View style={h.punto} />}
+      <Text style={[
+        h.etiquetaTxt,
+        tono === 'hoy' && { color: '#fff' },
+        tono === 'hecho' && { color: Colors.neon.void },
+      ]}>{texto}</Text>
+    </View>
+  )
+}
+
+function Boton({ texto, onPress }: { texto: string; onPress: () => void }) {
+  return (
+    <TouchableOpacity
+      style={h.boton}
+      onPress={() => { void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium); onPress() }}
+      activeOpacity={0.88}
+    >
+      <Text style={h.botonTxt}>{texto}</Text>
+      <View style={h.botonFlecha}>
+        <Ionicons name="arrow-forward" size={16} color={Colors.neon.void} />
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+function Acceso({ icono, titulo, sub, onPress }: {
+  icono: keyof typeof Ionicons.glyphMap
   titulo: string
-  pie: string
+  sub: string
   onPress: () => void
 }) {
   return (
-    <TouchableOpacity style={a.marco} onPress={onPress} activeOpacity={0.85}>
-      <Image source={foto} style={StyleSheet.absoluteFill} contentFit="cover" transition={220} />
-      <LinearGradient
-        colors={['rgba(5,5,6,0.15)', 'rgba(5,5,6,0.90)']}
-        style={StyleSheet.absoluteFill}
-        pointerEvents="none"
-      />
-      <View style={a.texto}>
-        <Text style={a.titulo}>{titulo}</Text>
-        <Text style={a.pie}>{pie}</Text>
-      </View>
-      <View style={a.flecha}>
-        <Ionicons name="arrow-forward" size={13} color={Colors.neon.void} />
-      </View>
-    </TouchableOpacity>
-  )
-}
-
-const a = StyleSheet.create({
-  marco: {
-    flex: 1, height: 132, borderRadius: 18, overflow: 'hidden',
-    borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)',
-    justifyContent: 'flex-end',
-  },
-  texto: { padding: Spacing[3] },
-  titulo: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.neon.white },
-  pie: { fontSize: 10.5, color: Colors.neon.w2, marginTop: 1 },
-  flecha: {
-    position: 'absolute', top: 10, right: 10,
-    width: 26, height: 26, borderRadius: 13,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.92)',
-  },
-})
-
-const ICONO_MODO: Record<string, keyof typeof Ionicons.glyphMap> = {
-  gym: 'barbell-outline', home: 'home-outline',
-  outdoor: 'trail-sign-outline', class: 'play-circle-outline',
-}
-
-function FilaSesion({ sesion }: { sesion: Sesion }) {
-  const min = Math.round((sesion.duration_seconds ?? 0) / 60)
-  return (
-    <TouchableOpacity
-      style={s.fila}
-      onPress={() => router.push(`/workout/session/${sesion.id}`)}
-      activeOpacity={0.8}
-    >
-      <View style={s.filaIcono}>
-        <Ionicons name={ICONO_MODO[sesion.mode] ?? 'barbell-outline'} size={16} color={Colors.neon.w2} />
+    <TouchableOpacity style={s.acceso} onPress={onPress} activeOpacity={0.85}>
+      <View style={s.accesoIcono}>
+        <Ionicons name={icono} size={18} color={Colors.neon.w2} />
       </View>
       <View style={{ flex: 1 }}>
-        <Text style={s.filaTitulo} numberOfLines={1}>{sesion.title}</Text>
-        <Text style={s.filaSub}>
-          {desdeCuando(sesion.started_at)}
-          {sesion.total_sets > 0 ? ` · ${sesion.total_sets} ${sesion.total_sets === 1 ? 'serie' : 'series'}` : ''}
-          {min > 0 ? ` · ${min} min` : ''}
-        </Text>
+        <Text style={s.accesoTitulo}>{titulo}</Text>
+        <Text style={s.accesoSub}>{sub}</Text>
       </View>
-      {Number(sesion.total_volume_kg) > 0 && (
-        <Text style={s.filaVolumen}>{kilosCorto(Number(sesion.total_volume_kg))}</Text>
-      )}
+      <Ionicons name="chevron-forward" size={16} color={Colors.neon.w3} />
     </TouchableOpacity>
   )
 }
+
+// ── Estilos ──────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
   cabecera: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
-    paddingHorizontal: Spacing[4], paddingTop: Spacing[2], paddingBottom: Spacing[3],
+    flexDirection: 'row', alignItems: 'flex-start',
+    paddingHorizontal: Spacing[4], paddingTop: Spacing[2], paddingBottom: Spacing[1],
   },
-  saludo: { fontSize: 10, fontWeight: '800', color: Colors.neon.red, letterSpacing: 1.6 },
-  titulo: { fontSize: 30, fontWeight: '800', color: Colors.neon.white, letterSpacing: -0.8, marginTop: 1 },
+  saludo: { fontSize: 10, fontWeight: '800', color: Colors.neon.red, letterSpacing: 2 },
+  titulo: { fontSize: 30, fontWeight: '800', color: Colors.neon.white, letterSpacing: -0.8, marginTop: 2 },
   historialBtn: {
     width: 38, height: 38, borderRadius: 19,
     alignItems: 'center', justifyContent: 'center',
@@ -379,30 +625,49 @@ const s = StyleSheet.create({
 
   cargando: { paddingVertical: Spacing[8], alignItems: 'center' },
   zonaHero: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[4] },
-  bloque: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[5], gap: Spacing[3] },
+  bloque: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[4], gap: Spacing[3] },
 
+  seccionFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   seccion: { fontSize: 10, fontWeight: '800', color: Colors.neon.w3, letterSpacing: 1.6 },
-  seccionFila: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  enlace: { fontSize: 12, fontWeight: '700', color: Colors.neon.red },
+  enlace: { fontSize: 11, fontWeight: '700', color: Colors.neon.red },
 
-  cifras: { flexDirection: 'row', gap: Spacing[2] },
-  atajos: { flexDirection: 'row', gap: Spacing[3] },
-
-  fila: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+  descarga: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[2],
     padding: Spacing[3],
+    borderRadius: BorderRadius.md,
+    backgroundColor: Colors.neon.redDim,
+    borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+  },
+  descargaTxt: { flex: 1, fontSize: 11, color: Colors.neon.w2, lineHeight: 16 },
+
+  mapa: {
     backgroundColor: Colors.neon.pane,
-    borderRadius: BorderRadius.lg,
+    borderRadius: 18,
+    borderWidth: 1, borderColor: Colors.neon.edge,
+    paddingVertical: Spacing[2], paddingHorizontal: Spacing[3],
+  },
+
+  montar: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+    padding: Spacing[4],
+    borderRadius: 18,
+    backgroundColor: Colors.neon.redDim,
+    borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+  },
+  montarIcono: {
+    width: 40, height: 40, borderRadius: 20,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,31,61,0.16)',
+  },
+  montarTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: Colors.neon.white },
+  montarSub: { fontSize: 11, color: Colors.neon.w2, marginTop: 2, lineHeight: 16 },
+
+  cifras: {
+    flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing[4],
+    backgroundColor: Colors.neon.pane,
+    borderRadius: 20,
     borderWidth: 1, borderColor: Colors.neon.edge,
   },
-  filaIcono: {
-    width: 34, height: 34, borderRadius: 17,
-    alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  filaTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
-  filaSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
-  filaVolumen: { fontSize: 12, fontWeight: '800', color: Colors.neon.w2 },
 
   acceso: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
@@ -412,10 +677,97 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.neon.edge,
   },
   accesoIcono: {
-    width: 36, height: 36, borderRadius: 18,
+    width: 38, height: 38, borderRadius: 19,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.06)',
   },
   accesoTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
   accesoSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
+})
+
+const h = StyleSheet.create({
+  /**
+   * Sin altura fija.
+   *
+   * La pieza cambia de contenido según el estado —tres ejercicios con nombres
+   * largos, o dos líneas de texto— y con un alto fijo el botón se salía por
+   * abajo en el caso más lleno. El mínimo garantiza que sigue siendo una
+   * portada y no una tarjeta.
+   */
+  marco: {
+    minHeight: 340, borderRadius: 26, overflow: 'hidden',
+    justifyContent: 'space-between',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.10)',
+    backgroundColor: Colors.neon.void,
+  },
+  dentro: { flex: 1, justifyContent: 'space-between', padding: Spacing[4], gap: Spacing[5] },
+
+  etiqueta: {
+    flexDirection: 'row', alignItems: 'center', gap: 6, alignSelf: 'flex-start',
+    paddingHorizontal: Spacing[3], paddingVertical: 6,
+    borderRadius: BorderRadius.full,
+    backgroundColor: 'rgba(255,255,255,0.94)',
+  },
+  etiquetaHoy: { backgroundColor: Colors.neon.red },
+  etiquetaHecho: { backgroundColor: 'rgba(255,255,255,0.94)' },
+  etiquetaTxt: { fontSize: 9, fontWeight: '800', color: Colors.neon.void, letterSpacing: 1.1 },
+  punto: { width: 6, height: 6, borderRadius: 3, backgroundColor: Colors.neon.red },
+
+  titulo: { fontSize: 29, fontWeight: '800', color: Colors.neon.white, letterSpacing: -0.8, lineHeight: 33 },
+  sub: { fontSize: 12, color: Colors.neon.w2, marginTop: 4, lineHeight: 17 },
+
+  lista: { gap: Spacing[2] },
+  fila: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
+  filaNombre: { fontSize: 13, fontWeight: '700', color: Colors.neon.white },
+  filaSub: { fontSize: 11, color: Colors.neon.w2, marginTop: 1 },
+  mas: { fontSize: 11, color: Colors.neon.w3, fontStyle: 'italic', marginLeft: 50 },
+
+  boton: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    backgroundColor: Colors.neon.white,
+    borderRadius: BorderRadius.full,
+    paddingLeft: Spacing[5], paddingRight: 5, paddingVertical: 5,
+  },
+  botonTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.neon.void },
+  botonFlecha: {
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.neon.redCore,
+  },
+
+  acciones: { flexDirection: 'row', gap: Spacing[2] },
+  botonSec: {
+    flex: 1,
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: Spacing[3],
+    borderRadius: BorderRadius.full,
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+  },
+  botonSecTxt: { fontSize: 12, fontWeight: '700', color: Colors.neon.w2 },
+})
+
+const m = StyleSheet.create({
+  fila: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
+  // Alto fijo, o el hilo se estiraría con los nombres largos y la línea saldría
+  // desigual entre un día y otro.
+  rail: { width: 20, height: 54, alignItems: 'center' },
+  nodo: { width: 20, height: 20, borderRadius: 10, alignItems: 'center', justifyContent: 'center' },
+  hecho: { backgroundColor: Colors.neon.white },
+  hoy: { borderWidth: 2, borderColor: Colors.neon.red, backgroundColor: Colors.neon.redDim },
+  centro: { width: 7, height: 7, borderRadius: 4, backgroundColor: Colors.neon.red },
+  porHacer: { borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.22)' },
+  hilo: { flex: 1, width: 2, backgroundColor: 'rgba(255,255,255,0.12)', marginTop: 2 },
+  hiloHecho: { backgroundColor: 'rgba(255,255,255,0.30)' },
+
+  cuerpo: { flex: 1, paddingBottom: 2 },
+  nombre: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
+  sub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
+
+  hoyPastilla: {
+    paddingHorizontal: 7, paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.neon.red,
+  },
+  hoyTxt: { fontSize: 8.5, fontWeight: '800', color: '#fff', letterSpacing: 0.8 },
 })
