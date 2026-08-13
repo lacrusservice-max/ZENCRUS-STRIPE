@@ -1,212 +1,259 @@
 /**
- * MONTA TU PLAN
- * ─────────────
- * Crear un plan propio: cuántas semanas, qué días y qué ejercicios en cada uno.
+ * TU SEMANA
+ * ─────────
+ * Cuántos días entrenas, qué días, y qué toca cada uno. Tres preguntas.
  *
- * ── Es un PROGRAMA, no una cosa nueva ───────────────────────────────────────
- * Se guarda en la misma tabla que los de ZENCRUS, solo que con dueño. Por eso
- * hereda todo sin escribir nada: la línea de tiempo, el peso que se calcula
- * desde tus marcas, la descarga cada N semanas, el avance al terminar un día y
- * el cambio de ejercicio. Un «planificador semanal» aparte habría sido un
- * segundo sistema para decir lo mismo, y dos sistemas acaban discrepando.
+ * ── Por qué la semana y no «día 1, día 2» ───────────────────────────────────
+ * Esto era antes un constructor de programas: días numerados que avanzaban al
+ * entrenar. Tenía una virtud real —saltarte el martes no marcaba nada como
+ * fallado— y un defecto que pesa más: NADIE organiza su vida en «día 2». La
+ * gente piensa «los martes entreno pierna». Una app que no habla ese idioma
+ * obliga a abrirla para saber qué toca, que es justo lo contrario de planificar.
  *
- * ── Un patrón de semana, repetido ───────────────────────────────────────────
- * No se piden doce semanas distintas: se pide UNA y se repite las que digas. Es
- * lo que hace casi todo el mundo, y lo que cambia de una semana a la siguiente
- * no son los ejercicios, es el peso — y de eso ya se encarga la progresión.
+ * La virtud no se pierde: un día que se queda atrás sigue PENDIENTE y se puede
+ * hacer otro día contando como él. Eso lo resuelve el servidor.
  *
- * ── El día se define por lo que se ENTRENA, no por el día de la semana ──────
- * «Día 1, Día 2» y no «lunes, martes». El programa avanza cuando entrenas, no
- * cuando pasa el calendario: si el martes surge algo, el día 2 te espera al
- * miércoles en vez de quedar marcado como fallado.
+ * ── Se pregunta lo que el usuario sabe ──────────────────────────────────────
+ * Sabe cuántos días puede ir y qué quiere entrenar. NO sabe —ni tiene por qué—
+ * cuántas series lleva un press de banca ni cuánto descansar entre ellas. Así
+ * que se le preguntan las dos primeras y ZENCRUS pone el resto, y todo lo que
+ * pone se puede cambiar. Es la regla de siempre: proponer sin bloquear.
+ *
+ * ── Una sola pantalla que se va abriendo ────────────────────────────────────
+ * Y no un asistente de cuatro pasos con botones de «siguiente». Un asistente
+ * esconde lo que ya decidiste y obliga a ir y volver para cambiar una cosa;
+ * aquí las tres preguntas están a la vista y cada una aparece cuando la
+ * anterior tiene respuesta.
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useMemo } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-  Modal, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, FlatList,
+  Modal, Alert, ActivityIndicator, Platform,
 } from 'react-native'
-import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
-import Animated, { FadeInDown } from 'react-native-reanimated'
+import Animated, {
+  FadeInDown, FadeIn, FadeOut, LinearTransition,
+  useSharedValue, useAnimatedStyle, withSpring, withTiming,
+} from 'react-native-reanimated'
 import { Screen } from '@/components/ui/Screen'
 import { CabeceraSeccion } from '@/components/workout/MenuSeccion'
-import { Vacio } from '@/components/workout/Charts'
 import { Miniatura } from '@/components/workout/Miniatura'
-import { MaterialIcon } from '@/components/workout/Kit'
-import { NOMBRE_GRUPO } from '@/components/workout/anatomy'
-import { listExercises, ExerciseCard } from '@/services/exerciseService'
 import {
-  guardarPlan, inscribirse, getPrograma,
-  EjercicioPlan, PlanPropio, Objetivo,
+  guardarPlan, inscribirse, getPrograma, getMusculos, proponerEjercicios,
+  EjercicioPlan, PlanPropio, Musculo, DIAS_SEMANA, DIAS_CORTOS, prescripcion,
 } from '@/services/programService'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
-/** Duraciones que se ofrecen. Ni un campo libre ni veinte opciones. */
-const SEMANAS = [4, 6, 8, 12]
+const T = Typography
+const C = Colors
+
+/** Cuántas semanas dura antes de replantearlo. La semana manda; esto es el mes. */
+const SEMANAS = [4, 8, 12]
 
 const SITIOS = [
-  { id: 'gym' as const, label: 'Gimnasio', icono: 'barbell' },
-  { id: 'home' as const, label: 'En casa', icono: 'bodyweight' },
+  { id: 'gym' as const, label: 'Gimnasio', icono: 'barbell-outline' as const },
+  { id: 'home' as const, label: 'En casa', icono: 'home-outline' as const },
 ]
 
-const OBJETIVOS: { id: Objetivo; label: string }[] = [
-  { id: 'strength', label: 'Fuerza' },
-  { id: 'hypertrophy', label: 'Músculo' },
-  { id: 'general', label: 'General' },
-]
-
-interface DiaBorrador {
-  dia: number
+/** Un día de la semana con entrenamiento, tal y como se está montando. */
+interface DiaEnMontaje {
+  diaSemana: number
+  musculos: string[]
   nombre: string
-  foco?: string
-  ejercicios: (EjercicioPlan & { poster?: string | null })[]
+  ejercicios: (EjercicioPlan & { musculo?: string })[]
+  posters: Record<string, string>
 }
 
-export default function MontarPlan() {
+// ─────────────────────────────────────────────────────────────────────────────
+
+export default function TuSemana() {
   const { id } = useLocalSearchParams<{ id?: string }>()
 
-  const [nombre, setNombre] = useState('')
-  const [semanas, setSemanas] = useState(8)
+  const [cuantos, setCuantos] = useState<number | null>(null)
+  const [elegidos, setElegidos] = useState<number[]>([])
+  const [dias, setDias] = useState<Record<number, DiaEnMontaje>>({})
   const [sitio, setSitio] = useState<'gym' | 'home'>('gym')
-  const [objetivo, setObjetivo] = useState<Objetivo>('hypertrophy')
-  const [descarga, setDescarga] = useState<number | null>(4)
-  const [dias, setDias] = useState<DiaBorrador[]>([
-    { dia: 1, nombre: 'Día 1', ejercicios: [] },
-  ])
-  const [buscandoEn, setBuscandoEn] = useState<number | null>(null)
-  const [guardando, setGuardando] = useState(false)
-  const [cargando, setCargando] = useState(!!id)
+  const [semanas, setSemanas] = useState(8)
+  const [nombre, setNombre] = useState('')
 
-  // Editar uno existente: se trae y se vuelca en el borrador.
+  const [musculos, setMusculos] = useState<Musculo[]>([])
+  const [sugeridos, setSugeridos] = useState<Record<number, number[]>>({})
+  const [editando, setEditando] = useState<number | null>(null)
+  const [guardando, setGuardando] = useState(false)
+  const [cargando, setCargando] = useState(true)
+
+  // ── Arranque ──────────────────────────────────────────────────────────────
   useEffect(() => {
-    if (!id) return
-    let vivo = true
-    getPrograma(id)
-      .then(p => {
-        if (!vivo) return
-        setNombre(p.name)
-        setSemanas(p.weeks)
-        setSitio(p.mode === 'home' ? 'home' : 'gym')
-        setObjetivo(p.goal)
-        setDescarga(p.deload_every)
-        setDias(p.plan.dias.map(d => ({
-          ...d,
-          ejercicios: d.ejercicios.map(e => ({
-            ...e,
-            poster: e.slug ? p.posters[e.slug] ?? null : null,
-          })),
-        })))
-      })
-      .catch(() => Alert.alert('No se pudo cargar', 'Ese plan no está disponible.'))
-      .finally(() => { if (vivo) setCargando(false) })
-    return () => { vivo = false }
+    void (async () => {
+      try {
+        const m = await getMusculos()
+        setMusculos(m.musculos)
+        setSugeridos(Object.fromEntries(m.diasSugeridos.map(d => [d.n, d.dias])))
+
+        if (id) {
+          const p = await getPrograma(id)
+          setNombre(p.name)
+          setSemanas(p.weeks)
+          setSitio(p.mode === 'home' ? 'home' : 'gym')
+          const cargados: Record<number, DiaEnMontaje> = {}
+          for (const d of p.plan.dias) {
+            const ds = d.diaSemana ?? 0
+            cargados[ds] = {
+              diaSemana: ds,
+              musculos: d.musculos ?? [],
+              nombre: d.nombre,
+              ejercicios: d.ejercicios,
+              posters: {},
+            }
+          }
+          setDias(cargados)
+          setElegidos(Object.keys(cargados).map(Number).sort((a, b) => a - b))
+          setCuantos(Object.keys(cargados).length)
+        }
+      } catch {
+        Alert.alert('No se pudo cargar', 'Revisa la conexión y vuelve a intentarlo.')
+      } finally {
+        setCargando(false)
+      }
+    })()
   }, [id])
 
-  const anadirDia = () => {
-    if (dias.length >= 7) return
+  /**
+   * Elegir cuántos días RESPETA lo que ya habías tocado.
+   *
+   * Si ya habías puesto lunes y jueves y subes a tres, se queda lunes y jueves
+   * y se añade uno; no se borra tu elección para poner la sugerencia entera.
+   * Al bajar se quitan los últimos. Sobrescribir lo que alguien acaba de elegir
+   * es la clase de detalle que hace que una pantalla se sienta hostil.
+   */
+  const elegirCuantos = useCallback((n: number) => {
     void Haptics.selectionAsync()
-    setDias(d => [...d, { dia: d.length + 1, nombre: `Día ${d.length + 1}`, ejercicios: [] }])
-  }
+    setCuantos(n)
+    setElegidos(prev => {
+      if (prev.length === 0) return [...(sugeridos[n] ?? [0, 2, 4])].slice(0, n).sort((a, b) => a - b)
+      if (prev.length === n) return prev
+      if (prev.length > n) return prev.slice(0, n)
+      const faltan = n - prev.length
+      const candidatos = (sugeridos[n] ?? [0, 1, 2, 3, 4, 5, 6]).filter(d => !prev.includes(d))
+      const resto = [0, 1, 2, 3, 4, 5, 6].filter(d => !prev.includes(d) && !candidatos.includes(d))
+      return [...prev, ...[...candidatos, ...resto].slice(0, faltan)].sort((a, b) => a - b)
+    })
+  }, [sugeridos])
 
-  const quitarDia = (dia: number) => {
-    // Se renumeran al vuelo: el motor recorre los días de uno en uno y un hueco
-    // lo dejaría esperando un día que ya no existe.
-    setDias(d => d.filter(x => x.dia !== dia).map((x, i) => ({ ...x, dia: i + 1 })))
-  }
+  const alternarDia = useCallback((d: number) => {
+    void Haptics.selectionAsync()
+    setElegidos(prev => {
+      const dentro = prev.includes(d)
+      if (dentro) {
+        setDias(({ [d]: _fuera, ...resto }) => resto)
+        return prev.filter(x => x !== d)
+      }
+      return [...prev, d].sort((a, b) => a - b)
+    })
+    setCuantos(prev => {
+      const dentro = elegidos.includes(d)
+      return Math.max(1, (prev ?? elegidos.length) + (dentro ? -1 : 1))
+    })
+  }, [elegidos])
 
-  const anadirEjercicio = (dia: number, e: ExerciseCard) => {
-    setDias(ds => ds.map(d => d.dia !== dia ? d : {
-      ...d,
-      // El foco del día lo pone el PRIMER ejercicio: es el que decide de qué va.
-      foco: d.foco ?? e.muscle ?? undefined,
-      ejercicios: [...d.ejercicios, {
-        slug: e.slug,
-        nombre: e.name,
-        series: 3,
-        reps: '8-12',
-        descanso: 90,
-        progresion: e.equipment === 'bodyweight' ? 'fija' : 'doble',
-        incremento: e.equipment === 'barbell' ? 2.5 : 2,
-        carga: e.equipment === 'bodyweight' ? 'bodyweight' : e.equipment === 'band' ? 'band' : 'weight',
-        poster: e.poster,
-      }],
-    }))
-    setBuscandoEn(null)
-  }
-
-  const cambiarCampo = (dia: number, i: number, campo: 'series' | 'reps' | 'descanso', v: string) => {
-    setDias(ds => ds.map(d => d.dia !== dia ? d : {
-      ...d,
-      ejercicios: d.ejercicios.map((e, j) => j !== i ? e : {
-        ...e,
-        [campo]: campo === 'reps' ? v : (parseInt(v) || 0),
-      }),
-    }))
-  }
-
-  const guardar = async () => {
-    if (!nombre.trim()) {
-      Alert.alert('Falta el nombre', 'Ponle un nombre para reconocerlo luego.'); return
-    }
-    const vacios = dias.filter(d => d.ejercicios.length === 0)
-    if (vacios.length > 0) {
-      Alert.alert(
-        'Hay días sin ejercicios',
-        `${vacios.map(d => d.nombre).join(', ')} ${vacios.length === 1 ? 'está vacío' : 'están vacíos'}. Añádeles algo o quítalos.`,
-      )
+  /** Elegir músculos para un día y que ZENCRUS lo rellene. */
+  const ponerMusculos = useCallback(async (diaSemana: number, ms: string[]) => {
+    if (ms.length === 0) {
+      setDias(prev => ({ ...prev, [diaSemana]: { diaSemana, musculos: [], nombre: '', ejercicios: [], posters: {} } }))
       return
     }
+    try {
+      const p = await proponerEjercicios(ms, sitio)
+      setDias(prev => ({
+        ...prev,
+        [diaSemana]: {
+          diaSemana, musculos: ms, nombre: p.nombre,
+          ejercicios: p.ejercicios, posters: p.posters ?? {},
+        },
+      }))
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    } catch {
+      Alert.alert('No se pudo proponer', 'Revisa la conexión. Puedes elegir los músculos otra vez.')
+    }
+  }, [sitio])
 
+  /**
+   * Al cambiar de sitio se rehacen los días que ya estaban.
+   *
+   * En casa no hay prensa. Si no se rehicieran, alguien que monta su semana en
+   * el gimnasio y luego cambia a «en casa» se quedaría con un plan que no puede
+   * hacer, y sin ninguna pista de por qué.
+   */
+  const cambiarSitio = useCallback(async (s: 'gym' | 'home') => {
+    void Haptics.selectionAsync()
+    setSitio(s)
+    const conMusculos = Object.values(dias).filter(d => d.musculos.length > 0)
+    for (const d of conMusculos) {
+      try {
+        const p = await proponerEjercicios(d.musculos, s)
+        setDias(prev => ({
+          ...prev,
+          [d.diaSemana]: { ...prev[d.diaSemana], ejercicios: p.ejercicios, posters: p.posters ?? {} },
+        }))
+      } catch { /* se queda el que había: mejor eso que vaciarle el día */ }
+    }
+  }, [dias])
+
+  const quitarEjercicio = useCallback((ds: number, i: number) => {
+    void Haptics.selectionAsync()
+    setDias(prev => ({
+      ...prev,
+      [ds]: { ...prev[ds], ejercicios: prev[ds].ejercicios.filter((_, j) => j !== i) },
+    }))
+  }, [])
+
+  const moverEjercicio = useCallback((ds: number, i: number, hacia: -1 | 1) => {
+    setDias(prev => {
+      const l = [...prev[ds].ejercicios]
+      const j = i + hacia
+      if (j < 0 || j >= l.length) return prev
+      ;[l[i], l[j]] = [l[j], l[i]]
+      void Haptics.selectionAsync()
+      return { ...prev, [ds]: { ...prev[ds], ejercicios: l } }
+    })
+  }, [])
+
+  // ── Guardar ───────────────────────────────────────────────────────────────
+  const listos = elegidos.filter(d => (dias[d]?.ejercicios.length ?? 0) > 0)
+  const puedeGuardar = listos.length > 0 && listos.length === elegidos.length
+
+  const guardar = async () => {
+    if (!puedeGuardar || guardando) return
     setGuardando(true)
     try {
-      const cuerpo: PlanPropio = {
-        name: nombre.trim(),
+      const plan: PlanPropio = {
+        name: nombre.trim() || 'Mi semana',
         weeks: semanas,
-        goal: objetivo,
+        goal: 'hypertrophy',
         level: 'intermediate',
         mode: sitio,
-        deloadEvery: descarga,
-        dias: dias.map(d => ({
-          dia: d.dia,
-          nombre: d.nombre.trim() || `Día ${d.dia}`,
-          foco: d.foco,
-          // El póster NO se guarda: son direcciones firmadas que caducan en una
-          // hora y guardarlas sería guardar imágenes rotas.
-          ejercicios: d.ejercicios.map(({ poster, ...e }) => e),
+        deloadEvery: 4,
+        dias: elegidos.map((ds, i) => ({
+          dia: i + 1,
+          diaSemana: ds,
+          musculos: dias[ds].musculos,
+          nombre: dias[ds].nombre,
+          foco: dias[ds].musculos[0],
+          ejercicios: dias[ds].ejercicios.map(({ musculo: _m, ...e }) => e),
         })),
       }
-
-      const p = await guardarPlan(cuerpo, id)
+      const guardado = await guardarPlan(plan, id)
+      // Y se sigue solo: montar una semana y que no pase nada sería la mitad
+      // del trabajo. Si ya estaba inscrito, el servidor lo resuelve.
+      if (!id) await inscribirse(guardado.id).catch(() => {})
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-
-      if (id) {
-        router.back()
-        return
-      }
-
-      Alert.alert(
-        'Plan creado',
-        '¿Quieres empezarlo ahora? Si ya sigues otro, se dejará a medias.',
-        [
-          { text: 'Ahora no', onPress: () => router.replace('/workout/programs') },
-          {
-            text: 'Empezar',
-            onPress: async () => {
-              try {
-                await inscribirse(p.id)
-                router.replace('/workout/program/plan')
-              } catch {
-                router.replace('/workout/programs')
-              }
-            },
-          },
-        ],
-      )
-    } catch {
-      Alert.alert('No se pudo guardar', 'Inténtalo otra vez en un momento.')
+      router.replace('/(tabs)/workout')
+    } catch (e) {
+      const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
+      Alert.alert('No se pudo guardar', msg ?? 'Revisa la conexión y vuelve a intentarlo.')
     } finally {
       setGuardando(false)
     }
@@ -215,209 +262,156 @@ export default function MontarPlan() {
   if (cargando) {
     return (
       <Screen>
-        <CabeceraSeccion titulo="Tu plan" />
-        <View style={{ paddingVertical: Spacing[8], alignItems: 'center' }}>
-          <ActivityIndicator color={Colors.neon.red} />
-        </View>
+        <CabeceraSeccion titulo="Tu semana" />
+        <View style={s.centro}><ActivityIndicator color={C.neon.red} /></View>
       </Screen>
     )
   }
 
-  const totalEjercicios = dias.reduce((a, d) => a + d.ejercicios.length, 0)
-
   return (
     <Screen>
       <CabeceraSeccion
-        titulo={id ? 'Editar plan' : 'Monta tu plan'}
-        subtitulo={`${dias.length} ${dias.length === 1 ? 'día' : 'días'} · ${semanas} semanas · ${totalEjercicios} ejercicios`}
+        titulo={id ? 'Editar tu semana' : 'Tu semana'}
+        subtitulo={cuantos ? `${elegidos.length} ${elegidos.length === 1 ? 'día' : 'días'} · ${listos.length} ${listos.length === 1 ? 'listo' : 'listos'}` : undefined}
       />
 
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          keyboardShouldPersistTaps="handled"
-          showsVerticalScrollIndicator={false}
-          contentContainerStyle={{ padding: Spacing[4], paddingBottom: 140, gap: Spacing[5] }}
-        >
-          {/* ── 1 · Cómo se llama ──────────────────────────────────────── */}
-          <View style={{ gap: Spacing[2] }}>
-            <Text style={s.etiqueta}>CÓMO SE LLAMA</Text>
+      <ScrollView
+        contentContainerStyle={s.scroll}
+        showsVerticalScrollIndicator={false}
+        keyboardShouldPersistTaps="handled"
+      >
+        {/* ── 1 · CUÁNTOS DÍAS ─────────────────────────────────────────── */}
+        <Animated.View entering={FadeInDown.duration(340)} style={s.bloque}>
+          <Pregunta n={1} texto="¿Cuántos días quieres entrenar?" />
+          <View style={s.numeros}>
+            {[1, 2, 3, 4, 5, 6, 7].map(n => (
+              <Numero key={n} n={n} activo={cuantos === n} onPress={() => elegirCuantos(n)} />
+            ))}
+          </View>
+        </Animated.View>
+
+        {/* ── 2 · QUÉ DÍAS ─────────────────────────────────────────────── */}
+        {cuantos !== null && (
+          <Animated.View entering={FadeInDown.duration(340)} style={s.bloque}>
+            <Pregunta n={2} texto="¿Qué días?" />
+            <Text style={s.pista}>
+              Te proponemos días repartidos. El músculo se recupera en 48 horas y
+              luego empieza a perder, así que tres seguidos rinden menos que tres
+              alternos. Cámbialos si tu semana es otra.
+            </Text>
+            <View style={s.semana}>
+              {DIAS_CORTOS.map((letra, d) => (
+                <Dia key={d} letra={letra} activo={elegidos.includes(d)} onPress={() => alternarDia(d)} />
+              ))}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* ── 3 · QUÉ TOCA CADA DÍA ────────────────────────────────────── */}
+        {elegidos.length > 0 && (
+          <Animated.View entering={FadeInDown.duration(340)} style={s.bloque}>
+            <Pregunta n={3} texto="¿Qué entrenas cada día?" />
+
+            <View style={s.sitios}>
+              {SITIOS.map(x => (
+                <TouchableOpacity
+                  key={x.id}
+                  style={[s.sitio, sitio === x.id && s.sitioOn]}
+                  onPress={() => void cambiarSitio(x.id)}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name={x.icono} size={15} color={sitio === x.id ? C.neon.white : C.neon.w3} />
+                  <Text style={[s.sitioTxt, sitio === x.id && s.sitioTxtOn]}>{x.label}</Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <View style={{ gap: Spacing[3] }}>
+              {elegidos.map(ds => (
+                <Animated.View key={ds} layout={LinearTransition.springify().damping(18)}>
+                  <TarjetaDia
+                    dia={dias[ds]}
+                    diaSemana={ds}
+                    onElegirMusculos={() => setEditando(ds)}
+                    onQuitar={i => quitarEjercicio(ds, i)}
+                    onMover={(i, h) => moverEjercicio(ds, i, h)}
+                  />
+                </Animated.View>
+              ))}
+            </View>
+          </Animated.View>
+        )}
+
+        {/* ── 4 · LOS DETALLES, AL FINAL Y PLEGADOS ────────────────────── */}
+        {puedeGuardar && (
+          <Animated.View entering={FadeInDown.duration(340)} style={s.bloque}>
+            <Pregunta n={4} texto="Ponle nombre" opcional />
             <TextInput
               style={s.input}
               value={nombre}
               onChangeText={setNombre}
-              placeholder="Mi plan de fuerza"
-              placeholderTextColor={Colors.neon.w3}
+              placeholder="Mi semana"
+              placeholderTextColor={C.neon.w4}
+              maxLength={60}
             />
-          </View>
-
-          {/* ── 2 · Cuánto dura ────────────────────────────────────────── */}
-          <View style={{ gap: Spacing[2] }}>
-            <Text style={s.etiqueta}>CUÁNTO DURA</Text>
-            <View style={s.fila}>
+            <Text style={[s.pista, { marginTop: Spacing[3] }]}>
+              ¿Cuántas semanas antes de replantearlo?
+            </Text>
+            <View style={s.numeros}>
               {SEMANAS.map(n => (
                 <TouchableOpacity
                   key={n}
-                  style={[s.pastilla, semanas === n && s.pastillaOn]}
+                  style={[s.semanaBoton, semanas === n && s.semanaBotonOn]}
                   onPress={() => { void Haptics.selectionAsync(); setSemanas(n) }}
                   activeOpacity={0.85}
                 >
-                  <Text style={[s.pastillaNum, semanas === n && { color: Colors.neon.white }]}>{n}</Text>
-                  <Text style={s.pastillaTxt}>semanas</Text>
+                  <Text style={[s.semanaTxt, semanas === n && s.semanaTxtOn]}>{n}</Text>
+                  <Text style={s.semanaUnidad}>sem</Text>
                 </TouchableOpacity>
               ))}
             </View>
-          </View>
+          </Animated.View>
+        )}
 
-          {/* ── 3 · Dónde y para qué ───────────────────────────────────── */}
-          <View style={{ gap: Spacing[2] }}>
-            <Text style={s.etiqueta}>DÓNDE ENTRENAS</Text>
-            <View style={s.fila}>
-              {SITIOS.map(x => (
-                <TouchableOpacity
-                  key={x.id}
-                  style={[s.pastilla, sitio === x.id && s.pastillaOn]}
-                  onPress={() => { void Haptics.selectionAsync(); setSitio(x.id) }}
-                  activeOpacity={0.85}
-                >
-                  <MaterialIcon id={x.icono} size={19} color={sitio === x.id ? Colors.neon.white : Colors.neon.w3} />
-                  <Text style={[s.pastillaTxt, sitio === x.id && { color: Colors.neon.white }]}>{x.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
+        <View style={{ height: 110 }} />
+      </ScrollView>
 
-          <View style={{ gap: Spacing[2] }}>
-            <Text style={s.etiqueta}>QUÉ BUSCAS</Text>
-            <View style={s.fila}>
-              {OBJETIVOS.map(x => (
-                <TouchableOpacity
-                  key={x.id}
-                  style={[s.pastilla, objetivo === x.id && s.pastillaOn]}
-                  onPress={() => { void Haptics.selectionAsync(); setObjetivo(x.id) }}
-                  activeOpacity={0.85}
-                >
-                  <Text style={[s.pastillaTxt, objetivo === x.id && { color: Colors.neon.white }]}>{x.label}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          </View>
-
-          {/* ── 4 · Descarga ───────────────────────────────────────────── */}
+      {/* ── El botón, flotando ─────────────────────────────────────────── */}
+      {elegidos.length > 0 && (
+        <Animated.View entering={FadeIn.duration(260)} exiting={FadeOut} style={s.pie}>
           <TouchableOpacity
-            style={s.descarga}
-            onPress={() => { void Haptics.selectionAsync(); setDescarga(d => d ? null : 4) }}
-            activeOpacity={0.85}
+            style={[s.guardar, !puedeGuardar && s.guardarOff]}
+            onPress={() => void guardar()}
+            disabled={!puedeGuardar || guardando}
+            activeOpacity={0.9}
           >
-            <Ionicons
-              name={descarga ? 'checkbox' : 'square-outline'}
-              size={21}
-              color={descarga ? Colors.neon.red : Colors.neon.w3}
-            />
-            <View style={{ flex: 1 }}>
-              <Text style={s.descargaTitulo}>Bajar la carga cada 4 semanas</Text>
-              <Text style={s.descargaSub}>
-                Una semana más suave: menos series y algo menos de peso. Es cuando
-                el cuerpo termina de construir lo de las semanas anteriores.
-              </Text>
-            </View>
-          </TouchableOpacity>
-
-          {/* ── 5 · Los días ───────────────────────────────────────────── */}
-          <View style={{ gap: Spacing[3] }}>
-            <View style={s.seccionFila}>
-              <Text style={s.etiqueta}>TUS DÍAS</Text>
-              {dias.length < 7 && (
-                <TouchableOpacity onPress={anadirDia} hitSlop={8}>
-                  <Text style={s.enlace}>+ Añadir día</Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {dias.map((d, di) => (
-              <Animated.View key={d.dia} entering={FadeInDown.delay(Math.min(di * 50, 250)).duration(300)}>
-                <View style={s.dia}>
-                  <View style={s.diaCabecera}>
-                    <View style={s.diaNum}><Text style={s.diaNumTxt}>{d.dia}</Text></View>
-                    <TextInput
-                      style={s.diaNombre}
-                      value={d.nombre}
-                      onChangeText={v => setDias(ds => ds.map(x => x.dia === d.dia ? { ...x, nombre: v } : x))}
-                      placeholder={`Día ${d.dia}`}
-                      placeholderTextColor={Colors.neon.w3}
-                    />
-                    {d.foco ? (
-                      <Text style={s.diaFoco}>{NOMBRE_GRUPO[d.foco] ?? d.foco}</Text>
-                    ) : null}
-                    {dias.length > 1 && (
-                      <TouchableOpacity onPress={() => quitarDia(d.dia)} hitSlop={8}>
-                        <Ionicons name="trash-outline" size={17} color={Colors.neon.w4} />
-                      </TouchableOpacity>
-                    )}
-                  </View>
-
-                  {d.ejercicios.map((e, i) => (
-                    <View key={`${e.slug ?? e.nombre}-${i}`} style={s.ejercicio}>
-                      <Miniatura poster={e.poster} tam={40} />
-                      <View style={{ flex: 1, gap: 6 }}>
-                        <View style={s.ejercicioTitulo}>
-                          <Text style={s.ejercicioNombre} numberOfLines={1}>{e.nombre}</Text>
-                          <TouchableOpacity
-                            onPress={() => setDias(ds => ds.map(x => x.dia !== d.dia ? x : {
-                              ...x, ejercicios: x.ejercicios.filter((_, j) => j !== i),
-                            }))}
-                            hitSlop={8}
-                          >
-                            <Ionicons name="close" size={16} color={Colors.neon.w4} />
-                          </TouchableOpacity>
-                        </View>
-                        <View style={s.campos}>
-                          <Campo label="Series" valor={String(e.series)} onCambiar={v => cambiarCampo(d.dia, i, 'series', v)} numerico />
-                          <Campo label="Reps" valor={e.reps ?? ''} onCambiar={v => cambiarCampo(d.dia, i, 'reps', v)} />
-                          <Campo label="Descanso" valor={String(e.descanso)} onCambiar={v => cambiarCampo(d.dia, i, 'descanso', v)} numerico sufijo="s" />
-                        </View>
-                      </View>
-                    </View>
-                  ))}
-
-                  <TouchableOpacity
-                    style={s.anadirEj}
-                    onPress={() => setBuscandoEn(d.dia)}
-                    activeOpacity={0.85}
-                  >
-                    <Ionicons name="add" size={17} color={Colors.neon.redCore} />
-                    <Text style={s.anadirEjTxt}>
-                      {d.ejercicios.length === 0 ? 'Añadir el primer ejercicio' : 'Añadir otro'}
-                    </Text>
-                  </TouchableOpacity>
-                </View>
-              </Animated.View>
-            ))}
-          </View>
-
-          <Text style={s.pie}>
-            Los pesos no se ponen aquí: los calcula la app desde lo que ya has
-            levantado, y sube solo cuando completas el rango. La primera semana los
-            eliges tú.
-          </Text>
-        </ScrollView>
-
-        <View style={s.pieFijo}>
-          <TouchableOpacity style={s.guardar} onPress={guardar} activeOpacity={0.88} disabled={guardando}>
             {guardando
-              ? <ActivityIndicator color="#fff" />
-              : <>
-                  <Ionicons name="checkmark" size={18} color="#fff" />
-                  <Text style={s.guardarTxt}>{id ? 'Guardar cambios' : 'Crear mi plan'}</Text>
-                </>}
+              ? <ActivityIndicator color={C.neon.void} />
+              : (
+                <Text
+                  style={[s.guardarTxt, !puedeGuardar && s.guardarTxtOff]}
+                  numberOfLines={2}
+                >
+                  {puedeGuardar
+                    ? id ? 'Guardar los cambios' : 'Empezar mi semana'
+                    : `Elige qué entrenas ${elegidos.length - listos.length === 1 ? 'el día que falta' : `los ${elegidos.length - listos.length} días que faltan`}`}
+                </Text>
+              )}
           </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
+        </Animated.View>
+      )}
 
-      <Buscador
-        visible={buscandoEn !== null}
-        sitio={sitio}
-        onElegir={e => buscandoEn !== null && anadirEjercicio(buscandoEn, e)}
-        onCerrar={() => setBuscandoEn(null)}
+      <ModalMusculos
+        abierto={editando !== null}
+        diaSemana={editando}
+        musculos={musculos}
+        elegidos={editando !== null ? (dias[editando]?.musculos ?? []) : []}
+        onCerrar={() => setEditando(null)}
+        onConfirmar={ms => {
+          const d = editando
+          setEditando(null)
+          if (d !== null) void ponerMusculos(d, ms)
+        }}
       />
     </Screen>
   )
@@ -425,218 +419,369 @@ export default function MontarPlan() {
 
 // ── Piezas ───────────────────────────────────────────────────────────────────
 
-function Campo({ label, valor, onCambiar, numerico, sufijo }: {
-  label: string; valor: string; onCambiar: (v: string) => void; numerico?: boolean; sufijo?: string
-}) {
+function Pregunta({ n, texto, opcional }: { n: number; texto: string; opcional?: boolean }) {
   return (
-    <View style={{ flex: 1, gap: 3 }}>
-      <Text style={s.campoLabel}>{label.toUpperCase()}</Text>
-      <View style={s.campoCaja}>
-        <TextInput
-          style={s.campoInput}
-          value={valor}
-          onChangeText={onCambiar}
-          keyboardType={numerico ? 'number-pad' : 'default'}
-          selectTextOnFocus
-        />
-        {sufijo ? <Text style={s.campoSufijo}>{sufijo}</Text> : null}
-      </View>
+    <View style={s.pregunta}>
+      <View style={s.preguntaN}><Text style={s.preguntaNTxt}>{n}</Text></View>
+      <Text style={s.preguntaTxt}>{texto}</Text>
+      {opcional && <Text style={s.opcional}>opcional</Text>}
     </View>
   )
 }
 
-function Buscador({ visible, sitio, onElegir, onCerrar }: {
-  visible: boolean
-  sitio: 'gym' | 'home'
-  onElegir: (e: ExerciseCard) => void
-  onCerrar: () => void
-}) {
-  const [q, setQ] = useState('')
-  const [lista, setLista] = useState<ExerciseCard[]>([])
-  const [cargando, setCargando] = useState(false)
-
-  useEffect(() => {
-    if (!visible) return
-    let vivo = true
-    setCargando(true)
-    const t = setTimeout(() => {
-      listExercises({ q, place: sitio === 'home' ? 'home' : undefined, limit: 40 })
-        .then(r => { if (vivo) setLista(r.exercises) })
-        .catch(() => { if (vivo) setLista([]) })
-        .finally(() => { if (vivo) setCargando(false) })
-    }, 280)
-    return () => { vivo = false; clearTimeout(t) }
-  }, [q, visible, sitio])
+/** Un número del 1 al 7, con un pequeño empujón al elegirlo. */
+function Numero({ n, activo, onPress }: { n: number; activo: boolean; onPress: () => void }) {
+  const escala = useSharedValue(1)
+  const estilo = useAnimatedStyle(() => ({ transform: [{ scale: escala.value }] }))
 
   return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onCerrar}>
-      <SafeAreaProvider>
-        <SafeAreaView style={b.wrap}>
-          <View style={b.cabecera}>
-            <Text style={b.titulo}>Añadir ejercicio</Text>
-            <TouchableOpacity onPress={onCerrar} hitSlop={10}>
-              <Ionicons name="close" size={22} color={Colors.neon.w2} />
+    <Animated.View style={[{ flex: 1 }, estilo]}>
+      <TouchableOpacity
+        style={[s.numero, activo && s.numeroOn]}
+        onPress={() => {
+          escala.value = withSpring(0.9, { damping: 12 }, () => {
+            escala.value = withSpring(1, { damping: 10 })
+          })
+          onPress()
+        }}
+        activeOpacity={0.9}
+      >
+        <Text style={[s.numeroTxt, activo && s.numeroTxtOn]}>{n}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  )
+}
+
+function Dia({ letra, activo, onPress }: { letra: string; activo: boolean; onPress: () => void }) {
+  const p = useSharedValue(activo ? 1 : 0)
+  useEffect(() => { p.value = withTiming(activo ? 1 : 0, { duration: 200 }) }, [activo, p])
+  const estilo = useAnimatedStyle(() => ({
+    transform: [{ scale: 0.94 + p.value * 0.06 }],
+  }))
+
+  return (
+    <Animated.View style={[{ flex: 1 }, estilo]}>
+      <TouchableOpacity
+        style={[s.diaChip, activo && s.diaChipOn]}
+        onPress={onPress}
+        activeOpacity={0.9}
+      >
+        <Text style={[s.diaTxt, activo && s.diaTxtOn]}>{letra}</Text>
+      </TouchableOpacity>
+    </Animated.View>
+  )
+}
+
+function TarjetaDia({ dia, diaSemana, onElegirMusculos, onQuitar, onMover }: {
+  dia?: DiaEnMontaje
+  diaSemana: number
+  onElegirMusculos: () => void
+  onQuitar: (i: number) => void
+  onMover: (i: number, hacia: -1 | 1) => void
+}) {
+  const vacio = !dia || dia.ejercicios.length === 0
+
+  return (
+    <View style={[s.tarjeta, vacio && s.tarjetaVacia]}>
+      <TouchableOpacity style={s.tarjetaCabecera} onPress={onElegirMusculos} activeOpacity={0.85}>
+        <View style={{ flex: 1 }}>
+          <Text style={s.tarjetaDia}>{DIAS_SEMANA[diaSemana]}</Text>
+          <Text style={[s.tarjetaNombre, vacio && s.tarjetaNombreVacio]} numberOfLines={1}>
+            {vacio ? 'Elige qué entrenas' : dia!.nombre}
+          </Text>
+        </View>
+        {!vacio && (
+          <Text style={s.tarjetaCuenta}>
+            {dia!.ejercicios.length} {dia!.ejercicios.length === 1 ? 'ejercicio' : 'ejercicios'}
+          </Text>
+        )}
+        <Ionicons name={vacio ? 'add-circle' : 'create-outline'} size={20} color={vacio ? C.neon.red : C.neon.w3} />
+      </TouchableOpacity>
+
+      {!vacio && (
+        <View style={s.lista}>
+          {dia!.ejercicios.map((e, i) => (
+            <Animated.View
+              key={`${e.slug ?? e.nombre}-${i}`}
+              entering={FadeInDown.delay(Math.min(i * 45, 220)).duration(300)}
+              exiting={FadeOut.duration(160)}
+              layout={LinearTransition.springify().damping(18)}
+              style={s.fila}
+            >
+              {e.slug && dia!.posters[e.slug]
+                ? <Miniatura poster={dia!.posters[e.slug]} tam={38} />
+                : <View style={s.sinFoto}><Ionicons name="barbell-outline" size={15} color={C.neon.w3} /></View>}
+
+              <View style={{ flex: 1 }}>
+                <Text style={s.filaNombre} numberOfLines={1}>{e.nombre}</Text>
+                <Text style={s.filaDosis}>
+                  {prescripcion(e)}
+                  {e.descanso ? ` · ${e.descanso}s de descanso` : ''}
+                </Text>
+              </View>
+
+              <View style={s.filaBotones}>
+                <TouchableOpacity onPress={() => onMover(i, -1)} hitSlop={8} disabled={i === 0}>
+                  <Ionicons name="chevron-up" size={16} color={i === 0 ? C.neon.w4 : C.neon.w3} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onMover(i, 1)} hitSlop={8} disabled={i === dia!.ejercicios.length - 1}>
+                  <Ionicons name="chevron-down" size={16} color={i === dia!.ejercicios.length - 1 ? C.neon.w4 : C.neon.w3} />
+                </TouchableOpacity>
+                <TouchableOpacity onPress={() => onQuitar(i)} hitSlop={8}>
+                  <Ionicons name="close" size={16} color={C.neon.w2} />
+                </TouchableOpacity>
+              </View>
+            </Animated.View>
+          ))}
+        </View>
+      )}
+    </View>
+  )
+}
+
+/**
+ * Elegir músculos. Tres como mucho.
+ *
+ * El tope no es capricho: con cuatro o más, cada músculo se queda con un solo
+ * ejercicio y el día deja de entrenar nada en concreto. Se dice en la pantalla
+ * en vez de desactivar botones en silencio.
+ */
+const TOPE = 3
+
+function ModalMusculos({ abierto, diaSemana, musculos, elegidos, onCerrar, onConfirmar }: {
+  abierto: boolean
+  diaSemana: number | null
+  musculos: Musculo[]
+  elegidos: string[]
+  onCerrar: () => void
+  onConfirmar: (ms: string[]) => void
+}) {
+  const [sel, setSel] = useState<string[]>(elegidos)
+  useEffect(() => { if (abierto) setSel(elegidos) }, [abierto, elegidos])
+
+  const alternar = (clave: string) => {
+    void Haptics.selectionAsync()
+    setSel(prev => prev.includes(clave)
+      ? prev.filter(x => x !== clave)
+      : prev.length >= TOPE ? prev : [...prev, clave])
+  }
+
+  const lleno = sel.length >= TOPE
+
+  return (
+    <Modal visible={abierto} animationType="slide" transparent onRequestClose={onCerrar}>
+      <View style={s.modalFondo}>
+        <Animated.View entering={FadeInDown.duration(280)} style={s.modal}>
+          <View style={s.modalAsa} />
+          <Text style={s.modalTitulo}>
+            {diaSemana !== null ? DIAS_SEMANA[diaSemana] : ''}
+          </Text>
+          <Text style={s.modalSub}>
+            {lleno
+              ? 'Tres músculos es el tope: con más, cada uno se queda en un solo ejercicio.'
+              : 'Elige hasta tres. ZENCRUS pone los ejercicios y tú los cambias.'}
+          </Text>
+
+          <ScrollView contentContainerStyle={s.chips} showsVerticalScrollIndicator={false}>
+            {musculos.map((m, i) => {
+              const on = sel.includes(m.clave)
+              const bloqueado = !on && lleno
+              return (
+                <Animated.View key={m.clave} entering={FadeIn.delay(Math.min(i * 22, 240)).duration(240)}>
+                  <TouchableOpacity
+                    style={[s.chip, on && s.chipOn, bloqueado && s.chipOff]}
+                    onPress={() => alternar(m.clave)}
+                    activeOpacity={0.85}
+                    disabled={bloqueado}
+                  >
+                    {on && <Ionicons name="checkmark" size={13} color={C.neon.void} />}
+                    <Text style={[s.chipTxt, on && s.chipTxtOn, bloqueado && s.chipTxtOff]}>{m.nombre}</Text>
+                  </TouchableOpacity>
+                </Animated.View>
+              )
+            })}
+          </ScrollView>
+
+          <View style={s.modalPie}>
+            <TouchableOpacity style={s.modalCancelar} onPress={onCerrar} activeOpacity={0.85}>
+              <Text style={s.modalCancelarTxt}>Cancelar</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[s.modalOk, sel.length === 0 && s.modalOkOff]}
+              onPress={() => onConfirmar(sel)}
+              activeOpacity={0.9}
+            >
+              <Text style={s.modalOkTxt}>
+                {sel.length === 0 ? 'Dejar en descanso' : 'Poner los ejercicios'}
+              </Text>
             </TouchableOpacity>
           </View>
-
-          <View style={b.buscador}>
-            <Ionicons name="search" size={16} color={Colors.neon.w3} />
-            <TextInput
-              style={b.input} value={q} onChangeText={setQ}
-              placeholder="Buscar en los 206 ejercicios…"
-              placeholderTextColor={Colors.neon.w3} autoCorrect={false}
-            />
-            {cargando && <ActivityIndicator size="small" color={Colors.neon.w3} />}
-          </View>
-
-          <FlatList
-            data={lista}
-            keyExtractor={e => e.slug}
-            keyboardShouldPersistTaps="handled"
-            contentContainerStyle={{ padding: Spacing[4], paddingBottom: 40, gap: Spacing[2] }}
-            ListEmptyComponent={!cargando ? <Vacio texto="Nada con ese nombre en la biblioteca." /> : null}
-            renderItem={({ item: e }) => (
-              <TouchableOpacity
-                style={b.fila}
-                onPress={() => { void Haptics.selectionAsync(); onElegir(e); setQ('') }}
-                activeOpacity={0.85}
-              >
-                <Miniatura poster={e.poster} tam={44} />
-                <View style={{ flex: 1 }}>
-                  <Text style={b.filaNombre} numberOfLines={2}>{e.name}</Text>
-                  <Text style={b.filaSub}>{e.muscleEs ?? '—'} · {e.equipmentEs}</Text>
-                </View>
-                <Ionicons name="add-circle-outline" size={20} color={Colors.neon.w3} />
-              </TouchableOpacity>
-            )}
-          />
-        </SafeAreaView>
-      </SafeAreaProvider>
+        </Animated.View>
+      </View>
     </Modal>
   )
 }
 
+// ── Estilos ──────────────────────────────────────────────────────────────────
+
 const s = StyleSheet.create({
-  etiqueta: { fontSize: 10, fontWeight: '800', color: Colors.neon.w3, letterSpacing: 1.4 },
-  enlace: { fontSize: 12, fontWeight: '800', color: Colors.neon.red },
-  seccionFila: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  scroll: { paddingHorizontal: Spacing[4], gap: Spacing[5] },
+  centro: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  bloque: { gap: Spacing[3] },
 
-  input: {
-    backgroundColor: Colors.neon.pane,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1, borderColor: Colors.neon.edge,
-    padding: Spacing[3],
-    fontSize: Typography.fontSize.base, color: Colors.neon.white,
+  pregunta: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
+  preguntaN: {
+    width: 20, height: 20, borderRadius: 10,
+    backgroundColor: C.neon.red, alignItems: 'center', justifyContent: 'center',
   },
+  preguntaNTxt: { fontSize: 11, fontWeight: '900', color: C.neon.void },
+  preguntaTxt: { flex: 1, fontSize: T.fontSize.lg, fontWeight: '800', color: C.neon.white, letterSpacing: -0.3 },
+  opcional: { fontSize: T.fontSize.xs, fontWeight: '700', color: C.neon.w3 },
 
-  fila: { flexDirection: 'row', gap: Spacing[2] },
-  pastilla: {
-    flex: 1, alignItems: 'center', gap: 4, paddingVertical: Spacing[3],
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1, borderColor: Colors.neon.edge,
-    backgroundColor: Colors.neon.pane,
-  },
-  pastillaOn: { borderColor: 'rgba(255,31,61,0.5)', backgroundColor: Colors.neon.redDim },
-  pastillaNum: { fontSize: 22, fontWeight: '800', color: Colors.neon.w2, letterSpacing: -0.8 },
-  pastillaTxt: { fontSize: 10.5, fontWeight: '700', color: Colors.neon.w3 },
+  pista: { fontSize: T.fontSize.xs, color: C.neon.w3, lineHeight: 17 },
 
-  descarga: {
-    flexDirection: 'row', alignItems: 'flex-start', gap: Spacing[3],
-    padding: Spacing[4],
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1, borderColor: Colors.neon.edge,
-    backgroundColor: Colors.neon.pane,
-  },
-  descargaTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: Colors.neon.white },
-  descargaSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 3, lineHeight: 16 },
-
-  dia: {
-    gap: Spacing[3], padding: Spacing[3] + 2,
-    backgroundColor: Colors.neon.pane,
-    borderRadius: 18,
-    borderWidth: 1, borderColor: Colors.neon.edge,
-  },
-  diaCabecera: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
-  diaNum: {
-    width: 26, height: 26, borderRadius: 13,
+  numeros: { flexDirection: 'row', gap: Spacing[2] },
+  numero: {
+    height: 52, borderRadius: BorderRadius.lg,
+    backgroundColor: C.neon.pane, borderWidth: 1, borderColor: C.neon.edge,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.08)',
   },
-  diaNumTxt: { fontSize: 12, fontWeight: '800', color: Colors.neon.w2 },
-  diaNombre: {
-    flex: 1, fontSize: Typography.fontSize.base, fontWeight: '800',
-    color: Colors.neon.white, paddingVertical: 2,
-  },
-  diaFoco: { fontSize: 10, color: Colors.neon.w3 },
+  numeroOn: { backgroundColor: C.neon.red, borderColor: C.neon.red },
+  numeroTxt: { fontSize: T.fontSize.lg, fontWeight: '800', color: C.neon.w2 },
+  numeroTxtOn: { color: C.neon.void },
 
-  ejercicio: {
-    flexDirection: 'row', gap: Spacing[3], alignItems: 'flex-start',
-    paddingTop: Spacing[3],
-    borderTopWidth: 1, borderTopColor: 'rgba(255,255,255,0.055)',
+  semana: { flexDirection: 'row', gap: Spacing[2] },
+  diaChip: {
+    height: 46, borderRadius: BorderRadius.lg,
+    backgroundColor: C.neon.pane, borderWidth: 1, borderColor: C.neon.edge,
+    alignItems: 'center', justifyContent: 'center',
   },
-  ejercicioTitulo: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
-  ejercicioNombre: { flex: 1, fontSize: 13, fontWeight: '700', color: Colors.neon.white },
-  campos: { flexDirection: 'row', gap: Spacing[2] },
-  campoLabel: { fontSize: 8.5, fontWeight: '700', color: Colors.neon.w3, letterSpacing: 0.9 },
-  campoCaja: {
-    flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing[2],
-  },
-  campoInput: {
-    flex: 1, paddingVertical: 6, textAlign: 'center',
-    fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white,
-  },
-  campoSufijo: { fontSize: 10, color: Colors.neon.w3, fontWeight: '700' },
+  diaChipOn: { backgroundColor: C.neon.red, borderColor: C.neon.red },
+  diaTxt: { fontSize: T.fontSize.base, fontWeight: '800', color: C.neon.w3 },
+  diaTxtOn: { color: C.neon.void },
 
-  anadirEj: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
-    paddingVertical: Spacing[3],
-    borderRadius: BorderRadius.md,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.3)',
-    backgroundColor: Colors.neon.redDim,
+  sitios: { flexDirection: 'row', gap: Spacing[2] },
+  sitio: {
+    flex: 1, flexDirection: 'row', gap: Spacing[2],
+    height: 40, borderRadius: BorderRadius.lg,
+    backgroundColor: C.neon.pane, borderWidth: 1, borderColor: C.neon.edge,
+    alignItems: 'center', justifyContent: 'center',
   },
-  anadirEjTxt: { fontSize: 12, fontWeight: '800', color: Colors.neon.redCore },
+  sitioOn: { backgroundColor: C.neon.paneHi, borderColor: C.neon.redSoft },
+  sitioTxt: { fontSize: T.fontSize.sm, fontWeight: '700', color: C.neon.w3 },
+  sitioTxtOn: { color: C.neon.white },
 
-  pie: { fontSize: 11, color: Colors.neon.w3, lineHeight: 16 },
+  tarjeta: {
+    borderRadius: BorderRadius.xl, backgroundColor: C.neon.pane,
+    borderWidth: 1, borderColor: C.neon.edge, overflow: 'hidden',
+  },
+  tarjetaVacia: { borderStyle: 'dashed', borderColor: 'rgba(255,31,61,0.35)' },
+  tarjetaCabecera: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+    padding: Spacing[4],
+  },
+  tarjetaDia: { fontSize: 10, fontWeight: '800', color: C.neon.w3, letterSpacing: 1.2, textTransform: 'uppercase' },
+  tarjetaNombre: { fontSize: T.fontSize.base, fontWeight: '800', color: C.neon.white, marginTop: 2 },
+  tarjetaNombreVacio: { color: C.neon.redSoft },
+  tarjetaCuenta: { fontSize: T.fontSize.xs, fontWeight: '700', color: C.neon.w3 },
 
-  pieFijo: {
-    padding: Spacing[4], paddingBottom: Spacing[6],
-    backgroundColor: 'rgba(5,5,6,0.96)',
-    borderTopWidth: 1, borderTopColor: Colors.neon.edge,
-  },
-  guardar: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing[2],
-    backgroundColor: Colors.neon.red,
-    borderRadius: BorderRadius.lg,
-    paddingVertical: Spacing[4],
-  },
-  guardarTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
-})
-
-const b = StyleSheet.create({
-  wrap: { flex: 1, backgroundColor: Colors.neon.void },
-  cabecera: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    padding: Spacing[4], borderBottomWidth: 1, borderBottomColor: Colors.neon.edge,
-  },
-  titulo: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.neon.white },
-  buscador: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing[2],
-    margin: Spacing[4], paddingHorizontal: Spacing[3],
-    backgroundColor: Colors.neon.pane,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1, borderColor: Colors.neon.edge,
-  },
-  input: { flex: 1, paddingVertical: Spacing[3], fontSize: Typography.fontSize.base, color: Colors.neon.white },
+  lista: { paddingHorizontal: Spacing[3], paddingBottom: Spacing[3], gap: Spacing[2] },
   fila: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
-    padding: Spacing[3],
-    backgroundColor: Colors.neon.pane,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1, borderColor: Colors.neon.edge,
+    padding: Spacing[2], borderRadius: BorderRadius.lg,
+    backgroundColor: 'rgba(255,255,255,0.03)',
   },
-  filaNombre: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
-  filaSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
+  sinFoto: {
+    width: 38, height: 38, borderRadius: BorderRadius.md,
+    backgroundColor: C.neon.pane, alignItems: 'center', justifyContent: 'center',
+  },
+  filaNombre: { fontSize: T.fontSize.sm, fontWeight: '700', color: C.neon.white },
+  filaDosis: { fontSize: T.fontSize.xs, color: C.neon.w3, marginTop: 1 },
+  filaBotones: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
+
+  input: {
+    height: 46, borderRadius: BorderRadius.lg, paddingHorizontal: Spacing[3],
+    backgroundColor: C.neon.pane, borderWidth: 1, borderColor: C.neon.edge,
+    color: C.neon.white, fontSize: T.fontSize.base, fontWeight: '600',
+  },
+  semanaBoton: {
+    flex: 1, height: 52, borderRadius: BorderRadius.lg,
+    backgroundColor: C.neon.pane, borderWidth: 1, borderColor: C.neon.edge,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  semanaBotonOn: { backgroundColor: C.neon.paneHi, borderColor: C.neon.redSoft },
+  semanaTxt: { fontSize: T.fontSize.base, fontWeight: '800', color: C.neon.w2 },
+  semanaTxtOn: { color: C.neon.white },
+  semanaUnidad: { fontSize: 9, fontWeight: '700', color: C.neon.w3 },
+
+  pie: {
+    position: 'absolute', left: 0, right: 0, bottom: 0,
+    paddingHorizontal: Spacing[4], paddingTop: Spacing[3],
+    paddingBottom: Platform.OS === 'ios' ? 34 : Spacing[4],
+    backgroundColor: 'rgba(5,5,6,0.94)',
+    borderTopWidth: 1, borderTopColor: C.neon.edge,
+  },
+  /**
+   * `minHeight` y no `height`, y el texto con margen a los lados.
+   *
+   * Con altura FIJA, el aviso de «elige qué entrenas los 3 días que faltan»
+   * pasaba de una línea a dos y se cortaba por arriba y por abajo: se veía la
+   * mitad de las letras y parecía una pantalla rota. Solo se vio mirándola —el
+   * compilador no tiene forma de saber cuánto ocupa una frase—.
+   */
+  guardar: {
+    minHeight: 52, paddingVertical: Spacing[2], paddingHorizontal: Spacing[4],
+    borderRadius: BorderRadius.xl, backgroundColor: C.neon.red,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  guardarOff: { backgroundColor: C.neon.pane },
+  guardarTxt: {
+    fontSize: T.fontSize.base, fontWeight: '800', color: C.neon.void,
+    textAlign: 'center', lineHeight: 20,
+  },
+  /**
+   * Apagado, el texto NO puede seguir siendo negro.
+   *
+   * El fondo pasa a gris muy oscuro y el negro sobre negro no se lee. Era el
+   * mismo botón diciendo lo único que hace falta hacer para continuar, y no se
+   * entendía nada.
+   */
+  guardarTxtOff: { color: C.neon.w2 },
+
+  modalFondo: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.6)' },
+  modal: {
+    maxHeight: '82%', backgroundColor: '#0d0d0f',
+    borderTopLeftRadius: 26, borderTopRightRadius: 26,
+    borderTopWidth: 1, borderColor: C.neon.edge,
+    padding: Spacing[4], gap: Spacing[3],
+  },
+  modalAsa: {
+    width: 36, height: 4, borderRadius: 2, alignSelf: 'center',
+    backgroundColor: C.neon.w4, marginBottom: Spacing[1],
+  },
+  modalTitulo: { fontSize: T.fontSize.xl, fontWeight: '800', color: C.neon.white, letterSpacing: -0.4 },
+  modalSub: { fontSize: T.fontSize.xs, color: C.neon.w3, lineHeight: 17 },
+  chips: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2], paddingVertical: Spacing[1] },
+  chip: {
+    flexDirection: 'row', alignItems: 'center', gap: 5,
+    paddingHorizontal: Spacing[3], height: 38, borderRadius: 19,
+    backgroundColor: C.neon.pane, borderWidth: 1, borderColor: C.neon.edge,
+  },
+  chipOn: { backgroundColor: C.neon.red, borderColor: C.neon.red },
+  chipOff: { opacity: 0.35 },
+  chipTxt: { fontSize: T.fontSize.sm, fontWeight: '700', color: C.neon.w2 },
+  chipTxtOn: { color: C.neon.void },
+  chipTxtOff: { color: C.neon.w3 },
+  modalPie: { flexDirection: 'row', gap: Spacing[2], paddingTop: Spacing[1] },
+  modalCancelar: {
+    paddingHorizontal: Spacing[4], height: 48, borderRadius: BorderRadius.xl,
+    backgroundColor: C.neon.pane, alignItems: 'center', justifyContent: 'center',
+  },
+  modalCancelarTxt: { fontSize: T.fontSize.sm, fontWeight: '700', color: C.neon.w2 },
+  modalOk: {
+    flex: 1, height: 48, borderRadius: BorderRadius.xl, backgroundColor: C.neon.red,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  modalOkOff: { backgroundColor: C.neon.paneHi },
+  modalOkTxt: { fontSize: T.fontSize.sm, fontWeight: '800', color: C.neon.void },
 })

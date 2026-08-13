@@ -42,25 +42,32 @@ import * as Haptics from 'expo-haptics'
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated'
 import { Screen } from '@/components/ui/Screen'
 import { MenuSeccion } from '@/components/workout/MenuSeccion'
-import { TiraSemana } from '@/components/workout/TiraSemana'
+import { AnilloSemana } from '@/components/workout/AnilloSemana'
 import { Cifra } from '@/components/workout/Charts'
 import { Miniatura } from '@/components/workout/Miniatura'
 import { NOMBRE_GRUPO } from '@/components/workout/anatomy'
 import { useSessionStore } from '@/store/sessionStore'
 import {
-  getResumen, getDias, Resumen, Dia,
+  getResumen, Resumen,
   kilosCorto, minutosCorto, desdeCuando,
 } from '@/services/statsService'
-import { queTocaHoy, Hoy, DiaDeLaSemana, prescripcion } from '@/services/programService'
+import {
+  queTocaHoy, Hoy, DiaDeLaSemana, prescripcion, DIAS_SEMANA,
+} from '@/services/programService'
 import { recetaDe } from '@/services/quickService'
 import { FOTOS, FOTO_MODO, fotoDePrograma } from '@/constants/imagenes'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 /**
- * Objetivo de sesiones por semana: cuatro.
+ * Objetivo de sesiones por semana cuando el servidor todavía no ha contestado.
  *
- * Por debajo de tres la frecuencia por grupo muscular no da para progresar, y
- * por encima de cinco la mayoría no sostiene el ritmo más de un mes.
+ * Ya NO es el objetivo de verdad: ese lo manda `/workout/today` en `anillo`, y
+ * sale de los `days_per_week` de tu inscripción. Un 4 escrito aquí le decía a
+ * quien sigue un plan de 3 días que iba corto todas las semanas.
+ *
+ * Se queda solo como valor de arranque: cuatro, porque por debajo de tres la
+ * frecuencia por grupo muscular no da para progresar y por encima de cinco la
+ * mayoría no sostiene el ritmo más de un mes.
  */
 const OBJETIVO_SEMANA = 4
 
@@ -69,20 +76,20 @@ export default function EntrenaHoy() {
 
   const [hoy, setHoy] = useState<Hoy | null>(null)
   const [resumen, setResumen] = useState<Resumen | null>(null)
-  const [dias, setDias] = useState<Dia[]>([])
   const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
 
+  // `getDias(7)` se cayó de aquí con la tira: el anillo trae su propio reparto
+  // de la semana dentro de `/workout/today`. Dejarlo habría sido una petición
+  // por cada visita a la portada para alimentar algo que ya no se dibuja.
   const cargar = useCallback(async () => {
     try {
-      const [h, r, v] = await Promise.all([
+      const [h, r] = await Promise.all([
         queTocaHoy().catch(() => null),
         getResumen(28).catch(() => null),
-        getDias(7).catch(() => null),
       ])
       setHoy(h)
       setResumen(r)
-      setDias(v?.dias ?? [])
     } finally {
       setCargando(false)
       setRefrescando(false)
@@ -140,7 +147,7 @@ export default function EntrenaHoy() {
               <Animated.View entering={FadeInDown.delay(70).duration(380)} style={s.bloque}>
                 <View style={s.seccionFila}>
                   <Text style={s.seccion}>
-                    TU SEMANA {hoy.semana.numero} DE {hoy.semana.de}
+                    TU SEMANA
                   </Text>
                   <TouchableOpacity onPress={() => router.push('/workout/program/plan')} hitSlop={8}>
                     <Text style={s.enlace}>El plan entero</Text>
@@ -202,11 +209,13 @@ export default function EntrenaHoy() {
 
             {/* ── 3 · CÓMO VA LA SEMANA ────────────────────────────────── */}
             <Animated.View entering={FadeInDown.delay(130).duration(380)} style={s.bloque}>
-              <TiraSemana
-                dias={dias}
-                sesionesSemana={resumen?.sesionesSemana ?? 0}
-                objetivo={OBJETIVO_SEMANA}
-                racha={resumen?.racha ?? 0}
+              <AnilloSemana
+                dias={hoy?.anillo?.dias ?? []}
+                hoy={hoy?.anillo?.hoy ?? -1}
+                hechos={hoy?.anillo?.hechos ?? 0}
+                objetivo={hoy?.anillo?.objetivo ?? OBJETIVO_SEMANA}
+                origen={hoy?.anillo?.origen ?? 'defecto'}
+                kcal={hoy?.anillo?.kcal ?? 0}
               />
               <View style={s.cifras}>
                 <Cifra valor={String(resumen?.seriesSemana ?? 0)} etiqueta="SERIES" />
@@ -263,7 +272,68 @@ function Hero({ hoy }: { hoy: Hoy | null }) {
   if (hoy.estado === 'abierta' && hoy.abierta) return <AMedias s={hoy.abierta} />
   if (hoy.estado === 'toca' && hoy.dia) return <TocaHoy hoy={hoy} />
   if (hoy.estado === 'hecho') return <YaEstá hoy={hoy} />
+  // Descanso NO es lo mismo que no tener plan, y caía en el mismo sitio: quien
+  // había puesto el jueves libre leía «todavía no sigues ningún plan».
+  if (hoy.estado === 'descanso') return <Descanso hoy={hoy} />
   return <SinPlan />
+}
+
+/**
+ * Hoy no toca nada, y eso ES el plan.
+ *
+ * El descanso no es un hueco: es la mitad de por qué un plan funciona. Así que
+ * se dice con las mismas letras que un día de entrenamiento, no con una
+ * pantalla apagada que parezca que algo falló.
+ *
+ * Y si quedaron días atrás, aquí es donde se ofrecen. Es el momento exacto en
+ * que sirven: tienes el día libre y algo pendiente que hacer.
+ */
+function Descanso({ hoy }: { hoy: Hoy }) {
+  const pendientes = hoy.semana?.dias.filter(d => d.pendiente) ?? []
+
+  return (
+    <View style={h.marco}>
+      <Image
+        source={hoy.programa ? fotoDePrograma(hoy.programa) : FOTOS.gimnasio.fuente}
+        style={StyleSheet.absoluteFill} contentFit="cover" transition={280}
+      />
+      <Velo />
+      <View style={h.dentro}>
+        <Etiqueta texto="HOY DESCANSAS" tono="hecho" />
+        <View style={{ gap: Spacing[3] }}>
+          <View>
+            <Text style={h.titulo} numberOfLines={2}>Día libre</Text>
+            <Text style={h.sub}>
+              {pendientes.length > 0
+                ? `Lo pusiste tú. Si te apetece mover algo, te quedó ${pendientes.length === 1 ? 'un día' : `${pendientes.length} días`} de esta semana.`
+                : 'Lo pusiste tú, y descansar es parte del plan: es cuando el músculo crece.'}
+            </Text>
+          </View>
+
+          {pendientes.length > 0 && (
+            <View style={{ gap: Spacing[2] }}>
+              {pendientes.slice(0, 2).map(d => (
+                <TouchableOpacity
+                  key={d.dia}
+                  style={h.botonSec}
+                  onPress={() => {
+                    void Haptics.selectionAsync()
+                    router.push(`/workout/program/day?week=${hoy.semana!.numero}&day=${d.dia}`)
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="arrow-forward-circle-outline" size={15} color={Colors.neon.w2} />
+                  <Text style={h.botonSecTxt} numberOfLines={1}>
+                    Hacer {DIAS_SEMANA[d.diaSemana]?.toLowerCase()}: {d.nombre}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+          )}
+        </View>
+      </View>
+    </View>
+  )
 }
 
 /** Dejaste algo abierto. Es lo único que importa hasta que se cierre. */
@@ -364,8 +434,9 @@ function YaEstá({ hoy }: { hoy: Hoy }) {
       series: a.series + (x.total_sets ?? 0),
       volumen: a.volumen + Number(x.total_volume_kg ?? 0),
       minutos: a.minutos + Math.round((x.duration_seconds ?? 0) / 60),
+      kcal: a.kcal + (x.calories_kcal ?? 0),
     }),
-    { series: 0, volumen: 0, minutos: 0 },
+    { series: 0, volumen: 0, minutos: 0, kcal: 0 },
   )
   const quedaDia = hoy.semana?.dias.some(d => !d.hecho && !d.esHoy)
 
@@ -388,6 +459,9 @@ function YaEstá({ hoy }: { hoy: Hoy }) {
               {total.series} {total.series === 1 ? 'serie' : 'series'}
               {total.minutos > 0 ? ` · ${minutosCorto(total.minutos)}` : ''}
               {total.volumen > 0 ? ` · ${kilosCorto(total.volumen)}` : ''}
+              {/* El gasto solo si hay cifra. Las sesiones de antes del
+                  estimador valen null y un «0 kcal» diría una mentira. */}
+              {total.kcal > 0 ? ` · ${total.kcal} kcal` : ''}
               {hoy.hechasHoy.length > 1 ? ` · ${hoy.hechasHoy.length} sesiones` : ''}
             </Text>
           </View>
@@ -504,6 +578,15 @@ function SinConexion() {
  * punto para mucha gente, y aquí saber por dónde vas es todo el contenido.
  */
 function FilaDia({ d, ultimo, semana }: { d: DiaDeLaSemana; ultimo: boolean; semana: number }) {
+  /**
+   * El DÍA DE LA SEMANA en grande y el entrenamiento debajo.
+   *
+   * Antes esta fila decía «Pecho y tríceps» y nada más, y había que adivinar
+   * cuándo tocaba. La lista iba en orden, sí, pero un orden no es una fecha:
+   * quien mira el lunes por la mañana quiere leer «LUNES», no contar filas.
+   */
+  const cuando = DIAS_SEMANA[d.diaSemana] ?? ''
+
   return (
     <TouchableOpacity
       style={m.fila}
@@ -520,6 +603,10 @@ function FilaDia({ d, ultimo, semana }: { d: DiaDeLaSemana; ultimo: boolean; sem
           </View>
         ) : d.esHoy ? (
           <View style={[m.nodo, m.hoy]}><View style={m.centro} /></View>
+        ) : d.pendiente ? (
+          /* Pendiente: aro rojo hueco. Ni tic ni relleno — se distingue por la
+             FORMA, no por el color, que a 12 px no basta para mucha gente. */
+          <View style={[m.nodo, m.pendiente]} />
         ) : (
           <View style={[m.nodo, m.porHacer]} />
         )}
@@ -527,17 +614,25 @@ function FilaDia({ d, ultimo, semana }: { d: DiaDeLaSemana; ultimo: boolean; sem
       </View>
 
       <View style={m.cuerpo}>
+        <Text style={[m.cuando, d.esHoy && m.cuandoHoy]}>{cuando.toUpperCase()}</Text>
         <Text style={[m.nombre, !d.esHoy && !d.hecho && { color: Colors.neon.w2 }]}>
           {d.nombre}
         </Text>
         <Text style={m.sub}>
           {d.hecho
             ? `${d.hecho.series} series${d.hecho.volumen > 0 ? ` · ${kilosCorto(d.hecho.volumen)}` : ''}`
-            : `${d.ejercicios} ejercicios · ${d.series} series${d.foco ? ` · ${NOMBRE_GRUPO[d.foco] ?? d.foco}` : ''}`}
+            /* Fuera el foco: repetía el músculo que ya está en el nombre y
+               dejaba cosas como «Core · 5 ejercicios · 15 series · Core». */
+            : `${d.ejercicios} ejercicios · ${d.series} series`}
         </Text>
       </View>
 
       {d.esHoy && !d.hecho && <View style={m.hoyPastilla}><Text style={m.hoyTxt}>HOY</Text></View>}
+      {/* Un día que se quedó atrás NO se marca como fallado: se dice que sigue
+          disponible, porque hacerlo mañana cuenta igual. */}
+      {d.pendiente && (
+        <View style={m.pendientePastilla}><Text style={m.pendienteTxt}>PENDIENTE</Text></View>
+      )}
       <Ionicons name="chevron-forward" size={15} color={Colors.neon.w4} />
     </TouchableOpacity>
   )
@@ -761,8 +856,15 @@ const m = StyleSheet.create({
   hiloHecho: { backgroundColor: 'rgba(255,255,255,0.30)' },
 
   cuerpo: { flex: 1, paddingBottom: 2 },
+  cuando: {
+    fontSize: 9.5, fontWeight: '800', color: Colors.neon.w3,
+    letterSpacing: 1.1, marginBottom: 1,
+  },
+  cuandoHoy: { color: Colors.neon.redSoft },
   nombre: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
   sub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
+
+  pendiente: { borderWidth: 1.5, borderColor: 'rgba(255,31,61,0.55)' },
 
   hoyPastilla: {
     paddingHorizontal: 7, paddingVertical: 3,
@@ -770,4 +872,13 @@ const m = StyleSheet.create({
     backgroundColor: Colors.neon.red,
   },
   hoyTxt: { fontSize: 8.5, fontWeight: '800', color: '#fff', letterSpacing: 0.8 },
+
+  /* Pendiente va en contorno y no en relleno: es una invitación, no un aviso.
+     Con el mismo peso visual que HOY competiría con lo que de verdad toca. */
+  pendientePastilla: {
+    paddingHorizontal: 7, paddingVertical: 3,
+    borderRadius: BorderRadius.full,
+    borderWidth: 1, borderColor: 'rgba(255,31,61,0.55)',
+  },
+  pendienteTxt: { fontSize: 8.5, fontWeight: '800', color: Colors.neon.redSoft, letterSpacing: 0.8 },
 })

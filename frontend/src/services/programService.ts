@@ -50,7 +50,18 @@ export interface EjercicioPlan {
 }
 
 export interface DiaPlan {
+  /** Su número dentro del plan, de 1 a N. Es la identidad, no el cuándo. */
   dia: number
+  /**
+   * Cuándo se hace: 0 = lunes … 6 = domingo.
+   *
+   * Opcional porque los planes creados antes de esto no lo traen. El servidor
+   * les reparte los días al leerlos, así que siguen funcionando; al editarlos
+   * en el planificador se quedan con día de la semana de verdad.
+   */
+  diaSemana?: number
+  /** Los músculos que eligió su dueño. De aquí salió el nombre y la propuesta. */
+  musculos?: string[]
   nombre: string
   foco?: string
   ejercicios: EjercicioPlan[]
@@ -149,16 +160,29 @@ export interface Inscripcion {
  *   · `toca`     — te toca este día de tu plan.
  *   · `sinPlan`  — no sigues nada todavía.
  */
-export type EstadoHoy = 'abierta' | 'hecho' | 'toca' | 'sinPlan'
+/**
+ * `descanso` es nuevo: hoy no toca nada porque así lo pusiste tú.
+ *
+ * No es lo mismo que no tener plan, y la portada tiene que poder decirlo de
+ * otra manera. Un día de descanso planeado es parte del plan, no un hueco.
+ */
+export type EstadoHoy = 'abierta' | 'hecho' | 'toca' | 'descanso' | 'sinPlan'
 
 export interface DiaDeLaSemana {
+  /** Su número dentro del plan, de 1 a N. Es la identidad, no el cuándo. */
   dia: number
+  /** Cuándo se hace: 0 = lunes … 6 = domingo. */
+  diaSemana: number
   nombre: string
+  /** Los músculos que eligió el usuario para ese día. */
+  musculos: string[]
   foco: string | null
   ejercicios: number
   series: number
   hecho: { sessionId: string; series: number; volumen: number } | null
   esHoy: boolean
+  /** Su día ya pasó esta semana y no se hizo. Se puede hacer y cuenta igual. */
+  pendiente: boolean
 }
 
 export interface Hoy {
@@ -169,6 +193,8 @@ export interface Hoy {
   hechasHoy: {
     id: string; title: string; total_sets: number; total_volume_kg: number
     duration_seconds: number | null; started_at: string
+    /** Gasto activo estimado. Null en las sesiones anteriores al estimador. */
+    calories_kcal: number | null
   }[]
   programa: {
     id: string; nombre: string; semanas: number; diasPorSemana: number
@@ -177,6 +203,25 @@ export interface Hoy {
   dia: DiaPropuesto | null
   semana: {
     numero: number; de: number; esDescarga: boolean; dias: DiaDeLaSemana[]
+  } | null
+  /**
+   * El anillo de la semana. Viene SIEMPRE, con plan y sin plan: a quien entrena
+   * por su cuenta es a quien más le sirve saber si esta semana lleva tres o uno.
+   *
+   * OJO con no confundir esto con `semana`, que es la del PROGRAMA. Esta es la
+   * de calendario, de lunes a domingo, porque lo que mide es constancia.
+   */
+  anillo: {
+    /** Lunes a domingo. */
+    dias: boolean[]
+    /** 0 = lunes. */
+    hoy: number
+    hechos: number
+    objetivo: number
+    origen: 'plan' | 'defecto'
+    kcal: number
+    sesiones: number
+    desde: string
   } | null
 }
 
@@ -234,11 +279,44 @@ export interface PlanPropio {
   deloadEvery?: number | null
   dias: {
     dia: number
+    /** 0 = lunes … 6 = domingo. Dos días no pueden repetirlo: el servidor lo rechaza. */
+    diaSemana: number
+    musculos: string[]
     nombre: string
     foco?: string
     ejercicios: EjercicioPlan[]
   }[]
 }
+
+// ── El planificador ──────────────────────────────────────────────────────────
+
+export interface Musculo { clave: string; nombre: string; corto: string }
+
+export const getMusculos = async () =>
+  unwrap<{ musculos: Musculo[]; diasSugeridos: { n: number; dias: number[] }[] }>(
+    await apiGet('/workout/plan/musculos'),
+  )
+
+/**
+ * «Pecho y tríceps» → los ejercicios, con series, reps y descanso ya puestos.
+ *
+ * Lo resuelve el servidor porque el catálogo de 206 vive allí. Lo que vuelve es
+ * una PROPUESTA: no está guardada en ningún sitio y el usuario la edita antes
+ * de que exista nada.
+ */
+export const proponerEjercicios = async (musculos: string[], modo: 'gym' | 'home' = 'gym') =>
+  unwrap<{
+    nombre: string
+    ejercicios: (EjercicioPlan & { musculo: string })[]
+    posters?: Record<string, string>
+    motivo?: string
+  }>(await apiGet(
+    `/workout/plan/propuesta?musculos=${encodeURIComponent(musculos.join(','))}&modo=${modo}`,
+  ))
+
+/** Lunes a domingo, como los cuenta el servidor: 0 = lunes. */
+export const DIAS_SEMANA = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo']
+export const DIAS_CORTOS = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
 
 /**
  * Guarda un plan tuyo. Sin `id` lo crea; con `id` lo actualiza.
