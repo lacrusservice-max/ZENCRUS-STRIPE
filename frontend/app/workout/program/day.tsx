@@ -15,10 +15,19 @@
  * ajusta cualquier valor. Y lo que se cambia se RECUERDA, que es la diferencia
  * entre resolverlo y volver a resolverlo cada semana.
  *
- * ── El calentamiento es un interruptor y no una lista fija ──────────────────
- * A veces se llega caliente de la calle y a veces no. Cuando se enciende, salen
- * las series de aproximación calculadas sobre el peso de hoy; no se registran
- * en el historial porque no son trabajo, son preparación.
+ * ── El calentamiento es de CADA EJERCICIO ───────────────────────────────────
+ * A veces se llega caliente de la calle y a veces no, y sobre todo: se calienta
+ * en lo que pesa. Un interruptor único para el día entero obligaba a elegir
+ * entre calentar hasta en las elevaciones laterales o no calentar ni en la
+ * sentadilla. Ahora vive dentro de la ficha del ejercicio, justo debajo del
+ * peso al que se aproxima, que es la única forma de decidirlo con criterio.
+ * Las series de aproximación no se registran en el historial: no son trabajo,
+ * son preparación.
+ *
+ * ── Lo que se trabaja y lo que hace falta, AL FINAL ──────────────────────────
+ * Es información para antes de salir de casa —«¿necesito polea?»—, no lo
+ * primero que se mira. Arriba empujaba hacia abajo lo único que se viene a
+ * buscar, que es la lista de ejercicios.
  */
 
 import { useState, useCallback, useMemo } from 'react'
@@ -51,7 +60,28 @@ export default function DiaDelPrograma() {
   const { week, day } = useLocalSearchParams<{ week?: string; day?: string }>()
   const [d, setD] = useState<DiaPropuesto | null>(null)
   const [cargando, setCargando] = useState(true)
-  const [calentar, setCalentar] = useState(false)
+  /**
+   * El calentamiento es de CADA EJERCICIO, no del día entero.
+   *
+   * Era un interruptor global arriba del todo, y eso obligaba a elegir entre
+   * dos cosas malas: calentar en todo —incluidas las elevaciones laterales, que
+   * no lo necesitan— o no calentar en nada, incluida la sentadilla pesada. Se
+   * calienta en lo que pesa y punto, así que la decisión va con el ejercicio.
+   *
+   * Se guarda por `clavePlan` porque es lo que identifica al hueco del plan
+   * aunque se cambie el ejercicio que lo ocupa.
+   */
+  const [conCalentamiento, setConCalentamiento] = useState<Set<string>>(new Set())
+
+  const alternarCalentamiento = useCallback((clave: string) => {
+    void Haptics.selectionAsync()
+    setConCalentamiento(prev => {
+      const s = new Set(prev)
+      if (s.has(clave)) s.delete(clave)
+      else s.add(clave)
+      return s
+    })
+  }, [])
   const [editando, setEditando] = useState<Propuesta | null>(null)
   const [cambiando, setCambiando] = useState<Propuesta | null>(null)
   const [abriendo, setAbriendo] = useState(false)
@@ -234,7 +264,53 @@ export default function DiaDelPrograma() {
         </Animated.View>
 
         <View style={s.bloque}>
-          {/* ── Qué trabajas y qué necesitas ───────────────────────────── */}
+          {/* ── Los ejercicios, agrupados por músculo ───────────────────── */}
+          <Text style={s.seccion}>LOS {d.ejercicios.length} EJERCICIOS</Text>
+
+          {grupos.map((g, gi) => (
+            <View key={g.id} style={{ gap: Spacing[3] }}>
+              {/* La cabecera del grupo solo cuando hay MÁS DE UNO. Con un solo
+                  músculo, «PECHO» encima de cinco ejercicios de pecho no añade
+                  nada y mete un escalón de más en la lectura. */}
+              {grupos.length > 1 && (
+                <View style={s.grupo}>
+                  <Text style={s.grupoTxt}>{g.nombre.toUpperCase()}</Text>
+                  <View style={s.grupoLinea} />
+                  <Text style={s.grupoCuenta}>
+                    {g.ejercicios.length} {g.ejercicios.length === 1 ? 'ejercicio' : 'ejercicios'}
+                  </Text>
+                </View>
+              )}
+
+              {g.ejercicios.map(({ e, n }, i) => (
+                <Animated.View
+                  key={e.clavePlan}
+                  entering={FadeInDown.delay(Math.min((gi * 2 + i) * 45, 320)).duration(320)}
+                >
+                  <FichaEjercicio
+                    e={e}
+                    n={n}
+                    poster={e.slug ? d.posters[e.slug] : null}
+                    calentar={conCalentamiento.has(e.clavePlan)}
+                    onCalentar={() => alternarCalentamiento(e.clavePlan)}
+                    contexto={{ programId: d.programa.id, semana: d.semana, dia: d.dia, titulo: d.nombre }}
+                    onEditarPeso={() => setEditando(e)}
+                    onCambiar={() => setCambiando(e)}
+                  />
+                </Animated.View>
+              ))}
+            </View>
+          ))}
+
+          {/**
+            * Qué trabajas y qué necesitas, AL FINAL.
+            *
+            * Estaba arriba, entre la portada y los ejercicios, y ahí empujaba
+            * hacia abajo lo único que se viene a buscar: la lista. Es
+            * información de contexto —para saber si te hace falta la polea antes
+            * de salir de casa—, no lo primero que se mira, así que se lee cuando
+            * ya has visto el día.
+            */}
           <View style={s.resumen}>
             <View style={s.resumenFila}>
               <Ionicons name="body-outline" size={15} color={Colors.neon.w3} />
@@ -263,60 +339,6 @@ export default function DiaDelPrograma() {
               {resumen.material.length === 0 && <Text style={s.nada}>Nada</Text>}
             </View>
           </View>
-
-          {/* ── Calentamiento ──────────────────────────────────────────── */}
-          <View style={s.calentar}>
-            <View style={{ flex: 1 }}>
-              <Text style={s.calentarTitulo}>Series de aproximación</Text>
-              <Text style={s.calentarSub}>
-                Subir hasta el peso de hoy poco a poco. No cuentan en tu volumen ni
-                en tus récords.
-              </Text>
-            </View>
-            <Switch
-              value={calentar}
-              onValueChange={v => { void Haptics.selectionAsync(); setCalentar(v) }}
-              trackColor={{ false: 'rgba(255,255,255,0.14)', true: Colors.neon.red }}
-              thumbColor="#fff"
-            />
-          </View>
-
-          {/* ── Los ejercicios, agrupados por músculo ───────────────────── */}
-          <Text style={s.seccion}>LOS {d.ejercicios.length} EJERCICIOS</Text>
-
-          {grupos.map((g, gi) => (
-            <View key={g.id} style={{ gap: Spacing[3] }}>
-              {/* La cabecera del grupo solo cuando hay MÁS DE UNO. Con un solo
-                  músculo, «PECHO» encima de cinco ejercicios de pecho no añade
-                  nada y mete un escalón de más en la lectura. */}
-              {grupos.length > 1 && (
-                <View style={s.grupo}>
-                  <Text style={s.grupoTxt}>{g.nombre.toUpperCase()}</Text>
-                  <View style={s.grupoLinea} />
-                  <Text style={s.grupoCuenta}>
-                    {g.ejercicios.length} {g.ejercicios.length === 1 ? 'ejercicio' : 'ejercicios'}
-                  </Text>
-                </View>
-              )}
-
-              {g.ejercicios.map(({ e, n }, i) => (
-                <Animated.View
-                  key={e.clavePlan}
-                  entering={FadeInDown.delay(Math.min((gi * 2 + i) * 45, 320)).duration(320)}
-                >
-                  <FichaEjercicio
-                    e={e}
-                    n={n}
-                    poster={e.slug ? d.posters[e.slug] : null}
-                    calentar={calentar}
-                    contexto={{ programId: d.programa.id, semana: d.semana, dia: d.dia, titulo: d.nombre }}
-                    onEditarPeso={() => setEditando(e)}
-                    onCambiar={() => setCambiando(e)}
-                  />
-                </Animated.View>
-              ))}
-            </View>
-          ))}
 
           <Text style={s.pie}>
             Los pesos son una propuesta a partir de lo que ya has levantado. Toca el
@@ -370,11 +392,13 @@ export default function DiaDelPrograma() {
 
 // ── Ficha de un ejercicio ────────────────────────────────────────────────────
 
-function FichaEjercicio({ e, n, poster, calentar, contexto, onEditarPeso, onCambiar }: {
+function FichaEjercicio({ e, n, poster, calentar, onCalentar, contexto, onEditarPeso, onCambiar }: {
   e: Propuesta
   n: number
   poster?: string | null
+  /** Si ESTE ejercicio lleva series de aproximación. Es decisión suya, no del día. */
   calentar: boolean
+  onCalentar: () => void
   /** De qué día del plan es esto. Viaja a la pantalla de hacerlo. */
   contexto: { programId: string; semana: number; dia: number; titulo: string }
   onEditarPeso: () => void
@@ -455,6 +479,32 @@ function FichaEjercicio({ e, n, poster, calentar, contexto, onEditarPeso, onCamb
           <Ionicons name="create-outline" size={15} color={Colors.neon.w2} />
         </View>
       </TouchableOpacity>
+
+      {/**
+        * Las series de aproximación, con el ejercicio al que pertenecen.
+        *
+        * Estaban en un interruptor global arriba del todo, lejos del peso al
+        * que se aproximan. Aquí abajo se ve el peso de hoy y, justo debajo, si
+        * se sube hasta él poco a poco — que es la única forma de decidirlo con
+        * criterio. Sin peso no hay a qué aproximarse, así que no se ofrece.
+        */}
+      {e.pesoKg != null && (
+        <TouchableOpacity style={f.calentar} onPress={onCalentar} activeOpacity={0.8}>
+          <View style={{ flex: 1 }}>
+            <Text style={f.calentarTitulo}>Series de aproximación</Text>
+            <Text style={f.calentarSub}>
+              Subir hasta los {e.pesoKg} kg poco a poco. No cuentan en tu volumen
+              ni en tus récords.
+            </Text>
+          </View>
+          <Switch
+            value={calentar}
+            onValueChange={onCalentar}
+            trackColor={{ false: 'rgba(255,255,255,0.14)', true: Colors.neon.red }}
+            thumbColor="#fff"
+          />
+        </TouchableOpacity>
+      )}
 
       {aprox.length > 0 && (
         <View style={f.aprox}>
@@ -708,16 +758,6 @@ const s = StyleSheet.create({
   chipTxt: { fontSize: 11, fontWeight: '700', color: Colors.neon.w2 },
   nada: { fontSize: 11, color: Colors.neon.w3 },
 
-  calentar: {
-    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
-    padding: Spacing[4],
-    backgroundColor: Colors.neon.pane,
-    borderRadius: 18,
-    borderWidth: 1, borderColor: Colors.neon.edge,
-  },
-  calentarTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: Colors.neon.white },
-  calentarSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 2, lineHeight: 15 },
-
   seccion: { fontSize: 10, fontWeight: '800', color: Colors.neon.w3, letterSpacing: 1.6, marginTop: Spacing[2] },
 
   grupo: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], marginTop: Spacing[1] },
@@ -776,6 +816,15 @@ const f = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.08)',
   },
+
+  /* El interruptor vive DENTRO de la ficha, así que va más discreto que la
+     tarjeta global que sustituye: no compite con el peso, que es lo que manda. */
+  calentar: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+    paddingVertical: Spacing[2],
+  },
+  calentarTitulo: { fontSize: 12.5, fontWeight: '700', color: Colors.neon.w2 },
+  calentarSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 2, lineHeight: 15 },
 
   aprox: { gap: 6 },
   aproxTitulo: { fontSize: 9, fontWeight: '800', color: Colors.neon.w3, letterSpacing: 1.2 },
