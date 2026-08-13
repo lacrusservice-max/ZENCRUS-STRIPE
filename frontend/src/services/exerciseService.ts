@@ -31,8 +31,17 @@ export interface ExerciseCard {
   poster: string | null
 }
 
+/** Cómo se hace, en cuatro frases. Lo compone el servidor al leer la ficha. */
+export interface ComoSeHace {
+  colocate: string
+  mueve: string
+  hastaDonde: string
+  ojoCon: string
+}
+
 export interface ExerciseDetail extends ExerciseCard {
   video: string | null
+  comoSeHace: ComoSeHace
   alternatives: {
     slug: string
     name: string
@@ -117,6 +126,38 @@ export async function getFilters(): Promise<Filters> {
 /** Lo llama el cierre de sesión: la siguiente persona pide lo suyo. */
 export function resetExerciseCache(): void {
   cacheFiltros = null
+}
+
+/**
+ * Solo las imágenes de unos slugs concretos.
+ *
+ * Para quien ya sabe qué ejercicios enseña y solo le falta la foto: una rutina
+ * guardada en el teléfono (que almacena el slug, no el póster) o una sesión
+ * recuperada del servidor a mitad de entrenamiento.
+ *
+ * Devuelve un objeto y no una lista para que el que llama no tenga que casar
+ * posiciones: si un slug no está en el catálogo, sencillamente no viene su
+ * clave y quien lo pinta enseña el hueco con su icono.
+ *
+ * NO se cachea entre pantallas: las direcciones caducan en una hora y una URL
+ * rescatada al día siguiente sería una imagen rota.
+ */
+export const getPosters = async (slugs: string[]): Promise<Record<string, string>> => {
+  const limpios = [...new Set(slugs.filter(Boolean))].slice(0, 60)
+  if (limpios.length === 0) return {}
+  try {
+    const r = unwrap<{ posters: Record<string, string> }>(
+      await apiGet('/exercises/posters', { params: { slugs: limpios.join(',') } }),
+    )
+    return r?.posters ?? {}
+  } catch (e) {
+    // Una miniatura que falta no puede tumbar la pantalla que la enseña, pero
+    // callarse del todo tampoco vale: un fallo aquí se ve como una rejilla de
+    // huecos grises, que es indistinguible de «este ejercicio no tiene foto».
+    // Sin este aviso costó encontrar por qué las rutinas salían sin imágenes.
+    console.warn('[exercises/posters]', (e as Error)?.message ?? e)
+    return {}
+  }
 }
 
 // ── Presentación ─────────────────────────────────────────────────────────────

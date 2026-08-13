@@ -30,6 +30,7 @@ import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
 import { readUrls, readUrl, mediaReady } from '../services/media'
 import catalogo from '../data/exercises.json'
+import { comoSeHace } from '../data/comoSeHace'
 import { generar, DURACIONES, REGIONES } from '../services/generador'
 
 // ── Forma de una ficha ───────────────────────────────────────────────────────
@@ -188,6 +189,10 @@ export async function getExercise(req: Request, res: Response): Promise<void> {
       home: e.home,
       video,
       poster,
+      // Cómo se hace: se compone al leer a partir del patrón, el músculo y el
+      // material. No se guarda en el catálogo para que un ejercicio nuevo traiga
+      // su explicación el día que entra, sin tener que escribirla aparte.
+      comoSeHace: comoSeHace(e),
       alternatives: alternativas.map(a => ({
         slug: a.slug,
         name: a.nombre,
@@ -234,6 +239,52 @@ export async function getFilters(_req: Request, res: Response): Promise<void> {
   } satisfies ApiResponse)
 }
 
+
+// ── Pósters sueltos ──────────────────────────────────────────────────────────
+
+export const postersSchema = z.object({
+  query: z.object({
+    /** Slugs separados por coma. El tope lo pone el propio esquema. */
+    slugs: z.string().min(1).max(2000),
+  }),
+})
+
+/**
+ * GET /exercises/posters?slugs=press-banca,sentadilla
+ *
+ * Solo las imágenes, por slug. Existe porque hay dos sitios que ya SABEN qué
+ * ejercicios enseñan y solo les falta la foto: una rutina guardada en el
+ * teléfono —que almacena el slug, no el póster— y una sesión recuperada del
+ * servidor a mitad de entrenamiento.
+ *
+ * La alternativa era pedir el listado entero y quedarse con seis fichas: 206
+ * fichas y 206 firmas para tirar 200. Aquí se firma exactamente lo que se pinta.
+ *
+ * Los slugs que no existen se OMITEN en vez de devolver null. Quien pregunta ya
+ * tiene el nombre del ejercicio; lo que necesita saber es si hay imagen, y una
+ * clave ausente lo dice igual de bien sin ocupar la respuesta.
+ */
+export async function getPosters(req: Request, res: Response): Promise<void> {
+  const slugs = [...new Set(
+    String(req.query.slugs).split(',').map(s => s.trim()).filter(Boolean),
+  )].slice(0, 60)
+
+  const fichas = slugs
+    .map(s => POR_SLUG.get(s))
+    .filter((e): e is Ficha => !!e)
+
+  const firmadas = mediaReady() && fichas.length
+    ? await readUrls(fichas.map(clavePoster))
+    : new Map<string, string>()
+
+  const posters: Record<string, string> = {}
+  for (const e of fichas) {
+    const url = firmadas.get(clavePoster(e))
+    if (url) posters[e.slug] = url
+  }
+
+  res.json({ success: true, data: { posters } } satisfies ApiResponse)
+}
 
 // ── Entrenamientos generados ─────────────────────────────────────────────────
 

@@ -36,6 +36,7 @@ import {
   SerieGuardada,
 } from '../services/workoutSessions'
 import { readUrls, mediaReady } from '../services/media'
+import { avanzarPrograma } from './programController'
 
 const fail = (res: Response, code: number, message: string) => {
   res.status(code).json({ success: false, message } satisfies ApiResponse)
@@ -254,7 +255,80 @@ export async function listarSesiones(req: Request, res: Response): Promise<void>
 
   if (error) { fail(res, 500, 'No se pudo leer el historial'); return }
 
-  ok(res, { total: count ?? 0, offset, limit, sessions: data ?? [] })
+  const sesiones = data ?? []
+
+  ok(res, {
+    total: count ?? 0,
+    offset,
+    limit,
+    sessions: await conPosters(sesiones),
+  })
+}
+
+/**
+ * Las miniaturas de cada sesión: hasta cuatro pósters de los ejercicios que se
+ * hicieron.
+ *
+ * ── Por qué merece una consulta más ─────────────────────────────────────────
+ * Una lista de entrenamientos donde todas las filas llevan el mismo icono de
+ * mancuerna obliga a LEER el título para distinguir el día de pierna del de
+ * espalda. Con las imágenes se reconocen de un vistazo, que es como se recuerda
+ * lo que uno hizo.
+ *
+ * ── Y por qué no rompe la regla de arriba ───────────────────────────────────
+ * El comentario de `listarSesiones` dice que el historial no trae las series, y
+ * sigue siendo cierto: esto pide TRES columnas pequeñas —la sesión, el hueco y
+ * la clave del ejercicio—, no las filas enteras con sus pesos, sus RIR y sus
+ * notas. Va por el índice `wset_session_order`, y de las claves que salen solo
+ * se firman las cuatro primeras de cada sesión.
+ */
+async function conPosters<T extends { id: string }>(
+  sesiones: T[],
+): Promise<(T & { posters: string[] })[]> {
+  if (sesiones.length === 0) return []
+
+  const { data: series } = await supabase
+    .from('workout_sets')
+    .select('session_id, order_index, exercise_key')
+    // Los ocho primeros huecos bastan para sacar cuatro ejercicios distintos, y
+    // acotan la consulta por arriba: sin esto, una sesión de treinta huecos
+    // traería treinta veces lo que se va a usar.
+    .lte('order_index', 7)
+    .in('session_id', sesiones.map(s => s.id))
+    .order('order_index', { ascending: true })
+    // Explícito para no depender del tope invisible del cliente: si algún día
+    // se recortara por dentro, las últimas sesiones se quedarían sin miniatura
+    // y nadie sabría por qué.
+    .limit(3000)
+
+  // Por sesión, las claves distintas en el orden en que se entrenaron. El orden
+  // importa: los cuatro primeros ejercicios son los que definen la sesión.
+  const clavesPorSesion = new Map<string, string[]>()
+  for (const s of series ?? []) {
+    let acc = clavesPorSesion.get(s.session_id)
+    if (!acc) { acc = []; clavesPorSesion.set(s.session_id, acc) }
+    if (acc.length < 4 && !acc.includes(s.exercise_key)) acc.push(s.exercise_key)
+  }
+
+  const archivos = [...new Set(
+    [...clavesPorSesion.values()].flat()
+      .map(posterDe)
+      .filter((p): p is string => !!p),
+  )]
+
+  const firmadas = mediaReady() && archivos.length
+    ? await readUrls(archivos.map(p => `library/poster/${p}`))
+    : new Map<string, string>()
+
+  return sesiones.map(s => ({
+    ...s,
+    posters: (clavesPorSesion.get(s.id) ?? [])
+      .map(k => {
+        const p = posterDe(k)
+        return p ? firmadas.get(`library/poster/${p}`) ?? null : null
+      })
+      .filter((u): u is string => !!u),
+  }))
 }
 
 export async function detalleSesion(req: Request, res: Response): Promise<void> {
@@ -457,7 +531,18 @@ export async function cerrarSesion(req: Request, res: Response): Promise<void> {
   }
 
   logger.info(`Entrenamiento cerrado (${cerrada.mode}) para usuario: ${userId}`)
-  ok(res, { session: cerrada, sets: series })
+
+  /**
+   * Si la sesión era de un programa, el programa avanza AQUÍ.
+   *
+   * Va después de cerrar y nunca antes: el programa se mueve por lo entrenado,
+   * no por lo prometido. Y no puede tumbar el cierre —tiene su propio
+   * try/catch— porque perder un entrenamiento por no poder mover un contador
+   * sería un intercambio pésimo; el contador se recoloca solo al día siguiente.
+   */
+  const avance = await avanzarPrograma(userId, cerrada)
+
+  ok(res, { session: cerrada, sets: series, programa: avance })
 }
 
 /**

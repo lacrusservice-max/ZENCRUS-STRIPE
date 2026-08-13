@@ -26,6 +26,10 @@ export interface Sesion {
   source: Origen
   title: string
   routine_id: string | null
+  /** De qué día de qué programa es, si vino de uno. */
+  program_id: string | null
+  program_week: number | null
+  program_day: number | null
   started_at: string
   ended_at: string | null
   duration_seconds: number | null
@@ -39,6 +43,12 @@ export interface Sesion {
   perceived_effort: number | null
   notes: string | null
   client_id: string
+  /**
+   * Hasta cuatro pósters firmados de los ejercicios que se hicieron, en el
+   * orden en que se entrenaron. Solo lo manda el LISTADO: el detalle de una
+   * sesión ya trae sus series y saca las imágenes de ahí.
+   */
+  posters?: string[]
 }
 
 export interface Serie {

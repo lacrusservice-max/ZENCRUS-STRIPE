@@ -168,6 +168,49 @@ export default function ExerciseScreen() {
           </View>
         </View>
 
+        {/* ── Cómo se hace ────────────────────────────────────────────────
+            Va ANTES de los sustitutos y justo después del vídeo: quien abre
+            una ficha quiere saber cómo se hace, y el vídeo solo lo enseña —no
+            dice dónde parar ni qué se suele hacer mal. */}
+        {ex.comoSeHace && (
+          <>
+            <View style={s.cabecera}>
+              <Text style={[s.etiqueta, { color: T.ink3 }]}>CÓMO SE HACE</Text>
+            </View>
+            <View style={s.bloque}>
+              <View style={[s.comoWrap, { backgroundColor: T.glass, borderColor: T.glassBorder }]}>
+                <Paso
+                  icono="body-outline"
+                  titulo="Colócate"
+                  texto={ex.comoSeHace.colocate}
+                  T={T}
+                />
+                <Paso
+                  icono="swap-vertical-outline"
+                  titulo="Mueve"
+                  texto={ex.comoSeHace.mueve}
+                  T={T}
+                />
+                <Paso
+                  icono="resize-outline"
+                  titulo="Hasta dónde"
+                  texto={ex.comoSeHace.hastaDonde}
+                  T={T}
+                />
+                {/* El error va en rojo y el último: es lo que más se recuerda
+                    de una lista, y aquí interesa que se recuerde. */}
+                <Paso
+                  icono="alert-circle-outline"
+                  titulo="Ojo con"
+                  texto={ex.comoSeHace.ojoCon}
+                  T={T}
+                  aviso
+                />
+              </View>
+            </View>
+          </>
+        )}
+
         {/* Sustitutos */}
         {ex.alternatives.length > 0 && (
           <>
@@ -215,6 +258,35 @@ export default function ExerciseScreen() {
   )
 }
 
+/**
+ * Un paso de «cómo se hace».
+ *
+ * Icono, título corto y una frase. Cuatro pasos con la misma forma se leen de
+ * un vistazo; un párrafo seguido con la misma información, no.
+ */
+function Paso({ icono, titulo, texto, T, aviso }: {
+  icono: React.ComponentProps<typeof Ionicons>['name']
+  titulo: string
+  texto: string
+  T: { accent: string; ink: string; ink2: string; ink3: string; glass: string }
+  aviso?: boolean
+}) {
+  const color = aviso ? T.accent : T.ink2
+  return (
+    <View style={s.paso}>
+      <View style={[s.pasoIcono, { backgroundColor: aviso ? `${T.accent}1f` : T.glass }]}>
+        <Ionicons name={icono} size={16} color={color} />
+      </View>
+      <View style={{ flex: 1 }}>
+        <Text style={[s.pasoTitulo, { color: aviso ? T.accent : T.ink3 }]}>
+          {titulo.toUpperCase()}
+        </Text>
+        <Text style={[s.pasoTxt, { color: T.ink }]}>{texto}</Text>
+      </View>
+    </View>
+  )
+}
+
 const s = StyleSheet.create({
   sinMedio: { flex: 1, alignItems: 'center', justifyContent: 'center' },
   veloArriba: { position: 'absolute', top: 0, left: 0, right: 0, height: 110 },
@@ -236,6 +308,15 @@ const s = StyleSheet.create({
     padding: 14, borderRadius: 16, borderWidth: 1,
   },
   avisoTxt: { flex: 1, fontSize: 13, lineHeight: 19 },
+
+  comoWrap: { borderRadius: 18, borderWidth: 1, padding: 16, gap: 18 },
+  paso: { flexDirection: 'row', gap: 12, alignItems: 'flex-start' },
+  pasoIcono: {
+    width: 30, height: 30, borderRadius: 15,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  pasoTitulo: { fontSize: 10, fontWeight: '800', letterSpacing: 1.3, marginBottom: 3 },
+  pasoTxt: { fontSize: 13, lineHeight: 19 },
   cabecera: {
     flexDirection: 'row', justifyContent: 'space-between', alignItems: 'baseline',
     paddingHorizontal: 20, paddingTop: 26, paddingBottom: 10,
