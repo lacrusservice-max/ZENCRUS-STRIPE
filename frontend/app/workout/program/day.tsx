@@ -279,6 +279,7 @@ export default function DiaDelPrograma() {
                     n={n}
                     poster={e.slug ? d.posters[e.slug] : null}
                     calentar={calentar}
+                    contexto={{ programId: d.programa.id, semana: d.semana, dia: d.dia }}
                     onEditarPeso={() => setEditando(e)}
                     onCambiar={() => setCambiando(e)}
                   />
@@ -320,11 +321,13 @@ export default function DiaDelPrograma() {
 
 // ── Ficha de un ejercicio ────────────────────────────────────────────────────
 
-function FichaEjercicio({ e, n, poster, calentar, onEditarPeso, onCambiar }: {
+function FichaEjercicio({ e, n, poster, calentar, contexto, onEditarPeso, onCambiar }: {
   e: Propuesta
   n: number
   poster?: string | null
   calentar: boolean
+  /** De qué día del plan es esto. Viaja a la pantalla de hacerlo. */
+  contexto: { programId: string; semana: number; dia: number }
   onEditarPeso: () => void
   onCambiar: () => void
 }) {
@@ -332,7 +335,39 @@ function FichaEjercicio({ e, n, poster, calentar, onEditarPeso, onCambiar }: {
 
   return (
     <View style={f.wrap}>
-      <View style={f.cabecera}>
+      {/**
+        * Tocar el ejercicio lleva a HACERLO: su vídeo, su contador de series,
+        * su descanso y el botón de anotar.
+        *
+        * Antes esta fila no llevaba a ningún sitio y para entrenar había que
+        * volver arriba y darle a «Empezar». Que el ejercicio no se pudiera
+        * tocar es de las cosas que uno prueba y no entiende: si está en la
+        * pantalla y tiene foto, se toca.
+        */}
+      <TouchableOpacity
+        style={f.cabecera}
+        onPress={() => {
+          void Haptics.selectionAsync()
+          const q = new URLSearchParams({
+            slug: e.slug ?? '',
+            nombre: e.nombre,
+            orden: String(n - 1),
+            series: String(e.series),
+            reps: e.reps ?? '',
+            descanso: String(e.descanso),
+            carga: e.carga,
+            // El contexto viaja para que la pantalla pueda comprobar que la
+            // sesión abierta es la de ESTE día y no una huérfana de otro.
+            programId: contexto.programId,
+            semana: String(contexto.semana),
+            dia: String(contexto.dia),
+            ...(e.duracion ? { duracion: String(e.duracion) } : {}),
+            ...(e.pesoKg != null ? { peso: String(e.pesoKg) } : {}),
+          })
+          router.push(`/workout/exercise/hacer?${q.toString()}`)
+        }}
+        activeOpacity={0.85}
+      >
         <Text style={f.num}>{n}</Text>
         <Miniatura poster={poster} tam={48} />
         <View style={{ flex: 1 }}>
@@ -345,10 +380,11 @@ function FichaEjercicio({ e, n, poster, calentar, onEditarPeso, onCambiar }: {
             <Text style={f.cambiado}>Cambiado — en el plan era «{e.original}»</Text>
           ) : null}
         </View>
+        <Ionicons name="chevron-forward" size={15} color={Colors.neon.w4} />
         <TouchableOpacity onPress={onCambiar} hitSlop={8} style={f.iconoBoton}>
           <Ionicons name="swap-horizontal" size={17} color={Colors.neon.w3} />
         </TouchableOpacity>
-      </View>
+      </TouchableOpacity>
 
       {/* ── El peso y su porqué ────────────────────────────────────────── */}
       <TouchableOpacity style={f.peso} onPress={onEditarPeso} activeOpacity={0.85}>
