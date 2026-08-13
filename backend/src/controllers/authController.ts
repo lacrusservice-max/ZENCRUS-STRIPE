@@ -423,7 +423,23 @@ export async function refreshTokens(req: Request, res: Response): Promise<void> 
 
     res.cookie('refreshToken', refreshToken, cookieOptions())
     res.status(200).json({ success: true, data: { accessToken, refreshToken } } satisfies ApiResponse)
-  } catch {
+  } catch (e) {
+    /**
+     * QUE EL 401 DIGA POR QUÉ, aunque solo sea en el registro.
+     *
+     * La respuesta al cliente sigue siendo la misma para cualquier fallo —a
+     * propósito: distinguir «token caducado» de «token de otro» le da pistas a
+     * quien esté probando—. Pero aquí dentro se apuntaba NADA, y eso convirtió
+     * una tarde entera en adivinar: se veía un 401 en el registro de acceso y
+     * no había forma de saber si era una firma mala, un token vencido, una
+     * familia que no cuadra o una cuenta apagada.
+     *
+     * Un catch que se traga el error esconde el fallo durante horas.
+     */
+    const err = e as { name?: string; message?: string; statusCode?: number }
+    logger.warn(
+      `Refresco rechazado: ${err?.name ?? 'Error'} — ${err?.message ?? 'sin mensaje'}`,
+    )
     res.status(401).json({
       success: false,
       message: 'Token inválido o expirado. Por favor inicia sesión.',
