@@ -33,7 +33,7 @@ import { supabase } from '../config/supabase'
 import {
   claveEjercicio, musculoDe, posterDe, completarEsfuerzo, estimar1RM,
   refrescarTotales, registrarRecords, rehacerRecords, calcularTotales,
-  SerieGuardada,
+  estimarGastoDeSesion, SerieGuardada,
 } from '../services/workoutSessions'
 import { readUrls, mediaReady } from '../services/media'
 import { avanzarPrograma } from './programController'
@@ -503,21 +503,51 @@ export async function cerrarSesion(req: Request, res: Response): Promise<void> {
   const series = await leerSeries(sesion.id)
   const ahora = new Date()
   const porReloj = Math.round((ahora.getTime() - new Date(sesion.started_at).getTime()) / 1000)
+  const duracion = b.durationSeconds ?? porReloj
+
+  /**
+   * El gasto del entrenamiento se estima AQUÍ, al cerrar.
+   *
+   * Al cerrar y no al leer porque depende del peso corporal del día: recalcular
+   * una sesión de hace ocho meses con el peso de hoy cambiaría el pasado cada
+   * vez que alguien se pesa. La cifra que se guarda es la del día que se hizo.
+   *
+   * Lo que manda la app GANA. Un pulsómetro mide y esto solo estima, y la
+   * filosofía de la app es que cualquier valor se pueda corregir a mano. Por
+   * eso `origen` viaja en `metrics`: una medición y una suposición no pueden
+   * parecer lo mismo cuando alguien las lea dentro de un año.
+   */
+  const gasto = b.caloriesKcal == null
+    ? await estimarGastoDeSesion(
+        userId,
+        { mode: sesion.mode, duration_seconds: duracion },
+        series as unknown as SerieGuardada[],
+      )
+    : null
+
+  const metrics = {
+    ...(b.metrics ?? {}),
+    ...(b.caloriesKcal != null
+      ? { gasto: { origen: 'manual' } }
+      : gasto
+        ? { gasto: { origen: gasto.origen, met: gasto.met, minutos: gasto.minutos } }
+        : {}),
+  }
 
   const { data: cerrada, error } = await supabase
     .from('workout_sessions')
     .update({
       status: 'completed',
       ended_at: ahora.toISOString(),
-      duration_seconds: b.durationSeconds ?? porReloj,
+      duration_seconds: duracion,
       perceived_effort: b.perceivedEffort ?? null,
       notes: b.notes ?? null,
       distance_m: b.distanceM ?? null,
       elevation_m: b.elevationM ?? null,
-      calories_kcal: b.caloriesKcal ?? null,
+      calories_kcal: b.caloriesKcal ?? gasto?.kcal ?? null,
       avg_hr: b.avgHr ?? null,
       max_hr: b.maxHr ?? null,
-      metrics: b.metrics ?? {},
+      metrics,
       ...calcularTotales(series as unknown as SerieGuardada[]),
     })
     .eq('id', sesion.id)

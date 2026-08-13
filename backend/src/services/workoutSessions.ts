@@ -19,6 +19,8 @@
 import { supabase } from '../config/supabase'
 import { logger } from '../config/logger'
 import catalogo from '../data/exercises.json'
+import { estimar, Gasto, FichaParaGasto } from '../data/gastoEnergetico'
+import { calcularTMB } from './nutritionCalculator'
 
 // ── El catálogo, para rellenar lo que la app no manda ────────────────────────
 // Si una serie viene con slug del catálogo, el músculo lo pone el servidor: es
@@ -57,6 +59,17 @@ const POSTER_POR_CLAVE = new Map<string, string>(
 
 export const posterDe = (clave: string): string | null =>
   POSTER_POR_CLAVE.get(clave) ?? null
+
+/**
+ * Patrón y material de cada slug, para estimar el gasto energético.
+ *
+ * Se guardan los dos juntos porque el coste de un ejercicio sale de los dos a
+ * la vez: el patrón dice cuánta masa se mueve y el material cuánto hay que
+ * estabilizar. Ver `data/gastoEnergetico.ts`.
+ */
+const FICHA_POR_SLUG = new Map<string, FichaParaGasto>(
+  (catalogo.ejercicios as FichaParaGasto[]).map(e => [e.slug, e]),
+)
 
 export const musculoDe = (slug?: string | null): string | null => {
   if (!slug) return null
@@ -212,6 +225,77 @@ export function calcularTotales(
     total_sets: series.length,
     total_reps,
     total_volume_kg: Math.round(total_volume_kg * 100) / 100,
+  }
+}
+
+/**
+ * El gasto energético de una sesión que se acaba de cerrar.
+ *
+ * Vive aquí y no en el controlador porque necesita el catálogo, que ya está
+ * cargado en memoria en este módulo, y porque el día que haya un recálculo
+ * masivo tendrá que llamarse desde otro sitio.
+ *
+ * El peso y el BMR se leen del perfil en la MISMA consulta: son dos columnas de
+ * una fila que ya está en caliente, y separarlas serían dos viajes para nada.
+ *
+ * Nunca lanza. Un fallo estimando calorías no puede tumbar el cierre de un
+ * entrenamiento —perder una sesión entera por no poder adivinar un número sería
+ * un intercambio pésimo— así que ante cualquier problema devuelve null y la
+ * ficha se queda sin cifra, que es exactamente lo que ya pasaba ayer.
+ */
+export async function estimarGastoDeSesion(
+  userId: string,
+  sesion: { mode: string; duration_seconds: number | null },
+  series: { exercise_slug?: string | null }[],
+): Promise<Gasto | null> {
+  try {
+    const { data: perfil } = await supabase
+      .from('users')
+      .select('weight, height, age, gender, goals')
+      .eq('id', userId)
+      .maybeSingle()
+
+    /**
+     * El basal se CALCULA de las columnas del perfil, no se lee de `goals`.
+     *
+     * `goals` es un jsonb suelto y en la base real ninguna cuenta guarda ahí un
+     * `bmr`: solo `primary`, `goal_weight`, `meals_per_day` y poco más. Fiarse
+     * de una clave que casi nunca está habría dejado la resta del basal sin
+     * usar en producción sin que se notara, porque el camino de respaldo
+     * también da una cifra creíble. Peso, talla, edad y sexo SÍ son columnas y
+     * SÍ están, así que la TMB sale de ahí con el mismo Mifflin-St Jeor que usa
+     * el resto de la app —que es el punto: no puede haber dos basales distintos
+     * para la misma persona según qué pantalla lo pregunte.
+     *
+     * Si `goals.bmr` existiera, gana: eso significa que alguien lo ajustó.
+     */
+    const g = perfil?.goals as { bmr?: number } | null
+    const bmr = g?.bmr
+      ?? (perfil?.weight && perfil?.height && perfil?.age && perfil?.gender
+        ? calcularTMB(perfil.weight, perfil.height, perfil.age,
+            perfil.gender === 'female' ? 'female' : 'male')
+        : null)
+
+    const gasto = estimar({
+      modo: sesion.mode,
+      duracionSegundos: sesion.duration_seconds,
+      pesoKg: perfil?.weight ?? null,
+      bmrDiario: bmr,
+      series,
+      catalogo: FICHA_POR_SLUG,
+    })
+
+    // Sin peso en el perfil no hay cifra, y eso NO es un error: es alguien que
+    // no terminó el onboarding. Se avisa una vez y en voz baja, porque si un
+    // día la columna se renombra este silencio sería la única pista.
+    if (!gasto && !perfil?.weight) {
+      logger.info(`Sin peso en el perfil: la sesión se queda sin gasto (usuario ${userId})`)
+    }
+
+    return gasto
+  } catch (e) {
+    logger.warn(`No se pudo estimar el gasto de la sesión: ${(e as Error).message}`)
+    return null
   }
 }
 

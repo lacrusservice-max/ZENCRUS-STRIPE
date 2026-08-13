@@ -39,10 +39,20 @@ export interface Sesion {
   total_volume_kg: number
   distance_m: number | null
   elevation_m: number | null
+  /**
+   * Gasto ACTIVO: lo que costó de más por entrenar, con el metabolismo basal ya
+   * restado. No es «calorías quemadas»: esas incluyen las que se gastan estando
+   * quieto, que ya van dentro del TDEE del perfil, y sumarlas otra vez inflaría
+   * el déficit del día. Null en las sesiones anteriores al estimador.
+   */
   calories_kcal: number | null
   perceived_effort: number | null
   notes: string | null
   client_id: string
+  /** Lo propio de cada modo. `gasto` dice de dónde salió la cifra de arriba. */
+  metrics?: {
+    gasto?: { origen: 'estimado' | 'manual'; met?: number; minutos?: number }
+  } & Record<string, unknown>
   /**
    * Hasta cuatro pósters firmados de los ejercicios que se hicieron, en el
    * orden en que se entrenaron. Solo lo manda el LISTADO: el detalle de una

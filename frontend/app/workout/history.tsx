@@ -294,6 +294,12 @@ function Portada({ sesion }: { sesion: Sesion }) {
               {sesion.distance_m ? (
                 <DatoGrande valor={(sesion.distance_m / 1000).toFixed(1).replace('.', ',')} unidad="km" />
               ) : null}
+              {/* Las sesiones de antes del estimador no tienen cifra, y en ese
+                  caso NO se pinta un cero: un cero dice «no gastaste nada» y lo
+                  que pasa es «no se sabe». */}
+              {sesion.calories_kcal ? (
+                <DatoGrande valor={String(sesion.calories_kcal)} unidad="kcal" />
+              ) : null}
             </View>
           </View>
         </View>
@@ -355,6 +361,7 @@ function Tarjeta({ sesion, indice }: { sesion: Sesion; indice: number }) {
             {min > 0 && <Dato texto={minutosCorto(min)} />}
             {Number(sesion.total_volume_kg) > 0 && <Dato texto={kilosCorto(Number(sesion.total_volume_kg))} />}
             {sesion.distance_m ? <Dato texto={`${(sesion.distance_m / 1000).toFixed(1).replace('.', ',')} km`} /> : null}
+            {sesion.calories_kcal ? <Dato texto={`${sesion.calories_kcal} kcal`} /> : null}
           </View>
         </View>
 

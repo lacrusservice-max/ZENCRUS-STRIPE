@@ -298,6 +298,8 @@ export default function SesionActiva() {
   const [buscando, setBuscando] = useState(false)
   const [terminada, setTerminada] = useState<{
     duracion: number; series: number; volumen: number
+    /** El gasto que estimó el servidor al cerrar. Null si no pudo. */
+    kcal?: number | null
     /**
      * Las marcas y el título se COPIAN aquí al cerrar, no se leen del store.
      *
@@ -685,6 +687,8 @@ export default function SesionActiva() {
     await addXP(25 + marcasDeLaSesion.length * 15)
     setTerminada({
       duracion, series: totalSeries, volumen,
+      // Del servidor, que es quien lo estima con tu peso y el catálogo.
+      kcal: guardada.calories_kcal,
       marcas: marcasDeLaSesion, titulo: tituloDeLaSesion,
     })
   }
@@ -1129,7 +1133,7 @@ const f = StyleSheet.create({
  * entera con «Cannot read property 'length' of undefined».
  */
 function Resumen({ datos, marcas = [], titulo, modo, posters = [] }: {
-  datos: { duracion: number; series: number; volumen: number }
+  datos: { duracion: number; series: number; volumen: number; kcal?: number | null }
   marcas?: { metric: string; value: number; previous: number | null; exerciseName: string }[]
   titulo: string
   modo: Modo
@@ -1193,6 +1197,11 @@ function Resumen({ datos, marcas = [], titulo, modo, posters = [] }: {
                 {datos.volumen > 0
                   ? ` · ${datos.series} ${datos.series === 1 ? 'serie' : 'series'}`
                   : ''}
+                {/* El gasto lo calcula el SERVIDOR al cerrar y llega en la
+                    sesión guardada; aquí no se estima nada. Si no viene —perfil
+                    sin peso, o sesión demasiado corta— no se pinta: es el mismo
+                    criterio que con el volumen, un cero diría lo que no es. */}
+                {datos.kcal ? ` · ${datos.kcal} kcal` : ''}
               </Text>
             </View>
           </View>

@@ -120,6 +120,17 @@ export default function DetalleSesion() {
           </Animated.View>
         )}
 
+        {/* Que la cifra de gasto DIGA que es una estimación.
+            Sin pulsómetro no se mide, se calcula, y el margen es de un 20 % o
+            más. Una cifra estimada presentada igual que una medida es la que
+            luego alguien resta de su comida al gramo. */}
+        {sesion.calories_kcal && sesion.metrics?.gasto?.origen === 'estimado' ? (
+          <Text style={s.aviso}>
+            Gasto estimado a partir del ejercicio, su duración y tu peso. Es una
+            aproximación, no una medida.
+          </Text>
+        ) : null}
+
         {sesion.notes ? (
           <View style={s.notas}>
             <Text style={s.notasTxt}>{sesion.notes}</Text>
@@ -209,6 +220,13 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.neon.edge,
   },
   notasTxt: { fontSize: Typography.fontSize.sm, color: Colors.neon.w2, lineHeight: 20 },
+
+  aviso: {
+    fontSize: Typography.fontSize.xs,
+    color: Colors.neon.w3,
+    lineHeight: 16,
+    paddingHorizontal: Spacing[1],
+  },
 
   ejercicio: {
     gap: Spacing[2], padding: Spacing[4],
