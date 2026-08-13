@@ -126,6 +126,20 @@ create table if not exists public.program_enrollments (
    */
   overrides     jsonb not null default '{}'::jsonb,
 
+  /**
+   * Ejercicios cambiados por otro, por decisión de quien entrena.
+   *
+   * Mapa `clave del ejercicio del plan` → `slug del que se hace en su lugar`.
+   * Existe porque un plan es una propuesta y un gimnasio es un sitio real: si
+   * la máquina de prensa está siempre ocupada, o si un movimiento le da tirones
+   * a alguien, la salida no puede ser abandonar el programa.
+   *
+   * Se guarda en la INSCRIPCIÓN y no en la plantilla: el programa es de todos,
+   * el cambio es de uno. Y se recuerda de una semana a otra, que es la
+   * diferencia entre resolverlo y volver a resolverlo cada lunes.
+   */
+  swaps         jsonb not null default '{}'::jsonb,
+
   notes         text,
   created_at    timestamptz not null default now(),
   updated_at    timestamptz not null default now(),
@@ -138,6 +152,8 @@ create table if not exists public.program_enrollments (
 
 comment on column public.program_enrollments.overrides is
   'Pesos fijados a mano por ejercicio. Ganan sobre lo que calcula la progresión.';
+comment on column public.program_enrollments.swaps is
+  'Ejercicios sustituidos: clave del plan → slug del que se hace en su lugar.';
 
 /**
  * UN SOLO PROGRAMA ACTIVO POR PERSONA.

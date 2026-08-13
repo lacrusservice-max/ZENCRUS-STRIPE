@@ -30,6 +30,12 @@ import {
   resumen, porMusculo, volumenPorSemana, ejerciciosMasHechos, curvaEjercicio,
   porDia, ventanaSchema, curvaSchema, diasSchema,
 } from '../controllers/workoutStatsController'
+import {
+  listarProgramas, detalleProgama, inscribirse, inscribirSchema,
+  miInscripcion, diaDeHoy, fijarPeso, fijarSchema, abandonar,
+  cambiarEjercicio, cambiarSchema, alternativasDePlan, queTocaHoy,
+  guardarPlan, guardarPlanSchema, borrarPlan,
+} from '../controllers/programController'
 import { authenticate } from '../middleware/auth'
 import { validate } from '../middleware/validate'
 
@@ -60,6 +66,27 @@ router.get('/stats/volume', validate(ventanaSchema), volumenPorSemana)
 router.get('/stats/days', validate(diasSchema), porDia)
 router.get('/stats/exercises', validate(ventanaSchema), ejerciciosMasHechos)
 router.get('/stats/curve/:key', validate(curvaSchema), curvaEjercicio)
+
+// ── La portada de Entrena ────────────────────────────────────────────────────
+// Antes que `/:id`, o buscaría una rutina llamada «today».
+router.get('/today', queTocaHoy)
+
+// ── Programas de varias semanas ──────────────────────────────────────────────
+// `/programs/mine/…` va ANTES que `/programs/:id`, o se buscaría un programa
+// con identificador «mine» y siempre daría 404. Mismo tropiezo que `/filters`
+// en la biblioteca y que `/sessions/active` aquí arriba.
+router.get('/programs/mine/enrollment', miInscripcion)
+router.get('/programs/mine/today', diaDeHoy)
+router.post('/programs/mine/override', validate(fijarSchema), fijarPeso)
+router.post('/programs/mine/swap', validate(cambiarSchema), cambiarEjercicio)
+router.get('/programs/mine/alternatives/:planKey', alternativasDePlan)
+router.post('/programs/mine/abandon', abandonar)
+router.get('/programs', listarProgramas)
+router.post('/programs', validate(guardarPlanSchema), guardarPlan)
+router.get('/programs/:id', detalleProgama)
+router.put('/programs/:id', validate(guardarPlanSchema), guardarPlan)
+router.delete('/programs/:id', borrarPlan)
+router.post('/programs/:id/enroll', validate(inscribirSchema), inscribirse)
 
 // ── Rutinas (el plan) ────────────────────────────────────────────────────────
 router.post('/generate', validate(generateWorkoutSchema), generateWorkoutRoutine)
