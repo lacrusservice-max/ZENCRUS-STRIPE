@@ -24,9 +24,12 @@ import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
 import { supabase } from '../config/supabase'
 import {
-  proponerDia, siguiente, esDescarga, claveEjercicio,
+  proponerDia, siguiente, esDescarga, claveEjercicio, diaSemanaDe,
   Plan,
 } from '../services/programas'
+import {
+  proponerDia as proponerParaMusculos, nombreDeDia, diasSugeridos, MUSCULOS,
+} from '../data/plantillaSemana'
 import { posterDe } from '../services/workoutSessions'
 import { readUrls, mediaReady } from '../services/media'
 import catalogo from '../data/exercises.json'
@@ -162,6 +165,75 @@ async function postersDelPlan(plan: Plan): Promise<Record<string, string>> {
   return out
 }
 
+// ── El planificador: de músculos a ejercicios ────────────────────────────────
+
+export const proponerSchema = z.object({
+  query: z.object({
+    musculos: z.string().min(1).max(200),
+    modo: z.enum(['gym', 'home']).default('gym'),
+  }),
+})
+
+/**
+ * GET /workout/plan/propuesta?musculos=chest,triceps&modo=gym
+ *
+ * «El lunes toca pecho y tríceps» → los ejercicios, con sus series, sus
+ * repeticiones y su descanso ya puestos.
+ *
+ * ── Por qué en el servidor y no en la app ───────────────────────────────────
+ * El catálogo de 206 vive aquí, en memoria, y con él las reglas de qué es
+ * compuesto, cuánto sube cada material y qué movimientos son el mismo. Llevar
+ * eso al teléfono sería duplicar el catálogo y garantizar que los dos se
+ * separen en cuanto entre un vídeo nuevo.
+ *
+ * ── Y por qué es una PROPUESTA y no el plan ─────────────────────────────────
+ * Lo que sale de aquí no se guarda: se le enseña al usuario para que lo edite y
+ * lo que se guarda es lo que él deja. Por eso el endpoint no toca la base.
+ */
+export async function proponerEjercicios(req: Request, res: Response): Promise<void> {
+  const musculos = String(req.query.musculos).split(',').map(m => m.trim()).filter(Boolean)
+  const modo = (req.query.modo === 'home' ? 'home' : 'gym') as 'gym' | 'home'
+
+  const ejercicios = proponerParaMusculos(musculos, modo)
+
+  if (ejercicios.length === 0) {
+    // No es un error del servidor: es que pidió músculos que no existen, o que
+    // en casa no hay nada para ellos. Se contesta vacío y con el motivo, para
+    // que la app pueda decir algo mejor que «no se pudo cargar».
+    ok(res, { ejercicios: [], nombre: nombreDeDia(musculos), motivo: 'sin-ejercicios' })
+    return
+  }
+
+  /**
+   * Los pósters, para que la lista se vea con imágenes desde el primer momento.
+   *
+   * Si el almacén de medios no está listo se contesta igual, sin fotos: la
+   * propuesta es la información y las imágenes son el adorno. Un planificador
+   * que no abre porque R2 tarda sería un mal cambio.
+   */
+  const archivos = new Map<string, string>()
+  for (const e of ejercicios) {
+    const p = posterDe(e.slug)
+    if (p) archivos.set(e.slug, p)
+  }
+
+  const porSlug: Record<string, string> = {}
+  if (mediaReady() && archivos.size > 0) {
+    const firmados = await readUrls([...archivos.values()]).catch(() => new Map<string, string>())
+    for (const [slug, clave] of archivos) {
+      const url = firmados.get(clave)
+      if (url) porSlug[slug] = url
+    }
+  }
+
+  ok(res, { ejercicios, nombre: nombreDeDia(musculos), posters: porSlug })
+}
+
+/** GET /workout/plan/musculos — los grupos que se pueden elegir. */
+export async function listarMusculos(_req: Request, res: Response): Promise<void> {
+  ok(res, { musculos: MUSCULOS, diasSugeridos: [1, 2, 3, 4, 5, 6, 7].map(n => ({ n, dias: diasSugeridos(n) })) })
+}
+
 // ── Planes propios ───────────────────────────────────────────────────────────
 
 const ejercicioSchema = z.object({
@@ -188,10 +260,35 @@ export const guardarPlanSchema = z.object({
     deloadEvery: z.number().int().min(2).max(12).nullable().optional(),
     dias: z.array(z.object({
       dia: z.number().int().min(1).max(7),
+      /**
+       * Cuándo se hace: 0 = lunes … 6 = domingo.
+       *
+       * Opcional para no invalidar de golpe a quien tenga la app vieja abierta
+       * mientras se despliega: si no viene, el plan se guarda igual y el
+       * servidor le reparte los días al leerlo. Pero la app nueva lo manda
+       * siempre, porque es la mitad de lo que el usuario acaba de decidir.
+       */
+      diaSemana: z.number().int().min(0).max(6).optional(),
+      musculos: z.array(z.string().max(24)).max(6).optional(),
       nombre: z.string().min(1).max(60),
       foco: z.string().max(24).optional(),
       ejercicios: z.array(ejercicioSchema).min(1).max(15),
-    })).min(1).max(7),
+    })).min(1).max(7)
+      /**
+       * Dos días del plan no pueden caer en el mismo día de la semana.
+       *
+       * Si cayeran, «¿qué toca el martes?» tendría dos respuestas y el servidor
+       * se quedaría con la primera en silencio: el otro día no aparecería nunca
+       * en la portada y su dueño no sabría por qué. Se rechaza aquí y no se
+       * arregla solo, porque adivinar cuál mover sería inventarse su plan.
+       */
+      .refine(
+        dias => {
+          const puestos = dias.filter(d => typeof d.diaSemana === 'number').map(d => d.diaSemana)
+          return new Set(puestos).size === puestos.length
+        },
+        { message: 'Hay dos entrenamientos puestos el mismo día de la semana' },
+      ),
   }),
 })
 
@@ -213,13 +310,26 @@ export async function guardarPlan(req: Request, res: Response): Promise<void> {
   const b = req.body as {
     name: string; description?: string; weeks: number
     goal: string; level: string; mode: string; deloadEvery?: number | null
-    dias: { dia: number; nombre: string; foco?: string; ejercicios: unknown[] }[]
+    dias: {
+      dia: number; diaSemana?: number; musculos?: string[]
+      nombre: string; foco?: string; ejercicios: unknown[]
+    }[]
   }
 
-  // Los días se renumeran del 1 al N por si llegan con huecos: el motor recorre
-  // `current_day` de uno en uno y un salto lo dejaría buscando un día que no está.
+  /**
+   * Se ordenan por DÍA DE LA SEMANA y se renumeran del 1 al N.
+   *
+   * El orden por día de la semana es lo natural ahora: el día 1 es el primero
+   * que entrenas, no el que se creó antes. Y la renumeración sigue haciendo
+   * falta —un hueco dejaría al motor esperando un día que no existe— pero ojo
+   * con lo que significa al EDITAR: si mueves un entrenamiento del lunes al
+   * sábado, su número cambia, y los pesos que hubieras fijado a mano se quedan
+   * atados al número viejo. Es el precio de que el número sea la identidad; lo
+   * alternativo, un identificador propio por día, es una migración del historial
+   * entero para arreglar un caso que solo pasa al reordenar la semana.
+   */
   const dias = [...b.dias]
-    .sort((a, c) => a.dia - c.dia)
+    .sort((a, c) => (a.diaSemana ?? a.dia) - (c.diaSemana ?? c.dia))
     .map((d, i) => ({ ...d, dia: i + 1 }))
 
   const fila = {
@@ -727,6 +837,94 @@ export async function abandonar(req: Request, res: Response): Promise<void> {
  *   · `toca`      — te toca este día del programa.
  *   · `sinPlan`   — no sigues nada; hay que ofrecer montarlo.
  */
+/** Objetivo semanal de quien no sigue ningún programa. */
+const DIAS_POR_DEFECTO = 3
+
+/**
+ * El anillo de la semana: días entrenados contra los que pide tu plan.
+ *
+ * ── Semana de CALENDARIO, no del programa ───────────────────────────────────
+ * El programa avanza por días completados, no por lunes: si te saltas tres
+ * días, tu «semana 3» puede durar doce. Para un mapa del plan eso está bien
+ * —es la pantalla de al lado— pero para un anillo no: el anillo mide
+ * CONSTANCIA, y la constancia es una propiedad del calendario. «3 de 4» repartidos
+ * en doce días no es lo mismo que en siete, y un anillo que no distinga las dos
+ * cosas está midiendo otra cosa distinta de la que dice medir.
+ *
+ * ── Cuenta DÍAS, no sesiones ────────────────────────────────────────────────
+ * Dos entrenamientos el mismo martes son un día entrenado, no dos. Si contara
+ * sesiones, quien entrena dos veces un día y ninguna el resto de la semana
+ * cerraría el anillo, que es justo lo contrario de lo que el anillo premia.
+ *
+ * ── Semana natural, del lunes ───────────────────────────────────────────────
+ * En el huso de quien pregunta, igual que el día de hoy. Un domingo por la
+ * noche en México no puede contarse ya en la semana siguiente.
+ */
+/** El lunes de la semana natural de quien pregunta, en ISO. */
+function lunesDeLaSemana(local: Date, desfaseMin: number): { lunes: number; iso: string } {
+  const diasDesdeLunes = (local.getUTCDay() + 6) % 7
+  const lunes = Date.UTC(
+    local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate() - diasDesdeLunes,
+  )
+  return { lunes, iso: new Date(lunes + desfaseMin * 60_000).toISOString() }
+}
+
+async function anilloDeLaSemana(
+  userId: string,
+  local: Date,
+  desfaseMin: number,
+  objetivo: number,
+  origen: 'plan' | 'defecto',
+) {
+  const diasDesdeLunes = (local.getUTCDay() + 6) % 7
+  const { lunes, iso: inicioSemana } = lunesDeLaSemana(local, desfaseMin)
+
+  const { data } = await supabase
+    .from('workout_sessions')
+    .select('started_at, calories_kcal')
+    .eq('user_id', userId)
+    .eq('status', 'completed')
+    .gte('started_at', inicioSemana)
+
+  const sesiones = data ?? []
+
+  // La fecha LOCAL de cada sesión, para agrupar por día de verdad.
+  const conEntreno = new Set(
+    sesiones.map(s =>
+      new Date(new Date(s.started_at).getTime() - desfaseMin * 60_000)
+        .toISOString().slice(0, 10),
+    ),
+  )
+
+  /**
+   * Los siete días, de lunes a domingo, entrenado sí o no.
+   *
+   * Se manda el reparto y no solo la cuenta porque tres martes seguidos y tres
+   * días alternos son la misma cifra y NO son lo mismo. El anillo pinta un
+   * segmento por día en su sitio, así que la posición es la mitad del dato.
+   */
+  const dias: boolean[] = []
+  for (let i = 0; i < 7; i++) {
+    const d = new Date(lunes + i * 86_400_000).toISOString().slice(0, 10)
+    dias.push(conEntreno.has(d))
+  }
+
+  return {
+    hechos: conEntreno.size,
+    objetivo,
+    origen,
+    dias,
+    /** Qué día de la semana es hoy, de 0 (lunes) a 6 (domingo). */
+    hoy: diasDesdeLunes,
+    // Suma de lo estimado. Las sesiones anteriores a esto no tienen cifra y
+    // valen cero: sumar null como si fuera cero es correcto aquí, porque lo
+    // que se enseña es «lo que llevas contabilizado», no «lo que gastaste».
+    kcal: sesiones.reduce((a, s) => a + (s.calories_kcal ?? 0), 0),
+    sesiones: sesiones.length,
+    desde: inicioSemana,
+  }
+}
+
 export async function queTocaHoy(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
 
@@ -738,11 +936,13 @@ export async function queTocaHoy(req: Request, res: Response): Promise<void> {
   const local = new Date(ahora.getTime() - desfaseMin * 60_000)
   const desde = new Date(Date.UTC(local.getUTCFullYear(), local.getUTCMonth(), local.getUTCDate()))
   const inicioDia = new Date(desde.getTime() + desfaseMin * 60_000).toISOString()
+  const { iso: inicioSemana } = lunesDeLaSemana(local, desfaseMin)
 
   const [abiertaRes, hoyRes, inscripcion] = await Promise.all([
     supabase.from('workout_sessions').select('*')
       .eq('user_id', userId).eq('status', 'active').maybeSingle(),
-    supabase.from('workout_sessions').select('id, title, total_sets, total_volume_kg, duration_seconds, started_at')
+    supabase.from('workout_sessions')
+      .select('id, title, total_sets, total_volume_kg, duration_seconds, started_at, calories_kcal')
       .eq('user_id', userId).eq('status', 'completed')
       .gte('started_at', inicioDia)
       .order('started_at', { ascending: false }),
@@ -753,6 +953,10 @@ export async function queTocaHoy(req: Request, res: Response): Promise<void> {
   const hechasHoy = hoyRes.data ?? []
 
   // ── Sin programa: no hay «día que toca» que calcular ──────────────────────
+  // Pero el anillo SÍ va. Quien entrena por su cuenta también quiere saber si
+  // esta semana lleva tres o lleva uno, y es justo a quien no tiene plan a
+  // quien más le sirve verlo. El objetivo entonces es sugerido, no suyo, y la
+  // app lo dice: `origen: 'defecto'`.
   if (!inscripcion) {
     ok(res, {
       estado: abierta ? 'abierta' : hechasHoy.length > 0 ? 'hecho' : 'sinPlan',
@@ -761,6 +965,7 @@ export async function queTocaHoy(req: Request, res: Response): Promise<void> {
       programa: null,
       dia: null,
       semana: null,
+      anillo: await anilloDeLaSemana(userId, local, desfaseMin, DIAS_POR_DEFECTO, 'defecto'),
     })
     return
   }
@@ -773,22 +978,31 @@ export async function queTocaHoy(req: Request, res: Response): Promise<void> {
   const swaps = (inscripcion.swaps ?? {}) as Record<string, string>
   const planEfectivo = aplicarSwaps(programa.plan, swaps)
 
-  const propuesto = await proponerDia(
-    userId, planEfectivo,
-    inscripcion.current_week, inscripcion.current_day,
-    programa.deload_every,
-    (inscripcion.overrides ?? {}) as Record<string, number>,
-  )
+  /**
+   * MANDA EL CALENDARIO, NO UN CONTADOR.
+   *
+   * Antes el «día que toca» era `current_day`, un puntero que avanzaba al
+   * entrenar. Ahora es el día de la semana de hoy: si es martes, toca lo que
+   * hayas puesto el martes. Es como piensa la gente su semana, y es lo que
+   * permite planificarla sin abrir la app.
+   */
+  const totalDias = (planEfectivo.dias ?? []).length
+  const hoyDia = (local.getUTCDay() + 6) % 7          // 0 = lunes
+  const conSemana = (planEfectivo.dias ?? []).map(d => ({
+    d, ds: diaSemanaDe(d, totalDias),
+  }))
+  const deHoy = conSemana.find(x => x.ds === hoyDia) ?? null
 
-  // ── La semana actual, día a día ───────────────────────────────────────────
-  // Es el «mapa vertical» de la portada: qué toca cada día de esta semana y
-  // cuáles ya están hechos. Sale de las sesiones, no de un contador.
+  // ── Lo hecho ESTA semana natural ──────────────────────────────────────────
+  // Por fecha y no por `program_week`: la semana del calendario es la que ve el
+  // usuario en la pantalla, y las dos tienen que contar lo mismo o el anillo
+  // dirá una cosa y la lista de debajo otra.
   const { data: deLaSemana } = await supabase
     .from('workout_sessions')
-    .select('id, program_day, started_at, total_sets, total_volume_kg')
+    .select('id, program_day, started_at, total_sets, total_volume_kg, calories_kcal')
     .eq('user_id', userId)
     .eq('program_id', inscripcion.program_id)
-    .eq('program_week', inscripcion.current_week)
+    .gte('started_at', inicioSemana)
     .eq('status', 'completed')
 
   const hechosPorDia = new Map((deLaSemana ?? []).map(s => [s.program_day, s]))
@@ -797,26 +1011,51 @@ export async function queTocaHoy(req: Request, res: Response): Promise<void> {
     numero: inscripcion.current_week,
     de: programa.weeks,
     esDescarga: esDescarga(inscripcion.current_week, programa.deload_every),
-    dias: (planEfectivo.dias ?? []).map(d => {
+    dias: conSemana.map(({ d, ds }) => {
       const hecho = hechosPorDia.get(d.dia)
       return {
         dia: d.dia,
+        diaSemana: ds,
         nombre: d.nombre,
+        musculos: d.musculos ?? [],
         foco: d.foco ?? null,
         ejercicios: d.ejercicios.length,
         series: d.ejercicios.reduce((a, e) => a + e.series, 0),
         hecho: hecho
           ? { sessionId: hecho.id, series: hecho.total_sets, volumen: Number(hecho.total_volume_kg ?? 0) }
           : null,
-        esHoy: d.dia === inscripcion.current_day,
+        esHoy: ds === hoyDia,
+        /**
+         * PENDIENTE: su día ya pasó esta semana y no se hizo.
+         *
+         * Esto es lo que salva lo bueno del diseño anterior. Con el calendario
+         * mandando, saltarse el lunes podría significar perder el lunes; aquí
+         * el lunes se queda pendiente y se puede hacer el martes contando como
+         * lunes. Nada se marca como fallado y la semana sigue siendo la semana.
+         */
+        pendiente: ds < hoyDia && !hecho,
       }
     }),
   }
 
-  const yaHechoElDeHoy = hechosPorDia.has(inscripcion.current_day)
+  const yaHechoElDeHoy = !!(deHoy && hechosPorDia.has(deHoy.d.dia))
+
+  const propuesto = deHoy
+    ? await proponerDia(
+        userId, planEfectivo,
+        inscripcion.current_week, deHoy.d.dia,
+        programa.deload_every,
+        (inscripcion.overrides ?? {}) as Record<string, number>,
+      )
+    : null
 
   ok(res, {
-    estado: abierta ? 'abierta' : yaHechoElDeHoy ? 'hecho' : 'toca',
+    estado: abierta ? 'abierta'
+      : yaHechoElDeHoy ? 'hecho'
+      // Hoy no toca nada: es un día de descanso. No es lo mismo que no tener
+      // plan, y la portada tiene que poder decirlo de otra manera.
+      : !deHoy ? 'descanso'
+      : 'toca',
     abierta: abierta ?? null,
     hechasHoy,
     programa: {
@@ -827,6 +1066,7 @@ export async function queTocaHoy(req: Request, res: Response): Promise<void> {
     },
     dia: propuesto ? { ...propuesto, posters: await postersDelPlan(planEfectivo) } : null,
     semana,
+    anillo: await anilloDeLaSemana(userId, local, desfaseMin, programa.days_per_week, 'plan'),
   })
 }
 

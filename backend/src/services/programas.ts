@@ -48,11 +48,71 @@ export interface EjercicioPlan {
 }
 
 export interface DiaPlan {
+  /**
+   * La IDENTIDAD del día dentro del plan, de 1 a N. No es cuándo se hace.
+   *
+   * Se queda aunque ahora los días vivan en el calendario, y por dos razones
+   * que no son negociables: `workout_sessions.program_day` guarda ESTE número
+   * en todo el historial ya registrado —cambiarlo de significado reescribiría
+   * el pasado— y su restricción en la base es `between 1 and 7`, así que un
+   * día de la semana empezando en cero ni siquiera cabría.
+   *
+   * Mover el lunes al martes cambia `diaSemana` y no toca esto, que es
+   * justamente lo que se quiere: reordenar la semana no puede partir el
+   * historial ni perder los pesos que ya habías fijado.
+   */
   dia: number
   nombre: string
+  /**
+   * CUÁNDO se hace: 0 = lunes … 6 = domingo.
+   *
+   * Antes los días eran «día 1, día 2» y el plan avanzaba al entrenar, no con
+   * el calendario. Tenía una virtud —saltarte el martes no marcaba nada como
+   * fallado— y un defecto que pesa más: nadie organiza su vida en «día 2».
+   * La gente piensa «los martes entreno pierna», y una app que no habla ese
+   * idioma obliga a abrirla para saber qué toca.
+   *
+   * La virtud no se pierde: un día que se queda atrás sigue PENDIENTE y se
+   * puede hacer otro día contando como él. Ver `pendientesDeLaSemana`.
+   *
+   * Opcional para no romper los planes que ya existen sin `diaSemana`: los
+   * viejos se reparten por su número al leerlos.
+   */
+  diaSemana?: number
+  /**
+   * Los músculos que se entrenan ese día, como los eligió el usuario.
+   *
+   * De aquí sale el nombre («Pecho y tríceps») y de aquí salen los ejercicios
+   * que propone ZENCRUS. Se guarda además de los ejercicios porque es la
+   * INTENCIÓN: si mañana quiere rehacer el día, hay que saber qué pidió, no
+   * solo con qué se quedó.
+   */
+  musculos?: string[]
   /** Grupo muscular dominante, para pintarlo. */
   foco?: string
   ejercicios: EjercicioPlan[]
+}
+
+/**
+ * El día de la semana de un día del plan, con respaldo para los planes viejos.
+ *
+ * Los que se crearon antes de esto no traen `diaSemana`. En vez de dejarlos
+ * sin sitio —lo que los haría desaparecer de la portada— se reparten por su
+ * número: el día 1 al lunes, el 2 al miércoles y así, con la misma separación
+ * que se propone hoy. No es lo que su dueño eligió, porque no eligió nada, pero
+ * es un plan que sigue funcionando mientras no lo edite.
+ */
+const REPARTO_VIEJO: Record<number, number[]> = {
+  1: [2], 2: [0, 3], 3: [0, 2, 4], 4: [0, 1, 3, 4],
+  5: [0, 1, 2, 4, 5], 6: [0, 1, 2, 3, 4, 5], 7: [0, 1, 2, 3, 4, 5, 6],
+}
+
+export function diaSemanaDe(d: DiaPlan, totalDias: number): number {
+  if (typeof d.diaSemana === 'number' && d.diaSemana >= 0 && d.diaSemana <= 6) {
+    return d.diaSemana
+  }
+  const reparto = REPARTO_VIEJO[Math.min(7, Math.max(1, totalDias))] ?? [0, 2, 4]
+  return reparto[(d.dia - 1) % reparto.length] ?? 0
 }
 
 export interface Plan {

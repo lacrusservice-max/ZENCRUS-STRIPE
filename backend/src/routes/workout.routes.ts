@@ -35,6 +35,7 @@ import {
   miInscripcion, diaDeHoy, fijarPeso, fijarSchema, abandonar,
   cambiarEjercicio, cambiarSchema, alternativasDePlan, queTocaHoy,
   guardarPlan, guardarPlanSchema, borrarPlan,
+  proponerEjercicios, proponerSchema, listarMusculos,
 } from '../controllers/programController'
 import { authenticate } from '../middleware/auth'
 import { validate } from '../middleware/validate'
@@ -70,6 +71,13 @@ router.get('/stats/curve/:key', validate(curvaSchema), curvaEjercicio)
 // ── La portada de Entrena ────────────────────────────────────────────────────
 // Antes que `/:id`, o buscaría una rutina llamada «today».
 router.get('/today', queTocaHoy)
+
+// ── El planificador semanal ──────────────────────────────────────────────────
+// `/plan/...` y no `/programs/...` a propósito: esto no consulta ni toca ningún
+// programa, solo traduce «pecho y tríceps» en una lista de ejercicios. Colgarlo
+// de `/programs` habría hecho creer que hace falta tener uno para preguntarlo.
+router.get('/plan/musculos', listarMusculos)
+router.get('/plan/propuesta', validate(proponerSchema), proponerEjercicios)
 
 // ── Programas de varias semanas ──────────────────────────────────────────────
 // `/programs/mine/…` va ANTES que `/programs/:id`, o se buscaría un programa
