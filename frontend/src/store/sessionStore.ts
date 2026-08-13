@@ -241,6 +241,24 @@ export const useSessionStore = create<Estado>((set, get) => ({
               mode: remota.session.mode, source: remota.session.source,
               title: remota.session.title,
               routineId: remota.session.routine_id ?? undefined,
+              /**
+               * DE QUÉ DÍA DEL PLAN ES. Se perdía, y en silencio.
+               *
+               * Al reconstruir la sesión desde el servidor se copiaban el modo,
+               * el origen, el título y la rutina, pero no el programa. Como el
+               * servidor los manda en `snake_case` y aquí viven en `camelCase`,
+               * no había error de tipos que avisara: simplemente quedaban
+               * `undefined` después de CUALQUIER arranque de la app.
+               *
+               * El síntoma era desconcertante: estabas en el día «Pecho y
+               * tríceps», con la sesión de «Pecho y tríceps» abierta, y la
+               * pantalla del ejercicio te decía que tenías otro entrenamiento a
+               * medias. Lo que fallaba no era la comparación, era que los tres
+               * campos con los que se compara habían desaparecido por el camino.
+               */
+              programId: remota.session.program_id ?? undefined,
+              programWeek: remota.session.program_week ?? undefined,
+              programDay: remota.session.program_day ?? undefined,
               empezadaEn: new Date(remota.session.started_at).getTime(),
               pausadaSegundos: 0, pausadaDesde: null,
             }

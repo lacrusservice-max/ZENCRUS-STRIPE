@@ -58,13 +58,13 @@ const C = Colors
 type Params = Record<
   'slug' | 'nombre' | 'orden' | 'series' | 'reps' | 'duracion'
   | 'descanso' | 'peso' | 'carga' | 'alFallo'
-  | 'programId' | 'semana' | 'dia',
+  | 'programId' | 'semana' | 'dia' | 'titulo',
   string | undefined
 >
 
 export default function HacerEjercicio() {
   const p = useLocalSearchParams() as Params
-  const { sesion, series: anotadas, anotarSerie, empezarDescanso, pararDescanso,
+  const { sesion, series: anotadas, anotarSerie, empezar, empezarDescanso, pararDescanso,
     sumarAlDescanso, descansoHasta, descansoTotal } = useSessionStore()
 
   const slug = p.slug ?? ''
@@ -80,6 +80,7 @@ export default function HacerEjercicio() {
   const programId = p.programId ?? ''
   const semana = p.semana ? Number(p.semana) : null
   const dia = p.dia ? Number(p.dia) : null
+  const titulo = p.titulo ?? ''
 
   const [ficha, setFicha] = useState<ExerciseDetail | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -111,6 +112,7 @@ export default function HacerEjercicio() {
   const [peso, setPeso] = useState(pesoSugerido != null && pesoSugerido > 0 ? String(pesoSugerido) : '')
   const [reps, setReps] = useState('')
   const [guardando, setGuardando] = useState(false)
+  const [empezando, setEmpezando] = useState(false)
 
   useEffect(() => {
     void (async () => {
@@ -183,13 +185,21 @@ export default function HacerEjercicio() {
    * ¿La sesión abierta es la de ESTE día?
    *
    * No basta con que haya una. Una sesión local que no llegó al servidor se
-   * queda en el disco del teléfono para siempre, y aquí apareció una de hace
-   * dos días, de un programa que ya ni se sigue. Como el store la carga al
-   * arrancar, la pantalla se pintaba entera y «Serie hecha» habría metido las
-   * series en una sesión que el servidor no tiene abierta: se quedarían en la
-   * cola sin subir nunca, y nadie se enteraría hasta echarlas de menos.
+   * queda en el disco del teléfono para siempre —apareció una de hace dos días,
+   * de un programa que ya ni se seguía— y anotar series ahí las manda a una cola
+   * que no sube nunca. Con el contexto del día se distingue.
    *
-   * Con el contexto del día se puede distinguir, así que se distingue.
+   * PERO ESTO SOLO PUEDE BLOQUEAR EL REGISTRO, NO LA PANTALLA.
+   *
+   * La primera versión devolvía un cartel a pantalla completa y era un callejón
+   * sin salida: tocabas un ejercicio para VERLO —su vídeo, cómo se hace, qué
+   * toca— y te encontrabas un aviso y un botón de volver. Un ejercicio se
+   * consulta muchas más veces de las que se registra: antes de ir al gimnasio,
+   * al montar el plan, o simplemente por curiosidad.
+   *
+   * Así que la pantalla se enseña SIEMPRE y lo único que cambia es el bloque de
+   * abajo: si no hay sesión, en vez de los campos hay un botón para empezar el
+   * entrenamiento ahí mismo, sin volver atrás a buscarlo.
    */
   const laDeEsteDia = !!sesion
     && (!programId || (
@@ -197,25 +207,24 @@ export default function HacerEjercicio() {
       && sesion.programWeek === semana
       && sesion.programDay === dia
     ))
+  const puedeAnotar = !!sesion && laDeEsteDia
 
-  if (!sesion || !laDeEsteDia) {
-    return (
-      <Screen>
-        <View style={s.centro}>
-          <Ionicons name="alert-circle-outline" size={30} color={C.neon.w3} />
-          <Text style={s.vacio}>
-            {!sesion
-              ? 'Para anotar series hace falta empezar el entrenamiento.'
-              : `Tienes otro entrenamiento a medias: «${sesion.title}». Termínalo o descártalo antes de empezar este.`}
-          </Text>
-          <TouchableOpacity style={s.volver} onPress={() => router.back()} activeOpacity={0.85}>
-            <Text style={s.volverTxt}>
-              {!sesion ? 'Volver y darle a Empezar' : 'Ir a lo que tengo a medias'}
-            </Text>
-          </TouchableOpacity>
-        </View>
-      </Screen>
-    )
+  const empezarYSeguir = async () => {
+    if (empezando) return
+    setEmpezando(true)
+    try {
+      await empezar({
+        mode: 'gym',
+        source: programId ? 'program' : 'freestyle',
+        title: titulo || nombre,
+        ...(programId ? { programId, programWeek: semana ?? 1, programDay: dia ?? 1 } : {}),
+      })
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    } catch {
+      Alert.alert('No se pudo empezar', 'Revisa la conexión y vuelve a intentarlo.')
+    } finally {
+      setEmpezando(false)
+    }
   }
 
   return (
@@ -318,8 +327,62 @@ export default function HacerEjercicio() {
             </Animated.View>
           )}
 
+          {/**
+            * Sin entrenamiento abierto: se empieza AQUÍ.
+            *
+            * El botón grande es SIEMPRE la acción que se puede hacer. La primera
+            * versión ponía «Tienes otro a medias» en el botón rojo y lo dejaba
+            * desactivado, con la acción de verdad en un botón gris debajo: el
+            * elemento más llamativo de la pantalla era el único muerto. Un aviso
+            * es texto; un botón es algo que pasa al tocarlo.
+            */}
+          {!terminado && !puedeAnotar && (
+            <Animated.View entering={FadeInDown.duration(340)} style={s.anotar}>
+              {sesion && !laDeEsteDia ? (
+                <>
+                  <Text style={s.aviso}>
+                    Sigue abierto «{sesion.title}». Termínalo o descártalo y podrás
+                    anotar las series de este ejercicio.
+                  </Text>
+                  <TouchableOpacity
+                    style={s.boton}
+                    onPress={() => {
+                      // A su ficha del día si era de un plan; la pantalla vieja
+                      // solo para lo suelto, que es lo único que no tiene ficha.
+                      if (sesion.programId && sesion.programWeek && sesion.programDay) {
+                        router.push(`/workout/program/day?week=${sesion.programWeek}&day=${sesion.programDay}`)
+                      } else {
+                        router.push('/workout/active')
+                      }
+                    }}
+                    activeOpacity={0.9}
+                  >
+                    <Text style={s.botonTxt}>Ir a «{sesion.title}»</Text>
+                  </TouchableOpacity>
+                </>
+              ) : (
+                <>
+                  <TouchableOpacity
+                    style={s.boton}
+                    onPress={() => void empezarYSeguir()}
+                    disabled={empezando}
+                    activeOpacity={0.9}
+                  >
+                    {empezando
+                      ? <ActivityIndicator color={C.neon.void} />
+                      : <Text style={s.botonTxt}>Empezar el entrenamiento</Text>}
+                  </TouchableOpacity>
+                  <Text style={s.pieNota}>
+                    Puedes mirar el ejercicio sin empezar nada. El botón es solo para
+                    cuando quieras anotar las series.
+                  </Text>
+                </>
+              )}
+            </Animated.View>
+          )}
+
           {/* ── Anotar ──────────────────────────────────────────────────── */}
-          {!terminado && (
+          {!terminado && puedeAnotar && (
             <Animated.View entering={FadeInDown.duration(340)} style={s.anotar}>
               <View style={s.campos}>
                 {carga === 'weight' && (
@@ -558,6 +621,10 @@ const s = StyleSheet.create({
   },
   botonTxt: { fontSize: T.fontSize.lg, fontWeight: '800', color: C.neon.void, textAlign: 'center' },
   pieNota: { fontSize: T.fontSize.xs, color: C.neon.w3, lineHeight: 16, textAlign: 'center' },
+  aviso: {
+    fontSize: T.fontSize.sm, color: C.neon.w2, lineHeight: 20, textAlign: 'center',
+    paddingHorizontal: Spacing[2],
+  },
 
   hecho: {
     flexDirection: 'row', gap: Spacing[3], alignItems: 'flex-start',

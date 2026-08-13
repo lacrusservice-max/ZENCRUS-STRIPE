@@ -355,9 +355,26 @@ function AMedias({ s: sesion }: { s: NonNullable<Hoy['abierta']> }) {
               {' · empezado '}{desdeCuando(sesion.started_at)}
             </Text>
           </View>
+          {/**
+            * Seguir lleva a la FICHA DEL DÍA, no a la pantalla de sesión vieja.
+            *
+            * Ahí es donde acababa todo el mundo, y con una lista vacía que decía
+            * «sin ejercicios todavía» aunque el día tuviera seis: los ejercicios
+            * viven en el plan, no en la sesión. El diseño nuevo es la ficha del
+            * día con sus ejercicios, cada uno con su pantalla.
+            *
+            * La pantalla vieja se queda SOLO para lo que de verdad no tiene
+            * ficha de día: los entrenamientos sueltos y las rutinas guardadas.
+            */}
           <Boton
             texto="Seguir entrenando"
-            onPress={() => router.push('/workout/active')}
+            onPress={() => {
+              if (sesion.program_id && sesion.program_week && sesion.program_day) {
+                router.push(`/workout/program/day?week=${sesion.program_week}&day=${sesion.program_day}`)
+              } else {
+                router.push('/workout/active')
+              }
+            }}
           />
         </View>
       </View>

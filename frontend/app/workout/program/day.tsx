@@ -34,6 +34,7 @@ import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import { Screen } from '@/components/ui/Screen'
+import { useSessionStore } from '@/store/sessionStore'
 import { CabeceraSeccion } from '@/components/workout/MenuSeccion'
 import { Vacio } from '@/components/workout/Charts'
 import { Miniatura } from '@/components/workout/Miniatura'
@@ -53,6 +54,8 @@ export default function DiaDelPrograma() {
   const [calentar, setCalentar] = useState(false)
   const [editando, setEditando] = useState<Propuesta | null>(null)
   const [cambiando, setCambiando] = useState<Propuesta | null>(null)
+  const [abriendo, setAbriendo] = useState(false)
+  const { sesion, empezar: empezarSesion } = useSessionStore()
 
   const cargar = useCallback(async () => {
     try {
@@ -112,13 +115,40 @@ export default function DiaDelPrograma() {
     return out
   }, [d?.ejercicios])
 
-  const empezar = () => {
-    if (!d) return
+  /**
+   * Empezar abre la sesión y SE QUEDA AQUÍ.
+   *
+   * Antes saltaba a `workout/active`, la pantalla de sesión antigua, y ahí es
+   * donde acababa todo el mundo: una lista vacía que decía «sin ejercicios
+   * todavía» aunque el día tuviera seis, porque los ejercicios viven en el plan
+   * y no en la sesión. El diseño nuevo es ESTE —la ficha del día con sus
+   * ejercicios, y cada uno lleva a su pantalla— así que empezar no puede
+   * llevarte a otro sitio.
+   *
+   * Se abre la sesión y la ficha se queda delante: tocas el primer ejercicio y
+   * a anotar.
+   */
+  /** ¿La sesión abierta es justo la de este día? */
+  const enMarcha = !!d && !!sesion
+    && sesion.programId === d.programa.id
+    && sesion.programWeek === d.semana
+    && sesion.programDay === d.dia
+
+  const empezar = async () => {
+    if (!d || abriendo) return
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
-    // En UNA plantilla y sin concatenar: al unir dos trozos con `+`, el tipo
-    // pasa a ser `string` a secas y el router tipado de expo-router lo rechaza
-    // porque ya no puede comprobar que la ruta existe.
-    router.push(`/workout/active?programId=${d.programa.id}&week=${d.semana}&day=${d.dia}&mode=gym&title=${encodeURIComponent(d.nombre)}`)
+    setAbriendo(true)
+    try {
+      await empezarSesion({
+        mode: 'gym', source: 'program', title: d.nombre,
+        programId: d.programa.id, programWeek: d.semana, programDay: d.dia,
+      })
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+    } catch {
+      Alert.alert('No se pudo empezar', 'Revisa la conexión y vuelve a intentarlo.')
+    } finally {
+      setAbriendo(false)
+    }
   }
 
   if (cargando) {
@@ -279,7 +309,7 @@ export default function DiaDelPrograma() {
                     n={n}
                     poster={e.slug ? d.posters[e.slug] : null}
                     calentar={calentar}
-                    contexto={{ programId: d.programa.id, semana: d.semana, dia: d.dia }}
+                    contexto={{ programId: d.programa.id, semana: d.semana, dia: d.dia, titulo: d.nombre }}
                     onEditarPeso={() => setEditando(e)}
                     onCambiar={() => setCambiando(e)}
                   />
@@ -297,12 +327,31 @@ export default function DiaDelPrograma() {
 
       {/* ── Empezar ────────────────────────────────────────────────────── */}
       <View style={s.pieFijo}>
-        <TouchableOpacity style={[s.boton, d.hecho && s.botonHecho]} onPress={empezar} activeOpacity={0.88}>
-          <Ionicons name="play" size={17} color="#fff" />
-          <Text style={s.botonTxt}>
-            {d.hecho ? 'Repetir este día' : d.esElDeHoy ? 'Empezar' : 'Entrenar este día'}
-          </Text>
-        </TouchableOpacity>
+        {/* Con la sesión de ESTE día ya abierta, el botón deja de invitar a
+            empezar —ya empezaste— y recuerda lo único que queda por hacer:
+            tocar un ejercicio. */}
+        {enMarcha ? (
+          <View style={[s.boton, s.botonHecho]}>
+            <Ionicons name="checkmark-circle" size={17} color="#fff" />
+            <Text style={s.botonTxt}>En marcha · toca un ejercicio para anotar</Text>
+          </View>
+        ) : (
+          <TouchableOpacity
+            style={[s.boton, d.hecho && s.botonHecho]}
+            onPress={() => void empezar()}
+            disabled={abriendo}
+            activeOpacity={0.88}
+          >
+            {abriendo
+              ? <ActivityIndicator color="#fff" />
+              : <>
+                  <Ionicons name="play" size={17} color="#fff" />
+                  <Text style={s.botonTxt}>
+                    {d.hecho ? 'Repetir este día' : d.esElDeHoy ? 'Empezar' : 'Entrenar este día'}
+                  </Text>
+                </>}
+          </TouchableOpacity>
+        )}
       </View>
 
       <EditorPeso
@@ -327,7 +376,7 @@ function FichaEjercicio({ e, n, poster, calentar, contexto, onEditarPeso, onCamb
   poster?: string | null
   calentar: boolean
   /** De qué día del plan es esto. Viaja a la pantalla de hacerlo. */
-  contexto: { programId: string; semana: number; dia: number }
+  contexto: { programId: string; semana: number; dia: number; titulo: string }
   onEditarPeso: () => void
   onCambiar: () => void
 }) {
@@ -361,6 +410,7 @@ function FichaEjercicio({ e, n, poster, calentar, contexto, onEditarPeso, onCamb
             programId: contexto.programId,
             semana: String(contexto.semana),
             dia: String(contexto.dia),
+            titulo: contexto.titulo,
             ...(e.duracion ? { duracion: String(e.duracion) } : {}),
             ...(e.pesoKg != null ? { peso: String(e.pesoKg) } : {}),
           })

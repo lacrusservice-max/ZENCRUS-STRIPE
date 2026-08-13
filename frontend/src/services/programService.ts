@@ -189,6 +189,10 @@ export interface Hoy {
   estado: EstadoHoy
   abierta: {
     id: string; title: string; mode: string; started_at: string; total_sets: number
+    /** De qué día del plan es, si vino de uno. Decide a dónde lleva «seguir». */
+    program_id: string | null
+    program_week: number | null
+    program_day: number | null
   } | null
   hechasHoy: {
     id: string; title: string; total_sets: number; total_volume_kg: number
