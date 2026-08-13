@@ -72,15 +72,47 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   initialize: async () => {
     try {
-      const token = await SecureStore.getItemAsync('accessToken')
-      if (!token) {
-        set({ isLoading: false, isAuthenticated: false })
+      /**
+       * MANDA EL TOKEN DE REFRESCO, NO EL DE ACCESO.
+       *
+       * Antes se leía solo el de acceso y, si no estaba, se iba al login sin
+       * intentar nada más. Es la decisión al revés: el de acceso dura QUINCE
+       * MINUTOS y el de refresco TREINTA DÍAS, así que estar sin el corto es lo
+       * normal y no dice absolutamente nada sobre si la sesión sigue viva.
+       *
+       * El síntoma era desconcertante y costó encontrarlo porque parecía lo
+       * contrario de lo que era: la app enseñaba la pantalla de entrar mientras
+       * el token de refresco seguía guardado y ROTANDO contra el servidor —se
+       * veía en la base, `updated_at` moviéndose cada pocos minutos con la
+       * pantalla de login delante—. O sea, sesión perfectamente válida y una
+       * app diciéndote que no habías entrado.
+       *
+       * Ahora, sin el de acceso pero con el de refresco, se pide uno nuevo y se
+       * entra. Solo se va al login cuando NO hay token de refresco, que es la
+       * única señal que de verdad significa «esta sesión se acabó».
+       */
+      const [acceso, refresco] = await Promise.all([
+        SecureStore.getItemAsync('accessToken').catch(() => null),
+        SecureStore.getItemAsync('refreshToken').catch(() => null),
+      ])
+
+      if (!refresco) {
+        // Sin el largo no hay sesión que recuperar. Y se limpia el corto, que
+        // solo, no sirve para nada y confundiría al siguiente arranque.
+        if (acceso) await SecureStore.deleteItemAsync('accessToken').catch(() => {})
+        set({ isLoading: false, isAuthenticated: false, user: null, accessToken: null })
         return
       }
-      // Se valida pidiendo el perfil. Si el token de acceso ha caducado, el
-      // interceptor lo refresca solo y esto ni se entera.
+
+      /**
+       * Se valida pidiendo el perfil, y da igual que el de acceso falte o esté
+       * caducado: el interceptor lo refresca solo y esto ni se entera. Por eso
+       * la llamada va IGUAL aunque `acceso` sea null — es justamente el caso
+       * que antes no se intentaba.
+       */
       const { data } = await api.get('/users/profile')
-      set({ user: data.data, accessToken: token, isAuthenticated: true, isLoading: false })
+      const vigente = await SecureStore.getItemAsync('accessToken').catch(() => acceso)
+      set({ user: data.data, accessToken: vigente ?? acceso, isAuthenticated: true, isLoading: false })
     } catch (e) {
       /**
        * Solo se cierra la sesión si el servidor RECHAZÓ las credenciales.
@@ -126,9 +158,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       console.warn('[auth] arranque sin red: la sesión se conserva', (e as Error)?.message)
       set({
         isLoading: false,
-        // Con las dos credenciales se entra igual: sin conexión la app funciona
-        // con lo que tiene en el teléfono y sincroniza cuando vuelva la red.
-        isAuthenticated: !!acceso,
+        /**
+         * Con token de refresco se ENTRA, tenga o no el de acceso.
+         *
+         * Aquí estaba `!!acceso`, y era el mismo error que arriba: hacía
+         * depender «¿estoy dentro?» del token que dura quince minutos en vez
+         * del que dura treinta días. Quien abriera la app sin cobertura y con
+         * el de acceso ya caducado veía la pantalla de entrar teniendo la
+         * sesión intacta.
+         *
+         * Sin red la app funciona con lo que tiene en el teléfono y sincroniza
+         * cuando vuelva; con red, el interceptor consigue un token nuevo en la
+         * primera petición. En los dos casos, dentro.
+         */
+        isAuthenticated: true,
         accessToken: acceso,
       })
     }

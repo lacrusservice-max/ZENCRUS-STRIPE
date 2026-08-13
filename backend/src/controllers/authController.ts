@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
+import { decidir, desempaquetar, empaquetar } from '../utils/familiaTokens'
 import { generateVerificationCode, generateSecureToken } from '../utils/crypto'
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService'
 import { AppError } from '../middleware/errorHandler'
@@ -325,7 +326,17 @@ export async function refreshTokens(req: Request, res: Response): Promise<void> 
 
     if (!user) throw new AppError(401, 'Usuario no encontrado')
 
-    if (user.refresh_token_family !== payload.tokenFamily) {
+    /**
+     * Tres respuestas posibles, y solo una es «te han robado el token».
+     *
+     * Antes solo había dos —coincide o no coincide— y eso convertía una carrera
+     * legítima en un robo: dos peticiones del mismo móvil refrescando a la vez
+     * y la segunda echaba al usuario de su propia cuenta. Ver
+     * `utils/familiaTokens.ts`.
+     */
+    const decision = decidir(user.refresh_token_family, payload.tokenFamily)
+
+    if (decision.tipo === 'robo') {
       await supabase.from('users').update({ refresh_token_family: null }).eq('id', user.id)
       throw new AppError(401, 'Token de refresco comprometido. Inicia sesión nuevamente.')
     }
@@ -344,8 +355,63 @@ export async function refreshTokens(req: Request, res: Response): Promise<void> 
     // a iniciar sesión, que es a donde va la app a continuación.
     if (!user.is_active) throw new AppError(401, 'Esta cuenta está desactivada')
 
-    const newTokenFamily = uuidv4()
-    await supabase.from('users').update({ refresh_token_family: newTokenFamily }).eq('id', user.id)
+    /**
+     * En gracia NO se rota.
+     *
+     * Se devuelve un token de la familia que ya está vigente, así que el que
+     * perdió la carrera acaba con el MISMO token bueno que el que la ganó y los
+     * dos siguen. Si aquí se rotara otra vez, se invalidaría el token del que
+     * ganó y la carrera volvería a empezar: dos clientes turnándose para
+     * echarse el uno al otro, que es peor que el fallo original.
+     */
+    let familiaVigente: string
+
+    if (decision.tipo === 'gracia') {
+      familiaVigente = decision.familiaActual
+      logger.info(`Refresco en gracia para ${user.id}: llegó con la familia anterior`)
+    } else {
+      /**
+       * La rotación es CONDICIONAL, y esto no es una precaución teórica.
+       *
+       * Dos peticiones simultáneas leen la misma familia, las dos deciden
+       * rotar y las dos escriben: la segunda pisa a la primera y el token que
+       * ya se había entregado deja de valer. La ventana de gracia sola no lo
+       * cubre —cubre la carrera en la que una llega después, no la que llega a
+       * la vez— y se vio en la prueba: las dos respondían 200 y uno de los dos
+       * tokens nacía muerto.
+       *
+       * Con `eq` sobre el valor leído, la base decide quién gana: solo una
+       * escritura encuentra la fila como la dejó su lectura. Quien pierde no
+       * rota nada, vuelve a leer y se va por la gracia.
+       */
+      const nueva = uuidv4()
+      const leido = user.refresh_token_family
+      const anterior = desempaquetar(leido)?.actual ?? null
+
+      const { data: cambiadas } = await supabase
+        .from('users')
+        .update({ refresh_token_family: empaquetar(nueva, anterior) })
+        .eq('id', user.id)
+        .eq('refresh_token_family', leido as string)
+        .select('id')
+
+      if (cambiadas && cambiadas.length > 0) {
+        familiaVigente = nueva
+      } else {
+        // Perdió la carrera. Se relee y se decide otra vez: si el que ganó
+        // acaba de rotar, esto cae en gracia y los dos acaban con lo mismo.
+        const { data: recargado } = await supabase
+          .from('users').select('refresh_token_family').eq('id', user.id).maybeSingle()
+        const segunda = decidir(recargado?.refresh_token_family, payload.tokenFamily)
+
+        if (segunda.tipo !== 'gracia') {
+          await supabase.from('users').update({ refresh_token_family: null }).eq('id', user.id)
+          throw new AppError(401, 'Token de refresco comprometido. Inicia sesión nuevamente.')
+        }
+        familiaVigente = segunda.familiaActual
+        logger.info(`Refresco simultáneo para ${user.id}: perdió la carrera y se le da la familia buena`)
+      }
+    }
 
     const accessToken = signAccessToken({
       userId: user.id,
@@ -353,7 +419,7 @@ export async function refreshTokens(req: Request, res: Response): Promise<void> 
       role: user.role,
       subscriptionTier: user.subscription_tier,
     })
-    const refreshToken = signRefreshToken({ userId: user.id, tokenFamily: newTokenFamily })
+    const refreshToken = signRefreshToken({ userId: user.id, tokenFamily: familiaVigente })
 
     res.cookie('refreshToken', refreshToken, cookieOptions())
     res.status(200).json({ success: true, data: { accessToken, refreshToken } } satisfies ApiResponse)
