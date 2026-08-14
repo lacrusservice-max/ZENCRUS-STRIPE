@@ -8,7 +8,7 @@ import { getCurrentSubscription } from '@/services/stripeService'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 const PLAN_LABELS: Record<string, string> = {
-  monthly: 'Mensual', annual_individual: 'Anual Individual', annual_duo: 'Anual Dúo', annual_familiar: 'Anual Familiar',
+  monthly: 'Mensual', annual_individual: 'Anual Individual',
 }
 
 const INCLUDED = [

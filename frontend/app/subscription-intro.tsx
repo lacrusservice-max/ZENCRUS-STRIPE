@@ -15,7 +15,7 @@ const { width } = Dimensions.get('window')
 
 // ── Plan config ───────────────────────────────────────────────────────────────
 
-type PlanKey = 'monthly' | 'annual_individual' | 'annual_duo' | 'annual_familiar'
+type PlanKey = 'monthly' | 'annual_individual'
 
 interface PlanConfig {
   key: PlanKey
@@ -51,28 +51,6 @@ const PLANS: PlanConfig[] = [
     badge: null,
     color: 'rgba(255,255,255,0.55)',
     features: ['Coach IA ilimitado', 'Escáner sin límite', 'Reportes PDF', 'Todos los desafíos', 'Meal Planner completo'],
-  },
-  {
-    key: 'annual_duo',
-    label: 'Anual Dúo',
-    price: 3399,
-    period: 'año',
-    perMonth: '$141/mes p/usuario',
-    savings: '2 usuarios incluidos',
-    badge: null,
-    color: Colors.secondary[400],
-    features: ['Todo Individual', '2 cuentas premium', 'Panel de pareja', 'Desafíos en dúo'],
-  },
-  {
-    key: 'annual_familiar',
-    label: 'Anual Familiar',
-    price: 5799,
-    period: 'año',
-    perMonth: '$120/mes p/usuario',
-    savings: 'Hasta 4 usuarios',
-    badge: 'MEJOR VALOR',
-    color: Colors.accent.green,
-    features: ['Todo Dúo', '4 cuentas premium', 'Panel familiar', 'Estadísticas grupales'],
   },
 ]
 

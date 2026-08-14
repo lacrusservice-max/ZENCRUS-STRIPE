@@ -51,9 +51,6 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
   STRIPE_PRICE_MONTHLY: z.string().optional(),
   STRIPE_PRICE_ANNUAL_INDIVIDUAL: z.string().optional(),
-  STRIPE_PRICE_ANNUAL_DUO: z.string().optional(),
-  STRIPE_PRICE_ANNUAL_FAMILIAR: z.string().optional(),
-  STRIPE_PRICE_EXTRA_MEMBER: z.string().optional(),
 
   MERCADOPAGO_ACCESS_TOKEN: z.string().optional(),
   MERCADOPAGO_WEBHOOK_SECRET: z.string().optional(),

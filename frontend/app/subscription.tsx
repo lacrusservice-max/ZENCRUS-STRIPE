@@ -23,7 +23,7 @@ const FEATURES = [
   { icon: 'restaurant',       label: 'Meal Planner',     free: 'Solo ver',     premium: 'Guardar semanas' },
 ] as const
 
-const PLAN_ORDER: CheckoutTier[] = ['monthly', 'annual_individual', 'annual_duo', 'annual_familiar']
+const PLAN_ORDER: CheckoutTier[] = ['monthly', 'annual_individual']
 
 export default function SubscriptionScreen() {
   const { user } = useAuthStore()
@@ -49,7 +49,7 @@ export default function SubscriptionScreen() {
   useEffect(() => { refreshStatus() }, [])
 
   const activePlan = !!realStatus?.tier && realStatus.tier !== 'free'
-  const planLabelMap: Record<string, string> = { monthly: 'Mensual', annual_individual: 'Anual Individual', annual_duo: 'Anual Dúo', annual_familiar: 'Anual Familiar' }
+  const planLabelMap: Record<string, string> = { monthly: 'Mensual', annual_individual: 'Anual Individual' }
 
   const handleCheckout = async () => {
     if (!user) {

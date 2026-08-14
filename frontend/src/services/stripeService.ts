@@ -1,7 +1,7 @@
 import { initPaymentSheet, presentPaymentSheet } from '@stripe/stripe-react-native'
 import api from './api'
 
-export type CheckoutTier = 'monthly' | 'annual_individual' | 'annual_duo' | 'annual_familiar'
+export type CheckoutTier = 'monthly' | 'annual_individual'
 
 export const STRIPE_PLANS: Record<CheckoutTier, { label: string; price: string; priceNum: number; period: string; savings: string | null; highlight: boolean }> = {
   monthly: {
@@ -20,26 +20,10 @@ export const STRIPE_PLANS: Record<CheckoutTier, { label: string; price: string; 
     savings: 'Ahorra $401 vs mensual',
     highlight: true,
   },
-  annual_duo: {
-    label: 'Anual Dúo',
-    price: '$3,399',
-    priceNum: 3399,
-    period: '/año',
-    savings: '2 usuarios incluidos',
-    highlight: false,
-  },
-  annual_familiar: {
-    label: 'Anual Familiar',
-    price: '$5,799',
-    priceNum: 5799,
-    period: '/año',
-    savings: 'Hasta 4 usuarios',
-    highlight: false,
-  },
 }
 
-export async function startStripePaymentSheet(tier: CheckoutTier, extraMembers = 0): Promise<void> {
-  const { data } = await api.post('/subscriptions/checkout', { tier, provider: 'stripe', extraMembers })
+export async function startStripePaymentSheet(tier: CheckoutTier): Promise<void> {
+  const { data } = await api.post('/subscriptions/checkout', { tier, provider: 'stripe' })
   const { mode, clientSecret, ephemeralKey, customerId } = data?.data ?? {}
 
   if (!clientSecret || !ephemeralKey || !customerId) {

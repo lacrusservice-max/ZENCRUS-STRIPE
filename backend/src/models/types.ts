@@ -3,7 +3,16 @@
 export type UserRole = 'user' | 'admin' | 'nutritionist'
 export type Gender = 'male' | 'female' | 'other'
 export type FitnessLevel = 'beginner' | 'intermediate' | 'advanced'
-export type SubscriptionTier = 'free' | 'monthly' | 'annual_individual' | 'annual_duo' | 'annual_familiar'
+/**
+ * Los planes que ZENCRUS vende hoy.
+ *
+ * Hubo también un Anual Dúo y un Anual Familiar; se retiraron del catálogo.
+ * No queda nadie suscrito a ellos, así que no hay nada que respetar: lo que sí
+ * queda en la base son los valores viejos del ENUM (`basic`, `premium`,
+ * `corporate`), que Postgres no deja borrar y que siguen tratándose en
+ * `aiQuota` por si hay filas antiguas.
+ */
+export type SubscriptionTier = 'free' | 'monthly' | 'annual_individual'
 export type SubscriptionStatus = 'active' | 'expired' | 'cancelled' | 'pending'
 export type PaymentProvider = 'stripe' | 'mercadopago' | 'none'
 export type PlanGeneratedBy = 'ai' | 'nutritionist' | 'user'

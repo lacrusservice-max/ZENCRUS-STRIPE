@@ -11,9 +11,8 @@ const stripe = env.STRIPE_SECRET_KEY ? new Stripe(env.STRIPE_SECRET_KEY) : null
 
 export const createCheckoutSchema = z.object({
   body: z.object({
-    tier: z.enum(['monthly', 'annual_individual', 'annual_duo', 'annual_familiar']),
+    tier: z.enum(['monthly', 'annual_individual']),
     provider: z.enum(['stripe', 'mercadopago']),
-    extraMembers: z.number().int().min(0).max(2).optional().default(0),
   }),
 })
 
@@ -27,21 +26,18 @@ interface PlanInfo {
 const SUBSCRIPTION_PLANS: Record<Exclude<SubscriptionTier, 'free'>, PlanInfo> = {
   monthly: { label: 'ZENCRUS Mensual', price: 200, priceId: env.STRIPE_PRICE_MONTHLY, recurring: 'month' },
   annual_individual: { label: 'ZENCRUS Anual Individual', price: 1999, priceId: env.STRIPE_PRICE_ANNUAL_INDIVIDUAL, recurring: 'year' },
-  annual_duo: { label: 'ZENCRUS Anual Dúo', price: 3399, priceId: env.STRIPE_PRICE_ANNUAL_DUO, recurring: 'year' },
-  annual_familiar: { label: 'ZENCRUS Anual Familiar', price: 5799, priceId: env.STRIPE_PRICE_ANNUAL_FAMILIAR, recurring: 'year' },
 }
-
-const EXTRA_MEMBER_PRICE_ID = env.STRIPE_PRICE_EXTRA_MEMBER
 
 // El ENUM de Postgres (subscription_tier) solo acepta free/basic/premium/corporate —
 // no conoce los planes reales de ZENCRUS (monthly/annual_*). El plan exacto se
 // determina siempre desde Stripe (metadata.tier vía stripe_subscription_id);
 // aquí solo se mapea al bucket más cercano para que el ENUM lo acepte.
-const DB_TIER_BUCKET: Record<Exclude<SubscriptionTier, 'free'>, 'basic' | 'premium' | 'corporate'> = {
+//
+// `corporate` ya no lo produce nadie: era el bucket del Anual Familiar. Se
+// sigue tratando al LEER —en `aiQuota`— porque puede haber filas viejas.
+const DB_TIER_BUCKET: Record<Exclude<SubscriptionTier, 'free'>, 'basic' | 'premium'> = {
   monthly: 'basic',
   annual_individual: 'premium',
-  annual_duo: 'premium',
-  annual_familiar: 'corporate',
 }
 
 export async function getCurrentSubscription(req: Request, res: Response): Promise<void> {
@@ -145,20 +141,14 @@ export async function startTrial(req: Request, res: Response): Promise<void> {
 export async function createCheckoutSession(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
   const userEmail = req.user!.email
-  const { tier, provider, extraMembers } = req.body as {
+  const { tier, provider } = req.body as {
     tier: Exclude<SubscriptionTier, 'free'>
     provider: 'stripe' | 'mercadopago'
-    extraMembers: number
   }
 
   const plan = SUBSCRIPTION_PLANS[tier]
   if (!plan) {
     res.status(400).json({ success: false, message: 'Plan no válido' } satisfies ApiResponse)
-    return
-  }
-
-  if (extraMembers > 0 && tier !== 'annual_familiar') {
-    res.status(400).json({ success: false, message: 'Los integrantes extra solo aplican al plan Anual Familiar' } satisfies ApiResponse)
     return
   }
 
@@ -195,11 +185,7 @@ export async function createCheckoutSession(req: Request, res: Response): Promis
         { apiVersion: '2024-06-20' }
       )
 
-      // Construir items de suscripción
       const items: Stripe.SubscriptionCreateParams.Item[] = [{ price: plan.priceId }]
-      if (extraMembers > 0 && EXTRA_MEMBER_PRICE_ID) {
-        items.push({ price: EXTRA_MEMBER_PRICE_ID, quantity: extraMembers })
-      }
 
       // Suscripción con 5 días de prueba gratis — como no hay cobro inmediato (invoice $0),
       // Stripe genera un SetupIntent (no PaymentIntent) para capturar la tarjeta.
@@ -212,7 +198,7 @@ export async function createCheckoutSession(req: Request, res: Response): Promis
         payment_behavior: 'default_incomplete',
         payment_settings: { save_default_payment_method: 'on_subscription' },
         expand: ['pending_setup_intent', 'latest_invoice.payment_intent'],
-        metadata: { userId, tier, extraMembers: String(extraMembers) },
+        metadata: { userId, tier },
       })
 
       const setupIntent = subscription.pending_setup_intent as Stripe.SetupIntent | null
@@ -265,13 +251,10 @@ export async function createCheckoutSession(req: Request, res: Response): Promis
 export async function createWebCheckout(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
   const userEmail = req.user!.email
-  const { tier, extraMembers = 0 } = req.body as { tier: Exclude<SubscriptionTier, 'free'>; extraMembers?: number }
+  const { tier } = req.body as { tier: Exclude<SubscriptionTier, 'free'> }
 
   const plan = SUBSCRIPTION_PLANS[tier]
   if (!plan) { res.status(400).json({ success: false, message: 'Plan no válido' } satisfies ApiResponse); return }
-  if (extraMembers > 0 && tier !== 'annual_familiar') {
-    res.status(400).json({ success: false, message: 'Los integrantes extra solo aplican al plan Anual Familiar' } satisfies ApiResponse); return
-  }
   if (!stripe || !plan.priceId) {
     res.status(503).json({ success: false, message: 'Pagos con Stripe no disponibles temporalmente' } satisfies ApiResponse); return
   }
@@ -288,9 +271,6 @@ export async function createWebCheckout(req: Request, res: Response): Promise<vo
     }
 
     const line_items: Stripe.Checkout.SessionCreateParams.LineItem[] = [{ price: plan.priceId, quantity: 1 }]
-    if (extraMembers > 0 && EXTRA_MEMBER_PRICE_ID) {
-      line_items.push({ price: EXTRA_MEMBER_PRICE_ID, quantity: extraMembers })
-    }
 
     const base = env.FRONTEND_URL || 'https://zencrus.com'
     const session = await stripe.checkout.sessions.create({
@@ -305,9 +285,9 @@ export async function createWebCheckout(req: Request, res: Response): Promise<vo
       subscription_data: {
         trial_period_days: 5,
         trial_settings: { end_behavior: { missing_payment_method: 'cancel' } },
-        metadata: { userId, tier, extraMembers: String(extraMembers) },
+        metadata: { userId, tier },
       },
-      metadata: { userId, tier, extraMembers: String(extraMembers) },
+      metadata: { userId, tier },
       allow_promotion_codes: true,
     })
 
@@ -558,23 +538,7 @@ export async function getPlans(_req: Request, res: Response): Promise<void> {
         period: 'año',
         currency: 'MXN',
         popular: true,
-        features: ['Todo lo del plan Mensual', '1 integrante', 'Ahorra vs. pago mensual'],
-      },
-      {
-        id: 'annual_duo',
-        name: 'Anual Dúo',
-        price: 3399,
-        period: 'año',
-        currency: 'MXN',
-        features: ['Todo lo del plan Anual Individual', '2 integrantes'],
-      },
-      {
-        id: 'annual_familiar',
-        name: 'Anual Familiar',
-        price: 5799,
-        period: 'año',
-        currency: 'MXN',
-        features: ['Todo lo del plan Anual Individual', '4 integrantes incluidos', 'Integrante extra: $850 MXN/año c/u (máx. 6 integrantes totales)'],
+        features: ['Todo lo del plan Mensual', 'Ahorra vs. pago mensual'],
       },
     ],
   } satisfies ApiResponse)
