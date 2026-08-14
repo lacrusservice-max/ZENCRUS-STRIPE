@@ -43,6 +43,7 @@ import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated'
 import { Screen } from '@/components/ui/Screen'
 import { MenuSeccion } from '@/components/workout/MenuSeccion'
 import { AnilloSemana } from '@/components/workout/AnilloSemana'
+import { HoyGrande } from '@/components/workout/HoyGrande'
 import { Cifra } from '@/components/workout/Charts'
 import { Miniatura } from '@/components/workout/Miniatura'
 import { NOMBRE_GRUPO } from '@/components/workout/anatomy'
@@ -55,6 +56,7 @@ import {
   queTocaHoy, Hoy, DiaDeLaSemana, prescripcion, DIAS_SEMANA,
 } from '@/services/programService'
 import { recetaDe } from '@/services/quickService'
+import { precargarEjercicios } from '@/services/exerciseService'
 import { FOTOS, FOTO_MODO, fotoDePrograma } from '@/constants/imagenes'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
@@ -90,6 +92,20 @@ export default function EntrenaHoy() {
       ])
       setHoy(h)
       setResumen(r)
+
+      /**
+       * Los ejercicios de hoy se piden ANTES de que nadie los toque.
+       *
+       * En cuanto se sabe qué toca, se traen sus fichas —con la URL firmada del
+       * vídeo— en segundo plano. Así, al tocar uno, la pantalla ya lo tiene y el
+       * vídeo arranca sin viaje. Es la diferencia entre abrir un ejercicio y
+       * esperar a que abra.
+       *
+       * Sin `await`: la portada no puede quedarse esperando a esto.
+       */
+      if (h?.dia?.ejercicios?.length) {
+        void precargarEjercicios(h.dia.ejercicios.map(e => e.slug))
+      }
     } finally {
       setCargando(false)
       setRefrescando(false)
@@ -173,6 +189,41 @@ export default function EntrenaHoy() {
                     />
                   ))}
                 </View>
+
+                {/**
+                  * Editar la semana, JUSTO DEBAJO de la semana.
+                  *
+                  * Estaba enterrado en «Cambiar de plan», dentro de «Tu
+                  * material», al final de la pantalla: para mover el jueves al
+                  * viernes había que acordarse de que eso vivía ahí. Un plan se
+                  * retoca constantemente —cambia el horario, se lesiona uno,
+                  * apetece meter otro día— y si retocarlo cuesta encontrarlo, no
+                  * se retoca: se abandona. Va pegado a la lista que modifica,
+                  * que es donde se te ocurre.
+                  */}
+                <TouchableOpacity
+                  style={s.editarSemana}
+                  onPress={() => {
+                    void Haptics.selectionAsync()
+                    router.push(hoy.programa?.esMio
+                      ? `/workout/program/nuevo?id=${hoy.programa.id}`
+                      : '/workout/program/nuevo')
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <Ionicons name="options-outline" size={16} color={Colors.neon.redCore} />
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.editarTitulo}>
+                      {hoy.programa?.esMio ? 'Editar mi semana' : 'Monta tu propio plan'}
+                    </Text>
+                    <Text style={s.editarSub}>
+                      {hoy.programa?.esMio
+                        ? 'Cambia los días, los músculos y los ejercicios'
+                        : 'Tus días, tus músculos, tus ejercicios'}
+                    </Text>
+                  </View>
+                  <Ionicons name="chevron-forward" size={15} color={Colors.neon.w3} />
+                </TouchableOpacity>
               </Animated.View>
             )}
 
@@ -389,53 +440,20 @@ function AMedias({ s: sesion }: { s: NonNullable<Hoy['abierta']> }) {
  * abre la app en el vestuario es «¿qué me toca?», y contestarla con un título
  * obliga a entrar para saberlo.
  */
+/**
+ * Lo de hoy vive en `HoyGrande`: fotografía a pantalla completa, la foto se
+ * puede cambiar, cada ejercicio lleva al suyo y la lista se despliega entera.
+ * Aquí solo queda decidir a dónde va «Empezar».
+ */
 function TocaHoy({ hoy }: { hoy: Hoy }) {
-  const d = hoy.dia!
-  const p = hoy.programa!
-
   return (
-    <View style={h.marco}>
-      <Image source={fotoDePrograma(p)} style={StyleSheet.absoluteFill} contentFit="cover" transition={280} />
-      <Velo />
-      <View style={h.dentro}>
-        <Etiqueta texto={d.esDescarga ? 'HOY · SEMANA SUAVE' : 'TE TOCA HOY'} tono="hoy" />
-
-        <View style={{ gap: Spacing[3] }}>
-          <View>
-            <Text style={h.titulo} numberOfLines={2}>{d.nombre}</Text>
-            <Text style={h.sub}>
-              {p.nombre} · semana {d.semana} de {p.semanas} · {d.ejercicios.length} ejercicios
-            </Text>
-          </View>
-
-          {/* Los tres primeros con su imagen y su prescripción. Tres y no
-              todos: con seis, la pieza se convierte en una lista y deja de
-              ser una portada. */}
-          <View style={h.lista}>
-            {d.ejercicios.slice(0, 3).map((e, i) => (
-              <View key={`${e.slug ?? e.nombre}-${i}`} style={h.fila}>
-                <Miniatura poster={e.slug ? d.posters[e.slug] : null} tam={38} />
-                <View style={{ flex: 1 }}>
-                  <Text style={h.filaNombre} numberOfLines={1}>{e.nombre}</Text>
-                  <Text style={h.filaSub}>
-                    {prescripcion(e)}
-                    {e.pesoKg != null ? ` · ${e.pesoKg} kg` : ''}
-                  </Text>
-                </View>
-              </View>
-            ))}
-            {d.ejercicios.length > 3 && (
-              <Text style={h.mas}>y {d.ejercicios.length - 3} más</Text>
-            )}
-          </View>
-
-          <Boton
-            texto="Empezar"
-            onPress={() => router.push('/workout/program/day')}
-          />
-        </View>
-      </View>
-    </View>
+    <HoyGrande
+      hoy={hoy}
+      onEmpezar={() => {
+        void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        router.push('/workout/program/day')
+      }}
+    />
   )
 }
 
@@ -758,6 +776,18 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.neon.edge,
     paddingVertical: Spacing[2], paddingHorizontal: Spacing[3],
   },
+
+  /* Discreto a propósito: acompaña a la semana, no compite con «Empezar». */
+  editarSemana: {
+    flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
+    paddingVertical: Spacing[3], paddingHorizontal: Spacing[4],
+    borderRadius: 14,
+    backgroundColor: Colors.neon.pane,
+    borderWidth: 1, borderColor: Colors.neon.edge,
+    marginTop: Spacing[2],
+  },
+  editarTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
+  editarSub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
 
   montar: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
