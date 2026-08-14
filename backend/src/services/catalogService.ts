@@ -44,6 +44,9 @@ const SOURCE_LABELS: Record<string, string> = {
   usda_brand: 'USDA FoodData Central',
   smae_5ed: 'SMAE · 5.ª edición',
   incmnsz_2015: 'INCMNSZ',
+  // Base comunitaria: se etiqueta como tal para que se distinga de las
+  // tablas oficiales de composición.
+  fatsecret: 'Base comunitaria',
 }
 
 interface SearchHit { food_id: string; score: number }

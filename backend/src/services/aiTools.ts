@@ -1,7 +1,13 @@
 import { supabase } from '../config/supabase'
 import { logger } from '../config/logger'
 import { searchCatalog, getCatalogFoodById } from './catalogService'
+import { searchFoods as buscarEnFatSecret, isConfigured as fatsecretConfigurado, type FatSecretFood } from './fatsecretService'
+import { darDeAltaAlimento, normalizarNombre } from './altaAlimento'
 import { calcularRachas, sumarDias } from './streaks'
+import {
+  perfilClinicoDe, revisarCalorias, revisarProteina,
+  revisarPesoObjetivo, revisarPesoActual,
+} from './limitesClinicos'
 
 // ── Definición de herramientas (formato OpenAI/DeepSeek) ──────────────────────
 // La IA (ZENA) puede invocarlas para ejecutar cambios reales en el plan del usuario.
@@ -274,6 +280,30 @@ const HUECO_A_COMIDA: Record<string, string> = {
   snack1: 'snack', snack2: 'snack', snack3: 'snack',
 }
 
+/** Marca los ids que aún no están en el catálogo propio. */
+const PREFIJO_EXTERNO = 'ext:'
+
+/**
+ * Las fichas externas de la última búsqueda, esperando a que el modelo elija.
+ *
+ * Se guardan aquí porque entre `buscar_alimento` y `registrar_comida` hay una
+ * llamada al modelo de por medio, y la ficha completa —con sus macros y sus
+ * porciones— no cabe en el id. Volver a preguntarle a la fuente externa sería
+ * otra petición de red y podría devolver algo distinto.
+ *
+ * Se acota para que un proceso largo no acumule fichas sin fin.
+ */
+const ultimaBusquedaExterna = new Map<string, FatSecretFood>()
+const TOPE_EXTERNAS = 200
+
+function recordarExterna(f: FatSecretFood) {
+  if (ultimaBusquedaExterna.size >= TOPE_EXTERNAS) {
+    const primera = ultimaBusquedaExterna.keys().next().value
+    if (primera) ultimaBusquedaExterna.delete(primera)
+  }
+  ultimaBusquedaExterna.set(f.id, f)
+}
+
 const ES_FECHA = /^\d{4}-\d{2}-\d{2}$/
 
 /** El día de Ciudad de México. Solo se usa si el cliente no manda el suyo. */
@@ -405,7 +435,7 @@ export async function executeAiTool(
             .select('activity_date, logged_food, logged_workout, check_in_done, drank_water, protegido')
             .eq('user_id', userId).order('activity_date', { ascending: false }).limit(400),
           supabase.from('meal_logs')
-            .select('log_date, calories, active, foods ( kind )')
+            .select('log_date, calories, active, foods ( kind, verified )')
             .eq('user_id', userId).gte('log_date', hace14).lte('log_date', hoy)
             .is('deleted_at', null),
         ])
@@ -450,10 +480,13 @@ export async function executeAiTool(
         partes.push(`Constancia: registró comida ${conRegistro} de los últimos 14 días.`)
 
         // ── Ultraprocesados ─────────────────────────────────────────────────
-        // Solo cuentan las entradas que vienen del catálogo: las escritas a
-        // mano no tienen clasificación y meterlas como «naturales» inflaría el
-        // dato a favor. Mejor decir sobre cuántas se calcula.
-        const clasificadas = filas.filter((f: any) => f.active !== false && f.foods?.kind)
+        // Solo cuentan las entradas del catálogo Y verificadas. Las escritas
+        // a mano no tienen clasificación, y las dadas de alta desde una fuente
+        // externa llevan un `kind` de relleno que no se ha comprobado: contar
+        // cualquiera de las dos como «no ultraprocesado» inflaría el dato a
+        // favor del usuario, que es la peor dirección para una métrica de
+        // salud. Mejor decir sobre cuántas se calcula.
+        const clasificadas = filas.filter((f: any) => f.active !== false && f.foods?.kind && f.foods?.verified)
         if (!clasificadas.length) {
           partes.push('Ultraprocesados: aún no hay suficientes alimentos del catálogo para calcularlo.')
         } else {
@@ -736,17 +769,51 @@ export async function executeAiTool(
         const consulta = String(args.consulta ?? '').trim()
         if (consulta.length < 2) return 'Dime qué alimento buscar.'
 
-        const encontrados = await searchCatalog(consulta, 8)
-        if (!encontrados.length) {
-          return `Sin resultados para "${consulta}". Prueba con menos palabras o con el nombre genérico.`
+        // Igual que el buscador de la app: primero el catálogo propio y, solo
+        // si da poco, se rellena con la fuente externa. Así ZENA encuentra
+        // exactamente lo mismo que encontraría el usuario a mano — y cuando el
+        // alimento YA existe, apunta ese, sin traer una versión distinta de
+        // fuera.
+        const propios = await searchCatalog(consulta, 8)
+
+        let externos: FatSecretFood[] = []
+        if (propios.length < 3 && fatsecretConfigurado()) {
+          try {
+            const vistos = new Set(propios.map(f => normalizarNombre(f.name)))
+            externos = (await buscarEnFatSecret(consulta))
+              .filter(f => !vistos.has(normalizarNombre(f.brand ? `${f.name} (${f.brand})` : f.name)))
+              .slice(0, 5)
+            for (const f of externos as FatSecretFood[]) recordarExterna(f)
+          } catch (err) {
+            // La fuente externa es el relleno, no la principal: si falla se
+            // responde con lo que sí dio el catálogo.
+            logger.error(`buscar_alimento · fuente externa "${consulta}":`, err)
+          }
         }
 
-        const lista = encontrados.map(f =>
-          `- food_id: ${f.id} | ${f.name} | por 100 g: ${f.per100.calories} kcal, ` +
-          `${f.per100.protein} g proteína, ${f.per100.carbs} g carbos, ${f.per100.fat} g grasa | ${f.sourceLabel}`,
-        ).join('\n')
+        if (!propios.length && !externos.length) {
+          return `Sin resultados para "${consulta}" ni en el catálogo ni en las fuentes externas. Prueba con menos palabras o con el nombre genérico.`
+        }
 
-        return `Resultados para "${consulta}":\n${lista}\n\n` +
+        const partes: string[] = []
+
+        if (propios.length) {
+          partes.push('YA EN EL CATÁLOGO (úsalos con preferencia — son los mismos que ve el usuario en la app):')
+          partes.push(propios.map(f =>
+            `- food_id: ${f.id} | ${f.name} | por 100 g: ${f.per100.calories} kcal, ` +
+            `${f.per100.protein} g proteína, ${f.per100.carbs} g carbos, ${f.per100.fat} g grasa | ${f.sourceLabel}`,
+          ).join('\n'))
+        }
+
+        if (externos.length) {
+          partes.push('\nNO ESTÁN EN EL CATÁLOGO (solo si ninguno de arriba es lo que pidió — al usarlos se dan de alta):')
+          partes.push(externos.map(f =>
+            `- food_id: ${PREFIJO_EXTERNO}${f.id} | ${f.brand ? `${f.name} (${f.brand})` : f.name} | por 100 g: ` +
+            `${f.per100.calories} kcal, ${f.per100.protein} g proteína, ${f.per100.carbs} g carbos, ${f.per100.fat} g grasa | fuente externa`,
+          ).join('\n'))
+        }
+
+        return `Resultados para "${consulta}":\n${partes.join('\n')}\n\n` +
           'Elige el que corresponda a lo que dijo el usuario y pásale su food_id a registrar_comida. ' +
           'Si ninguno es lo que pidió, dilo en vez de forzar uno.'
       }
@@ -773,12 +840,35 @@ export async function executeAiTool(
           ? String(args.fecha)
           : (ctx.hoy && ES_FECHA.test(ctx.hoy) ? ctx.hoy : hoyMexico())
 
-        // El id tiene que ser uno que el catálogo reconozca. Si el modelo se lo
-        // inventa —o lo recuerda de otra conversación— aquí se acaba: sin ficha
-        // no hay números, y sin números no se apunta nada.
-        const alimento = await getCatalogFoodById(String(args.food_id ?? ''))
+        /**
+         * De dónde salen los números.
+         *
+         * Si el id es del catálogo propio, se usa tal cual — exactamente el
+         * mismo alimento que el usuario habría elegido a mano, con los mismos
+         * valores. Nada se altera.
+         *
+         * Si viene de la fuente externa, primero se DA DE ALTA en el catálogo y
+         * después se registra ya como alimento propio. Así el segundo usuario
+         * que lo busque lo encuentra sin depender de nadie: es el efecto red
+         * del §4, cada alimento se da de alta una vez para todos.
+         */
+        const idPedido = String(args.food_id ?? '')
+        let alimento = await getCatalogFoodById(idPedido.replace(PREFIJO_EXTERNO, ''))
+        let recienDadoDeAlta: string | null = null
+
+        if (!alimento && idPedido.startsWith(PREFIJO_EXTERNO)) {
+          const ficha = ultimaBusquedaExterna.get(idPedido.slice(PREFIJO_EXTERNO.length))
+          if (!ficha) {
+            return 'Ese alimento externo ya no está en la última búsqueda. Vuelve a llamar a buscar_alimento y usa un food_id de los que devuelva.'
+          }
+          const alta = await darDeAltaAlimento(ficha)
+          if (!alta) return 'No pude dar de alta ese alimento en el catálogo. Dile al usuario que lo añada desde la pantalla de Nutrición.'
+          alimento = await getCatalogFoodById(alta.foodId)
+          if (alta.creado) recienDadoDeAlta = alta.nombre
+        }
+
         if (!alimento) {
-          logger.info(`registrar_comida: food_id desconocido "${args.food_id}"`)
+          logger.info(`registrar_comida: food_id desconocido "${idPedido}"`)
           return 'Ese food_id no existe en el catálogo. Usa buscar_alimento primero y pásame uno de los que devuelva.'
         }
 
@@ -810,12 +900,17 @@ export async function executeAiTool(
 
         if (error) throw error
 
-        return `Apuntado: ${alimento.name}, ${gramos} g en ${args.comida} del ${fecha}. ` +
+        return (recienDadoDeAlta ? `(Nuevo en el catálogo: "${recienDadoDeAlta}", dado de alta desde una fuente externa.) ` : '') +
+          `Apuntado: ${alimento.name}, ${gramos} g en ${args.comida} del ${fecha}. ` +
           `${macros.calories} kcal, ${macros.protein_g} g de proteína, ${macros.carbs_g} g de carbos, ${macros.fat_g} g de grasa. ` +
           `Fuente: ${alimento.sourceLabel}.`
       }
 
       case 'actualizar_objetivo': {
+        if (typeof args.peso_objetivo === 'number') {
+          const v = revisarPesoObjetivo(args.peso_objetivo, await perfilClinicoDe(userId))
+          if (!v.ok) return v.motivo!
+        }
         const goals = await getGoals(userId)
         goals.primary = OBJETIVO_MAP[args.objetivo] ?? goals.primary ?? 'maintenance'
         goals.main_goal = OBJETIVO_MAIN_GOAL_MAP[args.objetivo] ?? goals.main_goal ?? 'maintain'
@@ -825,6 +920,10 @@ export async function executeAiTool(
         return `Objetivo actualizado a "${args.objetivo}"${args.peso_objetivo ? ` con peso objetivo ${args.peso_objetivo} kg` : ''}.`
       }
       case 'actualizar_datos_fisicos': {
+        if (typeof args.peso === 'number') {
+          const v = revisarPesoActual(args.peso)
+          if (!v.ok) return v.motivo!
+        }
         const update: Record<string, any> = { updated_at: new Date().toISOString() }
         if (typeof args.peso === 'number') update.weight = args.peso
         if (args.nivel_actividad) update.activity_level = ACTIVIDAD_MAP[args.nivel_actividad] ?? args.nivel_actividad
@@ -841,6 +940,20 @@ export async function executeAiTool(
         // targets en Perfil y que lee la pantalla de Nutrición (goals.calories_target,
         // goals.protein_g, etc.) — nunca anidar en goals.custom_targets, esa ruta
         // no la lee ninguna pantalla y el cambio de la IA quedaría invisible.
+        // Los límites del §12, ANTES de tocar nada. Antes esto escribía
+        // directo: «ponme en 800 calorías» se guardaba tal cual, aunque
+        // `nutritionCalculator` tuviera su piso — porque este camino no pasaba
+        // por él.
+        const perfil = await perfilClinicoDe(userId)
+        if (typeof args.calorias === 'number') {
+          const v = revisarCalorias(args.calorias, perfil)
+          if (!v.ok) return v.motivo!
+        }
+        if (typeof args.proteina === 'number') {
+          const v = revisarProteina(args.proteina, perfil)
+          if (!v.ok) return v.motivo!
+        }
+
         const goals = await getGoals(userId)
         if (typeof args.calorias === 'number') goals.calories_target = args.calorias
         if (typeof args.proteina === 'number') goals.protein_g = args.proteina
