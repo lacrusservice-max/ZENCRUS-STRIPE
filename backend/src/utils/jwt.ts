@@ -16,7 +16,7 @@ export interface RefreshTokenPayload {
 }
 
 export function signAccessToken(payload: TokenPayload): string {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return jwt.sign(payload, env.JWT_SECRET, {
     expiresIn: env.JWT_EXPIRATION as any,
     issuer: 'nutriai-fit',
@@ -25,7 +25,7 @@ export function signAccessToken(payload: TokenPayload): string {
 }
 
 export function signRefreshToken(payload: RefreshTokenPayload): string {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+   
   return jwt.sign(payload, env.JWT_REFRESH_SECRET, {
     expiresIn: env.JWT_REFRESH_EXPIRATION as any,
     issuer: 'nutriai-fit',

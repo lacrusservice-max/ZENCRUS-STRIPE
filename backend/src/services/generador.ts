@@ -199,7 +199,7 @@ export function generar(p: Peticion): Generado | null {
   const azar = sembrar(`${dia}|${p.region}|${p.minutos}|${lugar}|${nivel}|${(p.equipment ?? []).join(',')}`)
 
   // Candidatos: de la región, del sitio y con material disponible.
-  let pool = TODOS.filter(e => {
+  const pool = TODOS.filter(e => {
     if (!e.muscle || !musculos.includes(e.muscle)) return false
     if (lugar === 'home' && !e.home) return false
     if (lugar === 'gym' && !e.gym) return false

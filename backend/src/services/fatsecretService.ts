@@ -265,7 +265,14 @@ function writeCache(key: string, value: any) {
 // ── API pública ───────────────────────────────────────────────────────────────
 
 /** Busca alimentos por texto. Los genéricos van primero. */
-export async function searchFoods(query: string, region = 'MX'): Promise<FatSecretFood[]> {
+/**
+ * `_region` se acepta y no se usa: la edición gratuita de FatSecret no admite
+ * el parámetro (ver la nota de abajo). Se mantiene en la firma porque
+ * `foodController` ya lo manda y porque el día que se suba de nivel el cambio
+ * es de una línea; el guion bajo es lo que dice que la omisión es a propósito
+ * y no un olvido.
+ */
+export async function searchFoods(query: string, _region = 'MX'): Promise<FatSecretFood[]> {
   const q = query.trim()
   if (q.length < 2) return []
 

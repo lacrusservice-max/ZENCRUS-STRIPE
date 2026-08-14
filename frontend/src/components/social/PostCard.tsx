@@ -48,12 +48,13 @@ function Media({ post, onDoubleTap }: { post: Post; onDoubleTap?: () => void }) 
   const ancho = width - 32 - 2   // margen de la tarjeta y su borde
   const [indice, setIndice] = useState(0)
 
-  if (!post.media.length) return null
-
-  const primera = post.media[0]
-  const proporcion = primera.width && primera.height ? primera.height / primera.width : 1.25
-  const alto = Math.min(Math.round(ancho * proporcion), Math.round(width * 1.3))
-
+  // Los hooks van antes del `return` de la publicación sin fotos.
+  //
+  // Estaban debajo, y en una lista eso se nota: el feed reutiliza las
+  // instancias por posición, así que al pasar de una publicación con fotos a
+  // una sin ellas React veía primero seis hooks y luego tres. El contador del
+  // doble toque de una acababa dentro de otra, y «me gusta» se disparaba en la
+  // publicación equivocada sin que hubiera forma de reproducirlo a mano.
   const ultimoToque = useRef(0)
   const corazon = useRef(new Animated.Value(0)).current
 
@@ -72,6 +73,12 @@ function Media({ post, onDoubleTap }: { post: Post; onDoubleTap?: () => void }) 
       ultimoToque.current = ahora
     }
   }, [onDoubleTap])
+
+  if (!post.media.length) return null
+
+  const primera = post.media[0]
+  const proporcion = primera.width && primera.height ? primera.height / primera.width : 1.25
+  const alto = Math.min(Math.round(ancho * proporcion), Math.round(width * 1.3))
 
   return (
     <Pressable onPress={dobleToque}>

@@ -75,22 +75,22 @@ export default function RecipeDetail() {
   /** Sustituciones elegidas en esta sesión, por nombre del ingrediente base. */
   const [swaps, setSwaps] = useState<Record<string, RecipeIngredient>>({})
 
-  if (!recipe) {
-    return (
-      <Screen>
-        <View style={s.missing}>
-          <Text style={s.missingTxt}>Esta receta ya no existe.</Text>
-          <TouchableOpacity onPress={() => router.back()}>
-            <Text style={s.missingBack}>VOLVER</Text>
-          </TouchableOpacity>
-        </View>
-      </Screen>
-    )
-  }
+  // ── Todos los hooks van ANTES del primer `return` ──────────────────────────
+  //
+  // Aquí había un `if (!recipe) return …` justo encima de estos tres `useMemo`,
+  // y eso es un fallo de verdad aunque la pantalla pareciera funcionar: React
+  // identifica los hooks por el ORDEN en que se llaman, así que en el render
+  // sin receta veía cuatro y en el render con receta, siete. Al pasar de uno a
+  // otro —abrir una receta recién borrada y volver, o recargar con Fast
+  // Refresh— el estado de un hook aparece en otro, y salen fallos que no hay
+  // manera de reproducir a mano.
+  //
+  // Los `useMemo` toleran ahora que no haya receta; el aviso de que no existe
+  // se devuelve más abajo, cuando ya se han llamado todos.
 
   /** Ingredientes con las sustituciones aplicadas, antes de escalar. */
   const effective = useMemo(
-    () => recipe.ingredients.map(ing => {
+    () => (recipe?.ingredients ?? []).map(ing => {
       const swap = swaps[ing.name]
       if (!swap) return ing
       // Se conserva la cantidad original: cambiar el alimento no cambia cuánto
@@ -105,21 +105,35 @@ export default function RecipeDetail() {
         fat: swap.fat * f,
       }
     }),
-    [recipe.ingredients, swaps],
+    [recipe?.ingredients, swaps],
   )
 
   const scaled = useMemo(
-    () => scaleIngredients(effective, recipe.servings, servings),
-    [effective, recipe.servings, servings],
+    () => scaleIngredients(effective, recipe?.servings ?? 1, servings),
+    [effective, recipe?.servings, servings],
   )
 
-  const factor = recipe.servings > 0 ? servings / recipe.servings : 1
   const totals = useMemo(() => effective.reduce((a, i) => ({
     calories: a.calories + i.calories,
     protein: a.protein + i.protein,
     carbs: a.carbs + i.carbs,
     fat: a.fat + i.fat,
   }), { calories: 0, protein: 0, carbs: 0, fat: 0 }), [effective])
+
+  if (!recipe) {
+    return (
+      <Screen>
+        <View style={s.missing}>
+          <Text style={s.missingTxt}>Esta receta ya no existe.</Text>
+          <TouchableOpacity onPress={() => router.back()}>
+            <Text style={s.missingBack}>VOLVER</Text>
+          </TouchableOpacity>
+        </View>
+      </Screen>
+    )
+  }
+
+  const factor = recipe.servings > 0 ? servings / recipe.servings : 1
 
   const perServing = {
     calories: totals.calories / Math.max(recipe.servings, 1),

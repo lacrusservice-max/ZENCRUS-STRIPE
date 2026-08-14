@@ -14,7 +14,7 @@ export async function detectSecurityRisk(): Promise<{
   const reasons: string[] = []
 
   let isEmulator = false
-  let isRooted = false
+  const isRooted = false
 
   if (Platform.OS === 'android') {
     const model = (await Application.getAndroidId()) || ''

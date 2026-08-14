@@ -198,7 +198,7 @@ export function calcularNutricion(perfil: PerfilUsuario): ResultadoNutricional {
 
   // 2. Calcular GET
   const factorActividad = FACTORES_ACTIVIDAD[perfil.nivelActividad]
-  let get = Math.round((tmb * factorActividad) / 50) * 50
+  const get = Math.round((tmb * factorActividad) / 50) * 50
   ajustes.push(`GET (TMB × ${factorActividad}): ${get} kcal/día`)
 
   // 3. Ajuste por objetivo

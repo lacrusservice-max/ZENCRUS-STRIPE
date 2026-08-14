@@ -10,7 +10,7 @@ interface PushNotificationPayload {
 // Firebase Admin SDK se conectará aquí cuando se configure
 // Por ahora: estructura completa lista para activar
 
-let firebaseAdmin: any = null
+const firebaseAdmin: any = null
 
 export function initializeFirebase(): void {
   try {
