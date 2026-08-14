@@ -1,0 +1,26 @@
+{
+  "//": [
+    "Las pruebas quedan fuera del tsconfig principal —su `include` es src/**/* y su",
+    "rootDir es ./src— y eso es lo correcto: no deben acabar en `dist` ni viajar al",
+    "servidor. Pero también las dejaba fuera de `tsc --noEmit`, así que podían",
+    "pudrirse sin que nadie se enterara hasta ejecutarlas.",
+    "",
+    "Esta configuración existe solo para comprobarlas. `noEmit` porque aquí no se",
+    "compila nada, y sin `rootDir` porque `migracion.ts` importa el módulo de",
+    "traducción del frontend, que vive fuera de esta carpeta a propósito: es el",
+    "mismo código que corre en el teléfono, y probar una copia no probaría nada.",
+    "",
+    "El alias `@/` es el del frontend: `migracionLegado` lo usa para importar sus",
+    "tipos. En ejecución da igual —son `import type` y tsx los borra— pero para",
+    "COMPROBARLOS hay que decirle a dónde apunta."
+  ],
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "rootDir": null,
+    "types": ["node"],
+    "baseUrl": ".",
+    "paths": { "@/*": ["../../frontend/src/*"] }
+  },
+  "include": ["./**/*.ts", "../src/**/*.ts", "../../frontend/src/utils/migracionLegado.ts"]
+}

@@ -14,8 +14,9 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src",
-    "type-check": "tsc --noEmit",
-    "migrate": "ts-node src/config/migrate.ts"
+    "type-check": "tsc --noEmit && tsc -p pruebas --noEmit",
+    "migrate": "ts-node src/config/migrate.ts",
+    "test:e2e": "tsx pruebas/correr.ts"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1107.0",
@@ -49,6 +50,7 @@
     "@types/jsonwebtoken": "^9.0.6",
     "@types/morgan": "^1.9.9",
     "@types/node": "^20.14.9",
+    "@types/supertest": "^7.2.1",
     "@types/uuid": "^10.0.0",
     "@types/ws": "^8.5.12",
     "@typescript-eslint/eslint-plugin": "^7.16.0",
@@ -58,6 +60,7 @@
     "supertest": "^7.0.0",
     "ts-jest": "^29.2.2",
     "ts-node-dev": "^2.0.0",
+    "tsx": "^4.23.12",
     "typescript": "^5.5.3"
   }
 }
