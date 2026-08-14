@@ -77,6 +77,32 @@ const TIER_A_PLAN: Record<string, keyof typeof TOPES> = {
   corporate: 'interno',
 }
 
+/**
+ * Cuentas internas: sin tope.
+ *
+ * Son las del equipo —desarrollo, soporte, demos—. Probar la app contra su
+ * propio límite de cinco mensajes hace imposible trabajar en ella, y la
+ * alternativa que se usaba antes era peor: crear una suscripción falsa en
+ * producción, que ensucia los informes de ingresos y deja a alguien apareciendo
+ * como cliente de pago sin serlo.
+ *
+ * Van en código y no en la base por lo mismo que TOPES: quién es interno es una
+ * decisión que merece pasar por revisión, no un UPDATE suelto. `AI_CUENTAS_INTERNAS`
+ * permite añadir una más sin desplegar, separando por comas.
+ */
+const CUENTAS_INTERNAS = new Set(
+  [
+    'lacrusservice@gmail.com',
+    'caleblacrus@gmail.com',
+    ...(process.env.AI_CUENTAS_INTERNAS ?? '').split(','),
+  ]
+    .map(c => c.trim().toLowerCase())
+    .filter(Boolean),
+)
+
+export const esCuentaInterna = (email?: string): boolean =>
+  !!email && CUENTAS_INTERNAS.has(email.toLowerCase())
+
 /** Fecha del usuario. La manda la app; si no, se usa la de Ciudad de México. */
 export function fechaDelUsuario(req: Request): string {
   const cabecera = req.header('X-Zona-Fecha')
@@ -90,7 +116,11 @@ export function fechaDelUsuario(req: Request): string {
  * Se toma la suscripción activa más reciente cuya fecha de fin no haya pasado.
  * Sin ninguna, el plan es `free` — nunca se asume nada mejor por defecto.
  */
-export async function planDelUsuario(userId: string): Promise<keyof typeof TOPES> {
+export async function planDelUsuario(userId: string, email?: string): Promise<keyof typeof TOPES> {
+  // Antes de mirar la base: el equipo no tiene tope. Se comprueba primero para
+  // que probar la app no dependa de que exista una suscripción inventada.
+  if (esCuentaInterna(email)) return 'interno'
+
   const { data, error } = await supabase
     .from('subscriptions')
     .select('tier, end_date')
@@ -123,7 +153,7 @@ export function exigirCuota(tipo: TipoGasto) {
     const fecha = fechaDelUsuario(req)
 
     try {
-      const plan = await planDelUsuario(userId)
+      const plan = await planDelUsuario(userId, req.user!.email)
       const limite = TOPES[plan][tipo]
 
       const { data, error } = await supabase.rpc('consumir_cuota', {

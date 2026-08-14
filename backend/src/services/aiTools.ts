@@ -83,6 +83,26 @@ export const AI_TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'consultar_entrenamientos',
+      description: 'Lee cómo está entrenando el usuario: sus últimas sesiones con volumen y duración, y sus récords personales. Úsala antes de opinar sobre su entrenamiento o de proponerle nada — responde a «¿cómo voy en el gym?», «¿cuánto levanté la última vez?», «¿cuál es mi récord en press?».',
+      parameters: {
+        type: 'object',
+        properties: {
+          dias: {
+            type: 'number',
+            description: 'Cuántos días hacia atrás mirar. Por defecto 30, máximo 90.',
+          },
+          records: {
+            type: 'boolean',
+            description: 'true (por defecto) para incluir sus récords personales.',
+          },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'buscar_alimento',
       description: 'Busca alimentos en el catálogo y devuelve los candidatos con sus valores por 100 g. SIEMPRE úsala antes de registrar_comida: es de donde salen los números. Elige tú cuál de los resultados corresponde a lo que dijo el usuario — «carne de res molida» puede aparecer como «Molida de res». Si ninguno encaja, dilo en vez de forzar uno.',
       parameters: {
@@ -385,6 +405,88 @@ export async function executeAiTool(
         }
 
         return `Progreso del usuario al ${hoy}:\n- ${partes.join('\n- ')}`
+      }
+
+      /**
+       * ── Consultar entrenamientos ──────────────────────────────────────────
+       *
+       * Las sesiones sin terminar se marcan como tales en vez de ocultarse.
+       * Una que sigue abierta significa que el usuario está entrenando AHORA o
+       * que se le quedó a medias ayer, y las dos cosas son justo lo que un
+       * coach querría saber antes de decir nada.
+       *
+       * El volumen se da tal cual está guardado. No se recalcula aquí ni se
+       * estima cuando falta: una sesión de carrera no tiene volumen y decir
+       * «0 kg» de una carrera de diez kilómetros sería peor que no decir nada.
+       */
+      case 'consultar_entrenamientos': {
+        const dias = Math.min(Math.max(Math.round(Number(args.dias) || 30), 1), 90)
+        const hoy = ctx.hoy && ES_FECHA.test(ctx.hoy) ? ctx.hoy : hoyMexico()
+        const desde = sumarDias(hoy, -(dias - 1))
+
+        const [sesiones, records] = await Promise.all([
+          supabase.from('workout_sessions')
+            .select('title, mode, status, started_at, duration_seconds, total_sets, total_reps, total_volume_kg, distance_m, calories_kcal, perceived_effort')
+            .eq('user_id', userId)
+            .gte('started_at', `${desde}T00:00:00Z`)
+            .order('started_at', { ascending: false })
+            .limit(20),
+          args.records === false
+            ? Promise.resolve({ data: [] as any[] })
+            : supabase.from('personal_records')
+                .select('exercise_name, metric, value, weight_kg, reps, achieved_at')
+                .eq('user_id', userId)
+                .order('achieved_at', { ascending: false })
+                .limit(12),
+        ])
+
+        const partes: string[] = []
+        const s = sesiones.data ?? []
+
+        if (!s.length) {
+          partes.push(`Sesiones: ninguna entre el ${desde} y el ${hoy}.`)
+        } else {
+          const hechas = s.filter(x => x.status === 'completed')
+          const abiertas = s.filter(x => x.status === 'active')
+
+          partes.push(
+            `Sesiones: ${s.length} en los últimos ${dias} días ` +
+            `(${hechas.length} terminada(s)${abiertas.length ? `, ${abiertas.length} sin terminar` : ''}).`,
+          )
+
+          for (const x of s.slice(0, 8)) {
+            const trozos = [
+              x.duration_seconds ? `${Math.round(Number(x.duration_seconds) / 60)} min` : null,
+              x.total_sets ? `${x.total_sets} series` : null,
+              x.total_reps ? `${x.total_reps} reps` : null,
+              x.total_volume_kg ? `${Math.round(Number(x.total_volume_kg))} kg de volumen` : null,
+              x.distance_m ? `${redondear(Number(x.distance_m) / 1000)} km` : null,
+              x.calories_kcal ? `${Math.round(Number(x.calories_kcal))} kcal` : null,
+              x.perceived_effort ? `esfuerzo ${x.perceived_effort}/10` : null,
+            ].filter(Boolean)
+
+            partes.push(
+              `  · ${String(x.started_at).slice(0, 10)} — ${x.title ?? x.mode ?? 'sesión'}` +
+              `${x.status !== 'completed' ? ` (${x.status === 'active' ? 'sin terminar' : x.status})` : ''}` +
+              (trozos.length ? `: ${trozos.join(', ')}` : ': sin datos de esfuerzo'),
+            )
+          }
+        }
+
+        const r = records.data ?? []
+        if (r.length) {
+          partes.push('Récords personales:')
+          for (const x of r) {
+            const marca = x.weight_kg
+              ? `${Number(x.weight_kg)} kg${x.reps ? ` x ${x.reps}` : ''}`
+              : `${Number(x.value)}`
+            partes.push(`  · ${x.exercise_name}: ${marca} (${x.metric}) el ${String(x.achieved_at).slice(0, 10)}`)
+          }
+        } else if (args.records !== false) {
+          partes.push('Récords personales: todavía ninguno.')
+        }
+
+        return `Entrenamiento del usuario (${desde} a ${hoy}):\n${partes.join('\n')}`
       }
 
       /**

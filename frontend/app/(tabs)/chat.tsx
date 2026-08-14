@@ -32,8 +32,6 @@ const QUICK_QUESTIONS = [
   '¿Cómo puedo mantener mi racha activa?',
 ]
 
-const DAILY_LIMIT = 5
-
 // ── Message Bubble ─────────────────────────────────────────────────────────────
 
 /**
@@ -131,14 +129,14 @@ function TypingIndicator() {
 
 // ── Premium Gate Banner ────────────────────────────────────────────────────────
 
-function PremiumGate({ used, limit }: { used: number; limit: number }) {
+function PremiumGate() {
   return (
     <View style={pg.wrap}>
       <Ionicons name="flash" size={40} color={Colors.primary[400]} style={pg.emoji} />
-      <Text style={pg.title}>Límite diario alcanzado</Text>
+      <Text style={pg.title}>Se acabaron los mensajes de hoy</Text>
       <Text style={pg.sub}>
-        Usaste {used}/{limit} mensajes gratis de hoy.
-        {'\n'}Actualiza a Premium para conversaciones ilimitadas.
+        Mañana vuelves a empezar.
+        {'\n'}Con Premium las conversaciones no tienen tope.
       </Text>
       <TouchableOpacity style={pg.btn} onPress={() => router.push('/(tabs)/profile')}>
         <Text style={pg.btnTxt}>Ver Premium →</Text>
@@ -162,7 +160,7 @@ export default function ChatScreen() {
   const { entrenadoHoy } = useEntrenoResumen()
   const { checkInDone, todayCheckIn, scoreHistory } = useHealthStore()
   const { currentStreak } = useStreakStore()
-  const { canUseAI, incrementAI, isPremium, aiMessagesToday } = usePremiumStore()
+  const { incrementAI } = usePremiumStore()
   const insets = useSafeAreaInsets()
 
   // Lo que ocupa la píldora de pestañas desde el borde inferior: su posición
@@ -172,6 +170,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<CoachMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [topeAlcanzado, setTopeAlcanzado] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
 
   const today = hoyLocal()
@@ -205,10 +204,21 @@ export default function ChatScreen() {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)
   }, [messages, sending])
 
+  /**
+   * El tope lo decide el SERVIDOR, no esta pantalla.
+   *
+   * Aquí había un `canUseAI()` que comparaba un contador del AsyncStorage
+   * contra un 5 escrito a mano. Dos problemas: quien editara ese almacenamiento
+   * se daba mensajes infinitos, y —al revés— una cuenta interna o de pago se
+   * quedaba bloqueada por un número que el teléfono se inventaba, que es lo que
+   * pasaba al probar la app.
+   *
+   * Ahora se manda siempre y se escucha lo que conteste. Cuando el servidor
+   * corta, devuelve 429 con su propio mensaje, y ese es el que se enseña.
+   */
   const handleSend = useCallback(async (text?: string) => {
     const content = (text ?? input).trim()
     if (!content || sending) return
-    if (!canUseAI()) return // Gate is shown in UI
 
     setInput('')
     setSending(true)
@@ -221,16 +231,21 @@ export default function ChatScreen() {
       const reply = await coachSend(content, messages, context)
       const assistantMsg = createMessage('assistant', reply)
       setMessages(prev => [...prev, assistantMsg])
-    } catch {
-      const errMsg = createMessage('assistant', 'Ocurrió un error. Por favor intenta de nuevo.')
-      setMessages(prev => [...prev, errMsg])
+    } catch (err: any) {
+      // El 429 no es un fallo: es el tope del día, y trae escrito qué decir.
+      const tope = err?.response?.status === 429
+      const texto = tope
+        ? (err?.response?.data?.message ?? 'Llegaste a tus mensajes de hoy. Mañana volvemos a empezar.')
+        : 'No pude conectar con el servidor. Revisa tu conexión y vuelve a intentarlo.'
+      setMessages(prev => [...prev, createMessage('assistant', texto)])
+      if (tope) setTopeAlcanzado(true)
     } finally {
       setSending(false)
     }
-  }, [input, sending, canUseAI, incrementAI, messages, context])
+  }, [input, sending, incrementAI, messages, context])
 
-  const atLimit = !canUseAI()
-  const remaining = DAILY_LIMIT - aiMessagesToday
+  // Solo se marca cuando el servidor lo dice, no antes.
+  const atLimit = topeAlcanzado
 
   return (
     <Screen>
@@ -255,7 +270,7 @@ export default function ChatScreen() {
               <Ionicons name="chevron-forward" size={15} color={Colors.dark.textTertiary} />
             </View>
             <Text style={s.headerSub}>
-              {isPremium() ? 'Premium · ilimitado' : `${remaining} mensajes gratis hoy`}
+              {atLimit ? 'Sin mensajes por hoy' : 'Coach de nutrición y fitness'}
             </Text>
           </View>
         </TouchableOpacity>
@@ -302,7 +317,7 @@ export default function ChatScreen() {
             </View>
           )}
 
-          {atLimit && <PremiumGate used={aiMessagesToday} limit={DAILY_LIMIT} />}
+          {atLimit && <PremiumGate />}
         </ScrollView>
 
         {/*
