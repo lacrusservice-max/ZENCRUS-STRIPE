@@ -4,6 +4,7 @@ import { DeepSeekClient } from '../../ai-integration/deepseek-client'
 import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
 import { supabase } from '../config/supabase'
+import { devolverCuota, fechaDelUsuario } from '../middleware/aiQuota'
 import { construirSystemPrompt } from '../services/aiSystemPrompt'
 import { calcularNutricion, PerfilUsuario } from '../services/nutritionCalculator'
 import { AI_TOOLS, executeAiTool } from '../services/aiTools'
@@ -221,32 +222,98 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
     { role: 'user', content },
   ]
 
-  let finalText: string
+  /**
+   * ── Bucle de herramientas ───────────────────────────────────────────────────
+   *
+   * Esto era una sola ronda: se pedían herramientas, se ejecutaba lo que
+   * saliera y se cerraba con texto. Alcanzaba mientras todas las herramientas
+   * solo ESCRIBIERAN con datos que el usuario ya había dicho —«cambia mi
+   * objetivo a ganar músculo», «subí a 78 kilos»—, porque ahí no hay nada que
+   * consultar antes de actuar.
+   *
+   * En cuanto ZENA necesita LEER para decidir qué escribir, una ronda se queda
+   * corta. «Quiero bajar 3 kilos, ajústame lo necesario» son tres pasos: leer
+   * el perfil, calcular los targets nuevos, escribirlos. Con una sola ronda la
+   * segunda mitad no ocurría nunca y ZENA terminaba DESCRIBIENDO el cambio en
+   * vez de hacerlo — que desde fuera se ve igual que un fallo silencioso.
+   *
+   * El tope de rondas no es decorativo. Un modelo que se emperra en pedir la
+   * misma herramienta dejaría la petición colgada quemando tokens; al agotarse
+   * se hace una última llamada SIN herramientas, que lo obliga a responder con
+   * palabras en lugar de devolver un turno vacío.
+   */
+  const MAX_RONDAS = 6
+
+  /**
+   * Techo de tiempo para todo el bucle.
+   *
+   * Seis rondas por treinta segundos de espera a DeepSeek son tres minutos en
+   * el peor caso, y nadie mira un indicador de «escribiendo» tres minutos: la
+   * app se rinde mucho antes y el usuario ve un error mientras el servidor
+   * sigue trabajando y acaba guardando una respuesta que ya nadie verá.
+   *
+   * Con un techo aquí, el peor caso es conocido y el cliente puede esperar un
+   * poco más que él —que es la única forma de que los dos plazos no se
+   * contradigan—.
+   */
+  const TOPE_MS = 55_000
+  const arranque = Date.now()
+
+  const conversacion: any[] = [...messages]
+  let finalText = 'Tuve un problema procesando tu mensaje. Intenta de nuevo en un momento.'
+  let rondas = 0
+  let cerrado = false
 
   try {
-    const first = await aiClient.chatWithTools(messages, AI_TOOLS as any)
+    while (rondas < MAX_RONDAS && Date.now() - arranque < TOPE_MS) {
+      const respuesta = await aiClient.chatWithTools(conversacion, AI_TOOLS as any)
 
-    if (first.toolCalls?.length) {
-      // La IA pidió ejecutar acciones — las corremos y le devolvemos los resultados.
-      const toolResultMessages: any[] = []
-      for (const call of first.toolCalls) {
+      if (!respuesta.toolCalls?.length) {
+        finalText = respuesta.content
+        cerrado = true
+        break
+      }
+
+      rondas++
+
+      // El turno del asistente va ANTES que los resultados: la API rechaza un
+      // tool_call_id que no tenga delante el mensaje que lo pidió.
+      conversacion.push(
+        respuesta.assistantMessage ??
+          { role: 'assistant', content: respuesta.content ?? '', tool_calls: respuesta.toolCalls },
+      )
+
+      for (const call of respuesta.toolCalls) {
         let args: Record<string, any> = {}
         try { args = JSON.parse(call.function?.arguments || '{}') } catch { /* args vacíos */ }
-        const result = await executeAiTool(call.function?.name, args, userId)
-        toolResultMessages.push({ role: 'tool', tool_call_id: call.id, content: result })
+        const result = await executeAiTool(call.function?.name, args, userId, { hoy: fechaDelUsuario(req) })
+        conversacion.push({ role: 'tool', tool_call_id: call.id, content: result })
       }
-      const followup = await aiClient.chatContinuation([
-        ...messages,
-        first.assistantMessage ?? { role: 'assistant', content: first.content ?? '', tool_calls: first.toolCalls },
-        ...toolResultMessages,
-      ])
-      finalText = followup.content
-    } else {
-      finalText = first.content
     }
+
+    if (!cerrado) {
+      const porTiempo = Date.now() - arranque >= TOPE_MS
+      logger.warn(
+        `Chat ${id}: se cierra sin herramientas tras ${rondas} ronda(s) — ` +
+        `${porTiempo ? `${TOPE_MS / 1000}s de tope` : `tope de ${MAX_RONDAS} rondas`}`,
+      )
+      const cierre = await aiClient.chatContinuation(conversacion)
+      finalText = cierre.content
+    }
+
+    /**
+     * Este número decide el costo real del chat y hasta hoy es una estimación:
+     * cada ronda reenvía el prompt entero, así que el gasto mensual por usuario
+     * es prácticamente lineal con este promedio. Se registra para poder
+     * sustituir la suposición por una medición.
+     */
+    logger.info(`Chat ${id}: ${rondas} ronda(s) de herramientas`)
   } catch (err) {
     logger.error('sendMessage IA error:', err)
-    finalText = 'Tuve un problema procesando tu mensaje. Intenta de nuevo en un momento.'
+    // finalText ya trae el mensaje de disculpa.
+    // Y el mensaje no llegó a existir, así que no se le cobra al usuario: un
+    // fallo nuestro no puede comerle cuota a quien paga.
+    await devolverCuota(req)
   }
 
   const { data: aiMessage } = await supabase

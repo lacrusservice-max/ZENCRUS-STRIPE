@@ -212,7 +212,34 @@ No sustituyes a un profesional de la salud.`
     if (msg?.tool_calls?.length) {
       return { content: msg.content || '', toolCalls: msg.tool_calls, assistantMessage: msg }
     }
-    return { content: msg?.content || 'Lo siento, no pude procesar tu mensaje.', toolCalls: null }
+
+    /**
+     * Ni herramientas ni texto: el modelo se quedó callado.
+     *
+     * Pasa cuando le piden algo para lo que NO hay herramienta —«apúntame el
+     * arroz en el desayuno» sin una que registre comida— y el modelo, en vez de
+     * explicarlo, devuelve un turno vacío.
+     *
+     * Antes esto salía como «Lo siento, no pude procesar tu mensaje», que es
+     * mentira y además indistinguible de una caída: parecía un fallo del
+     * servidor cuando lo que faltaba era una capacidad. Ahora se dice lo que
+     * pasa y se deja rastro, porque en silencio no había forma de saberlo sin
+     * mirar la base de datos.
+     */
+    if (!msg?.content) {
+      console.warn(
+        '[DeepSeek] turno vacío: ni texto ni herramientas. ' +
+        `Modelo ${this.model}, ${Array.isArray(tools) ? tools.length : 0} herramienta(s) ofrecidas. ` +
+        'Suele ser que falta la herramienta para lo que se pidió.',
+      )
+      return {
+        content: 'Eso todavía no lo sé hacer. Puedo cambiar tus objetivos y tus metas de calorías y macros — dime si quieres que ajuste alguno.',
+        toolCalls: null,
+        turnoVacio: true,
+      }
+    }
+
+    return { content: msg.content, toolCalls: null }
   }
 
   /**

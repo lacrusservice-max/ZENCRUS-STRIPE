@@ -6,6 +6,18 @@ declare global {
   namespace Express {
     interface Request {
       user?: TokenPayload
+      /**
+       * Lo que `exigirCuota` consumió en esta petición. Lo deja el middleware
+       * para que el controlador pueda devolverlo si el gasto no llegó a
+       * ocurrir — una foto que no era comida, un modelo que falló.
+       */
+      cuota?: {
+        tipo: 'chat' | 'photo' | 'plan'
+        fecha: string
+        plan: string
+        usados: number
+        limite: number
+      }
     }
   }
 }
