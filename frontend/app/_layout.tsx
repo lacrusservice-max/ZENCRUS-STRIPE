@@ -30,6 +30,7 @@ import { useSocialStore } from '@/store/socialStore'
 import { useAchievementStore } from '@/store/achievementStore'
 import { useHealthTrackerStore } from '@/store/healthTrackerStore'
 import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
+import { useNutritionStore } from '@/store/nutritionStore'
 import { useRecipesStore } from '@/store/recipesStore'
 import { useDuelStore } from '@/store/duelStore'
 import { useMealPlanStore } from '@/store/mealPlanStore'
@@ -39,16 +40,22 @@ import { useHabitsStore } from '@/store/habitsStore'
 import { useRecoveryStore } from '@/store/recoveryStore'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { NetworkBanner } from '@/components/NetworkBanner'
+import { BotonZena } from '@/components/ui/BotonZena'
+import { migrarSeguimiento, vaciarCola } from '@/store/trackingSync'
+import { migrarHistorico, vaciarCola as vaciarColaNutricion } from '@/store/nutritionSync'
 
 const STRIPE_PK = Constants.expoConfig?.extra?.stripePublishableKey as string ?? ''
 
 export default function RootLayout() {
   const initialize = useAuthStore(s => s.initialize)
+  const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const loadChallenges = useChallengeStore(s => s.load)
   const loadPremium = usePremiumStore(s => s.load)
   const loadAchievements = useAchievementStore(s => s.load)
   const loadHealthTracker = useHealthTrackerStore(s => s.load)
   const loadMeasurements = useBodyMeasurementsStore(s => s.load)
+  // Solo para refrescar el día después de migrar; el diario lo carga su pantalla.
+  const loadNutrition = useNutritionStore(s => s.loadToday)
   const loadRecipes = useRecipesStore(s => s.load)
   const loadDuels = useDuelStore(s => s.load)
   const loadMealPlan = useMealPlanStore(s => s.load)
@@ -61,8 +68,7 @@ export default function RootLayout() {
 
   const [fontsLoaded] = useFonts({
     Rajdhani_500Medium, Rajdhani_600SemiBold, Rajdhani_700Bold,
-    Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
-  })
+    Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold })
 
   useEffect(() => {
     initialize()
@@ -83,6 +89,42 @@ export default function RootLayout() {
     loadRecovery()
     loadTheme()
   }, [])
+
+  /**
+   * El histórico del teléfono sube a Supabase. Necesita sesión —va a la cuenta
+   * de quien esté dentro— así que espera a que la haya en vez de correr con los
+   * demás `load` del arranque.
+   *
+   * Cada migración se ejecuta una sola vez por instalación, lo controla su
+   * bandera en AsyncStorage, y ninguna borra nada del móvil. Al terminar se
+   * recargan los stores que ya se cargaron arriba para que lo subido aparezca
+   * sin reiniciar la app.
+   *
+   * Van en serie y la de nutrición primero porque es la que arrastra más
+   * peticiones: lanzarlas a la vez en la peor red del usuario multiplicaría los
+   * tiempos de espera de las dos.
+   *
+   * Lo último es vaciar las colas: quien haya apuntado cosas sin señal las
+   * tiene esperando, y volver a entrar es la mejor pista de que hay red.
+   */
+  useEffect(() => {
+    if (!isAuthenticated) return
+    void (async () => {
+      const n = await migrarHistorico().catch(() => null)
+      if (n && n.entradas) loadNutrition()
+
+      const r = await migrarSeguimiento().catch(() => null)
+      if (r && (r.mediciones || r.registrosHabitos || r.dias || r.semanas || r.metas || r.ciclo)) {
+        loadMeasurements()
+        loadHabits()
+        loadMealPlan()
+        loadMacroCycling()
+      }
+
+      void vaciarColaNutricion()
+      void vaciarCola()
+    })()
+  }, [isAuthenticated])
 
   const onRootLayout = useCallback(() => {
     if (fontsLoaded) SplashScreen.hideAsync().catch(() => {})
@@ -112,6 +154,10 @@ export default function RootLayout() {
               <Stack.Screen name="(onboarding)" />
               <Stack.Screen name="(tabs)" />
             </Stack>
+            {/* Encima del navegador y una sola vez: así el acceso a ZENA está
+                en el mismo sitio en todas las pantallas, también en las que se
+                añadan después. */}
+            <BotonZena />
             <NetworkBanner />
           </View>
         </SafeAreaProvider>

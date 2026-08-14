@@ -1,10 +1,10 @@
+import { hoyLocal } from '@/utils/fechas'
 import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TextInput,
   TouchableOpacity, KeyboardAvoidingView, Platform,
-  ActivityIndicator,
+  ActivityIndicator, Image,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useNutritionStore } from '@/store/nutritionStore'
@@ -20,6 +20,8 @@ import {
 } from '@/services/aiCoachService'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import { Screen } from '@/components/ui/Screen'
+import { TabBar } from '@/constants/layout'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 
 const QUICK_QUESTIONS = [
   '¿Qué debería comer hoy para complementar mis macros?',
@@ -34,16 +36,31 @@ const DAILY_LIMIT = 5
 
 // ── Message Bubble ─────────────────────────────────────────────────────────────
 
+/**
+ * La cara de ZENA.
+ *
+ * La imagen va sola: ya trae su aro de neón y su fondo transparente, así que
+ * meterla en un círculo con borde le pondría un segundo aro alrededor del suyo.
+ *
+ * Tampoco cambia con el tema —lleva sus propios colores— y por eso no lee el
+ * store: en claro y en oscuro es la misma cara.
+ */
+function AvatarZena({ size = 32 }: { size?: number }) {
+  return (
+    <Image
+      source={require('@/assets/images/zena.png')}
+      style={{ width: size, height: size }}
+      resizeMode="contain"
+    />
+  )
+}
+
 function MessageBubble({ msg }: { msg: CoachMessage }) {
   const isUser = msg.role === 'user'
   const time = new Date(msg.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
   return (
     <View style={[b.wrap, isUser ? b.wrapRight : b.wrapLeft]}>
-      {!isUser && (
-        <View style={b.avatar}>
-          <Ionicons name="flash" size={16} color="#fff" />
-        </View>
-      )}
+      {!isUser && <AvatarZena />}
       <View style={[b.bubble, isUser ? b.bubbleUser : b.bubbleAssistant]}>
         <Text style={[b.txt, isUser ? b.txtUser : b.txtAssistant]}>{msg.content}</Text>
         <Text style={[b.time, isUser ? { color: 'rgba(255,255,255,0.5)' } : { color: Colors.dark.textTertiary }]}>{time}</Text>
@@ -56,23 +73,20 @@ const b = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'flex-end', marginBottom: Spacing[3], gap: Spacing[2] },
   wrapLeft: { justifyContent: 'flex-start' },
   wrapRight: { justifyContent: 'flex-end' },
-  avatar: { width: 32, height: 32, borderRadius: 16, backgroundColor: Colors.primary[900], alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: Colors.primary[500] + '60' },
-  avatarEmoji: { fontSize: 14 },
   bubble: { maxWidth: '80%', borderRadius: BorderRadius.lg, paddingHorizontal: Spacing[4], paddingVertical: Spacing[3] },
   bubbleUser: { backgroundColor: Colors.primary[500], borderBottomRightRadius: 4 },
   bubbleAssistant: { backgroundColor: Colors.dark.surface, borderBottomLeftRadius: 4, borderWidth: 1, borderColor: Colors.dark.border },
   txt: { fontSize: Typography.fontSize.sm, lineHeight: 21 },
   txtUser: { color: '#fff' },
   txtAssistant: { color: Colors.dark.text },
-  time: { fontSize: 10, marginTop: Spacing[1], textAlign: 'right' },
-})
+  time: { fontSize: 10, marginTop: Spacing[1], textAlign: 'right' } })
 
 // ── Typing Indicator ───────────────────────────────────────────────────────────
 
 function TypingIndicator() {
   return (
     <View style={[b.wrap, b.wrapLeft]}>
-      <View style={b.avatar}><Ionicons name="flash" size={16} color="#fff" /></View>
+      <AvatarZena />
       <View style={[b.bubble, b.bubbleAssistant, { paddingVertical: Spacing[4], paddingHorizontal: Spacing[5] }]}>
         <ActivityIndicator size="small" color={Colors.primary[400]} />
       </View>
@@ -104,8 +118,7 @@ const pg = StyleSheet.create({
   title: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.dark.text, marginBottom: Spacing[2] },
   sub: { fontSize: Typography.fontSize.sm, color: Colors.dark.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: Spacing[4] },
   btn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.md, paddingHorizontal: Spacing[6], paddingVertical: Spacing[3] },
-  btnTxt: { color: '#fff', fontWeight: '800', fontSize: Typography.fontSize.sm },
-})
+  btnTxt: { color: '#fff', fontWeight: '800', fontSize: Typography.fontSize.sm } })
 
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
@@ -115,13 +128,18 @@ export default function ChatScreen() {
   const { checkInDone, todayCheckIn, scoreHistory } = useHealthStore()
   const { currentStreak } = useStreakStore()
   const { canUseAI, incrementAI, isPremium, aiMessagesToday } = usePremiumStore()
+  const insets = useSafeAreaInsets()
+
+  // Lo que ocupa la píldora de pestañas desde el borde inferior: su posición
+  // —igual que en `GlassTabBar`— más su alto.
+  const espacioBarra = Math.max(insets.bottom, 14) + TabBar.lift + TabBar.pill
 
   const [messages, setMessages] = useState<CoachMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = hoyLocal()
   const healthScore = scoreHistory.find(s => (s as any).date === today)?.total
     ?? scoreHistory[0]?.total ?? 0
 
@@ -137,14 +155,13 @@ export default function ChatScreen() {
     checkInDone,
     mood: todayCheckIn?.mood,
     sleep: todayCheckIn?.sleep,
-    intention: todayCheckIn?.intention,
-  }
+    intention: todayCheckIn?.intention }
 
   // Welcome message on first mount
   useEffect(() => {
     const welcome = createMessage(
       'assistant',
-      `¡Hola! Soy tu Coach ZENCRUS. Hoy llevas ${totalCalories} kcal, ${waterGlasses} vasos de agua y una racha de ${currentStreak} días. ¿En qué te puedo ayudar?`
+      `¡Hola! Soy ZENA, tu coach de ZENCRUS. Hoy llevas ${totalCalories} kcal, ${waterGlasses} vasos de agua y una racha de ${currentStreak} días. ¿En qué te puedo ayudar?`
     )
     setMessages([welcome])
   }, [])
@@ -184,17 +201,29 @@ export default function ChatScreen() {
     <Screen>
       {/* Header */}
       <View style={s.header}>
-        <View style={s.headerLeft}>
-          <View style={s.headerIcon}>
-            <Ionicons name="flash" size={18} color="#fff" />
-          </View>
+        {/*
+          La cabecera entera abre el perfil, no solo el nombre: es lo que se
+          espera de una conversación, y un objetivo del ancho de la fila se
+          acierta sin apuntar.
+        */}
+        <TouchableOpacity
+          style={s.headerLeft}
+          onPress={() => router.push('/zena')}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Ver el perfil de ZENA"
+        >
+          <AvatarZena size={40} />
           <View>
-            <Text style={s.headerTitle}>Coach ZENCRUS</Text>
+            <View style={s.headerNombre}>
+              <Text style={s.headerTitle}>ZENA</Text>
+              <Ionicons name="chevron-forward" size={15} color={Colors.dark.textTertiary} />
+            </View>
             <Text style={s.headerSub}>
               {isPremium() ? 'Premium · ilimitado' : `${remaining} mensajes gratis hoy`}
             </Text>
           </View>
-        </View>
+        </TouchableOpacity>
         <View style={[s.statusDot, { backgroundColor: sending ? Colors.accent.orange : Colors.accent.green }]} />
       </View>
 
@@ -241,8 +270,14 @@ export default function ChatScreen() {
           {atLimit && <PremiumGate used={aiMessagesToday} limit={DAILY_LIMIT} />}
         </ScrollView>
 
-        {/* Input */}
-        <View style={s.inputRow}>
+        {/*
+          Input.
+          El chat es una pestaña, así que la píldora flotante le pasa por
+          encima: sin reservar su alto, el campo de escribir queda debajo y no
+          se puede ni tocar ni leer. Se reserva aquí y no con `scrollInset`
+          porque esta fila no está dentro del scroll, va fija bajo él.
+        */}
+        <View style={[s.inputRow, { paddingBottom: Spacing[3] + espacioBarra }]}>
           <TextInput
             style={[s.input, atLimit && s.inputDisabled]}
             value={input}
@@ -278,14 +313,13 @@ function CtxChip({ label, emoji }: { label: string; emoji: string }) {
 const cc = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.full, paddingHorizontal: Spacing[3], paddingVertical: Spacing[1], borderWidth: 1, borderColor: Colors.dark.border },
   emoji: { fontSize: 12 },
-  label: { fontSize: 10, color: Colors.dark.textSecondary, fontWeight: '600' },
-})
+  label: { fontSize: 10, color: Colors.dark.textSecondary, fontWeight: '600' } })
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.dark.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing[5], paddingVertical: Spacing[3], borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
+  headerNombre: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
-  headerIcon: { width: 40, height: 40, borderRadius: 20, backgroundColor: Colors.primary[900], alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: Colors.primary[500] },
   headerIconTxt: { fontSize: 20 },
   headerTitle: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.dark.text },
   headerSub: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, marginTop: 1 },
@@ -302,5 +336,4 @@ const s = StyleSheet.create({
   inputDisabled: { opacity: 0.4 },
   sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: Colors.primary[500], alignItems: 'center', justifyContent: 'center' },
   sendBtnOff: { backgroundColor: Colors.dark.surface, borderWidth: 1, borderColor: Colors.dark.border },
-  sendBtnTxt: { fontSize: 20, color: '#fff', fontWeight: '800' },
-})
+  sendBtnTxt: { fontSize: 20, color: '#fff', fontWeight: '800' } })

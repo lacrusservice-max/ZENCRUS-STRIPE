@@ -5,6 +5,7 @@ import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { Colors, Typography, Spacing } from '@/constants/theme'
+import { BotonIA } from '@/constants/layout'
 import { useAppTheme } from '@/context/ThemeContext'
 
 type IconName = React.ComponentProps<typeof Ionicons>['name']
@@ -160,5 +161,13 @@ const sh = StyleSheet.create({
     letterSpacing: 0.2,
   },
   subtitle: { fontSize: Typography.fontSize.xs, marginTop: 7, lineHeight: 18 },
-  right: { paddingTop: 2 },
+  /**
+   * El margen derecho reserva la esquina para el botón de ZENA, que flota sobre
+   * todas las pantallas desde `_layout`.
+   *
+   * Sin él, las doce pantallas que ya ponen algo aquí —añadir una meta, marcar
+   * todo como leído— acaban con dos botones pisados uno encima del otro, y el
+   * de abajo deja de poder tocarse.
+   */
+  right: { paddingTop: 2, marginRight: BotonIA.reserva },
 })

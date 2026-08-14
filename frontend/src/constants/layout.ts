@@ -42,6 +42,24 @@ export const TabBar = {
   scrollInset: 74 + 6 + 28,
 } as const
 
+/**
+ * El botón flotante que abre el chat con ZENA, arriba a la derecha en todas
+ * las pantallas.
+ *
+ * `reserva` es lo que cualquier cabecera con acciones propias tiene que dejar
+ * libre en esa esquina. Sin ello los dos botones se pisan y el de abajo deja
+ * de poder tocarse — pasaba en Social, donde caía justo sobre la foto de
+ * perfil.
+ */
+export const BotonIA = {
+  /** Diámetro del círculo. */
+  size: 40,
+  /** Separación respecto al borde derecho. */
+  gap: 16,
+  /** Lo que debe reservar una cabecera con acciones a la derecha. */
+  reserva: 44,
+} as const
+
 /** Ritmo vertical de los bloques de contenido. */
 export const Rhythm = {
   gutter: 20,

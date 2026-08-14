@@ -16,6 +16,7 @@
  * comunidad la convertiría en un cajón de sastre.
  */
 
+import { BotonIA } from '@/constants/layout'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl,
@@ -246,7 +247,9 @@ const hd = StyleSheet.create({
   },
   eyebrow: { fontSize: 10, fontWeight: '900', letterSpacing: 3, marginBottom: 3 },
   title: { fontFamily: Typography.fontFamily.display, fontSize: 32, letterSpacing: 0.2 },
-  acciones: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  // El margen deja libre la esquina para el botón de ZENA, que si no cae justo
+  // encima de la foto de perfil.
+  acciones: { flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: BotonIA.reserva },
   btn: {
     width: 38, height: 38, borderRadius: 13, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
