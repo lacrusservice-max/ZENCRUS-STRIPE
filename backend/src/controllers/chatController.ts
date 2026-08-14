@@ -264,11 +264,83 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
   let rondas = 0
   let cerrado = false
 
+  /** Qué herramientas se han llegado a ejecutar en este mensaje. */
+  const usadas = new Set<string>()
+  let yaSeLeRecordo = false
+
+  /**
+   * ── Buscó y no apuntó ───────────────────────────────────────────────────
+   *
+   * `buscar_alimento` no cambia nada: solo devuelve candidatos. Quien apunta es
+   * `registrar_comida`. Si el modelo llama a la primera y luego se pone a
+   * escribir, la comida NO queda registrada — y como acaba de leer una lista
+   * con el alimento y sus calorías, lo más natural que puede escribir es un
+   * «listo, apunté 80 g de aguacate» que es mentira.
+   *
+   * Pasaba una de cada tres veces antes de afinar la descripción de la
+   * herramienta, y ya no se reproduce en cinco intentos seguidos. Pero eso no
+   * es haberlo arreglado: es haberlo hecho menos probable, y un fallo que
+   * inventa un registro no puede depender de la suerte.
+   *
+   * Así que se comprueba. Si al cerrar resulta que buscó y no registró, se le
+   * dice y se le da UNA ronda más — o lo apunta, o se lo dice al usuario, pero
+   * no cuela un «listo» sin haberlo hecho.
+   */
+  /**
+   * ¿El usuario pidió apuntar algo, o solo preguntaba?
+   *
+   * Sin esta condición el aviso salta también con «¿cuántas calorías tiene el
+   * aguacate?» —que se contesta buscando, sin tocar el diario— y entonces ZENA
+   * se pone a hablar del registro en vez de responder lo que le preguntaron.
+   * Se probó: contestaba «como solo era una duda, no quedó apuntado nada»,
+   * que nadie había preguntado.
+   *
+   * Los verbos son los que usa la gente para pedirlo. Si alguno falta, el
+   * único coste es que el aviso no salte — nunca que salte de más.
+   */
+  const VERBOS_REGISTRO = /\b(ap[uú]nta|agrega|a[ñn]ade|registra|s[uú]ma|mete|anota)/i
+  const pidioApuntar = VERBOS_REGISTRO.test(String(content))
+
+  const buscoSinApuntar = () =>
+    pidioApuntar && usadas.has('buscar_alimento') && !usadas.has('registrar_comida')
+
+  /**
+   * El aviso tiene que ser inofensivo cuando NO había nada que registrar.
+   *
+   * Buscar un alimento no siempre es el paso previo a apuntarlo: a «¿cuántas
+   * calorías tiene el aguacate?» se contesta buscando y respondiendo, sin tocar
+   * el diario. Un recordatorio que empujara a registrar convertiría una
+   * pregunta inocente en una comida que el usuario nunca pidió apuntar.
+   *
+   * Por eso no ordena: informa del hecho —no está apuntado— y deja que sea ella
+   * quien decida si tocaba o no. Lo único que sí prohíbe, en los dos casos, es
+   * decir que lo apuntó.
+   */
+  const RECORDATORIO =
+    'AVISO DEL SISTEMA (no lo menciones): buscaste un alimento y no llamaste a registrar_comida, ' +
+    'así que NO ha quedado nada apuntado en el diario. ' +
+    'Si el usuario te había pedido registrarlo, hazlo ahora con el food_id que corresponda. ' +
+    'Si solo preguntaba por información, ignora este aviso y responde normal. ' +
+    'En cualquier caso, NO digas ni des a entender que lo apuntaste: no es cierto.'
+
   try {
     while (rondas < MAX_RONDAS && Date.now() - arranque < TOPE_MS) {
       const respuesta = await aiClient.chatWithTools(conversacion, AI_TOOLS as any)
 
       if (!respuesta.toolCalls?.length) {
+        // Una sola oportunidad: si aun con el aviso decide contestar, se
+        // respeta —habrá tenido su motivo— pero al menos ya sabe que no está
+        // apuntado y no puede decir lo contrario de buena fe.
+        if (buscoSinApuntar() && !yaSeLeRecordo) {
+          yaSeLeRecordo = true
+          logger.warn(`Chat ${id}: buscó un alimento y no lo registró; se le recuerda`)
+          conversacion.push(
+            respuesta.assistantMessage ?? { role: 'assistant', content: respuesta.content ?? '' },
+            { role: 'user', content: RECORDATORIO },
+          )
+          continue
+        }
+
         finalText = respuesta.content
         cerrado = true
         break
@@ -287,6 +359,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
         let args: Record<string, any> = {}
         try { args = JSON.parse(call.function?.arguments || '{}') } catch { /* args vacíos */ }
         const result = await executeAiTool(call.function?.name, args, userId, { hoy: fechaDelUsuario(req) })
+        if (call.function?.name) usadas.add(call.function.name)
         conversacion.push({ role: 'tool', tool_call_id: call.id, content: result })
       }
     }
@@ -297,6 +370,10 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
         `Chat ${id}: se cierra sin herramientas tras ${rondas} ronda(s) — ` +
         `${porTiempo ? `${TOPE_MS / 1000}s de tope` : `tope de ${MAX_RONDAS} rondas`}`,
       )
+      // El cierre va SIN herramientas, así que aquí ya no puede apuntar nada.
+      // Lo único que queda es que no diga que lo hizo.
+      if (buscoSinApuntar()) conversacion.push({ role: 'user', content: RECORDATORIO })
+
       const cierre = await aiClient.chatContinuation(conversacion)
       finalText = cierre.content
     }
