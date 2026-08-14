@@ -1,6 +1,6 @@
 import { supabase } from '../config/supabase'
 import { logger } from '../config/logger'
-import { searchCatalog } from './catalogService'
+import { searchCatalog, getCatalogFoodById } from './catalogService'
 
 // ── Definición de herramientas (formato OpenAI/DeepSeek) ──────────────────────
 // La IA (ZENA) puede invocarlas para ejecutar cambios reales en el plan del usuario.
@@ -54,14 +54,31 @@ export const AI_TOOLS = [
   {
     type: 'function',
     function: {
-      name: 'registrar_comida',
-      description: 'Apunta un alimento en el diario de comidas del usuario. Úsala cuando pida registrar, apuntar, agregar o añadir algo que comió o va a comer — «agrega 100 g de arroz a mi cena», «apúntame dos huevos en el desayuno». Los valores nutricionales los busca ella en el catálogo: NO los inventes ni los pases tú.',
+      name: 'buscar_alimento',
+      description: 'Busca alimentos en el catálogo y devuelve los candidatos con sus valores por 100 g. SIEMPRE úsala antes de registrar_comida: es de donde salen los números. Elige tú cuál de los resultados corresponde a lo que dijo el usuario — «carne de res molida» puede aparecer como «Molida de res». Si ninguno encaja, dilo en vez de forzar uno.',
       parameters: {
         type: 'object',
         properties: {
-          alimento: {
+          consulta: {
             type: 'string',
-            description: 'El alimento tal como lo dijo el usuario, en español y sin la cantidad. Ej: "arroz blanco cocido", "pechuga de pollo a la plancha".',
+            description: 'El alimento, en español y sin la cantidad. Si la primera búsqueda no da nada bueno, prueba con menos palabras: "carne molida" antes que "carne de res molida cocinada".',
+          },
+        },
+        required: ['consulta'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'registrar_comida',
+      description: 'Apunta en el diario del usuario un alimento que ya encontraste con buscar_alimento. Úsala cuando pida registrar, apuntar, agregar o añadir algo que comió. Necesita el food_id EXACTO que devolvió la búsqueda: no lo inventes ni lo escribas de memoria.',
+      parameters: {
+        type: 'object',
+        properties: {
+          food_id: {
+            type: 'string',
+            description: 'El id que devolvió buscar_alimento para la opción elegida.',
           },
           gramos: {
             type: 'number',
@@ -77,7 +94,7 @@ export const AI_TOOLS = [
             description: 'Día en formato YYYY-MM-DD. Omítela para hoy.',
           },
         },
-        required: ['alimento', 'gramos', 'comida'],
+        required: ['food_id', 'gramos', 'comida'],
       },
     },
   },
@@ -151,51 +168,6 @@ const hoyMexico = () =>
 const redondear = (n: number) => Math.round(n * 10) / 10
 
 /**
- * Palabras que describen CÓMO está el alimento, no CUÁL es.
- *
- * Existen porque el buscador es difuso y comparte estas palabras entre fichas
- * que no tienen nada que ver: «arroz blanco cocido» y «apio cocido» coinciden
- * en «cocido», y con eso basta para que un parecido tonto pase por bueno.
- */
-const MODIFICADORES = new Set([
-  'de', 'del', 'la', 'el', 'los', 'las', 'con', 'sin', 'a', 'al', 'en', 'y',
-  'cocido', 'cocida', 'cocidos', 'cocidas', 'crudo', 'cruda', 'crudos', 'crudas',
-  'asado', 'asada', 'frito', 'frita', 'hervido', 'hervida', 'plancha', 'horno',
-  'vapor', 'blanco', 'blanca', 'integral', 'natural', 'fresco', 'fresca',
-  'grande', 'chico', 'chica', 'mediano', 'mediana', 'light', 'bajo', 'alto',
-])
-
-const normalizar = (s: string) =>
-  s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '')
-
-/** Las palabras que de verdad nombran al alimento. */
-function palabrasClave(texto: string): string[] {
-  return normalizar(texto)
-    .split(/[^a-z0-9]+/)
-    .filter(p => p.length > 2 && !MODIFICADORES.has(p))
-}
-
-/**
- * ¿Esta ficha es de verdad lo que pidieron?
- *
- * El buscador ordena por parecido y devuelve algo casi siempre, aunque sea muy
- * malo. Para una persona eso da igual —ve la lista y elige— pero ZENA se queda
- * con el primero, y sin esta comprobación apuntaba «Apio cocido» a quien pidió
- * arroz. Un alimento equivocado en el diario es peor que no apuntar nada: no se
- * nota, y contamina todos los totales que se calculen encima.
- *
- * La regla es la mínima que resuelve el caso: alguna de las palabras que
- * nombran el alimento pedido tiene que aparecer en el nombre de la ficha.
- */
-function coincideDeVerdad(consulta: string, nombreFicha: string): boolean {
-  const pedidas = palabrasClave(consulta)
-  if (pedidas.length === 0) return true   // solo modificadores: no hay nada que exigir
-  const ficha = normalizar(nombreFicha)
-  return pedidas.some(p => ficha.includes(p))
-}
-
-// ── Ejecutor: aplica la herramienta y devuelve un resumen legible ─────────────
-/**
  * Lo que la herramienta necesita saber del usuario y que NO puede venir del
  * modelo.
  *
@@ -216,15 +188,51 @@ export async function executeAiTool(
   try {
     switch (name) {
       /**
+       * ── Buscar alimento ───────────────────────────────────────────────────
+       *
+       * Devuelve candidatos y deja que el MODELO elija. Es deliberado, y viene
+       * de haberlo intentado al revés dos veces:
+       *
+       *   «arroz blanco cocido»  → «Apio cocido»        (compartían «cocido»)
+       *   «carne de res molida»  → «Cola de res»        (compartían «res»)
+       *   «carne de res molida»  → «Molida de carnero»  («carne» dentro de
+       *                                                  «carnero»)
+       *
+       * Cada vez que se afinaba la regla de palabras aparecía otro parecido
+       * tonto, porque el problema no es de palabras: «carne de res molida» y
+       * «Molida de res» son lo mismo sin compartir estructura, y «carne» y
+       * «carnero» comparten letras sin ser nada parecido. Eso es semántica, y
+       * es exactamente lo que un modelo de lenguaje hace mejor que cualquier
+       * heurística que uno escriba a mano.
+       *
+       * El reparto queda así, y es el del §4 de la especificación: el modelo
+       * elige CUÁL, el catálogo pone CUÁNTO. Los números no los toca nadie más.
+       */
+      case 'buscar_alimento': {
+        const consulta = String(args.consulta ?? '').trim()
+        if (consulta.length < 2) return 'Dime qué alimento buscar.'
+
+        const encontrados = await searchCatalog(consulta, 8)
+        if (!encontrados.length) {
+          return `Sin resultados para "${consulta}". Prueba con menos palabras o con el nombre genérico.`
+        }
+
+        const lista = encontrados.map(f =>
+          `- food_id: ${f.id} | ${f.name} | por 100 g: ${f.per100.calories} kcal, ` +
+          `${f.per100.protein} g proteína, ${f.per100.carbs} g carbos, ${f.per100.fat} g grasa | ${f.sourceLabel}`,
+        ).join('\n')
+
+        return `Resultados para "${consulta}":\n${lista}\n\n` +
+          'Elige el que corresponda a lo que dijo el usuario y pásale su food_id a registrar_comida. ' +
+          'Si ninguno es lo que pidió, dilo en vez de forzar uno.'
+      }
+
+      /**
        * ── Registrar comida ──────────────────────────────────────────────────
        *
-       * Los macros NO los pone el modelo: se buscan en el catálogo. Es la regla
-       * del §4 de la especificación —«la IA no verifica, estima»— llevada a
-       * código: si le preguntas a un modelo cuántas calorías tiene el arroz
-       * devuelve un número que suena bien y no tiene fuente.
-       *
-       * Por eso la herramienta no acepta calorías como parámetro. No es que se
-       * confíe en que el modelo no las mande: es que no hay dónde mandarlas.
+       * No acepta calorías como parámetro. No es que se confíe en que el modelo
+       * no las mande: es que no hay dónde mandarlas. Salen de la ficha del
+       * catálogo, que es la única con fuente.
        */
       case 'registrar_comida': {
         const gramos = Number(args.gramos)
@@ -241,24 +249,15 @@ export async function executeAiTool(
           ? String(args.fecha)
           : (ctx.hoy && ES_FECHA.test(ctx.hoy) ? ctx.hoy : hoyMexico())
 
-        const consulta = String(args.alimento ?? '').trim()
-        if (consulta.length < 2) return 'Dime qué alimento quieres que apunte.'
-
-        const encontrados = await searchCatalog(consulta, 8)
-        // De todo lo que devuelve el buscador se coge el primero que además
-        // SEA lo que se pidió, no el primero a secas.
-        const alimento = encontrados.find(f => coincideDeVerdad(consulta, f.name))
-
+        // El id tiene que ser uno que el catálogo reconozca. Si el modelo se lo
+        // inventa —o lo recuerda de otra conversación— aquí se acaba: sin ficha
+        // no hay números, y sin números no se apunta nada.
+        const alimento = await getCatalogFoodById(String(args.food_id ?? ''))
         if (!alimento) {
-          // Se dice que no está, en vez de apuntar un parecido. Un número sin
-          // fuente —o de otro alimento— contamina todo lo que se calcule
-          // después con él, y nadie lo revisa.
-          logger.info(
-            `registrar_comida: sin coincidencia fiable para "${consulta}"` +
-            (encontrados.length ? ` (el buscador ofreció "${encontrados[0].name}")` : ' (el buscador no devolvió nada)'),
-          )
-          return `No encontré "${consulta}" en el catálogo, así que no lo apunté — prefiero no adivinar. Dile al usuario que lo busque en la pantalla de Nutrición, donde puede añadirlo con sus valores.`
+          logger.info(`registrar_comida: food_id desconocido "${args.food_id}"`)
+          return 'Ese food_id no existe en el catálogo. Usa buscar_alimento primero y pásame uno de los que devuelva.'
         }
+
         const factor = gramos / 100
         const macros = {
           calories: Math.round(alimento.per100.calories * factor),

@@ -144,6 +144,16 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
    */
   migrar: async () => migrarHistorico(),
 
+  /**
+   * Carga el día: primero lo que haya en el teléfono, y SIEMPRE el servidor.
+   *
+   * El «siempre» es el arreglo. Antes solo se preguntaba al servidor si existía
+   * caché local del día, y eso escondía todo lo que no hubiera escrito este
+   * teléfono: ZENA apuntaba una comida por el chat, la fila quedaba guardada, y
+   * la pantalla seguía diciendo «Sin registrar aún» por más veces que se
+   * recargara. Lo mismo con un móvil nuevo o un día recién empezado — que es
+   * justo cuando no hay caché.
+   */
   loadToday: async () => {
     const key = todayKey()
     try {
@@ -151,9 +161,9 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
       if (raw) {
         const saved = JSON.parse(raw)
         set({ ...saved, date: key, ...computeTotals(saved.meals ?? MEAL_DEFAULTS) })
-        void get().sincronizar()
       } else {
-        // Check streak from yesterday
+        // Sin nada guardado hoy, se arranca en blanco arrastrando la racha de
+        // ayer, y el servidor completa lo que falte.
         const yRaw = await AsyncStorage.getItem(`nutrition_${haceDias(1)}`)
         const prevStreak = yRaw ? (JSON.parse(yRaw).streak ?? 0) : 0
         set({ date: key, meals: MEAL_DEFAULTS, waterGlasses: 0, streak: prevStreak, ...computeTotals(MEAL_DEFAULTS) })
@@ -161,6 +171,8 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
     } catch {
       set({ date: key, meals: MEAL_DEFAULTS, waterGlasses: 0, streak: 0, ...computeTotals(MEAL_DEFAULTS) })
     }
+
+    void get().sincronizar()
   },
 
   addEntry: (mealId, entry) => {

@@ -55,6 +55,39 @@ function AvatarZena({ size = 32 }: { size?: number }) {
   )
 }
 
+/**
+ * El texto de ZENA, ya limpio.
+ *
+ * El prompt le pide que escriba en texto plano, pero un modelo se salta
+ * instrucciones de vez en cuando y entonces aparecían en pantalla los
+ * asteriscos en crudo: «Apunté **200 g de carne**». Se ve descuidado y no hay
+ * forma de arreglarlo solo desde el prompt.
+ *
+ * Así que la app también sabe leerlo: lo que venga marcado como negrita se
+ * pinta en negrita, y el resto de marcas se quitan. Entre las dos capas, el
+ * usuario no ve un asterisco nunca.
+ */
+function TextoZena({ contenido, style }: { contenido: string; style: any }) {
+  const limpio = contenido
+    .replace(/^#{1,6}\s+/gm, '')       // títulos
+    .replace(/`{1,3}/g, '')            // código
+    .replace(/^\s*[*+]\s+/gm, '- ')    // viñetas con asterisco
+
+  // Se parte por los tramos en negrita conservándolos, para poder pintarlos.
+  const trozos = limpio.split(/(\*\*[^*]+\*\*|__[^_]+__)/g).filter(Boolean)
+
+  return (
+    <Text style={style}>
+      {trozos.map((t, i) => {
+        const negrita = /^(\*\*[^*]+\*\*|__[^_]+__)$/.test(t)
+        return negrita
+          ? <Text key={i} style={{ fontWeight: '700' }}>{t.slice(2, -2)}</Text>
+          : <Text key={i}>{t}</Text>
+      })}
+    </Text>
+  )
+}
+
 function MessageBubble({ msg }: { msg: CoachMessage }) {
   const isUser = msg.role === 'user'
   const time = new Date(msg.timestamp).toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })
@@ -62,7 +95,9 @@ function MessageBubble({ msg }: { msg: CoachMessage }) {
     <View style={[b.wrap, isUser ? b.wrapRight : b.wrapLeft]}>
       {!isUser && <AvatarZena />}
       <View style={[b.bubble, isUser ? b.bubbleUser : b.bubbleAssistant]}>
-        <Text style={[b.txt, isUser ? b.txtUser : b.txtAssistant]}>{msg.content}</Text>
+        {isUser
+          ? <Text style={[b.txt, b.txtUser]}>{msg.content}</Text>
+          : <TextoZena contenido={msg.content} style={[b.txt, b.txtAssistant]} />}
         <Text style={[b.time, isUser ? { color: 'rgba(255,255,255,0.5)' } : { color: Colors.dark.textTertiary }]}>{time}</Text>
       </View>
     </View>
