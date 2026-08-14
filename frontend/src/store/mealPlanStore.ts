@@ -1,5 +1,21 @@
+/**
+ * PLAN DE COMIDAS
+ * ───────────────
+ * La semana planeada vive en `meal_plans`, un documento por semana. Se lee y se
+ * escribe entera: la pantalla pinta los siete días de golpe y nadie pregunta
+ * «¿en cuántas semanas puse pollo el martes?».
+ *
+ * ── La llave de la semana no se toca ────────────────────────────────────────
+ * `currentWeekKey()` no calcula la semana ISO de verdad —divide entre siete
+ * desde el 1 de enero— pero es la llave con la que ya están guardados los
+ * planes en los teléfonos. Cambiar el cálculo ahora los dejaría huérfanos: el
+ * plan de esta semana pasaría a llamarse de otra manera y la pantalla
+ * aparecería vacía.
+ */
+
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { leerPlanSemana, guardarPlanSemana } from '@/services/trackingService'
 
 export interface PlannedMeal {
   id: string
@@ -49,16 +65,36 @@ function currentWeekKey(): string {
   return `${d.getFullYear()}-W${String(week).padStart(2, '0')}`
 }
 
+/**
+ * Guarda en el teléfono y manda al servidor.
+ *
+ * No encola si falla: el plan viaja entero en cada cambio, así que el siguiente
+ * toque sube también lo que este no llegara a subir. Una cola aquí solo añadiría
+ * la posibilidad de que un plan viejo pise a uno nuevo al vaciarse tarde.
+ */
+async function persistir(week: string, plan: WeekPlan): Promise<void> {
+  await AsyncStorage.setItem(`meal_plan_${week}`, JSON.stringify(plan))
+  void guardarPlanSemana(week, plan).catch(() => {})
+}
+
 export const useMealPlanStore = create<MealPlanState>((set, get) => ({
   weekPlan: {},
   activeWeek: currentWeekKey(),
 
   load: async () => {
+    const week = currentWeekKey()
     try {
-      const week = currentWeekKey()
       const raw = await AsyncStorage.getItem(`meal_plan_${week}`)
       set({ weekPlan: raw ? JSON.parse(raw) : {}, activeWeek: week })
     } catch {}
+
+    try {
+      const { plan } = await leerPlanSemana<WeekPlan>(week)
+      set({ weekPlan: plan ?? {}, activeWeek: week })
+      await AsyncStorage.setItem(`meal_plan_${week}`, JSON.stringify(plan ?? {}))
+    } catch {
+      // Sin red se queda el plan de la caché, que es el mismo que había antes.
+    }
   },
 
   setMeal: async (day, slot, meal) => {
@@ -70,7 +106,7 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
       [day]: { ...dayPlan, [slot]: [...slotMeals, meal] },
     }
     set({ weekPlan: updated })
-    await AsyncStorage.setItem(`meal_plan_${get().activeWeek}`, JSON.stringify(updated))
+    await persistir(get().activeWeek, updated)
   },
 
   removeMeal: async (day, slot, mealId) => {
@@ -82,7 +118,7 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
       [day]: { ...dayPlan, [slot]: slotMeals },
     }
     set({ weekPlan: updated })
-    await AsyncStorage.setItem(`meal_plan_${get().activeWeek}`, JSON.stringify(updated))
+    await persistir(get().activeWeek, updated)
   },
 
   clearSlot: async (day, slot) => {
@@ -93,7 +129,7 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
       [day]: { ...dayPlan, [slot]: [] },
     }
     set({ weekPlan: updated })
-    await AsyncStorage.setItem(`meal_plan_${get().activeWeek}`, JSON.stringify(updated))
+    await persistir(get().activeWeek, updated)
   },
 
   copyDay: async (from, to) => {
@@ -101,7 +137,7 @@ export const useMealPlanStore = create<MealPlanState>((set, get) => ({
     const fromDay = plan[from] ?? {}
     const updated: WeekPlan = { ...plan, [to]: { ...fromDay } }
     set({ weekPlan: updated })
-    await AsyncStorage.setItem(`meal_plan_${get().activeWeek}`, JSON.stringify(updated))
+    await persistir(get().activeWeek, updated)
   },
 
   getDayMacros: (day) => {

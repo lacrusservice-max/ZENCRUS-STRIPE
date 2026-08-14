@@ -1,5 +1,20 @@
+/**
+ * CICLADO DE MACROS
+ * ─────────────────
+ * El ciclo de la semana vive en `macro_cycles`; AsyncStorage se queda como
+ * caché para que la pantalla abra sin esperar a la red.
+ *
+ * Las bases —`baseCalories`, `baseProtein`, `baseCarbs`, `baseFat`— NO se
+ * guardan en esa tabla: son los targets del plan de dieta activo, que ya viven
+ * en `diet_plans`. El servidor los devuelve junto al ciclo para que esta
+ * pantalla no tenga que pedirlos por su cuenta, pero la verdad está allí.
+ * Duplicarlos aquí daría dos respuestas a «¿cuántas calorías me tocan?».
+ */
+
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
+import { traerCiclo } from './trackingSync'
+import { guardarCiclo } from '@/services/trackingService'
 
 export type DayType = 'high' | 'moderate' | 'low' | 'rest'
 
@@ -141,6 +156,28 @@ export const useMacroCyclingStore = create<MacroCyclingState>((set, get) => ({
         })
       }
     } catch {}
+
+    const delServidor = await traerCiclo()
+    if (!delServidor) return
+
+    if (delServidor.cycle) {
+      set({
+        weekCycle: delServidor.cycle.cycle as WeekCycle,
+        currentPreset: delServidor.cycle.preset,
+        enabled: delServidor.cycle.activo,
+      })
+    }
+
+    // Sin plan de dieta activo se mantienen los valores por defecto: es un
+    // usuario que todavía no tiene targets, no uno cuyos targets sean cero.
+    if (delServidor.base) {
+      set({
+        baseCalories: delServidor.base.calories,
+        baseProtein: delServidor.base.protein,
+        baseCarbs: delServidor.base.carbs,
+        baseFat: delServidor.base.fat,
+      })
+    }
   },
 
   save: async () => {
@@ -150,6 +187,9 @@ export const useMacroCyclingStore = create<MacroCyclingState>((set, get) => ({
         enabled, weekCycle, currentPreset, baseCalories, baseProtein, baseCarbs, baseFat,
       }))
     } catch {}
+    // No encola: el documento se manda entero, así que el siguiente guardado
+    // corrige lo que este no llegara a subir.
+    void guardarCiclo(weekCycle, currentPreset, enabled).catch(() => {})
   },
 
   setEnabled: async (enabled) => {

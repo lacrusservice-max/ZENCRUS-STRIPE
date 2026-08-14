@@ -1,3 +1,4 @@
+import { hoyLocal } from './fechas'
 // Metas SMART — ZENCRUS
 // Calcula el progreso real de una meta y si el usuario va "a tiempo" para
 // cumplirla en la fecha objetivo, comparando el ritmo esperado (lineal)
@@ -15,6 +16,12 @@ export interface Goal {
   startDate: string // ISO
   targetDate: string // ISO
   unit: string // 'kg', 'entrenamientos/semana', 'días', etc.
+  /**
+   * Id de la fila en Supabase. Lo rellena la sincronización al leer del
+   * servidor; una meta recién planteada sin red todavía no lo tiene, y por eso
+   * el `id` local viaja como `clientId`. El cálculo de progreso lo ignora.
+   */
+  serverId?: string
 }
 
 export type GoalStatus = 'ahead' | 'on_track' | 'behind' | 'completed' | 'expired' | 'not_started'
@@ -30,7 +37,7 @@ export interface GoalProgressResult {
 
 const TOLERANCE = 8 // puntos porcentuales de margen antes de considerar "atrasado"
 
-export function computeGoalProgress(goal: Goal, currentValue: number, today: string = new Date().toISOString().slice(0, 10)): GoalProgressResult {
+export function computeGoalProgress(goal: Goal, currentValue: number, today: string = hoyLocal()): GoalProgressResult {
   const totalDelta = goal.targetValue - goal.startValue
   const currentDelta = currentValue - goal.startValue
 

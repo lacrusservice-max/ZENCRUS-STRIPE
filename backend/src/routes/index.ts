@@ -10,6 +10,8 @@ import setupRoutes from './setup.routes'
 import onboardingRoutes from './onboarding.routes'
 import communityRoutes from './community.routes'
 import foodRoutes from './food.routes'
+import nutritionRoutes from './nutrition.routes'
+import trackingRoutes from './tracking.routes'
 import socialRoutes from './social.routes'
 import exerciseRoutes from './exercises.routes'
 import { getPublicFlags } from '../controllers/adminController'
@@ -63,6 +65,8 @@ router.use('/setup', setupRoutes)
 router.use('/onboarding', onboardingRoutes)
 router.use('/community', communityRoutes)
 router.use('/foods', foodRoutes)
+router.use('/nutrition', nutritionRoutes)
+router.use('/tracking', trackingRoutes)
 router.use('/social', socialRoutes)
 router.use('/exercises', exerciseRoutes)
 

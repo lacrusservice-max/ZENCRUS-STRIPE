@@ -1,7 +1,36 @@
+/**
+ * RACHAS
+ * ──────
+ * La actividad de cada día vive en `activity_days`. Las rachas ya NO se
+ * guardan: las calcula el servidor a partir de esa serie y este store las
+ * muestra.
+ *
+ * ── Por qué se dejó de guardar el contador ──────────────────────────────────
+ * Porque había dos: el número en AsyncStorage y la historia de la que sale ese
+ * número. Discrepaban —basta un cambio de huso horario o una instalación nueva—
+ * y cuando discrepaban ganaba el que estaba mal, casi siempre el guardado. Con
+ * el cálculo en el servidor hay una sola respuesta, y es la misma que lee ZENA
+ * cuando le preguntan cuántos días lleva alguien.
+ *
+ * ── El protector sigue decidiéndose aquí ────────────────────────────────────
+ * Los protectores son de `achievementStore`, que no es de esta migración. Así
+ * que la app sigue decidiendo si gasta uno; lo único que cambia es que, cuando
+ * lo gasta, el día se marca como protegido en el servidor y no en un array
+ * suelto del teléfono.
+ *
+ * ── Sin red no se inventan números ──────────────────────────────────────────
+ * Al marcar actividad sin señal el contador sube igual —el usuario acaba de
+ * hacer algo y merece verlo— pero es una estimación optimista que la primera
+ * respuesta del servidor corrige. Nunca se guarda como verdad.
+ */
+
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useAchievementStore } from './achievementStore'
 import { evaluateStreakContinuity } from '@/utils/streakLogic'
+import { sincronizarActividad, traerActividad } from './trackingSync'
+import type { DiaServidor } from '@/services/trackingService'
+import { haceDias, hoyLocal } from '@/utils/fechas'
 
 export interface DailyActivity {
   date: string
@@ -32,13 +61,7 @@ interface StreakState {
   getHistory: (days?: number) => Promise<{ date: string; status: DayStatus }[]>
 }
 
-function todayKey() { return new Date().toISOString().slice(0, 10) }
-
-function isConsecutive(a: string, b: string): boolean {
-  const da = new Date(a), db = new Date(b)
-  const diff = Math.abs(da.getTime() - db.getTime()) / (1000 * 60 * 60 * 24)
-  return diff <= 1
-}
+function todayKey() { return hoyLocal() }
 
 function isDayComplete(d: DailyActivity): boolean {
   return d.loggedFood || d.loggedWorkout || d.checkInDone
@@ -46,6 +69,15 @@ function isDayComplete(d: DailyActivity): boolean {
 
 const emptyDay = (date: string): DailyActivity => ({
   date, loggedFood: false, loggedWorkout: false, checkInDone: false, drank8Glasses: false,
+})
+
+/** El servidor llama `drankWater` a lo que aquí siempre fue `drank8Glasses`. */
+const aDia = (s: DiaServidor): DailyActivity => ({
+  date: s.date,
+  loggedFood: s.loggedFood,
+  loggedWorkout: s.loggedWorkout,
+  checkInDone: s.checkInDone,
+  drank8Glasses: s.drankWater,
 })
 
 const STREAK_MESSAGES = [
@@ -72,112 +104,142 @@ export const useStreakStore = create<StreakState>((set, get) => ({
   justProtected: false,
 
   load: async () => {
+    const hoy = todayKey()
+
+    // Lo local primero, para que la pantalla tenga algo que pintar de
+    // inmediato: la caché de cada día se sigue escribiendo en `markActivity`.
     try {
-      const raw = await AsyncStorage.getItem('streak_data')
-      const protectedRaw = await AsyncStorage.getItem('streak_protected_dates')
-      const protectedDates: string[] = protectedRaw ? JSON.parse(protectedRaw) : []
-
-      if (raw) {
-        const data = JSON.parse(raw)
-        const today = todayKey()
-        const shieldsAvailable = useAchievementStore.getState().streakShields
-        const decision = evaluateStreakContinuity(data.lastActiveDate, today, shieldsAvailable)
-
-        if (decision.action === 'protect') {
-          const shieldUsed = useAchievementStore.getState().useStreakShield()
-          if (shieldUsed) {
-            protectedDates.push(decision.missedDate)
-            await AsyncStorage.setItem('streak_protected_dates', JSON.stringify(protectedDates))
-            data.lastActiveDate = decision.missedDate // se considera "cubierto", la racha sigue viva
-            set({ justProtected: true })
-          } else {
-            data.currentStreak = 0 // shield reportado disponible pero no se pudo consumir
-          }
-        } else if (decision.action === 'break' || decision.action === 'break_multi') {
-          data.currentStreak = 0
-        }
-
-        set({ ...data, protectedDates })
-      } else {
-        set({ protectedDates })
-      }
-
-      // Cargar actividad de la semana
-      const week: DailyActivity[] = []
+      const semana: DailyActivity[] = []
       for (let i = 6; i >= 0; i--) {
-        const d = new Date(); d.setDate(d.getDate() - i)
-        const key = d.toISOString().slice(0, 10)
+        const key = haceDias(i)
         const raw = await AsyncStorage.getItem(`activity_${key}`)
-        week.push(raw ? JSON.parse(raw) : emptyDay(key))
+        semana.push(raw ? JSON.parse(raw) : emptyDay(key))
       }
-      set({ weekActivity: week })
+      const protectedRaw = await AsyncStorage.getItem('streak_protected_dates')
+      set({ weekActivity: semana, protectedDates: protectedRaw ? JSON.parse(protectedRaw) : [] })
     } catch {}
+
+    let datos = await traerActividad(haceDias(83), hoy, hoy)
+    if (!datos) return    // sin red: se queda lo de la caché
+
+    // ── El protector ──────────────────────────────────────────────────────
+    // Se decide con el último día activo QUE DICE EL SERVIDOR, no con el que
+    // hubiera guardado el teléfono: un móvil nuevo no sabe nada y rompería una
+    // racha que está viva.
+    const escudos = useAchievementStore.getState().streakShields
+    const decision = evaluateStreakContinuity(datos.streak.lastActiveDate, hoy, escudos)
+
+    if (decision.action === 'protect' && useAchievementStore.getState().useStreakShield()) {
+      const salvados = [...get().protectedDates, decision.missedDate]
+      set({ protectedDates: salvados, justProtected: true })
+      await AsyncStorage.setItem('streak_protected_dates', JSON.stringify(salvados))
+      // Se marca en el servidor y se vuelve a preguntar: la racha la calcula él
+      // y ahora el día roto ya no lo está.
+      if (await sincronizarActividad(decision.missedDate, { protegido: true })) {
+        datos = (await traerActividad(haceDias(83), hoy, hoy)) ?? datos
+      }
+    }
+
+    const porFecha = new Map(datos.days.map(d => [d.date, d]))
+
+    set({
+      currentStreak: datos.streak.current,
+      longestStreak: datos.streak.longest,
+      totalDaysActive: datos.streak.totalActive,
+      lastActiveDate: datos.streak.lastActiveDate,
+      weekActivity: Array.from({ length: 7 }, (_, i) => {
+        const key = haceDias(6 - i)
+        const dia = porFecha.get(key)
+        return dia ? aDia(dia) : emptyDay(key)
+      }),
+      protectedDates: datos.days.filter(d => d.protegido).map(d => d.date),
+    })
   },
 
   acknowledgeProtection: () => set({ justProtected: false }),
 
   getHistory: async (days = 84) => {
-    const { protectedDates } = get()
-    const protectedSet = new Set(protectedDates)
+    const hoy = todayKey()
+    const datos = await traerActividad(haceDias(days - 1), hoy, hoy)
+
+    if (datos) {
+      const porFecha = new Map(datos.days.map(d => [d.date, d]))
+      return Array.from({ length: days }, (_, i) => {
+        const date = haceDias(days - 1 - i)
+        const dia = porFecha.get(date)
+        if (dia?.protegido) return { date, status: 'protected' as DayStatus }
+        if (dia && isDayComplete(aDia(dia))) return { date, status: 'completed' as DayStatus }
+        // Hoy todavía puede completarse: no es un día perdido.
+        return { date, status: (date === hoy ? 'empty' : 'missed') as DayStatus }
+      })
+    }
+
+    // Sin red, el calendario se dibuja con lo que quedó en el teléfono.
+    const protegidos = new Set(get().protectedDates)
     const out: { date: string; status: DayStatus }[] = []
     for (let i = days - 1; i >= 0; i--) {
-      const d = new Date(); d.setDate(d.getDate() - i)
-      const key = d.toISOString().slice(0, 10)
-      if (protectedSet.has(key)) {
+      const key = haceDias(i)
+      if (protegidos.has(key)) {
         out.push({ date: key, status: 'protected' })
         continue
       }
       const raw = await AsyncStorage.getItem(`activity_${key}`)
       const activity: DailyActivity | null = raw ? JSON.parse(raw) : null
-      if (activity && isDayComplete(activity)) {
-        out.push({ date: key, status: 'completed' })
-      } else if (i === 0) {
-        out.push({ date: key, status: 'empty' }) // hoy, aún sin actividad
-      } else {
-        out.push({ date: key, status: 'missed' })
-      }
+      if (activity && isDayComplete(activity)) out.push({ date: key, status: 'completed' })
+      else out.push({ date: key, status: i === 0 ? 'empty' : 'missed' })
     }
     return out
   },
 
   markActivity: async (date, updates) => {
     const stored = await AsyncStorage.getItem(`activity_${date}`)
-    const current = stored ? JSON.parse(stored) : emptyDay(date)
+    const current: DailyActivity = stored ? JSON.parse(stored) : emptyDay(date)
     const updated = { ...current, ...updates }
     await AsyncStorage.setItem(`activity_${date}`, JSON.stringify(updated))
 
-    // Actualizar semana
     const week = get().weekActivity.map(d => d.date === date ? updated : d)
     set({ weekActivity: week })
 
-    if (!isDayComplete(updated)) return
+    // Solo viajan las banderas que cambian: el servidor actualiza esas columnas
+    // y no toca las demás, igual que este `{ ...current, ...updates }`.
+    const llegó = await sincronizarActividad(date, {
+      loggedFood: updates.loggedFood,
+      loggedWorkout: updates.loggedWorkout,
+      checkInDone: updates.checkInDone,
+      drankWater: updates.drank8Glasses,
+    })
 
-    const { lastActiveDate, currentStreak, longestStreak, totalDaysActive } = get()
-    const today = todayKey()
-    if (date !== today) return   // Solo actualizar racha para hoy
+    const seCompletóHoy =
+      date === todayKey() && !isDayComplete(current) && isDayComplete(updated)
 
-    let newStreak = currentStreak
-    if (lastActiveDate === null) {
-      newStreak = 1
-    } else if (lastActiveDate === today) {
-      // Ya registrado hoy, no cambiar racha
-    } else if (isConsecutive(lastActiveDate, today)) {
-      newStreak = currentStreak + 1
-    } else {
-      newStreak = 1
+    if (llegó) {
+      // El servidor ya tiene el día: que él diga cuánto vale la racha.
+      const hoy = todayKey()
+      const datos = await traerActividad(haceDias(83), hoy, hoy)
+      if (datos) {
+        set({
+          currentStreak: datos.streak.current,
+          longestStreak: datos.streak.longest,
+          totalDaysActive: datos.streak.totalActive,
+          lastActiveDate: datos.streak.lastActiveDate,
+        })
+        return
+      }
     }
 
-    const newLongest = Math.max(longestStreak, newStreak)
-    const newTotal = lastActiveDate === today ? totalDaysActive : totalDaysActive + 1
-
-    const streakData = {
-      currentStreak: newStreak,
-      longestStreak: newLongest,
-      lastActiveDate: today,
-      totalDaysActive: newTotal,
+    // No llegó: se sube el contador de forma optimista para que el usuario vea
+    // que su esfuerzo cuenta. No se guarda en ningún sitio — la próxima lectura
+    // con red lo sustituye por el número de verdad.
+    if (seCompletóHoy) {
+      const { currentStreak, longestStreak, totalDaysActive, lastActiveDate } = get()
+      const nueva = lastActiveDate === todayKey() ? currentStreak : currentStreak + 1
+      set({
+        currentStreak: nueva,
+        longestStreak: Math.max(longestStreak, nueva),
+        totalDaysActive: totalDaysActive + 1,
+        lastActiveDate: todayKey(),
+      })
     }
-    set(streakData)
-    await AsyncStorage.setItem('streak_data', JSON.stringify(streakData))
   },
 
   isActive: (date) => {
