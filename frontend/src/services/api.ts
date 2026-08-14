@@ -194,10 +194,13 @@ api.interceptors.response.use(
       originalRequest._retry = true
       isRefreshing = true
 
+      // Se anota con qué sesión se empezó. Si al volver ya es otra, este
+      // refresco es de una vida anterior y no puede tocar nada: ni escribir su
+      // token, ni —sobre todo— borrar los de la sesión nueva. Va FUERA del
+      // `try` porque el `catch` lo necesita tanto como el camino feliz.
+      const generacionAlEmpezar = generacionSesion
+
       try {
-        // Se anota con qué sesión se empezó. Si al volver ya es otra, este
-        // refresco es de una vida anterior y no puede tocar nada.
-        const generacionAlEmpezar = generacionSesion
 
         const refreshToken = await SecureStore.getItemAsync('refreshToken')
         if (!refreshToken) throw new Error('No refresh token')
@@ -230,6 +233,32 @@ api.interceptors.response.use(
         return api(originalRequest)
       } catch (refreshError) {
         processQueue(refreshError, null)
+
+        /**
+         * SI HUBO UN LOGIN MIENTRAS ESTO VIAJABA, EL 401 NO ES DE NADIE.
+         *
+         * Es el segundo tiempo del mismo problema, y costó verlo porque la
+         * primera mitad ya estaba puesta. El contador impedía que un refresco
+         * tardío ESCRIBIERA su token viejo —bien— pero ese refresco seguía
+         * saliendo con el token de antes, el servidor lo rechazaba con un 401
+         * perfectamente legítimo, y el borrado de aquí abajo se llevaba las
+         * credenciales... que para entonces ya eran las NUEVAS, las del login
+         * que acababa de ocurrir.
+         *
+         * O sea: entrabas con tu contraseña y un segundo después la app te
+         * echaba con un 401 de una sesión que ya no existía. En el registro del
+         * servidor se veía clavado:
+         *
+         *     19:38:38  login                      → 200
+         *     19:39:04  POST /auth/refresh → 401 · familia desconocida
+         *
+         * Un 401 solo significa «esta sesión se acabó» si es de LA SESIÓN
+         * ACTUAL. Si la generación cambió, este error es de un muerto.
+         */
+        if (generacionAlEmpezar !== generacionSesion) {
+          console.warn('[auth] 401 de un refresco anterior al login: se ignora, la sesión nueva sigue')
+          return Promise.reject(refreshError)
+        }
 
         /**
          * Las credenciales SOLO se borran si el servidor las ha rechazado.
