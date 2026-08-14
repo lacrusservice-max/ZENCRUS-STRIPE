@@ -1,6 +1,7 @@
 import { supabase } from '../config/supabase'
 import { logger } from '../config/logger'
 import { searchCatalog, getCatalogFoodById } from './catalogService'
+import { calcularRachas, sumarDias } from './streaks'
 
 // ── Definición de herramientas (formato OpenAI/DeepSeek) ──────────────────────
 // La IA (ZENA) puede invocarlas para ejecutar cambios reales en el plan del usuario.
@@ -49,6 +50,34 @@ export const AI_TOOLS = [
           comidas_por_dia: { type: 'number', description: 'Número de comidas al día.' },
         },
       },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'consultar_registro',
+      description: 'Lee lo que el usuario lleva comido: totales por día y los alimentos de cada uno. Úsala SIEMPRE antes de opinar sobre su alimentación, en vez de fiarte de lo que te hayan contado en el mensaje. Responde a «¿cuántas calorías llevo?», «¿qué comí ayer?», «¿voy bien de proteína?».',
+      parameters: {
+        type: 'object',
+        properties: {
+          dias: {
+            type: 'number',
+            description: 'Cuántos días hacia atrás, contando hoy. 1 es solo hoy. Máximo 14.',
+          },
+          detalle: {
+            type: 'boolean',
+            description: 'true para ver los alimentos uno por uno; false (por defecto) solo los totales de cada día.',
+          },
+        },
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'consultar_progreso',
+      description: 'Lee el progreso del usuario: peso y cómo ha cambiado, rachas, con qué constancia registra y qué porcentaje de sus calorías viene de ultraprocesados. Úsala para responder «¿cómo voy?», «¿cuánto peso?», «¿estoy mejorando?» y antes de proponer cualquier ajuste.',
+      parameters: { type: 'object', properties: {} },
     },
   },
   {
@@ -159,6 +188,12 @@ const COMIDA_A_HUECO: Record<string, string> = {
   snack: 'snack1',
 }
 
+/** El camino de vuelta, para contar el diario como lo diría el usuario. */
+const HUECO_A_COMIDA: Record<string, string> = {
+  breakfast: 'desayuno', lunch: 'comida', dinner: 'cena',
+  snack1: 'snack', snack2: 'snack', snack3: 'snack',
+}
+
 const ES_FECHA = /^\d{4}-\d{2}-\d{2}$/
 
 /** El día de Ciudad de México. Solo se usa si el cliente no manda el suyo. */
@@ -187,6 +222,171 @@ export async function executeAiTool(
 ): Promise<string> {
   try {
     switch (name) {
+      /**
+       * ── Consultar el registro ─────────────────────────────────────────────
+       *
+       * ZENA lee el diario de la base, no de lo que le cuenten en el mensaje.
+       *
+       * La pantalla ya le manda un resumen del día en el contexto, y con eso
+       * bastaba para saludar; pero ese resumen es de HOY y es el que la app
+       * tenía cargado, así que cualquier pregunta sobre ayer, sobre la semana o
+       * sobre lo que acabe de apuntar ella misma se contestaba de memoria. Un
+       * coach que opina sobre lo que come alguien sin mirarlo no está leyendo:
+       * está adivinando.
+       */
+      case 'consultar_registro': {
+        const dias = Math.min(Math.max(Math.round(Number(args.dias) || 1), 1), 14)
+        const hoy = ctx.hoy && ES_FECHA.test(ctx.hoy) ? ctx.hoy : hoyMexico()
+        const desde = sumarDias(hoy, -(dias - 1))
+
+        const { data, error } = await supabase
+          .from('meal_logs')
+          .select('log_date, meal_slot, name, amount, unit, calories, protein_g, carbs_g, fat_g, fiber_g, active')
+          .eq('user_id', userId)
+          .gte('log_date', desde)
+          .lte('log_date', hoy)
+          .is('deleted_at', null)
+          .order('log_date', { ascending: true })
+          .order('created_at', { ascending: true })
+
+        if (error) throw error
+        if (!data?.length) {
+          return dias === 1
+            ? `El usuario no ha registrado nada hoy (${hoy}).`
+            : `El usuario no ha registrado nada entre el ${desde} y el ${hoy}.`
+        }
+
+        const porDia = new Map<string, typeof data>()
+        for (const f of data) {
+          const l = porDia.get(f.log_date) ?? []
+          l.push(f)
+          porDia.set(f.log_date, l as typeof data)
+        }
+
+        const detalle = args.detalle === true
+        const lineas: string[] = []
+
+        for (const [fecha, filas] of [...porDia.entries()].sort()) {
+          // Las entradas con `active: false` siguen visibles en el diario pero
+          // están fuera de los totales: son «esto lo dejé a la mitad».
+          const cuentan = filas.filter(f => f.active !== false)
+          const t = cuentan.reduce((a, f) => ({
+            kcal: a.kcal + Number(f.calories),
+            prot: a.prot + Number(f.protein_g),
+            carb: a.carb + Number(f.carbs_g),
+            gras: a.gras + Number(f.fat_g),
+          }), { kcal: 0, prot: 0, carb: 0, gras: 0 })
+
+          lineas.push(
+            `${fecha}${fecha === hoy ? ' (hoy)' : ''}: ${Math.round(t.kcal)} kcal, ` +
+            `${redondear(t.prot)} g proteína, ${redondear(t.carb)} g carbos, ${redondear(t.gras)} g grasa ` +
+            `— ${cuentan.length} alimento(s)`,
+          )
+
+          if (detalle) {
+            for (const f of filas) {
+              lineas.push(
+                `    · ${HUECO_A_COMIDA[f.meal_slot] ?? f.meal_slot}: ${f.name}, ` +
+                `${Number(f.amount)} ${f.unit} — ${Math.round(Number(f.calories))} kcal` +
+                `${f.active === false ? ' (fuera de los totales)' : ''}`,
+              )
+            }
+          }
+        }
+
+        return `Registro del usuario (${desde} a ${hoy}):\n${lineas.join('\n')}`
+      }
+
+      /**
+       * ── Consultar el progreso ─────────────────────────────────────────────
+       *
+       * Peso, rachas, constancia y ultraprocesados, que es lo que pide el §10.
+       *
+       * El porcentaje de ultraprocesados no es un adorno: es la métrica que
+       * encarna la filosofía del §2. «Bajaste 3 kilos» lo dice cualquier app;
+       * «pasaste de 60 % a 35 % de ultraprocesados» es buena alimentación
+       * medida, y es lo que ZENA puede celebrar sin señalar ninguna comida.
+       */
+      case 'consultar_progreso': {
+        const hoy = ctx.hoy && ES_FECHA.test(ctx.hoy) ? ctx.hoy : hoyMexico()
+        const hace30 = sumarDias(hoy, -29)
+        const hace14 = sumarDias(hoy, -13)
+
+        const [pesos, actividad, comidas] = await Promise.all([
+          supabase.from('body_metrics')
+            .select('measured_on, weight_kg')
+            .eq('user_id', userId).not('weight_kg', 'is', null)
+            .order('measured_on', { ascending: false }).limit(30),
+          supabase.from('activity_days')
+            .select('activity_date, logged_food, logged_workout, check_in_done, drank_water, protegido')
+            .eq('user_id', userId).order('activity_date', { ascending: false }).limit(400),
+          supabase.from('meal_logs')
+            .select('log_date, calories, active, foods ( kind )')
+            .eq('user_id', userId).gte('log_date', hace14).lte('log_date', hoy)
+            .is('deleted_at', null),
+        ])
+
+        const partes: string[] = []
+
+        // ── Peso ────────────────────────────────────────────────────────────
+        const p = pesos.data ?? []
+        if (!p.length) {
+          partes.push('Peso: no ha registrado ninguno.')
+        } else {
+          const ultimo = p[0]
+          const viejo = p.find(x => x.measured_on <= hace30) ?? p[p.length - 1]
+          const delta = Number(ultimo.weight_kg) - Number(viejo.weight_kg)
+          partes.push(
+            `Peso: ${Number(ultimo.weight_kg)} kg el ${ultimo.measured_on}.` +
+            (p.length > 1 && viejo !== ultimo
+              ? ` Antes ${Number(viejo.weight_kg)} kg el ${viejo.measured_on}: ${delta >= 0 ? '+' : ''}${redondear(delta)} kg.`
+              : ' Es su única medición, todavía no hay tendencia.'),
+          )
+        }
+
+        // ── Rachas ──────────────────────────────────────────────────────────
+        const dias = (actividad.data ?? []).map(d => ({
+          date: d.activity_date,
+          loggedFood: d.logged_food,
+          loggedWorkout: d.logged_workout,
+          checkInDone: d.check_in_done,
+          drankWater: d.drank_water,
+          protegido: d.protegido,
+        }))
+        const r = calcularRachas(dias, hoy)
+        partes.push(
+          `Racha: ${r.current} día(s) seguidos. Su mejor racha son ${r.longest}. ` +
+          `${r.totalActive} día(s) activos en total.` +
+          (r.lastActiveDate ? ` Último día con actividad: ${r.lastActiveDate}.` : ''),
+        )
+
+        // ── Constancia al registrar ─────────────────────────────────────────
+        const filas = comidas.data ?? []
+        const conRegistro = new Set(filas.map((f: any) => f.log_date)).size
+        partes.push(`Constancia: registró comida ${conRegistro} de los últimos 14 días.`)
+
+        // ── Ultraprocesados ─────────────────────────────────────────────────
+        // Solo cuentan las entradas que vienen del catálogo: las escritas a
+        // mano no tienen clasificación y meterlas como «naturales» inflaría el
+        // dato a favor. Mejor decir sobre cuántas se calcula.
+        const clasificadas = filas.filter((f: any) => f.active !== false && f.foods?.kind)
+        if (!clasificadas.length) {
+          partes.push('Ultraprocesados: aún no hay suficientes alimentos del catálogo para calcularlo.')
+        } else {
+          const total = clasificadas.reduce((a: number, f: any) => a + Number(f.calories), 0)
+          const ultra = clasificadas
+            .filter((f: any) => f.foods.kind === 'ultraprocesado')
+            .reduce((a: number, f: any) => a + Number(f.calories), 0)
+          const pct = total > 0 ? Math.round((ultra / total) * 100) : 0
+          partes.push(
+            `Ultraprocesados: ${pct} % de sus calorías de los últimos 14 días ` +
+            `(sobre ${clasificadas.length} alimento(s) del catálogo).`,
+          )
+        }
+
+        return `Progreso del usuario al ${hoy}:\n- ${partes.join('\n- ')}`
+      }
+
       /**
        * ── Buscar alimento ───────────────────────────────────────────────────
        *
