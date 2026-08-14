@@ -3,7 +3,9 @@ import bcrypt from 'bcryptjs'
 import { z } from 'zod'
 import { v4 as uuidv4 } from 'uuid'
 import { signAccessToken, signRefreshToken, verifyRefreshToken } from '../utils/jwt'
-import { decidir, desempaquetar, empaquetar } from '../utils/familiaTokens'
+import {
+  decidir, abrir, rotar, cerrar, nombreDeAparato,
+} from '../utils/familiaTokens'
 import { generateVerificationCode, generateSecureToken } from '../utils/crypto'
 import { sendVerificationEmail, sendPasswordResetEmail } from '../services/emailService'
 import { AppError } from '../middleware/errorHandler'
@@ -172,7 +174,7 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
 
   const { data: user } = await supabase
     .from('users')
-    .select('id, full_name, role, subscription_tier, email_verification_code, email_verification_expires')
+    .select('id, full_name, role, subscription_tier, email_verification_code, email_verification_expires, refresh_token_family')
     .eq('email', email)
     .maybeSingle()
 
@@ -196,11 +198,12 @@ export async function verifyEmail(req: Request, res: Response): Promise<void> {
   }
 
   const tokenFamily = uuidv4()
+  const aparato = nombreDeAparato(req.headers['x-device-fingerprint'])
   await supabase.from('users').update({
     email_verified: true,
     email_verification_code: null,
     email_verification_expires: null,
-    refresh_token_family: tokenFamily,
+    refresh_token_family: abrir(user.refresh_token_family, aparato, tokenFamily),
   }).eq('id', user.id)
 
   // El correo de bienvenida/activación se envía solo tras contratar un plan y pagar
@@ -226,7 +229,9 @@ export async function login(req: Request, res: Response): Promise<void> {
 
   const { data: user } = await supabase
     .from('users')
-    .select('id, email, password_hash, full_name, role, subscription_tier, email_verified, is_active, failed_login_attempts, locked_until, fcm_token')
+    // `refresh_token_family` viene porque entrar añade ESTE aparato a lo que ya
+    // hubiera: sin leerlo primero se borrarían las sesiones de los demás.
+    .select('id, email, password_hash, full_name, role, subscription_tier, email_verified, is_active, failed_login_attempts, locked_until, fcm_token, refresh_token_family')
     .eq('email', email)
     .maybeSingle()
 
@@ -281,13 +286,23 @@ export async function login(req: Request, res: Response): Promise<void> {
     return
   }
 
+  /**
+   * Entrar abre la sesión de ESTE aparato y deja las de los demás en paz.
+   *
+   * Antes se sobrescribía la única familia que había, así que entrar en el
+   * móvil echaba del simulador y al revés. Ahora cada instalación tiene la suya,
+   * identificada por la huella que el cliente ya manda en cada petición.
+   */
   const tokenFamily = uuidv4()
+  const aparato = nombreDeAparato(
+    req.headers['x-device-fingerprint'] ?? (req.body as { deviceFingerprint?: string }).deviceFingerprint,
+  )
   await supabase.from('users').update({
     failed_login_attempts: 0,
     locked_until: null,
     last_login: new Date().toISOString(),
     fcm_token: fcmToken || user.fcm_token,
-    refresh_token_family: tokenFamily,
+    refresh_token_family: abrir(user.refresh_token_family, aparato, tokenFamily),
   }).eq('id', user.id)
 
   const accessToken = signAccessToken({
@@ -334,76 +349,54 @@ export async function refreshTokens(req: Request, res: Response): Promise<void> 
      * y la segunda echaba al usuario de su propia cuenta. Ver
      * `utils/familiaTokens.ts`.
      */
+    /**
+     * El refresco se resuelve DENTRO DEL APARATO que lo pide.
+     *
+     * `decidir` busca la familia que llega entre las de todos los aparatos y
+     * dice de cuál es. A partir de ahí, todo lo que se haga —rotar, dar gracia
+     * o cerrar— toca solo a ese, y las sesiones de los demás siguen intactas.
+     */
     const decision = decidir(user.refresh_token_family, payload.tokenFamily)
 
-    /**
-     * Solo se anula la sesión cuando hay PRUEBA de que hay dos copias del
-     * token, o sea cuando llega la familia que este servidor acaba de
-     * sustituir. Un token desconocido se rechaza y punto: no prueba nada y
-     * echar al dueño por él era el fallo que costó una sesión entera.
-     */
     if (decision.tipo === 'reutilizado') {
-      await supabase.from('users').update({ refresh_token_family: null }).eq('id', user.id)
-      logger.warn(`Token reutilizado fuera de la ventana para ${user.id}: se anula la familia`)
+      // Hay dos copias del token de ESTE aparato. Se cierra este y solo este:
+      // echar a alguien de todos sus dispositivos por uno comprometido es
+      // desproporcionado y hace que la gente acabe desactivando lo que protege.
+      await supabase.from('users')
+        .update({ refresh_token_family: cerrar(user.refresh_token_family, decision.aparato) })
+        .eq('id', user.id)
+      logger.warn(`Token reutilizado en el aparato ${decision.aparato} de ${user.id}: se cierra esa sesión`)
       throw new AppError(401, 'Token de refresco comprometido. Inicia sesión nuevamente.')
     }
 
     if (decision.tipo === 'desconocido') {
-      // Ni se toca la familia: la sesión buena, si la hay, sigue viva.
+      // No es de ningún aparato conocido: se rechaza sin tocar nada. Un token
+      // viejo no prueba nada y no puede costarle la sesión a nadie.
       logger.info(`Refresco con familia desconocida para ${user.id}: se rechaza sin anular nada`)
       throw new AppError(401, 'Token inválido. Inicia sesión nuevamente.')
     }
 
-    // El inicio de sesión ya lo comprobaba, pero el refresco no, y sin esto la
-    // suspensión no suspendía nada: quien tuviera un token de refresco seguía
-    // renovando sesión indefinidamente y usando la app entera aunque el
-    // administrador le hubiera cerrado la cuenta o él mismo la hubiera borrado.
-    //
-    // Va DESPUÉS de la comprobación de token comprometido para no saltársela:
-    // que la cuenta esté apagada no es motivo para dejar de invalidar una
-    // familia de tokens que ha sido robada.
-    //
-    // Quien se queda fuera no ve aquí el motivo —este endpoint responde igual
-    // ante cualquier fallo de token, a propósito— pero lo lee en cuanto vuelve
-    // a iniciar sesión, que es a donde va la app a continuación.
-    if (!user.is_active) throw new AppError(401, 'Esta cuenta está desactivada')
-
-    /**
-     * En gracia NO se rota.
-     *
-     * Se devuelve un token de la familia que ya está vigente, así que el que
-     * perdió la carrera acaba con el MISMO token bueno que el que la ganó y los
-     * dos siguen. Si aquí se rotara otra vez, se invalidaría el token del que
-     * ganó y la carrera volvería a empezar: dos clientes turnándose para
-     * echarse el uno al otro, que es peor que el fallo original.
-     */
+    const aparato = decision.aparato
     let familiaVigente: string
 
     if (decision.tipo === 'gracia') {
       familiaVigente = decision.familiaActual
-      logger.info(`Refresco en gracia para ${user.id}: llegó con la familia anterior`)
+      logger.info(`Refresco en gracia para ${user.id} · aparato ${aparato}`)
     } else {
       /**
-       * La rotación es CONDICIONAL, y esto no es una precaución teórica.
+       * La rotación sigue siendo CONDICIONAL sobre el valor leído.
        *
-       * Dos peticiones simultáneas leen la misma familia, las dos deciden
-       * rotar y las dos escriben: la segunda pisa a la primera y el token que
-       * ya se había entregado deja de valer. La ventana de gracia sola no lo
-       * cubre —cubre la carrera en la que una llega después, no la que llega a
-       * la vez— y se vio en la prueba: las dos respondían 200 y uno de los dos
-       * tokens nacía muerto.
-       *
-       * Con `eq` sobre el valor leído, la base decide quién gana: solo una
-       * escritura encuentra la fila como la dejó su lectura. Quien pierde no
-       * rota nada, vuelve a leer y se va por la gracia.
+       * Dos peticiones simultáneas del MISMO aparato leen lo mismo, las dos
+       * deciden rotar y la segunda escritura pisa a la primera: uno de los dos
+       * tokens nacería muerto respondiendo 200. Con `eq` sobre lo leído, decide
+       * la base quién gana y el que pierde relee y se va por la gracia.
        */
       const nueva = uuidv4()
       const leido = user.refresh_token_family
-      const anterior = desempaquetar(leido)?.actual ?? null
 
       const { data: cambiadas } = await supabase
         .from('users')
-        .update({ refresh_token_family: empaquetar(nueva, anterior) })
+        .update({ refresh_token_family: rotar(leido, aparato, nueva) })
         .eq('id', user.id)
         .eq('refresh_token_family', leido as string)
         .select('id')
@@ -411,23 +404,21 @@ export async function refreshTokens(req: Request, res: Response): Promise<void> 
       if (cambiadas && cambiadas.length > 0) {
         familiaVigente = nueva
       } else {
-        // Perdió la carrera. Se relee y se decide otra vez: si el que ganó
-        // acaba de rotar, esto cae en gracia y los dos acaban con lo mismo.
         const { data: recargado } = await supabase
           .from('users').select('refresh_token_family').eq('id', user.id).maybeSingle()
         const segunda = decidir(recargado?.refresh_token_family, payload.tokenFamily)
 
         if (segunda.tipo === 'reutilizado') {
-          await supabase.from('users').update({ refresh_token_family: null }).eq('id', user.id)
+          await supabase.from('users')
+            .update({ refresh_token_family: cerrar(recargado?.refresh_token_family, segunda.aparato) })
+            .eq('id', user.id)
           throw new AppError(401, 'Token de refresco comprometido. Inicia sesión nuevamente.')
         }
         if (segunda.tipo !== 'gracia') {
-          // Mismo criterio que arriba: se rechaza sin anular. Perder la carrera
-          // y encontrarse algo raro no es motivo para cerrarle la sesión a nadie.
           throw new AppError(401, 'Token inválido. Inicia sesión nuevamente.')
         }
         familiaVigente = segunda.familiaActual
-        logger.info(`Refresco simultáneo para ${user.id}: perdió la carrera y se le da la familia buena`)
+        logger.info(`Refresco simultáneo en ${aparato} de ${user.id}: se le da la familia buena`)
       }
     }
 
@@ -468,7 +459,19 @@ export async function refreshTokens(req: Request, res: Response): Promise<void> 
 export async function logout(req: Request, res: Response): Promise<void> {
   const userId = req.user?.userId
   if (userId) {
-    await supabase.from('users').update({ refresh_token_family: null }).eq('id', userId)
+    /**
+     * Cerrar sesión cierra ESTE aparato, no todos.
+     *
+     * Salir en el móvil no puede echarte del iPad: son sesiones distintas y el
+     * usuario solo pidió cerrar una. Para cerrar todas está el cambio de
+     * contraseña, que sí lo hace a propósito.
+     */
+    const { data: u } = await supabase
+      .from('users').select('refresh_token_family').eq('id', userId).maybeSingle()
+    const aparato = nombreDeAparato(req.headers['x-device-fingerprint'])
+    await supabase.from('users')
+      .update({ refresh_token_family: cerrar(u?.refresh_token_family, aparato) })
+      .eq('id', userId)
   }
   res.clearCookie('refreshToken')
   res.status(200).json({ success: true, message: 'Sesión cerrada correctamente' } satisfies ApiResponse)
