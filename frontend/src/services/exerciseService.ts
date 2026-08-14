@@ -105,8 +105,55 @@ export const listExercises = async (q: Query = {}): Promise<ExercisePage> =>
     },
   })) ?? { total: 0, offset: 0, limit: PAGINA, exercises: [] }
 
-export const getExercise = async (slug: string): Promise<ExerciseDetail> =>
-  unwrap(await apiGet(`/exercises/${slug}`))
+/**
+ * LAS FICHAS QUE YA SE PIDIERON, GUARDADAS.
+ *
+ * Abrir un ejercicio pedía su ficha al servidor y solo entonces montaba el
+ * vídeo: entre el toque y la primera imagen había un viaje entero. En un
+ * gimnasio en un sótano eso son segundos mirando un hueco negro, y se repite
+ * seis veces por sesión.
+ *
+ * Con la caché, un ejercicio ya pedido abre INSTANTÁNEO. Y como la portada
+ * precarga los del día en cuanto se dibuja, para cuando alguien toca uno la
+ * ficha ya está aquí.
+ *
+ * ── Por qué caducan ─────────────────────────────────────────────────────────
+ * La ficha en sí no cambia entre despliegues —es catálogo— pero la URL del
+ * vídeo va FIRMADA y expira. Guardarla para siempre daría vídeos que no cargan
+ * al rato, que es peor que la espera que se quería quitar. Media hora cubre un
+ * entrenamiento entero y va con margen sobre la firma.
+ */
+const VIDA_FICHA_MS = 30 * 60_000
+const cacheFichas = new Map<string, { ficha: ExerciseDetail; en: number }>()
+
+export const getExercise = async (slug: string): Promise<ExerciseDetail> => {
+  const guardada = cacheFichas.get(slug)
+  if (guardada && Date.now() - guardada.en < VIDA_FICHA_MS) return guardada.ficha
+
+  const ficha = unwrap<ExerciseDetail>(await apiGet(`/exercises/${slug}`))
+  cacheFichas.set(slug, { ficha, en: Date.now() })
+  return ficha
+}
+
+/**
+ * Pedir por adelantado las fichas de unos ejercicios.
+ *
+ * En segundo plano y sin molestar: si una falla no pasa nada, se pedirá cuando
+ * se abra. De una en una y no todas a la vez a propósito — son peticiones que
+ * nadie está esperando, y adelantarlas no puede robarle el turno a la pantalla
+ * que el usuario SÍ está mirando.
+ */
+export async function precargarEjercicios(slugs: (string | undefined | null)[]): Promise<void> {
+  const pendientes = [...new Set(slugs.filter((s): s is string => !!s))]
+    .filter(s => {
+      const g = cacheFichas.get(s)
+      return !g || Date.now() - g.en >= VIDA_FICHA_MS
+    })
+
+  for (const slug of pendientes) {
+    try { await getExercise(slug) } catch { /* nadie la espera: se pedirá al abrirla */ }
+  }
+}
 
 /**
  * Los filtros se piden UNA vez por sesión y se guardan aquí.
