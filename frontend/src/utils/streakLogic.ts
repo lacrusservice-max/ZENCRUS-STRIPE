@@ -9,8 +9,10 @@ export type StreakDecision =
   | { action: 'break' }                                   // faltó 1 día, sin protector disponible
   | { action: 'break_multi' }                              // faltaron 2+ días, ningún protector cubre eso
 
+import { sumarDias, diasEntre } from './fechas'
+
 function daysBetween(a: string, b: string): number {
-  return (new Date(b).getTime() - new Date(a).getTime()) / (1000 * 60 * 60 * 24)
+  return diasEntre(a, b)
 }
 
 export function evaluateStreakContinuity(
@@ -27,9 +29,7 @@ export function evaluateStreakContinuity(
   if (diff <= 2) {
     // Faltó exactamente 1 día completo — se puede proteger.
     if (shieldsAvailable > 0) {
-      const missed = new Date(lastActiveDate)
-      missed.setDate(missed.getDate() + 1)
-      return { action: 'protect', missedDate: missed.toISOString().slice(0, 10) }
+      return { action: 'protect', missedDate: sumarDias(lastActiveDate, 1) }
     }
     return { action: 'break' }
   }

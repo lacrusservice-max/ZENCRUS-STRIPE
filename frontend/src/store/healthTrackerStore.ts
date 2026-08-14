@@ -1,3 +1,4 @@
+import { hoyLocal, haceDias } from '@/utils/fechas'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
@@ -49,14 +50,12 @@ function stepsToKm(steps: number): number {
   return Math.round((steps / STEPS_PER_KM) * 10) / 10
 }
 
-const today = () => new Date().toISOString().slice(0, 10)
+const today = () => hoyLocal()
 
 const DEMO_STEPS: StepEntry[] = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date()
-  d.setDate(d.getDate() - i)
   const steps = Math.floor(Math.random() * 5000) + 4000
   return {
-    date: d.toISOString().slice(0, 10),
+    date: haceDias(i),
     steps,
     caloriesBurned: stepsToCalories(steps),
     distanceKm: stepsToKm(steps),
@@ -71,11 +70,9 @@ const DEMO_HR: HeartRateEntry[] = [
 ]
 
 const DEMO_SLEEP: SleepEntry[] = Array.from({ length: 7 }, (_, i) => {
-  const d = new Date()
-  d.setDate(d.getDate() - i)
   const hours = 5.5 + Math.random() * 3
   return {
-    date: d.toISOString().slice(0, 10),
+    date: haceDias(i),
     bedtime: '23:00',
     wakeTime: '07:00',
     totalHours: Math.round(hours * 10) / 10,
@@ -207,9 +204,7 @@ export const useHealthTrackerStore = create<HealthTrackerState>()(
       getWeeklySummary: () => {
         const { stepHistory, sleepHistory } = get()
         return Array.from({ length: 7 }, (_, i) => {
-          const d = new Date()
-          d.setDate(d.getDate() - i)
-          const date = d.toISOString().slice(0, 10)
+          const date = haceDias(i)
           const step = date === today()
             ? { steps: get().todaySteps, caloriesBurned: stepsToCalories(get().todaySteps), distanceKm: stepsToKm(get().todaySteps), activeMinutes: Math.floor(get().todaySteps / 100) }
             : stepHistory.find(e => e.date === date)

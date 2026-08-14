@@ -1,13 +1,13 @@
-import { useState, useEffect, useCallback } from 'react'
+import { hoyLocal } from '@/utils/fechas'
+import { useState } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
-  TextInput, Modal, Alert, Platform,
+  TextInput, Modal, Alert,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
-import { useHealthTrackerStore, SleepEntry } from '@/store/healthTrackerStore'
+import { useHealthTrackerStore } from '@/store/healthTrackerStore'
 import { useAchievementStore } from '@/store/achievementStore'
-import { detectTrend, Metric } from '@/utils/healthTrends'
+import { detectTrend } from '@/utils/healthTrends'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
@@ -17,11 +17,9 @@ const QUALITY_COLORS = {
   poor: Colors.accent.red,
   fair: Colors.accent.yellow,
   good: Colors.accent.green,
-  excellent: Colors.primary[400],
-}
+  excellent: Colors.primary[400] }
 const QUALITY_LABELS = {
-  poor: 'Malo', fair: 'Regular', good: 'Bueno', excellent: 'Excelente',
-}
+  poor: 'Malo', fair: 'Regular', good: 'Bueno', excellent: 'Excelente' }
 
 // ── Mini Bar Chart ──────────────────────────────────────────────────────────
 
@@ -51,8 +49,7 @@ const chart = StyleSheet.create({
   barWrap: { width: '70%', height: 70, justifyContent: 'flex-end' },
   bar: { width: '100%', borderRadius: 3, minHeight: 4 },
   val: { fontSize: 8, color: Colors.dark.textTertiary, marginBottom: 2, textAlign: 'center' },
-  label: { fontSize: 8, color: Colors.dark.textTertiary, position: 'absolute', bottom: 0 },
-})
+  label: { fontSize: 8, color: Colors.dark.textTertiary, position: 'absolute', bottom: 0 } })
 
 // ── Ring Progress ───────────────────────────────────────────────────────────
 
@@ -66,8 +63,7 @@ function RingProgress({ pct, size = 90, color, children }: { pct: number; size?:
         {/* SVG ring simulation via View */}
         <View style={{
           width: size, height: size, borderRadius: size / 2,
-          borderWidth: 6, borderColor: Colors.dark.border,
-        }} />
+          borderWidth: 6, borderColor: Colors.dark.border }} />
         <View style={{
           position: 'absolute', width: size, height: size, borderRadius: size / 2,
           borderWidth: 6, borderColor: color,
@@ -75,8 +71,7 @@ function RingProgress({ pct, size = 90, color, children }: { pct: number; size?:
           borderRightColor: pct > 50 ? color : 'transparent',
           borderBottomColor: pct > 25 ? color : 'transparent',
           borderLeftColor: pct > 0 ? color : 'transparent',
-          transform: [{ rotate: '-90deg' }],
-        }} />
+          transform: [{ rotate: '-90deg' }] }} />
       </View>
       {children}
     </View>
@@ -147,8 +142,7 @@ const asp = StyleSheet.create({
   cancel: { flex: 1, padding: Spacing[4], borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.dark.border, alignItems: 'center' },
   cancelTxt: { color: Colors.dark.textSecondary, fontWeight: '600' },
   save: { flex: 1, padding: Spacing[4], borderRadius: BorderRadius.md, backgroundColor: Colors.primary[500], alignItems: 'center' },
-  saveTxt: { color: '#fff', fontWeight: '700' },
-})
+  saveTxt: { color: '#fff', fontWeight: '700' } })
 
 // ── Log Sleep Modal ─────────────────────────────────────────────────────────
 
@@ -159,12 +153,11 @@ function LogSleepModal({ visible, onClose }: { visible: boolean; onClose: () => 
 
   const handle = () => {
     logSleep({
-      date: new Date().toISOString().slice(0, 10),
+      date: hoyLocal(),
       bedtime,
       wakeTime: waketime,
       deepSleepHours: 0,
-      remSleepHours: 0,
-    })
+      remSleepHours: 0 })
     onClose()
   }
 
@@ -268,7 +261,7 @@ export default function HealthTrackerScreen() {
   const [showSleep, setShowSleep] = useState(false)
   const [showHR, setShowHR] = useState(false)
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = hoyLocal()
   const progress = getTodayProgress()
   const weekly = getWeeklySummary()
   const restingHR = getRestingHeartRate()
@@ -477,5 +470,4 @@ const s = StyleSheet.create({
   weekGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[3] },
   weekCard: { flex: 1, minWidth: '45%', backgroundColor: Colors.dark.background, borderRadius: 10, padding: Spacing[4], alignItems: 'center', borderWidth: 1, borderColor: Colors.dark.border },
   weekVal: { fontSize: Typography.fontSize.xl, fontWeight: '800', color: Colors.dark.text },
-  weekLabel: { fontSize: 10, color: Colors.dark.textTertiary, marginTop: 4 },
-})
+  weekLabel: { fontSize: 10, color: Colors.dark.textTertiary, marginTop: 4 } })

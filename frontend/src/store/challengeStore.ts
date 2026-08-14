@@ -1,3 +1,4 @@
+import { hoyLocal, sumarDias, diasEntre } from '@/utils/fechas'
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
@@ -130,16 +131,14 @@ interface ChallengeState {
   isEnrolled: (challengeId: string) => boolean
 }
 
-function todayStr() { return new Date().toISOString().slice(0, 10) }
+function todayStr() { return hoyLocal() }
 
 function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr)
-  d.setDate(d.getDate() + days)
-  return d.toISOString().slice(0, 10)
+  return sumarDias(dateStr, days)
 }
 
 function daysBetween(a: string, b: string): number {
-  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
+  return diasEntre(a, b)
 }
 
 export const useChallengeStore = create<ChallengeState>((set, get) => ({

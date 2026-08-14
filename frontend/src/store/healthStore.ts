@@ -1,3 +1,4 @@
+import { hoyLocal, haceDias } from '@/utils/fechas'
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
@@ -44,7 +45,7 @@ interface HealthState {
   getWeekAvg: () => number
 }
 
-function todayKey() { return new Date().toISOString().slice(0, 10) }
+function todayKey() { return hoyLocal() }
 
 export const useHealthStore = create<HealthState>((set, get) => ({
   todayCheckIn: defaultCheckIn(todayKey()),
@@ -135,8 +136,7 @@ export const useHealthStore = create<HealthState>((set, get) => ({
   getWeekAvg: () => {
     const scores = get().scoreHistory
     const week = Array.from({ length: 7 }, (_, i) => {
-      const d = new Date(); d.setDate(d.getDate() - i)
-      return d.toISOString().slice(0, 10)
+      return haceDias(i)
     })
     const weekScores = scores.filter(s => week.includes(s.date))
     if (!weekScores.length) return 0

@@ -22,6 +22,7 @@
  * defecto y si tiene sentido enseñar la calculadora de discos.
  */
 
+import { hoyLocal } from '@/utils/fechas'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput,
@@ -683,7 +684,7 @@ export default function SesionActiva() {
       return
     }
 
-    await markActivity(new Date().toISOString().slice(0, 10), { loggedWorkout: true })
+    await markActivity(hoyLocal(), { loggedWorkout: true })
     await addXP(25 + marcasDeLaSesion.length * 15)
     setTerminada({
       duracion, series: totalSeries, volumen,

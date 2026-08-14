@@ -1,3 +1,4 @@
+import { hoyLocal } from '@/utils/fechas'
 import { useState, useEffect } from 'react'
 import { usePrivacyStore } from '@/store/privacyStore'
 import { authenticateWithBiometrics } from '@/services/authService'
@@ -72,7 +73,7 @@ const cw = StyleSheet.create({
 
 function LogDayModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { logDaily, getLogForDate } = useMenstrualStore()
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = hoyLocal()
   const existing = getLogForDate(todayStr)
 
   const [mood, setMood] = useState<MoodLevel>(existing?.mood ?? '')
@@ -222,7 +223,7 @@ function MenstrualScreenContent() {
 
   const prediction = getPrediction()
   const phaseNutrition = getPhaseNutrition()
-  const todayStr = new Date().toISOString().split('T')[0]
+  const todayStr = hoyLocal()
   const todayLog = getLogForDate(todayStr)
   const currentCycle = cycles.length > 0 ? cycles[cycles.length - 1] : null
   const isPeriodActive = currentCycle && !currentCycle.endDate

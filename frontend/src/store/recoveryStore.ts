@@ -1,3 +1,4 @@
+import { hoyLocal, haceDias } from '@/utils/fechas'
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useHealthTrackerStore } from './healthTrackerStore'
@@ -29,7 +30,7 @@ interface RecoveryState {
   getRecoveryScore: () => number
 }
 
-function today() { return new Date().toISOString().slice(0, 10) }
+function today() { return hoyLocal() }
 
 function trimEntries(entries: Record<string, RecoveryEntry>): Record<string, RecoveryEntry> {
   const keys = Object.keys(entries).sort()
@@ -75,9 +76,7 @@ export const useRecoveryStore = create<RecoveryState>((set, get) => ({
     const { entries } = get()
     const list: RecoveryEntry[] = []
     for (let i = 0; i < 7; i++) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      const key = d.toISOString().slice(0, 10)
+      const key = haceDias(i)
       if (entries[key]) list.push(entries[key])
     }
     return avgOf(list)
@@ -88,9 +87,7 @@ export const useRecoveryStore = create<RecoveryState>((set, get) => ({
     const thisWeek: RecoveryEntry[] = []
     const lastWeek: RecoveryEntry[] = []
     for (let i = 0; i < 14; i++) {
-      const d = new Date()
-      d.setDate(d.getDate() - i)
-      const key = d.toISOString().slice(0, 10)
+      const key = haceDias(i)
       if (!entries[key]) continue
       if (i < 7) thisWeek.push(entries[key])
       else lastWeek.push(entries[key])

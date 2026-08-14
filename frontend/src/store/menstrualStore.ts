@@ -1,3 +1,4 @@
+import { hoyLocal, sumarDias, diasEntre } from '@/utils/fechas'
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
@@ -178,17 +179,15 @@ interface MenstrualState {
 }
 
 function today(): string {
-  return new Date().toISOString().split('T')[0]
+  return hoyLocal()
 }
 
 function addDays(dateStr: string, days: number): string {
-  const d = new Date(dateStr)
-  d.setDate(d.getDate() + days)
-  return d.toISOString().split('T')[0]
+  return sumarDias(dateStr, days)
 }
 
 function daysDiff(a: string, b: string): number {
-  return Math.round((new Date(b).getTime() - new Date(a).getTime()) / 86400000)
+  return diasEntre(a, b)
 }
 
 export const useMenstrualStore = create<MenstrualState>((set, get) => ({

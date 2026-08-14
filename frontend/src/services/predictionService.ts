@@ -1,3 +1,5 @@
+import { aFechaLocal } from '@/utils/fechas'
+
 export interface GoalPrediction {
   goalType: 'weight_loss' | 'muscle_gain' | 'maintenance' | 'endurance'
   currentValue: number
@@ -52,7 +54,7 @@ export async function predictGoalCompletion(params: {
     targetValue: params.targetWeight,
     unit: 'kg',
     estimatedWeeks: weeks,
-    estimatedDate: estimatedDate.toISOString().slice(0, 10),
+    estimatedDate: aFechaLocal(estimatedDate),
     weeklyRate,
     confidence: Math.min(0.92, 0.65 + params.currentStreak * 0.005),
     milestones,

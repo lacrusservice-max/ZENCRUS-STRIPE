@@ -1,10 +1,9 @@
+import { hoyLocal, enDias } from '@/utils/fechas'
 import { useState } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, TextInput,
   Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useGoalsStore } from '@/store/goalsStore'
 import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
@@ -19,8 +18,7 @@ const STATUS_META: Record<GoalStatus, { label: string; color: string; icon: keyo
   behind:       { label: 'Vas atrasado',    color: Colors.accent.orange, icon: 'alert-circle-outline' },
   completed:    { label: '¡Meta cumplida!', color: Colors.accent.green,  icon: 'trophy' },
   expired:      { label: 'Fecha vencida',   color: Colors.accent.red,    icon: 'time-outline' },
-  not_started:  { label: 'Aún no empieza',  color: 'rgba(255,255,255,0.4)', icon: 'hourglass-outline' },
-}
+  not_started:  { label: 'Aún no empieza',  color: 'rgba(255,255,255,0.4)', icon: 'hourglass-outline' } }
 
 const GOAL_TYPES: { id: Goal['type']; label: string; unit: string; icon: keyof typeof Ionicons.glyphMap }[] = [
   { id: 'weight', label: 'Peso corporal', unit: 'kg', icon: 'body-outline' },
@@ -139,8 +137,8 @@ function GoalComposer({ visible, onClose, onSave }: { visible: boolean; onClose:
       Alert.alert('Datos incompletos', 'Completa todos los campos con números válidos.')
       return
     }
-    const startDate = new Date().toISOString().slice(0, 10)
-    const targetDate = new Date(Date.now() + w * 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    const startDate = hoyLocal()
+    const targetDate = enDias(w * 7)
     const direction: GoalDirection = tv >= sv ? 'increase' : 'decrease'
 
     onSave({ title: title.trim(), type, direction, startValue: sv, targetValue: tv, startDate, targetDate, unit: typeInfo.unit })
@@ -223,8 +221,7 @@ const s = StyleSheet.create({
   milestoneDotInner: { width: 8, height: 8, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.15)' },
   milestoneVal: { fontSize: 10, color: 'rgba(255,255,255,0.35)' },
 
-  daysRemaining: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.4)', fontWeight: '600' },
-})
+  daysRemaining: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.4)', fontWeight: '600' } })
 
 const cm = StyleSheet.create({
   overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
@@ -238,5 +235,4 @@ const cm = StyleSheet.create({
   typeBtnOn: { backgroundColor: Glass.purpleTint, borderColor: Glass.purpleBorder },
   typeBtnTxt: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.6)' },
   label: { fontSize: 11, color: 'rgba(255,255,255,0.45)', fontWeight: '700', marginBottom: 6, textTransform: 'uppercase' },
-  input: { backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder, borderRadius: BorderRadius.md, padding: Spacing[3], fontSize: Typography.fontSize.base, color: '#fff' },
-})
+  input: { backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder, borderRadius: BorderRadius.md, padding: Spacing[3], fontSize: Typography.fontSize.base, color: '#fff' } })

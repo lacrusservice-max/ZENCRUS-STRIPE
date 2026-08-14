@@ -1,7 +1,8 @@
+import { hoyLocal } from '@/utils/fechas'
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
-export type PremiumPlan = 'free' | 'monthly' | 'annual_individual' | 'annual_duo' | 'annual_familiar'
+export type PremiumPlan = 'free' | 'monthly' | 'annual_individual'
 
 export interface PremiumFeatures {
   aiCoachUnlimited: boolean      // Free: 5 msgs/día | Premium: ilimitado
@@ -36,8 +37,6 @@ const PREMIUM_FEATURES: PremiumFeatures = {
 export const PRICING = {
   monthly:           { price: 200,  currency: 'MXN', label: 'Mensual',          savings: null },
   annual_individual: { price: 1999, currency: 'MXN', label: 'Anual Individual',  savings: 'Ahorra $401 vs mensual' },
-  annual_duo:        { price: 3399, currency: 'MXN', label: 'Anual Dúo',         savings: '2 usuarios incluidos' },
-  annual_familiar:   { price: 5799, currency: 'MXN', label: 'Anual Familiar',    savings: 'Hasta 4 usuarios' },
 } as const
 
 interface PremiumState {
@@ -61,7 +60,7 @@ interface PremiumState {
   incrementPhoto: () => Promise<void>
 }
 
-function todayStr() { return new Date().toISOString().slice(0, 10) }
+function todayStr() { return hoyLocal() }
 
 export const usePremiumStore = create<PremiumState>((set, get) => ({
   plan: 'free',

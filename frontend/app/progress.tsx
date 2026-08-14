@@ -1,3 +1,4 @@
+import { hoyLocal } from '@/utils/fechas'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
@@ -19,7 +20,7 @@ import { useChallengeStore } from '@/store/challengeStore'
 import { useAchievementStore } from '@/store/achievementStore'
 import { useHealthTrackerStore } from '@/store/healthTrackerStore'
 import { useDuelStore } from '@/store/duelStore'
-import { Colors, Typography, Spacing, BorderRadius, Glass } from '@/constants/theme'
+import { Colors, Typography, Spacing, Glass } from '@/constants/theme'
 import { GlassCard, SectionLabel, GlassProgress, GlassSep } from '@/components/ui/Glass'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
@@ -31,8 +32,7 @@ const G = {
   card:      Glass.card,
   border:    Glass.cardBorder,
   highlight: Glass.cardHighlight,
-  elev:      Glass.elevated,
-}
+  elev:      Glass.elevated }
 
 // ── Health Score Ring ─────────────────────────────────────────────────────────
 
@@ -73,8 +73,7 @@ const hr = StyleSheet.create({
   center: { position: 'absolute', alignItems: 'center' },
   num: { fontSize: 36, fontWeight: '900', lineHeight: 40 },
   label: { fontSize: 9, fontWeight: '800', marginTop: 0 },
-  sub: { fontSize: 7, color: 'rgba(255,255,255,0.3)', marginTop: 1, letterSpacing: 1.5 },
-})
+  sub: { fontSize: 7, color: 'rgba(255,255,255,0.3)', marginTop: 1, letterSpacing: 1.5 } })
 
 // ── Score Pill ─────────────────────────────────────────────────────────────────
 
@@ -100,8 +99,7 @@ const sp = StyleSheet.create({
   max: { fontSize: 9, color: 'rgba(255,255,255,0.3)', marginTop: -2, fontWeight: '500' },
   bar: { width: '100%', height: 3, backgroundColor: 'rgba(255,255,255,0.07)', borderRadius: 2, overflow: 'hidden' },
   fill: { height: 3, borderRadius: 2 },
-  label: { fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 },
-})
+  label: { fontSize: 8, color: 'rgba(255,255,255,0.4)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.6 } })
 
 // ── Streak Row ────────────────────────────────────────────────────────────────
 
@@ -110,7 +108,7 @@ function StreakRow({ weekActivity, currentStreak }: {
   currentStreak: number
 }) {
   const labels = ['L', 'M', 'X', 'J', 'V', 'S', 'D']
-  const today = new Date().toISOString().slice(0, 10)
+  const today = hoyLocal()
 
   return (
     <GlassCard style={sr.wrap} noPad>
@@ -154,8 +152,7 @@ const sr = StyleSheet.create({
   dotOn: { backgroundColor: Colors.accent.green },
   dotOff: { backgroundColor: 'rgba(255,255,255,0.07)' },
   dotToday: { borderWidth: 1.5, borderColor: Colors.primary[500] },
-  dayLabel: { fontSize: 9, color: 'rgba(255,255,255,0.3)', fontWeight: '700' },
-})
+  dayLabel: { fontSize: 9, color: 'rgba(255,255,255,0.3)', fontWeight: '700' } })
 
 // ── Daily Check-In Modal ──────────────────────────────────────────────────────
 
@@ -180,7 +177,7 @@ function CheckInModal({ visible, onClose }: { visible: boolean; onClose: () => v
   ]
 
   const handleSave = async () => {
-    const today = new Date().toISOString().slice(0, 10)
+    const today = hoyLocal()
     await saveCheckIn({ sleep, energy, mood, stress, intention })
     await markActivity(today, { checkInDone: true })
     onClose()
@@ -269,8 +266,7 @@ const ci = StyleSheet.create({
   dotOn: { backgroundColor: Colors.primary[500], borderColor: 'transparent' },
   intentInput: { backgroundColor: G.card, borderWidth: 1, borderColor: G.border, borderRadius: 14, padding: Spacing[4], fontSize: Typography.fontSize.sm, color: '#f4f4f5', lineHeight: 22 },
   saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary[500], borderRadius: 16, padding: Spacing[4], marginTop: 8 },
-  saveBtnTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
-})
+  saveBtnTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' } })
 
 // ── XP Level Card ─────────────────────────────────────────────────────────────
 
@@ -332,8 +328,7 @@ const xp = StyleSheet.create({
   right: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   shield: { flexDirection: 'row', alignItems: 'center', gap: 3, backgroundColor: `${Colors.accent.orange}18`, borderRadius: 8, paddingHorizontal: 6, paddingVertical: 2 },
   shieldTxt: { fontSize: 11, fontWeight: '700', color: Colors.accent.orange },
-  meta: { fontSize: 9, color: 'rgba(255,255,255,0.3)' },
-})
+  meta: { fontSize: 9, color: 'rgba(255,255,255,0.3)' } })
 
 // ── Challenges Card ───────────────────────────────────────────────────────────
 
@@ -383,8 +378,7 @@ const ch = StyleSheet.create({
   itemTitle: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: '#f4f4f5', flex: 1 },
   xpBadge: { backgroundColor: `${Colors.accent.yellow}18`, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
   xpTxt: { fontSize: 9, fontWeight: '700', color: Colors.accent.yellow },
-  sub: { fontSize: 9, color: 'rgba(255,255,255,0.3)' },
-})
+  sub: { fontSize: 9, color: 'rgba(255,255,255,0.3)' } })
 
 // ── Duels Card ────────────────────────────────────────────────────────────────
 
@@ -440,8 +434,7 @@ const du = StyleSheet.create({
   metric: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: '#f4f4f5' },
   days: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.35)' },
   player: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
-  xp: { fontSize: 9, color: Colors.accent.yellow, fontWeight: '600', marginTop: 4 },
-})
+  xp: { fontSize: 9, color: Colors.accent.yellow, fontWeight: '600', marginTop: 4 } })
 
 // ── Daily Tip ─────────────────────────────────────────────────────────────────
 
@@ -473,8 +466,7 @@ const dt = StyleSheet.create({
   card: {},
   tagRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginBottom: 8 },
   tag: { fontSize: 10, fontWeight: '800', color: Colors.primary[400], letterSpacing: 0.8, textTransform: 'uppercase' },
-  tip: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.55)', lineHeight: 22 },
-})
+  tip: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.55)', lineHeight: 22 } })
 
 // ── Quick Access — Categorized ─────────────────────────────────────────────────
 
@@ -486,8 +478,7 @@ const QUICK_SECTIONS = [
       { id: 'planner',  label: 'Planificador', icon: 'calendar-outline' as IconName,         route: '/meal-planner' },
       { id: 'grocery',  label: 'Compras',      icon: 'cart-outline' as IconName,             route: '/grocery' },
       { id: 'photo',    label: 'Foto IA',      icon: 'camera-outline' as IconName,           route: '/(tabs)/nutrition' },
-    ],
-  },
+    ] },
   {
     category: 'Fitness',
     items: [
@@ -495,8 +486,7 @@ const QUICK_SECTIONS = [
       { id: 'macro',    label: 'Macro Cycling',icon: 'refresh-circle-outline' as IconName,   route: '/macro-cycling' },
       { id: 'cycle',    label: 'Ciclo',         icon: 'flower-outline' as IconName,           route: '/menstrual' },
       { id: 'health',   label: 'Salud',         icon: 'heart-outline' as IconName,            route: '/health-tracker' },
-    ],
-  },
+    ] },
   {
     category: 'Comunidad',
     items: [
@@ -504,8 +494,7 @@ const QUICK_SECTIONS = [
       { id: 'duels',    label: 'Duelos',        icon: 'flash-outline' as IconName,            route: '/duels' },
       { id: 'coach',    label: 'Coach IA',      icon: 'sparkles-outline' as IconName,         route: '/(tabs)/chat' },
       { id: 'achieve',  label: 'Logros',        icon: 'ribbon-outline' as IconName,           route: '/achievements' },
-    ],
-  },
+    ] },
 ] as const
 
 function QuickAccessGrid() {
@@ -555,14 +544,12 @@ const qa = StyleSheet.create({
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
-    elevation: 4,
-  },
+    elevation: 4 },
   tileHighlight: {
     position: 'absolute',
     top: 0, left: 0, right: 0,
     height: 1,
-    backgroundColor: G.highlight,
-  },
+    backgroundColor: G.highlight },
   iconWrap: {
     width: 40, height: 40,
     borderRadius: 12,
@@ -570,10 +557,8 @@ const qa = StyleSheet.create({
     borderWidth: 1,
     borderColor: `${Colors.primary[500]}22`,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  label: { fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '700', textAlign: 'center', letterSpacing: 0.2 },
-})
+    justifyContent: 'center' },
+  label: { fontSize: 9, color: 'rgba(255,255,255,0.5)', fontWeight: '700', textAlign: 'center', letterSpacing: 0.2 } })
 
 // ── Main Dashboard ────────────────────────────────────────────────────────────
 
@@ -582,17 +567,14 @@ export default function ProgressScreen() {
   const {
     totalCalories, totalProtein, totalCarbs, totalFat,
     waterGlasses, meals, loadToday: loadNutrition,
-    addWater, removeWater,
-  } = useNutritionStore()
+    addWater, removeWater } = useNutritionStore()
   const { datos: entreno } = useEntrenoResumen()
   const {
     checkInDone, todayCheckIn, scoreHistory,
-    loadToday: loadHealth, computeAndSaveScore,
-  } = useHealthStore()
+    loadToday: loadHealth, computeAndSaveScore } = useHealthStore()
   const {
     currentStreak, weekActivity,
-    load: loadStreak, getStreakMessage,
-  } = useStreakStore()
+    load: loadStreak, getStreakMessage } = useStreakStore()
   const { load: loadProgress } = useProgressStore()
   const { load: loadChallenges } = useChallengeStore()
   const { getTodayProgress, getRestingHeartRate, getSleepForDate, load: loadHealthTracker } = useHealthTrackerStore()
@@ -609,7 +591,7 @@ export default function ProgressScreen() {
   const fatTarget      = goals.fat_g ?? 65
   const mealsPerDay    = goals.meals_per_day ?? 3
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = hoyLocal()
   const workedOut = entreno?.entrenadoHoy ?? false
   const todayLog  = entreno?.hoy ?? null
 
@@ -623,8 +605,7 @@ export default function ProgressScreen() {
       caloriesTarget,
       waterGlasses,
       waterTarget: 8,
-      workedOut,
-    })
+      workedOut })
     setLiveScore(score.total)
   }, [totalCalories, caloriesTarget, waterGlasses, workedOut])
 
@@ -926,14 +907,12 @@ const act = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 14,
     elevation: 6,
-    gap: 4,
-  },
+    gap: 4 },
   highlight: {
     position: 'absolute',
     top: 0, left: 0, right: 0,
     height: 1,
-    backgroundColor: G.highlight,
-  },
+    backgroundColor: G.highlight },
   top: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
   bigVal: { fontSize: 26, fontWeight: '900', color: '#f4f4f5', marginLeft: 8 },
   bigSub: { fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: '500' },
@@ -951,10 +930,8 @@ const act = StyleSheet.create({
     borderWidth: 1,
     borderColor: G.border,
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  btnAdd: { backgroundColor: `${Colors.primary[500]}30`, borderColor: `${Colors.primary[500]}40` },
-})
+    justifyContent: 'center' },
+  btnAdd: { backgroundColor: `${Colors.primary[500]}30`, borderColor: `${Colors.primary[500]}40` } })
 
 // ── Main styles ────────────────────────────────────────────────────────────────
 
@@ -968,16 +945,14 @@ const s = StyleSheet.create({
     alignItems: 'flex-start',
     paddingHorizontal: Spacing[5],
     paddingTop: Spacing[3],
-    paddingBottom: Spacing[4],
-  },
+    paddingBottom: Spacing[4] },
   brand: { fontFamily: Typography.fontFamily.displaySemiBold, fontSize: 11, color: Colors.primary[500], letterSpacing: 3.5, marginBottom: 4 },
   greeting: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize['2xl'] + 4, letterSpacing: 0.2, color: '#f4f4f5' },
   // Hero unificado
   heroWrap: {
     backgroundColor: 'rgba(255,255,255,0.045)', borderWidth: 1, borderColor: 'rgba(96,165,250,0.18)',
     borderRadius: 28, padding: Spacing[5], overflow: 'hidden',
-    shadowColor: Colors.primary[500], shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.18, shadowRadius: 30, elevation: 10,
-  },
+    shadowColor: Colors.primary[500], shadowOffset: { width: 0, height: 10 }, shadowOpacity: 0.18, shadowRadius: 30, elevation: 10 },
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   heroInfo: { flex: 1 },
   heroBrand: { fontSize: 9, fontWeight: '900', color: Colors.primary[400], letterSpacing: 2, marginBottom: 6 },
@@ -985,8 +960,7 @@ const s = StyleSheet.create({
   heroMetaRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   heroMetaChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4,
-  },
+    backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: 999, paddingHorizontal: 9, paddingVertical: 4 },
   heroMetaChipOn: { backgroundColor: `${Colors.accent.green}18` },
   heroMetaTxt: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.6)' },
   heroDivider: { height: 1, backgroundColor: 'rgba(255,255,255,0.08)', marginVertical: Spacing[4] },
@@ -996,8 +970,7 @@ const s = StyleSheet.create({
   primaryBtn: {
     flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
     backgroundColor: G.card, borderRadius: 16, paddingVertical: 14,
-    borderWidth: 1, borderColor: `${Colors.primary[500]}35`,
-  },
+    borderWidth: 1, borderColor: `${Colors.primary[500]}35` },
   primaryBtnFilled: { backgroundColor: Colors.primary[500], borderColor: 'transparent' },
   primaryBtnDone: { borderColor: `${Colors.accent.green}40` },
   primaryBtnTxt: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: Colors.primary[400] },
@@ -1008,8 +981,7 @@ const s = StyleSheet.create({
     backgroundColor: G.card,
     borderRadius: 12, paddingHorizontal: 12, paddingVertical: 8,
     borderWidth: 1, borderColor: `${Colors.primary[500]}40`,
-    marginTop: 4,
-  },
+    marginTop: 4 },
   checkInBtnDone: { borderColor: `${Colors.accent.green}40` },
   checkInTxt: { fontSize: Typography.fontSize.xs, fontWeight: '800', color: Colors.primary[400] },
   // Banners
@@ -1018,16 +990,14 @@ const s = StyleSheet.create({
     marginTop: Spacing[3],
     backgroundColor: `${Colors.primary[500]}10`,
     borderRadius: 12, padding: 10,
-    borderWidth: 1, borderColor: `${Colors.primary[500]}22`,
-  },
+    borderWidth: 1, borderColor: `${Colors.primary[500]}22` },
   intentTxt: { flex: 1, fontSize: Typography.fontSize.xs, color: Colors.primary[300], fontStyle: 'italic' },
   // Score
   scoreGrid: {
     flexDirection: 'row',
     borderTopWidth: 1, borderTopColor: G.border,
     paddingVertical: Spacing[3], paddingHorizontal: Spacing[4],
-    gap: Spacing[1],
-  },
+    gap: Spacing[1] },
   // Nutrition
   calSection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: Spacing[4], paddingBottom: Spacing[3] },
   calBig: { fontSize: 38, fontWeight: '900', color: '#f4f4f5', lineHeight: 42 },
@@ -1040,19 +1010,16 @@ const s = StyleSheet.create({
   mealsRow: {
     flexDirection: 'row', alignItems: 'center', gap: 12,
     borderTopWidth: 1, borderTopColor: G.border,
-    paddingHorizontal: Spacing[4], paddingVertical: 12,
-  },
+    paddingHorizontal: Spacing[4], paddingVertical: 12 },
   mealSlot: { alignItems: 'center', gap: 4 },
   mealDot: { width: 5, height: 5, borderRadius: 2.5, backgroundColor: 'rgba(255,255,255,0.12)' },
   mealDotOn: { backgroundColor: Colors.accent.green },
   addMealBtn: {
     marginLeft: 'auto', flexDirection: 'row', alignItems: 'center', gap: 4,
-    backgroundColor: Colors.primary[500], borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6,
-  },
+    backgroundColor: Colors.primary[500], borderRadius: 10, paddingHorizontal: 10, paddingVertical: 6 },
   addMealTxt: { fontSize: Typography.fontSize.xs, color: '#fff', fontWeight: '800' },
   // Activity scroll
   actScroll: {},
   actContent: { paddingRight: Spacing[5] },
   // Section wrapper
-  sec: { marginHorizontal: Spacing[5], marginBottom: Spacing[5] },
-})
+  sec: { marginHorizontal: Spacing[5], marginBottom: Spacing[5] } })

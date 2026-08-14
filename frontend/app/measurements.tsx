@@ -1,10 +1,9 @@
+import { hoyLocal } from '@/utils/fechas'
 import { useState } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity,
   TextInput, Modal, KeyboardAvoidingView, Platform, Alert,
 } from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
 import { useBodyMeasurementsStore, BodyMeasurement } from '@/store/bodyMeasurementsStore'
 import { useAchievementStore } from '@/store/achievementStore'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
@@ -49,10 +48,9 @@ function AddMeasurementModal({ visible, onClose }: { visible: boolean; onClose: 
       return
     }
     addMeasurement({
-      date: new Date().toISOString().slice(0, 10),
+      date: hoyLocal(),
       ...numericValues as any,
-      note: note.trim() || undefined,
-    })
+      note: note.trim() || undefined })
     updateStats({ weightLogged: !!numericValues.weight })
     addXP(30)
     setValues({})
@@ -118,8 +116,7 @@ const am = StyleSheet.create({
   rowLabel: { flex: 1, fontSize: Typography.fontSize.sm, color: Colors.dark.text },
   input: { width: 80, textAlign: 'right', fontSize: Typography.fontSize.base, fontWeight: '600', color: Colors.dark.text, paddingVertical: Spacing[1] },
   unit: { fontSize: Typography.fontSize.xs, color: Colors.dark.textTertiary, width: 28 },
-  noteInput: { marginTop: Spacing[5], backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.md, padding: Spacing[4], fontSize: Typography.fontSize.sm, color: Colors.dark.text, borderWidth: 1, borderColor: Colors.dark.border, minHeight: 80 },
-})
+  noteInput: { marginTop: Spacing[5], backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.md, padding: Spacing[4], fontSize: Typography.fontSize.sm, color: Colors.dark.text, borderWidth: 1, borderColor: Colors.dark.border, minHeight: 80 } })
 
 function StatCard({ label, value, unit, change, emoji }: { label: string; value: number; unit: string; change: number; emoji: string }) {
   const up = change > 0
@@ -145,8 +142,7 @@ const sc = StyleSheet.create({
   label: { fontSize: 10, color: Colors.dark.textTertiary, textTransform: 'uppercase', letterSpacing: 0.6, marginBottom: Spacing[1] },
   value: { fontSize: Typography.fontSize.xl, fontWeight: '700', color: Colors.dark.text },
   unit: { fontSize: Typography.fontSize.xs, fontWeight: '400', color: Colors.dark.textSecondary },
-  change: { fontSize: 10, fontWeight: '600', marginTop: Spacing[1] },
-})
+  change: { fontSize: 10, fontWeight: '600', marginTop: Spacing[1] } })
 
 function HistoryRow({ measurement, onDelete }: { measurement: BodyMeasurement; onDelete: () => void }) {
   const [expanded, setExpanded] = useState(false)
@@ -188,8 +184,7 @@ const hr = StyleSheet.create({
   fieldValue: { fontSize: Typography.fontSize.xs, color: Colors.dark.text, fontWeight: '600' },
   note: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, marginTop: Spacing[3], lineHeight: 18 },
   deleteBtn: { marginTop: Spacing[4], paddingVertical: Spacing[2] },
-  deleteTxt: { fontSize: Typography.fontSize.xs, color: Colors.accent.red, textAlign: 'center' },
-})
+  deleteTxt: { fontSize: Typography.fontSize.xs, color: Colors.accent.red, textAlign: 'center' } })
 
 export default function MeasurementsScreen() {
   const { measurements, getLatest, getProgress, deleteMeasurement } = useBodyMeasurementsStore()
@@ -279,5 +274,4 @@ const s = StyleSheet.create({
   emptyTitle: { fontSize: Typography.fontSize.lg, fontWeight: '700', color: Colors.dark.text, marginBottom: Spacing[2] },
   emptySub: { fontSize: Typography.fontSize.sm, color: Colors.dark.textSecondary, textAlign: 'center', lineHeight: 20, marginBottom: Spacing[6] },
   emptyBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.md, paddingHorizontal: Spacing[6], paddingVertical: Spacing[3] },
-  emptyBtnTxt: { color: '#fff', fontWeight: '700', fontSize: Typography.fontSize.sm },
-})
+  emptyBtnTxt: { color: '#fff', fontWeight: '700', fontSize: Typography.fontSize.sm } })

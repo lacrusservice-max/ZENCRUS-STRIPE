@@ -12,6 +12,7 @@
  * consola de dos etapas con su propia máquina de estados.
  */
 
+import { aFechaLocal } from '@/utils/fechas'
 import { useState, useEffect } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator,
@@ -524,7 +525,7 @@ function weekStrip() {
     const d = new Date(today)
     d.setDate(today.getDate() - (5 - i))
     return {
-      iso: d.toISOString().slice(0, 10),
+      iso: aFechaLocal(d),
       day: d.getDate(),
       short: SHORT[d.getDay()],
       isToday: i === 5,
