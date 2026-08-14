@@ -13,13 +13,13 @@
  */
 
 import { aFechaLocal } from '@/utils/fechas'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
-import { useRouter } from 'expo-router'
+import { useRouter, useFocusEffect } from 'expo-router'
 import { useAuthStore } from '@/store/authStore'
 import { useNutritionStore, MealSlot } from '@/store/nutritionStore'
 import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
@@ -75,7 +75,18 @@ export default function NutritionScreen() {
   const [consoleOpen, setConsoleOpen] = useState(false)
   const [consoleMeal, setConsoleMeal] = useState<string | null>(null)
 
-  useEffect(() => { loadToday() }, [])
+  /**
+   * Se recarga cada vez que se entra, no solo al montar.
+   *
+   * Con `useEffect` la pantalla se cargaba una vez y se quedaba así mientras la
+   * app siguiera viva: si ZENA apuntaba una comida desde el chat, había que
+   * cerrar la app entera para verla. Volver a la pestaña no bastaba, porque el
+   * componente no se había desmontado.
+   *
+   * `useFocusEffect` es lo que la despierta al volver — y el diario es lo
+   * primero que uno mira después de apuntar algo.
+   */
+  useFocusEffect(useCallback(() => { loadToday() }, []))
   useEffect(() => { loadMeasurements() }, [])
 
   // ── Ajuste calórico semanal ─────────────────────────────────────────────

@@ -83,6 +83,23 @@ export const AI_TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'buscar_en_memoria',
+      description: 'Busca en todo lo que el usuario te ha contado en conversaciones anteriores, incluidas las que ya cerró. Úsala cuando mencione algo del pasado que no esté en los últimos mensajes — «lo de mi rodilla», «el plan que hicimos», «ya te había dicho que no como pescado»— y antes de decir que no te acuerdas de algo.',
+      parameters: {
+        type: 'object',
+        properties: {
+          consulta: {
+            type: 'string',
+            description: 'Palabras clave de lo que buscas. Una o dos bastan: "rodilla", "pescado", "lesión". Con frases largas encuentra menos.',
+          },
+        },
+        required: ['consulta'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'consultar_entrenamientos',
       description: 'Lee cómo está entrenando el usuario: sus últimas sesiones con volumen y duración, y sus récords personales. Úsala antes de opinar sobre su entrenamiento o de proponerle nada — responde a «¿cómo voy en el gym?», «¿cuánto levanté la última vez?», «¿cuál es mi récord en press?».',
       parameters: {
@@ -405,6 +422,55 @@ export async function executeAiTool(
         }
 
         return `Progreso del usuario al ${hoy}:\n- ${partes.join('\n- ')}`
+      }
+
+      /**
+       * ── Buscar en la memoria ──────────────────────────────────────────────
+       *
+       * El §9 describe la memoria en tres capas, y la tercera —el archivo— es
+       * «histórico completo, solo bajo consulta». Esa es esta herramienta.
+       *
+       * Hoy el archivo son las conversaciones: todo lo que el usuario ha
+       * escrito alguna vez, incluidas las sesiones que ya cerró. No es la tabla
+       * de memoria consolidada que pide el §9 —esa necesita su migración y su
+       * proceso semanal— pero es lo que de verdad existe, y resuelve el caso
+       * que importa: que ZENA no diga «no me acuerdo» de algo que el usuario le
+       * contó hace tres semanas.
+       *
+       * Se buscan SOLO los mensajes del usuario, no los de ella. Lo que dijo
+       * ZENA no es memoria de nadie: es su propia voz, y dejarla entrar
+       * convierte cualquier búsqueda en un eco de sus respuestas anteriores.
+       */
+      case 'buscar_en_memoria': {
+        const consulta = String(args.consulta ?? '').trim()
+        if (consulta.length < 2) return 'Dime qué buscar en la memoria.'
+
+        // Las sesiones del usuario primero: `messages` no tiene `user_id`, así
+        // que sin esto se estaría buscando en las conversaciones de todos.
+        const { data: sesiones } = await supabase
+          .from('chat_sessions').select('id').eq('user_id', userId)
+
+        const ids = (sesiones ?? []).map(s => s.id)
+        if (!ids.length) return 'No hay conversaciones anteriores donde buscar.'
+
+        const { data, error } = await supabase
+          .from('messages')
+          .select('content, created_at')
+          .in('session_id', ids)
+          .eq('sender_type', 'user')
+          .ilike('content', `%${consulta}%`)
+          .order('created_at', { ascending: false })
+          .limit(12)
+
+        if (error) throw error
+        if (!data?.length) {
+          return `El usuario nunca ha mencionado "${consulta}" en sus conversaciones. No te lo inventes: si hace falta, pregúntale.`
+        }
+
+        const lineas = data.map(m =>
+          `- ${String(m.created_at).slice(0, 10)}: "${String(m.content).slice(0, 220)}"`,
+        )
+        return `Lo que el usuario ha dicho sobre "${consulta}" (${data.length} mensaje(s), del más reciente al más antiguo):\n${lineas.join('\n')}`
       }
 
       /**
