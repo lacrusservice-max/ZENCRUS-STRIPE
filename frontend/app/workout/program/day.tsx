@@ -33,7 +33,7 @@
 import { useState, useCallback, useMemo } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
-  Modal, TextInput, Alert, KeyboardAvoidingView, Platform, Switch,
+  Modal, TextInput, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
 import { Image } from 'expo-image'
@@ -50,7 +50,7 @@ import { Miniatura } from '@/components/workout/Miniatura'
 import { MaterialIcon } from '@/components/workout/Kit'
 import { NOMBRE_GRUPO } from '@/components/workout/anatomy'
 import {
-  getDia, fijarPeso, alternativasDe, cambiarEjercicio, calentamiento,
+  getDia, alternativasDe, cambiarEjercicio,
   DiaPropuesto, Propuesta, Alternativa, prescripcion,
 } from '@/services/programService'
 import { fotoDePrograma } from '@/constants/imagenes'
@@ -60,29 +60,6 @@ export default function DiaDelPrograma() {
   const { week, day } = useLocalSearchParams<{ week?: string; day?: string }>()
   const [d, setD] = useState<DiaPropuesto | null>(null)
   const [cargando, setCargando] = useState(true)
-  /**
-   * El calentamiento es de CADA EJERCICIO, no del día entero.
-   *
-   * Era un interruptor global arriba del todo, y eso obligaba a elegir entre
-   * dos cosas malas: calentar en todo —incluidas las elevaciones laterales, que
-   * no lo necesitan— o no calentar en nada, incluida la sentadilla pesada. Se
-   * calienta en lo que pesa y punto, así que la decisión va con el ejercicio.
-   *
-   * Se guarda por `clavePlan` porque es lo que identifica al hueco del plan
-   * aunque se cambie el ejercicio que lo ocupa.
-   */
-  const [conCalentamiento, setConCalentamiento] = useState<Set<string>>(new Set())
-
-  const alternarCalentamiento = useCallback((clave: string) => {
-    void Haptics.selectionAsync()
-    setConCalentamiento(prev => {
-      const s = new Set(prev)
-      if (s.has(clave)) s.delete(clave)
-      else s.add(clave)
-      return s
-    })
-  }, [])
-  const [editando, setEditando] = useState<Propuesta | null>(null)
   const [cambiando, setCambiando] = useState<Propuesta | null>(null)
   const [abriendo, setAbriendo] = useState(false)
   const { sesion, empezar: empezarSesion } = useSessionStore()
@@ -291,10 +268,7 @@ export default function DiaDelPrograma() {
                     e={e}
                     n={n}
                     poster={e.slug ? d.posters[e.slug] : null}
-                    calentar={conCalentamiento.has(e.clavePlan)}
-                    onCalentar={() => alternarCalentamiento(e.clavePlan)}
                     contexto={{ programId: d.programa.id, semana: d.semana, dia: d.dia, titulo: d.nombre }}
-                    onEditarPeso={() => setEditando(e)}
                     onCambiar={() => setCambiando(e)}
                   />
                 </Animated.View>
@@ -376,11 +350,6 @@ export default function DiaDelPrograma() {
         )}
       </View>
 
-      <EditorPeso
-        ejercicio={editando}
-        onCerrar={() => setEditando(null)}
-        onGuardado={() => { setEditando(null); void cargar() }}
-      />
       <CambiarEjercicio
         ejercicio={cambiando}
         onCerrar={() => setCambiando(null)}
@@ -392,19 +361,14 @@ export default function DiaDelPrograma() {
 
 // ── Ficha de un ejercicio ────────────────────────────────────────────────────
 
-function FichaEjercicio({ e, n, poster, calentar, onCalentar, contexto, onEditarPeso, onCambiar }: {
+function FichaEjercicio({ e, n, poster, contexto, onCambiar }: {
   e: Propuesta
   n: number
   poster?: string | null
-  /** Si ESTE ejercicio lleva series de aproximación. Es decisión suya, no del día. */
-  calentar: boolean
-  onCalentar: () => void
   /** De qué día del plan es esto. Viaja a la pantalla de hacerlo. */
   contexto: { programId: string; semana: number; dia: number; titulo: string }
-  onEditarPeso: () => void
   onCambiar: () => void
 }) {
-  const aprox = calentar ? calentamiento(e.pesoKg) : []
 
   return (
     <View style={f.wrap}>
@@ -435,6 +399,8 @@ function FichaEjercicio({ e, n, poster, calentar, onCalentar, contexto, onEditar
             semana: String(contexto.semana),
             dia: String(contexto.dia),
             titulo: contexto.titulo,
+            clavePlan: e.clavePlan,
+            motivo: e.motivo ?? '',
             ...(e.duracion ? { duracion: String(e.duracion) } : {}),
             ...(e.pesoKg != null ? { peso: String(e.pesoKg) } : {}),
           })
@@ -448,7 +414,9 @@ function FichaEjercicio({ e, n, poster, calentar, onCalentar, contexto, onEditar
           <Text style={f.nombre} numberOfLines={2}>{e.nombre}</Text>
           <Text style={f.sub}>
             {prescripcion(e)} · {e.descanso}s
-            {e.muscleEs ? ` · ${e.muscleEs}` : ''}
+            {/* El peso SE VE aquí aunque ya no se edite aquí: recorrer el día y
+                saber con cuánto vas es media razón para abrir esta pantalla. */}
+            {e.pesoKg != null ? ` · ${e.pesoKg} kg` : ''}
           </Text>
           {e.cambiado && e.original ? (
             <Text style={f.cambiado}>Cambiado — en el plan era «{e.original}»</Text>
@@ -460,153 +428,8 @@ function FichaEjercicio({ e, n, poster, calentar, onCalentar, contexto, onEditar
         </TouchableOpacity>
       </TouchableOpacity>
 
-      {/* ── El peso y su porqué ────────────────────────────────────────── */}
-      <TouchableOpacity style={f.peso} onPress={onEditarPeso} activeOpacity={0.85}>
-        <View style={{ flex: 1 }}>
-          {e.pesoKg != null ? (
-            <Text style={f.pesoValor}>
-              {e.pesoKg}<Text style={f.pesoUnidad}> kg</Text>
-              {e.fijadoAMano && <Text style={f.fijado}>  · fijado por ti</Text>}
-            </Text>
-          ) : (
-            <Text style={f.pesoLibre}>
-              {e.carga === 'bodyweight' ? 'Tu peso' : 'Elige el peso'}
-            </Text>
-          )}
-          <Text style={f.motivo}>{e.motivo}</Text>
-        </View>
-        <View style={f.lapiz}>
-          <Ionicons name="create-outline" size={15} color={Colors.neon.w2} />
-        </View>
-      </TouchableOpacity>
-
-      {/**
-        * Las series de aproximación, con el ejercicio al que pertenecen.
-        *
-        * Estaban en un interruptor global arriba del todo, lejos del peso al
-        * que se aproximan. Aquí abajo se ve el peso de hoy y, justo debajo, si
-        * se sube hasta él poco a poco — que es la única forma de decidirlo con
-        * criterio. Sin peso no hay a qué aproximarse, así que no se ofrece.
-        */}
-      {e.pesoKg != null && (
-        <TouchableOpacity style={f.calentar} onPress={onCalentar} activeOpacity={0.8}>
-          <View style={{ flex: 1 }}>
-            <Text style={f.calentarTitulo}>Series de aproximación</Text>
-            <Text style={f.calentarSub}>
-              Subir hasta los {e.pesoKg} kg poco a poco. No cuentan en tu volumen
-              ni en tus récords.
-            </Text>
-          </View>
-          <Switch
-            value={calentar}
-            onValueChange={onCalentar}
-            trackColor={{ false: 'rgba(255,255,255,0.14)', true: Colors.neon.red }}
-            thumbColor="#fff"
-          />
-        </TouchableOpacity>
-      )}
-
-      {aprox.length > 0 && (
-        <View style={f.aprox}>
-          <Text style={f.aproxTitulo}>ANTES, CALIENTA</Text>
-          <View style={f.aproxFilas}>
-            {aprox.map((a, i) => (
-              <View key={i} style={f.aproxPastilla}>
-                <Text style={f.aproxTxt}>{a.pesoKg} × {a.reps}</Text>
-              </View>
-            ))}
-          </View>
-        </View>
-      )}
-
       {e.notas ? <Text style={f.notas}>{e.notas}</Text> : null}
     </View>
-  )
-}
-
-// ── Poner el peso a mano ─────────────────────────────────────────────────────
-
-function EditorPeso({ ejercicio, onCerrar, onGuardado }: {
-  ejercicio: Propuesta | null
-  onCerrar: () => void
-  onGuardado: () => void
-}) {
-  const [valor, setValor] = useState('')
-  const [guardando, setGuardando] = useState(false)
-
-  const visible = !!ejercicio
-  const inicial = ejercicio?.pesoKg != null ? String(ejercicio.pesoKg) : ''
-
-  const guardar = async (kg: number | null) => {
-    if (!ejercicio || guardando) return
-    setGuardando(true)
-    try {
-      await fijarPeso(ejercicio.clavePlan, kg)
-      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-      onGuardado()
-    } catch {
-      Alert.alert('No se pudo guardar', 'Inténtalo otra vez en un momento.')
-    } finally {
-      setGuardando(false)
-    }
-  }
-
-  return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onCerrar}
-      onShow={() => setValor(inicial)}>
-      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <TouchableOpacity style={e.fondo} activeOpacity={1} onPress={onCerrar} />
-        <View style={e.hoja}>
-          <Text style={e.titulo}>{ejercicio?.nombre}</Text>
-          <Text style={e.sub}>
-            Pon el peso que vas a usar. Se recuerda para las próximas semanas y deja
-            de calcularse solo.
-          </Text>
-
-          <View style={e.campo}>
-            <TextInput
-              style={e.input}
-              value={valor}
-              onChangeText={setValor}
-              keyboardType="decimal-pad"
-              placeholder="0"
-              placeholderTextColor={Colors.neon.w4}
-              autoFocus
-              selectTextOnFocus
-            />
-            <Text style={e.unidad}>kg</Text>
-          </View>
-
-          <TouchableOpacity
-            style={e.guardar}
-            onPress={() => {
-              const n = parseFloat(valor.replace(',', '.'))
-              if (!Number.isFinite(n) || n < 0) {
-                Alert.alert('Ese peso no vale', 'Escribe un número.')
-                return
-              }
-              void guardar(n)
-            }}
-            activeOpacity={0.88}
-            disabled={guardando}
-          >
-            {guardando ? <ActivityIndicator color="#fff" /> : <Text style={e.guardarTxt}>Guardar</Text>}
-          </TouchableOpacity>
-
-          {/* Soltar el peso devuelve el ejercicio al cálculo automático. Sin
-              esta salida, un peso puesto por error mandaría para siempre. */}
-          {ejercicio?.fijadoAMano && (
-            <TouchableOpacity style={e.soltar} onPress={() => void guardar(null)} activeOpacity={0.8}>
-              <Text style={e.soltarTxt}>Que lo calcule el programa otra vez</Text>
-            </TouchableOpacity>
-          )}
-
-          <TouchableOpacity style={e.cancelar} onPress={onCerrar} activeOpacity={0.8}>
-            <Text style={e.cancelarTxt}>Cancelar</Text>
-          </TouchableOpacity>
-        </View>
-      </KeyboardAvoidingView>
-    </Modal>
   )
 }
 

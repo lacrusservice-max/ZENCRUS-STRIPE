@@ -28,7 +28,7 @@
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
-  ActivityIndicator, Platform, Alert,
+  ActivityIndicator, Platform, Alert, Switch,
 } from 'react-native'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -42,6 +42,7 @@ import Animated, {
 import { Screen } from '@/components/ui/Screen'
 import { RestTimer } from '@/components/workout/RestTimer'
 import { getExercise, ExerciseDetail } from '@/services/exerciseService'
+import { calentamiento, fijarPeso } from '@/services/programService'
 import { useSessionStore } from '@/store/sessionStore'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
@@ -58,7 +59,7 @@ const C = Colors
 type Params = Record<
   'slug' | 'nombre' | 'orden' | 'series' | 'reps' | 'duracion'
   | 'descanso' | 'peso' | 'carga' | 'alFallo'
-  | 'programId' | 'semana' | 'dia' | 'titulo',
+  | 'programId' | 'semana' | 'dia' | 'titulo' | 'clavePlan' | 'motivo',
   string | undefined
 >
 
@@ -81,6 +82,8 @@ export default function HacerEjercicio() {
   const semana = p.semana ? Number(p.semana) : null
   const dia = p.dia ? Number(p.dia) : null
   const titulo = p.titulo ?? ''
+  const clavePlan = p.clavePlan ?? ''
+  const motivo = p.motivo ?? ''
 
   const [ficha, setFicha] = useState<ExerciseDetail | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -113,6 +116,29 @@ export default function HacerEjercicio() {
   const [reps, setReps] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [empezando, setEmpezando] = useState(false)
+  const [calentar, setCalentar] = useState(false)
+  const [fijando, setFijando] = useState(false)
+
+  /** Las series de aproximación hasta el peso de hoy. */
+  const aprox = useMemo(
+    () => (calentar ? calentamiento(pesoSugerido) : []),
+    [calentar, pesoSugerido],
+  )
+
+  const fijarEnElPlan = useCallback(async () => {
+    const kg = Number(peso)
+    if (!clavePlan || fijando || !Number.isFinite(kg) || kg <= 0) return
+    setFijando(true)
+    try {
+      await fijarPeso(clavePlan, kg)
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      Alert.alert('Fijado', `A partir de ahora el plan parte de ${kg} kg en este ejercicio.`)
+    } catch {
+      Alert.alert('No se pudo fijar', 'Revisa la conexión y vuelve a intentarlo.')
+    } finally {
+      setFijando(false)
+    }
+  }, [clavePlan, peso, fijando])
 
   useEffect(() => {
     void (async () => {
@@ -309,7 +335,7 @@ export default function HacerEjercicio() {
               )}
               {pesoSugerido != null && carga === 'weight' && (
                 <Text style={s.objetivoPeso}>
-                  Toca {pesoSugerido} kg, calculado con tus marcas
+                  Toca {pesoSugerido} kg{motivo ? ` — ${motivo.toLowerCase()}` : ', calculado con tus marcas'}
                 </Text>
               )}
             </Animated.View>
@@ -421,6 +447,78 @@ export default function HacerEjercicio() {
                 Vienen puestos del plan. Cámbialos solo si hoy hiciste otra cosa —
                 eso es justo lo que hace que el peso de la próxima semana salga bien.
               </Text>
+
+              {/**
+                * Fijar el peso EN EL PLAN es otra cosa que anotar una serie.
+                *
+                * Anotar dice «hoy levanté esto». Fijar dice «de aquí en adelante
+                * parte de este número», y sobrescribe lo que calcula la
+                * progresión. Son decisiones distintas y por eso son dos botones
+                * distintos: mezclarlas haría que corregir una serie mal escrita
+                * te cambiara el plan de las próximas semanas sin pedírtelo.
+                */}
+              {clavePlan && carga === 'weight' && Number(peso) > 0 && Number(peso) !== pesoSugerido && (
+                <TouchableOpacity
+                  style={s.fijar}
+                  onPress={() => void fijarEnElPlan()}
+                  disabled={fijando}
+                  activeOpacity={0.85}
+                >
+                  {fijando
+                    ? <ActivityIndicator color={C.neon.w2} />
+                    : (
+                      <>
+                        <Ionicons name="pin-outline" size={14} color={C.neon.w2} />
+                        <Text style={s.fijarTxt}>
+                          Fijar {peso} kg en el plan para las próximas semanas
+                        </Text>
+                      </>
+                    )}
+                </TouchableOpacity>
+              )}
+
+              {/**
+                * Las series de aproximación, donde de verdad se deciden.
+                *
+                * Estaban en la ficha del día, dentro de la tarjeta de cada
+                * ejercicio, y engordaban una lista que se recorre de un vistazo.
+                * Aquí están en la pantalla en la que ya estás con la máquina
+                * delante, que es el único momento en el que se sabe si hoy hace
+                * falta calentar o se llega caliente de la calle.
+                */}
+              {pesoSugerido != null && pesoSugerido > 0 && carga === 'weight' && (
+                <View style={s.calentar}>
+                  <TouchableOpacity
+                    style={s.calentarFila}
+                    onPress={() => { void Haptics.selectionAsync(); setCalentar(v => !v) }}
+                    activeOpacity={0.8}
+                  >
+                    <View style={{ flex: 1 }}>
+                      <Text style={s.calentarTitulo}>Series de aproximación</Text>
+                      <Text style={s.calentarSub}>
+                        Subir hasta los {pesoSugerido} kg poco a poco. No cuentan
+                        en tu volumen ni en tus récords.
+                      </Text>
+                    </View>
+                    <Switch
+                      value={calentar}
+                      onValueChange={v => { void Haptics.selectionAsync(); setCalentar(v) }}
+                      trackColor={{ false: 'rgba(255,255,255,0.14)', true: C.neon.red }}
+                      thumbColor="#fff"
+                    />
+                  </TouchableOpacity>
+
+                  {calentar && aprox.length > 0 && (
+                    <Animated.View entering={FadeInDown.duration(260)} style={s.aproxFilas}>
+                      {aprox.map((a, i) => (
+                        <View key={i} style={s.aproxPastilla}>
+                          <Text style={s.aproxTxt}>{a.pesoKg} × {a.reps}</Text>
+                        </View>
+                      ))}
+                    </Animated.View>
+                  )}
+                </View>
+              )}
             </Animated.View>
           )}
 
@@ -621,6 +719,25 @@ const s = StyleSheet.create({
   },
   botonTxt: { fontSize: T.fontSize.lg, fontWeight: '800', color: C.neon.void, textAlign: 'center' },
   pieNota: { fontSize: T.fontSize.xs, color: C.neon.w3, lineHeight: 16, textAlign: 'center' },
+
+  fijar: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    minHeight: 44, paddingHorizontal: Spacing[4],
+    borderRadius: BorderRadius.xl,
+    backgroundColor: C.neon.pane, borderWidth: 1, borderColor: C.neon.edge,
+  },
+  fijarTxt: { fontSize: T.fontSize.xs, fontWeight: '700', color: C.neon.w2, textAlign: 'center' },
+
+  calentar: { gap: Spacing[2], paddingTop: Spacing[1] },
+  calentarFila: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
+  calentarTitulo: { fontSize: 12.5, fontWeight: '700', color: C.neon.w2 },
+  calentarSub: { fontSize: 11, color: C.neon.w3, marginTop: 2, lineHeight: 15 },
+  aproxFilas: { flexDirection: 'row', flexWrap: 'wrap', gap: 5 },
+  aproxPastilla: {
+    paddingHorizontal: Spacing[2] + 2, paddingVertical: 4,
+    borderRadius: BorderRadius.full, backgroundColor: 'rgba(255,255,255,0.06)',
+  },
+  aproxTxt: { fontSize: 11, fontWeight: '700', color: C.neon.w2 },
   aviso: {
     fontSize: T.fontSize.sm, color: C.neon.w2, lineHeight: 20, textAlign: 'center',
     paddingHorizontal: Spacing[2],
