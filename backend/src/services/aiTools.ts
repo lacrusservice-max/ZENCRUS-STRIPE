@@ -167,6 +167,49 @@ export const AI_TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'editar_registro',
+      description: 'Corrige una entrada que ya está en el diario: cambia la cantidad, el tiempo de comida, o las dos. Úsala para «eran 200 g, no 100», «ese arroz era de la cena». Necesita el id que devuelve consultar_registro con detalle true — pídelo antes si no lo tienes. Los macros se recalculan solos: no los pases.',
+      parameters: {
+        type: 'object',
+        properties: {
+          registro_id: {
+            type: 'string',
+            description: 'El id entre corchetes que devolvió consultar_registro con detalle true.',
+          },
+          gramos: {
+            type: 'number',
+            description: 'La cantidad nueva en gramos. Omítela si solo cambias de comida.',
+          },
+          comida: {
+            type: 'string',
+            enum: ['desayuno', 'almuerzo', 'comida', 'cena', 'snack'],
+            description: 'El tiempo de comida nuevo. Omítelo si solo cambias la cantidad.',
+          },
+        },
+        required: ['registro_id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'eliminar_registro',
+      description: 'Quita del diario UNA entrada, solo cuando el usuario lo pida. Nunca por iniciativa propia ni porque te parezca que sobra. Si lo que pide es ambiguo —«quita lo de ayer»— pregúntale cuál antes de tocar nada. Borra un solo registro: no existe forma de borrar un día entero ni «todo», y no debes ofrecerlo. Avisa siempre de que puede recuperarlo desde Nutrición durante 30 días.',
+      parameters: {
+        type: 'object',
+        properties: {
+          registro_id: {
+            type: 'string',
+            description: 'El id entre corchetes que devolvió consultar_registro con detalle true.',
+          },
+        },
+        required: ['registro_id'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'regenerar_plan',
       description: 'Marca el plan de alimentación y/o rutina para que se regenere con la IA según el perfil actualizado del usuario. Úsala cuando el usuario pida un plan nuevo o rehacer su dieta/rutina.',
       parameters: {
@@ -278,7 +321,7 @@ export async function executeAiTool(
 
         const { data, error } = await supabase
           .from('meal_logs')
-          .select('log_date, meal_slot, name, amount, unit, calories, protein_g, carbs_g, fat_g, fiber_g, active')
+          .select('id, log_date, meal_slot, name, amount, unit, calories, protein_g, carbs_g, fat_g, fiber_g, active')
           .eq('user_id', userId)
           .gte('log_date', desde)
           .lte('log_date', hoy)
@@ -322,8 +365,12 @@ export async function executeAiTool(
 
           if (detalle) {
             for (const f of filas) {
+              // El id va aquí porque es lo único que permite después editar o
+              // borrar ESA entrada. Sin él, «quita el arroz» no tiene a qué
+              // apuntar y habría que adivinar por nombre — que con dos arroces
+              // en el mismo día es adivinar de verdad.
               lineas.push(
-                `    · ${HUECO_A_COMIDA[f.meal_slot] ?? f.meal_slot}: ${f.name}, ` +
+                `    · [${f.id}] ${HUECO_A_COMIDA[f.meal_slot] ?? f.meal_slot}: ${f.name}, ` +
                 `${Number(f.amount)} ${f.unit} — ${Math.round(Number(f.calories))} kcal` +
                 `${f.active === false ? ' (fuera de los totales)' : ''}`,
               )
@@ -422,6 +469,115 @@ export async function executeAiTool(
         }
 
         return `Progreso del usuario al ${hoy}:\n- ${partes.join('\n- ')}`
+      }
+
+      /**
+       * ── Editar un registro ────────────────────────────────────────────────
+       *
+       * Los macros se recalculan a partir de los que ya tiene la fila, en
+       * proporción a los gramos nuevos.
+       *
+       * Se hace así y no volviendo al catálogo por dos razones. La primera es
+       * que funciona igual con las entradas escritas a mano, que no tienen
+       * `food_id` y por tanto no tienen ficha a la que volver. La segunda es
+       * que respeta lo que el usuario haya corregido: si ajustó las calorías de
+       * su desayuno porque conocía mejor su receta, cambiar la cantidad no
+       * puede tirar esa corrección y devolverle el valor del catálogo.
+       *
+       * Los macros son lineales con la cantidad, así que la regla de tres es
+       * exacta, no una aproximación.
+       */
+      case 'editar_registro': {
+        const id = String(args.registro_id ?? '').trim()
+        if (!id) return 'Necesito el id del registro. Pídelo con consultar_registro y detalle true.'
+
+        const gramos = args.gramos === undefined ? undefined : Number(args.gramos)
+        if (gramos !== undefined && (!Number.isFinite(gramos) || gramos <= 0 || gramos > 5000)) {
+          return 'La cantidad no es válida. Dime cuántos gramos son, entre 1 y 5000.'
+        }
+
+        const hueco = args.comida === undefined
+          ? undefined
+          : COMIDA_A_HUECO[String(args.comida).toLowerCase()]
+        if (args.comida !== undefined && !hueco) {
+          return 'No reconocí el tiempo de comida. Puede ser desayuno, comida, cena o snack.'
+        }
+
+        if (gramos === undefined && hueco === undefined) {
+          return 'No me dijiste qué cambiar: la cantidad, el tiempo de comida, o los dos.'
+        }
+
+        // El `eq('user_id')` no sobra al tener el id: es lo que impide que un
+        // id de otra persona —adivinado o recordado de otra conversación—
+        // acabe editando su diario.
+        const { data: actual, error: eLeer } = await supabase
+          .from('meal_logs')
+          .select('name, amount, meal_slot, calories, protein_g, carbs_g, fat_g, fiber_g')
+          .eq('id', id).eq('user_id', userId).is('deleted_at', null)
+          .maybeSingle()
+
+        if (eLeer) throw eLeer
+        if (!actual) return 'No encontré ese registro en el diario del usuario. Vuelve a consultarlo, quizá ya no está.'
+
+        const cambios: Record<string, unknown> = {}
+        const dicho: string[] = []
+
+        if (hueco !== undefined && hueco !== actual.meal_slot) {
+          cambios.meal_slot = hueco
+          dicho.push(`movido a ${args.comida}`)
+        }
+
+        if (gramos !== undefined && gramos !== Number(actual.amount)) {
+          const f = gramos / Number(actual.amount)
+          cambios.amount = gramos
+          cambios.calories = Math.round(Number(actual.calories) * f)
+          cambios.protein_g = redondear(Number(actual.protein_g) * f)
+          cambios.carbs_g = redondear(Number(actual.carbs_g) * f)
+          cambios.fat_g = redondear(Number(actual.fat_g) * f)
+          cambios.fiber_g = redondear(Number(actual.fiber_g) * f)
+          dicho.push(`${Number(actual.amount)} g → ${gramos} g (${cambios.calories} kcal)`)
+        }
+
+        if (!Object.keys(cambios).length) {
+          return `${actual.name} ya estaba así. No cambié nada.`
+        }
+
+        const { error } = await supabase
+          .from('meal_logs').update(cambios).eq('id', id).eq('user_id', userId)
+        if (error) throw error
+
+        return `Corregido ${actual.name}: ${dicho.join(', ')}.`
+      }
+
+      /**
+       * ── Eliminar un registro ──────────────────────────────────────────────
+       *
+       * Borrado suave: se marca `deleted_at` y la fila se queda. «Bórrame el
+       * desayuno» tiene que poder deshacerse, y cuando quien borra es ZENA,
+       * más todavía — el usuario no vio lo que pasó por dentro y solo tiene su
+       * palabra de que era la entrada correcta.
+       *
+       * Uno, y solo uno. La herramienta no acepta rangos ni un «todo» por
+       * ningún camino: es la regla del §10, y no está para protegerse de un
+       * usuario despistado sino de un modelo que interprete de más.
+       */
+      case 'eliminar_registro': {
+        const id = String(args.registro_id ?? '').trim()
+        if (!id) return 'Necesito el id del registro. Pídelo con consultar_registro y detalle true.'
+
+        const { data, error } = await supabase
+          .from('meal_logs')
+          .update({ deleted_at: new Date().toISOString() })
+          .eq('id', id).eq('user_id', userId).is('deleted_at', null)
+          .select('name, amount, unit, meal_slot, log_date')
+          .maybeSingle()
+
+        if (error) throw error
+        if (!data) return 'No encontré ese registro, o ya estaba borrado. Vuelve a consultar el diario.'
+
+        return `Quitado del diario: ${data.name}, ${Number(data.amount)} ${data.unit} ` +
+          `de ${HUECO_A_COMIDA[data.meal_slot] ?? data.meal_slot} del ${data.log_date}. ` +
+          'Dile al usuario que puede recuperarlo desde la pantalla de Nutrición si fue un error.'
       }
 
       /**
