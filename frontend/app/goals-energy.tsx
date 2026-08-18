@@ -17,7 +17,7 @@
  */
 
 import { useState } from 'react'
-import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, ActivityIndicator, Alert, TouchableOpacity } from 'react-native'
 import { router } from 'expo-router'
 import { useAuthStore } from '@/store/authStore'
 import { ZIcon, ZIconName } from '@/components/ui/ZencrusIcon'
@@ -26,6 +26,7 @@ import { Screen, ScreenHeader } from '@/components/ui/Screen'
 import { Colors, Typography } from '@/constants/theme'
 import { TabBar } from '@/constants/layout'
 import api from '@/services/api'
+import { calculateTDEE } from '@/utils/tdee'
 
 const N = Colors.neon
 
@@ -46,6 +47,8 @@ export default function GoalsEnergyScreen() {
   const [protein, setProtein] = useState<number>(goals.protein_g ?? 150)
   const [carbs, setCarbs] = useState<number>(goals.carbs_g ?? 200)
   const [fat, setFat] = useState<number>(goals.fat_g ?? 65)
+  const [fibra, setFibra] = useState<number>(goals.fiber_g ?? 28)
+  const [comidas, setComidas] = useState<number>(goals.meals_per_day ?? 3)
   const [saving, setSaving] = useState(false)
 
   /**
@@ -72,6 +75,30 @@ export default function GoalsEnergyScreen() {
   // Desajuste entre lo que suman los macros y la meta declarada.
   const drift = Math.round(kcalMacros - target)
 
+  /**
+   * Rehace las cinco cifras a partir del peso, la altura, la edad y la
+   * actividad. Vivía en el acordeón de Perfil, que era el otro sitio donde se
+   * editaban metas; se trae aquí porque este pasa a ser el único.
+   *
+   * No guarda: deja los diales cargados para que se vean antes de aceptar. Un
+   * botón que reescribe cinco cifras sin enseñarlas primero da miedo de tocar.
+   */
+  const recalcular = () => {
+    if (!user?.weight || !user?.height || !user?.age || !user?.gender || !user?.activity_level) {
+      Alert.alert('Faltan datos', 'Completa peso, altura, edad y nivel de actividad en tu perfil.')
+      return
+    }
+    const r = calculateTDEE({
+      weight: user.weight, height: user.height, age: user.age,
+      gender: user.gender as any, activityLevel: user.activity_level as any,
+      goal: (goals.main_goal ?? 'maintain') as any,
+      targetWeight: goals.target_weight ?? user.weight,
+    })
+    setTargetSafe(r.targetCalories)
+    setProtein(r.proteinG); setCarbs(r.carbsG); setFat(r.fatG); setFibra(r.fiberG)
+    Alert.alert('Recalculado', `Meta: ${r.targetCalories.toLocaleString('es-MX')} kcal. Revísalo y guarda si te encaja.`)
+  }
+
   const save = async () => {
     setSaving(true)
     try {
@@ -84,6 +111,8 @@ export default function GoalsEnergyScreen() {
           protein_g: Math.round(protein),
           carbs_g: Math.round(carbs),
           fat_g: Math.round(fat),
+          fiber_g: Math.round(fibra),
+          meals_per_day: comidas,
         },
       })
       if (res?.data) setUser(res.data)
@@ -189,6 +218,35 @@ export default function GoalsEnergyScreen() {
           onChange={setFat}
         />
 
+        <DialCard
+          icon="flame" title="Fibra" sub="No suma calorías, pero se cuenta"
+          value={fibra} unit="g" readout="gramos de fibra"
+          max={60} step={1} presets={[22, 28, 35, 42]}
+          onChange={setFibra}
+        />
+
+        <Section title="Cómo repartes el día" note={`${comidas} comidas`} />
+
+        <View style={s.card}>
+          <Text style={s.splitLbl}>COMIDAS AL DÍA</Text>
+          <Text style={s.pista}>
+            Es el número de huecos que ZENCRUS te reparte en Nutrición. Cambiarlo
+            reparte las mismas kcal en más o menos comidas.
+          </Text>
+          <View style={s.comidasFila}>
+            {[3, 4, 5, 6].map(n => (
+              <TouchableOpacity
+                key={n}
+                style={[s.comidaBtn, comidas === n && s.comidaBtnOn]}
+                onPress={() => setComidas(n)}
+                activeOpacity={0.8}
+              >
+                <Text style={[s.comidaTxt, comidas === n && s.comidaTxtOn]}>{n}</Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </View>
+
         {/* Reparto calórico resultante */}
         <View style={s.card}>
           <Text style={s.splitLbl}>DE DÓNDE SALEN TUS KCAL</Text>
@@ -213,6 +271,11 @@ export default function GoalsEnergyScreen() {
             </Text>
           </View>
         </View>
+
+        <TouchableOpacity style={s.recalc} onPress={recalcular} activeOpacity={0.8}>
+          <ZIcon name="target" size={15} color={N.w2} weight={1.9} />
+          <Text style={s.recalcTxt}>Recalcular desde mi perfil</Text>
+        </TouchableOpacity>
 
         <Tap onPress={save} busy={saving} />
       </ScrollView>
@@ -301,6 +364,24 @@ function Tap({ onPress, busy }: { onPress: () => void; busy: boolean }) {
 }
 
 const s = StyleSheet.create({
+  pista: { fontSize: 12, lineHeight: 17, color: N.w3, marginTop: 4, marginBottom: 12 },
+  comidasFila: { flexDirection: 'row', gap: 8 },
+  comidaBtn: {
+    flex: 1, height: 48, borderRadius: 13,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: N.edge,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  comidaBtnOn: { backgroundColor: 'rgba(255,31,61,0.18)', borderColor: N.red },
+  comidaTxt: { fontSize: 17, fontWeight: '800', color: N.w2 },
+  comidaTxtOn: { color: N.white },
+  recalc: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    marginHorizontal: 20, marginTop: 16, height: 46, borderRadius: 14,
+    borderWidth: 1, borderColor: N.edge, backgroundColor: 'rgba(255,255,255,0.04)',
+  },
+  recalcTxt: { fontSize: 13.5, fontWeight: '700', color: N.w2 },
+
   sec: {
     flexDirection: 'row', alignItems: 'baseline',
     paddingHorizontal: 20, paddingTop: 20, paddingBottom: 11,

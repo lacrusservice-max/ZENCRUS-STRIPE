@@ -31,6 +31,7 @@ const metasSchema = z.object({
   protein_g: z.number().int().min(0).max(500).optional(),
   carbs_g: z.number().int().min(0).max(900).optional(),
   fat_g: z.number().int().min(0).max(400).optional(),
+  fiber_g: z.number().int().min(0).max(200).optional(),
   meals_per_day: z.number().int().min(1).max(8).optional(),
 }).passthrough().superRefine((g, ctx) => {
   /**

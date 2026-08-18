@@ -13,8 +13,7 @@ import { useRecipesStore } from '@/store/recipesStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import { GlassCard, SectionLabel } from '@/components/ui/Glass'
 import { Screen } from '@/components/ui/Screen'
-import { calculateTDEE } from '@/utils/tdee'
-import api from '@/services/api'
+import { limitesDe } from '@/utils/tramoCalorico'
 
 const GOAL_LABELS: Record<string, string> = {
   lose_fat: '🔥 Bajar grasa',
@@ -126,7 +125,6 @@ export default function ProfileScreen() {
   const { allergens: savedAllergens, intolerances: savedIntolerances, setAllergens, setIntolerances } = useRecipesStore()
   const goals = (user as any)?.goals ?? {}
 
-  const [saving, setSaving] = useState(false)
 
   // ── Profile extras (persisted locally) ──────────────────────────────────────
   const [avatarUri,  setAvatarUri]  = useState<string | null>(null)
@@ -203,57 +201,9 @@ export default function ProfileScreen() {
   const level = getCurrentLevel()
   const unlocked = getUnlocked()
 
-  // Editable targets
-  const [calories, setCalories]  = useState(String(goals.calories_target ?? 2000))
-  const [protein,  setProtein]   = useState(String(goals.protein_g ?? 150))
-  const [carbs,    setCarbs]     = useState(String(goals.carbs_g ?? 200))
-  const [fat,      setFat]       = useState(String(goals.fat_g ?? 65))
-  const [fiber,    setFiber]     = useState(String(goals.fiber_g ?? 28))
-  const [mealsDay, setMealsDay]  = useState(goals.meals_per_day ?? 3)
-
-  const saveTargets = async () => {
-    setSaving(true)
-    try {
-      const updatedGoals = {
-        ...goals,
-        calories_target: +calories,
-        protein_g: +protein,
-        carbs_g: +carbs,
-        fat_g: +fat,
-        fiber_g: +fiber,
-        meals_per_day: mealsDay,
-      }
-      const { data: res } = await api.put('/users/profile', { goals: updatedGoals })
-      if (res?.data) setUser(res.data)
-      Alert.alert('Guardado', 'Tus targets nutricionales se actualizaron.')
-    } catch {
-      Alert.alert('Error', 'No se pudieron guardar los cambios.')
-    } finally {
-      setSaving(false)
-    }
-  }
-
-  const recalcFromProfile = () => {
-    if (!user?.weight || !user?.height || !user?.age || !user?.gender || !user?.activity_level) {
-      Alert.alert('Datos incompletos', 'Completa tu perfil primero.')
-      return
-    }
-    const r = calculateTDEE({
-      weight: user.weight!,
-      height: user.height!,
-      age: user.age!,
-      gender: user.gender as any,
-      activityLevel: user.activity_level as any,
-      goal: (goals.main_goal ?? 'maintain') as any,
-      targetWeight: goals.target_weight ?? user.weight!,
-    })
-    setCalories(String(r.targetCalories))
-    setProtein(String(r.proteinG))
-    setCarbs(String(r.carbsG))
-    setFat(String(r.fatG))
-    setFiber(String(r.fiberG))
-    Alert.alert('Recalculado', `Nuevas calorías: ${r.targetCalories} kcal`)
-  }
+  /* Del MISMO módulo que usa Nutrición: si este resumen derivara el techo por
+     su cuenta, podría enseñar un número distinto del que mide el plato. */
+  const limites = limitesDe(goals)
 
   if (!user) return null
 
@@ -378,51 +328,41 @@ export default function ProfileScreen() {
           </GlassCard>
         </CollapsibleSection>
 
-        {/* ── Metas nutricionales ── */}
-        <CollapsibleSection title="Metas nutricionales" subtitle="Calorías, macros y comidas al día" icon="nutrition">
-          <AdjustField label="Calorías diarias" value={calories} onChange={setCalories} unit="kcal"
-            onDec={() => setCalories(v => String(Math.max(1200, +v - 50)))}
-            onInc={() => setCalories(v => String(+v + 50))} />
-          <AdjustField label="Proteína" value={protein} onChange={setProtein} unit="g"
-            note={`${Math.round(+protein * 4)} kcal`}
-            onDec={() => setProtein(v => String(Math.max(30, +v - 5)))}
-            onInc={() => setProtein(v => String(+v + 5))} />
-          <AdjustField label="Carbohidratos" value={carbs} onChange={setCarbs} unit="g"
-            note={`${Math.round(+carbs * 4)} kcal`}
-            onDec={() => setCarbs(v => String(Math.max(20, +v - 5)))}
-            onInc={() => setCarbs(v => String(+v + 5))} />
-          <AdjustField label="Grasas" value={fat} onChange={setFat} unit="g"
-            note={`${Math.round(+fat * 9)} kcal`}
-            onDec={() => setFat(v => String(Math.max(20, +v - 5)))}
-            onInc={() => setFat(v => String(+v + 5))} />
-          <AdjustField label="Fibra" value={fiber} onChange={setFiber} unit="g"
-            onDec={() => setFiber(v => String(Math.max(10, +v - 1)))}
-            onInc={() => setFiber(v => String(+v + 1))} />
+        {/*
+          ── Metas nutricionales · SOLO LECTURA ──
+          Aquí había un segundo editor de metas, con sus propios controles de
+          calorías, macros, fibra y comidas al día. Se ha quitado.
 
-          <Text style={[s.sectionSub, { marginTop: Spacing[2] }]}>Comidas al día</Text>
-          <View style={s.row}>
-            {[3, 4, 5, 6].map(n => (
-              <TouchableOpacity key={n} style={[s.dayBtn, mealsDay === n && s.dayBtnOn]} onPress={() => setMealsDay(n)}>
-                <Text style={[s.dayBtnTxt, mealsDay === n && { color: Colors.primary[400] }]}>{n}</Text>
-              </TouchableOpacity>
-            ))}
+          El problema no era tener dos sitios: era que este NO enseñaba el mínimo
+          ni el techo, que son los que gobiernan los cuatro tramos de color de
+          Nutrición. Se podía subir la meta por encima del techo sin verlo, y lo
+          único que devolvía el servidor era un 422 sin explicación posible desde
+          esta pantalla, porque el dato que lo causaba no estaba aquí.
+
+          Ahora esto resume lo que hay y manda a «Metas de energía», que enseña
+          los tres límites juntos y encadenados.
+        */}
+        <CollapsibleSection title="Metas nutricionales" subtitle="Calorías, macros y límites del día" icon="nutrition">
+          <View style={s.metasResumen}>
+            <MetaFila etiqueta="Mínimo"  valor={`${(limites.minimo).toLocaleString('es-MX')} kcal`} />
+            <MetaFila etiqueta="Meta"    valor={`${(limites.meta).toLocaleString('es-MX')} kcal`} destaca />
+            <MetaFila etiqueta="Techo"   valor={`${(limites.techo).toLocaleString('es-MX')} kcal`} />
+          </View>
+          <View style={s.metasResumen}>
+            <MetaFila etiqueta="Proteína" valor={`${goals.protein_g ?? 150} g`} />
+            <MetaFila etiqueta="Carbos"   valor={`${goals.carbs_g ?? 200} g`} />
+            <MetaFila etiqueta="Grasas"   valor={`${goals.fat_g ?? 65} g`} />
+            <MetaFila etiqueta="Fibra"    valor={`${goals.fiber_g ?? 28} g`} />
+            <MetaFila etiqueta="Comidas al día" valor={String(goals.meals_per_day ?? 3)} />
           </View>
 
-          <View style={s.macroSummary}>
-            <Text style={s.macroSumTxt}>
-              Total macros: {Math.round(+protein * 4 + +carbs * 4 + +fat * 9)} kcal
-              {Math.abs(+protein * 4 + +carbs * 4 + +fat * 9 - +calories) > 50
-                ? <Text style={{ color: Colors.accent.orange }}> ⚠️ no coincide con calorías</Text>
-                : <Text style={{ color: Colors.accent.green }}> ✓ balanceado</Text>}
-            </Text>
-          </View>
-
-          <TouchableOpacity style={s.recalcBtn} onPress={recalcFromProfile}>
-            <Text style={s.recalcTxt}>↺ Recalcular desde mi perfil</Text>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={[s.saveBtn, saving && { opacity: 0.7 }]} onPress={saveTargets} disabled={saving}>
-            {saving ? <ActivityIndicator color="#fff" /> : <Text style={s.saveTxt}>Guardar targets</Text>}
+          <TouchableOpacity
+            style={s.irAMetas}
+            onPress={() => router.push('/goals-energy')}
+            activeOpacity={0.85}
+          >
+            <Text style={s.irAMetasTxt}>Cambiar mis metas</Text>
+            <Text style={s.irAMetasFlecha}>›</Text>
           </TouchableOpacity>
         </CollapsibleSection>
 
@@ -493,22 +433,6 @@ const ir = StyleSheet.create({
   value: { fontSize: Typography.fontSize.sm, color: '#fff', fontWeight: '600', flex: 1, textAlign: 'right' },
 })
 
-function AdjustField({ label, value, onChange, unit, note, onDec, onInc }: any) {
-  return (
-    <View style={af.wrap}>
-      <View style={af.header}>
-        <Text style={af.label}>{label}</Text>
-        {note && <Text style={af.note}>{note}</Text>}
-      </View>
-      <View style={af.row}>
-        <TouchableOpacity style={af.btn} onPress={onDec}><Text style={af.btnTxt}>−</Text></TouchableOpacity>
-        <TextInput style={af.input} value={value} onChangeText={onChange} keyboardType="number-pad" />
-        <TouchableOpacity style={af.btn} onPress={onInc}><Text style={af.btnTxt}>+</Text></TouchableOpacity>
-        <Text style={af.unit}>{unit}</Text>
-      </View>
-    </View>
-  )
-}
 const af = StyleSheet.create({
   wrap: { marginBottom: Spacing[4] },
   header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: Spacing[2] },
@@ -540,7 +464,38 @@ const al = StyleSheet.create({
 
 // ── Styles ────────────────────────────────────────────────────────────────────
 
+/** Una línea del resumen: etiqueta a la izquierda, cifra a la derecha. */
+function MetaFila({ etiqueta, valor, destaca }: { etiqueta: string; valor: string; destaca?: boolean }) {
+  return (
+    <View style={s.metaFila}>
+      <Text style={s.metaEtiqueta}>{etiqueta}</Text>
+      <Text style={[s.metaValor, destaca && s.metaValorFuerte]}>{valor}</Text>
+    </View>
+  )
+}
+
 const s = StyleSheet.create({
+  metasResumen: {
+    borderRadius: 14, borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)',
+    backgroundColor: 'rgba(255,255,255,0.03)',
+    paddingHorizontal: 14, paddingVertical: 4, marginBottom: 10,
+  },
+  metaFila: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    paddingVertical: 9,
+  },
+  metaEtiqueta: { fontSize: 13, color: 'rgba(255,255,255,0.6)' },
+  metaValor: { fontSize: 13.5, fontWeight: '700', color: '#fff', fontVariant: ['tabular-nums'] },
+  metaValorFuerte: { fontSize: 15, fontWeight: '800' },
+  irAMetas: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    height: 48, paddingHorizontal: 15, borderRadius: 14,
+    backgroundColor: 'rgba(255,31,61,0.14)',
+    borderWidth: 1, borderColor: 'rgba(255,31,61,0.36)',
+  },
+  irAMetasTxt: { fontSize: 14, fontWeight: '700', color: '#FF5871' },
+  irAMetasFlecha: { fontSize: 19, color: '#FF5871', marginTop: -2 },
+
   header: {
     flexDirection: 'row', alignItems: 'center', padding: Spacing[5], gap: Spacing[4],
     borderBottomWidth: 1, borderBottomColor: Glass.cardBorder,
@@ -581,14 +536,7 @@ const s = StyleSheet.create({
   xpTxt: { fontSize: 10, color: Colors.accent.yellow, fontWeight: '700' },
   hubGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[3], marginBottom: Spacing[5] },
   sectionTitle: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff', marginBottom: Spacing[1] },
-  sectionSub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.42)', marginBottom: Spacing[4] },
   row: { flexDirection: 'row', gap: Spacing[2], marginBottom: Spacing[3] },
-  dayBtn: { flex: 1, alignItems: 'center', backgroundColor: Glass.card, borderRadius: BorderRadius.md, paddingVertical: Spacing[3], borderWidth: 1.5, borderColor: Glass.cardBorder },
-  dayBtnOn: { borderColor: Colors.primary[500], backgroundColor: Glass.purpleTint },
-  dayBtnTxt: { fontSize: Typography.fontSize.base, fontWeight: '700', color: 'rgba(255,255,255,0.5)' },
-  macroSummary: { backgroundColor: Glass.elevated, borderRadius: BorderRadius.md, padding: Spacing[4], marginBottom: Spacing[4], borderWidth: 1, borderColor: Glass.cardBorder },
-  macroSumTxt: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.55)' },
-  recalcBtn: { backgroundColor: Glass.card, borderRadius: BorderRadius.md, padding: Spacing[4], alignItems: 'center', marginBottom: Spacing[3], borderWidth: 1, borderColor: Glass.purpleBorder },
   recalcTxt: { fontSize: Typography.fontSize.sm, color: Colors.primary[400], fontWeight: '600' },
   saveBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.lg, padding: Spacing[4], alignItems: 'center', shadowColor: Colors.primary[500], shadowOpacity: 0.35, shadowRadius: 12 },
   saveTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
