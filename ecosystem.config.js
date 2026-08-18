@@ -43,6 +43,23 @@ module.exports = {
       min_uptime: '10s',
       env: {
         EXPO_NO_DOCTOR: '1',
+
+        // CI VACÍO A PROPÓSITO. No lo quites.
+        //
+        // Con `CI` puesta, Metro arranca en modo CI y APAGA el watch: sin Fast
+        // Refresh, ningún cambio en el código llega a la app. Y como la única
+        // forma de ver un cambio pasaba a ser reiniciar Metro, cada cambio
+        // costaba una sesión — reiniciar recarga la app y te saca.
+        //
+        // Nadie la escribió aquí: se HEREDA del shell que arranca pm2. Los
+        // agentes y los terminales automáticos exportan CI=1 para que ningún
+        // comando se quede esperando una respuesta, y pm2 se la pasa a Metro
+        // sin más. Por eso hay que apagarla aquí y no basta con no ponerla.
+        //
+        // Y tiene que ser 'false', no '': Expo la lee con `getenv.boolish` y una
+        // cadena vacía no es un booleano — revienta con «GetEnv.NoBoolean» y
+        // Metro no llega ni a arrancar.
+        CI: 'false',
       },
       log_file: '/tmp/zencrus_metro.log',
       error_file: '/tmp/zencrus_metro_err.log',
