@@ -29,8 +29,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, Pressable } from 'react-native'
-import AsyncStorage from '@react-native-async-storage/async-storage'
-import { ImageSourcePropType } from 'react-native'
 import { Image } from 'expo-image'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
@@ -41,7 +39,7 @@ import Animated, {
   useSharedValue, useAnimatedStyle, withSpring } from 'react-native-reanimated'
 import { Miniatura } from '@/components/workout/Miniatura'
 import { Hoy, prescripcion } from '@/services/programService'
-import { FOTOS, fotoDePrograma } from '@/constants/imagenes'
+import { useFotoPortada, BotonFoto, SelectorFoto } from '@/components/workout/fotoPortada'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 const T = Typography
@@ -49,20 +47,6 @@ const C = Colors
 
 /** Cuántos ejercicios se ven sin desplegar. */
 const VISIBLES = 3
-
-const LLAVE = (programId: string) => `zencrus_foto_hoy_${programId}`
-
-/** Las ocho de marca, con nombre para el selector. */
-const ELEGIBLES: { id: keyof typeof FOTOS | string; nombre: string }[] = [
-  { id: 'gimnasio', nombre: 'Gimnasio' },
-  { id: 'fuerza', nombre: 'Fuerza' },
-  { id: 'brazos', nombre: 'Brazos' },
-  { id: 'casa', nombre: 'En casa' },
-  { id: 'aireLibre', nombre: 'Aire libre' },
-  { id: 'montana', nombre: 'Montaña' },
-  { id: 'rio', nombre: 'Río' },
-  { id: 'movilidad', nombre: 'Movilidad' },
-]
 
 interface Props {
   hoy: Hoy
@@ -74,30 +58,9 @@ export function HoyGrande({ hoy, onEmpezar }: Props) {
   const d = hoy.dia!
   const p = hoy.programa!
 
-  const [fotoElegida, setFotoElegida] = useState<string | null>(null)
-  const [eligiendo, setEligiendo] = useState(false)
   const [abierto, setAbierto] = useState(false)
-
-  // La preferencia se lee una vez por programa. Mientras no llega, se enseña la
-  // que le toca por defecto: nunca hay un hueco esperando a AsyncStorage.
-  useEffect(() => {
-    let vivo = true
-    void AsyncStorage.getItem(LLAVE(p.id))
-      .then(v => { if (vivo && v && FOTOS[v]) setFotoElegida(v) })
-      .catch(() => {})
-    return () => { vivo = false }
-  }, [p.id])
-
-  const elegir = useCallback(async (id: string) => {
-    void Haptics.selectionAsync()
-    setFotoElegida(id)
-    setEligiendo(false)
-    try { await AsyncStorage.setItem(LLAVE(p.id), id) } catch { /* da igual: se ve igual esta vez */ }
-  }, [p.id])
-
-  const fuente: ImageSourcePropType = fotoElegida && FOTOS[fotoElegida]
-    ? FOTOS[fotoElegida].fuente
-    : fotoDePrograma(p)
+  const foto = useFotoPortada(p)
+  const fuente = foto.fuente
 
   const ocultos = Math.max(0, d.ejercicios.length - VISIBLES)
   const lista = abierto ? d.ejercicios : d.ejercicios.slice(0, VISIBLES)
@@ -140,14 +103,7 @@ export function HoyGrande({ hoy, onEmpezar }: Props) {
       />
 
       {/* ── Cambiar la foto ─────────────────────────────────────────────── */}
-      <TouchableOpacity
-        style={s.editar}
-        onPress={() => { void Haptics.selectionAsync(); setEligiendo(true) }}
-        hitSlop={10}
-        activeOpacity={0.8}
-      >
-        <Ionicons name="image-outline" size={15} color="#fff" />
-      </TouchableOpacity>
+      <BotonFoto onPress={foto.abrir} />
 
       <View style={s.dentro}>
         <View style={s.etiqueta}>
@@ -223,10 +179,10 @@ export function HoyGrande({ hoy, onEmpezar }: Props) {
       </View>
 
       <SelectorFoto
-        abierto={eligiendo}
-        actual={fotoElegida}
-        onCerrar={() => setEligiendo(false)}
-        onElegir={id => void elegir(id)}
+        abierto={foto.eligiendo}
+        actual={foto.elegida}
+        onCerrar={foto.cerrar}
+        onElegir={id => void foto.elegir(id)}
       />
     </View>
   )
@@ -244,73 +200,6 @@ function Flecha({ abierta }: { abierta: boolean }) {
   )
 }
 
-/**
- * Elegir la fotografía.
- *
- * Ocho, con su nombre y su miniatura. No hay subir la tuya: una foto propia mal
- * recortada rompe la portada y hay que resolver recorte, peso y permisos. Las de
- * marca ya vienen oscurecidas y encuadradas para que el texto se lea encima.
- */
-function SelectorFoto({ abierto, actual, onCerrar, onElegir }: {
-  abierto: boolean
-  actual: string | null
-  onCerrar: () => void
-  onElegir: (id: string) => void
-}) {
-  return (
-    <Modal visible={abierto} transparent animationType="fade" onRequestClose={onCerrar}>
-      <Pressable style={s.modalFondo} onPress={onCerrar}>
-        <Animated.View entering={FadeInDown.duration(280)} style={s.modal}>
-          <Pressable>
-            <View style={s.asa} />
-            <Text style={s.modalTitulo}>La foto de tu portada</Text>
-            <Text style={s.modalSub}>
-              Se queda guardada en este teléfono para este plan.
-            </Text>
-
-            <ScrollView
-              horizontal
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={s.tiras}
-            >
-              {ELEGIBLES.map((f, i) => (
-                <Animated.View key={f.id} entering={FadeIn.delay(i * 40).duration(220)}>
-                  <TouchableOpacity
-                    style={[s.opcionFoto, actual === f.id && s.opcionFotoOn]}
-                    onPress={() => onElegir(String(f.id))}
-                    activeOpacity={0.85}
-                  >
-                    <Image
-                      source={FOTOS[f.id].fuente}
-                      style={StyleSheet.absoluteFill}
-                      contentFit="cover"
-                      transition={180}
-                    />
-                    <LinearGradient
-                      colors={['transparent', 'rgba(5,5,6,0.85)']}
-                      style={StyleSheet.absoluteFill}
-                      pointerEvents="none"
-                    />
-                    <Text style={s.opcionTxt}>{f.nombre}</Text>
-                    {actual === f.id && (
-                      <View style={s.tic}>
-                        <Ionicons name="checkmark" size={11} color={C.neon.void} />
-                      </View>
-                    )}
-                  </TouchableOpacity>
-                </Animated.View>
-              ))}
-            </ScrollView>
-
-            <TouchableOpacity style={s.cerrar} onPress={onCerrar} activeOpacity={0.85}>
-              <Text style={s.cerrarTxt}>Listo</Text>
-            </TouchableOpacity>
-          </Pressable>
-        </Animated.View>
-      </Pressable>
-    </Modal>
-  )
-}
 
 const s = StyleSheet.create({
   marco: {

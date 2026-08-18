@@ -58,6 +58,7 @@ import {
 import { recetaDe } from '@/services/quickService'
 import { precargarEjercicios } from '@/services/exerciseService'
 import { FOTOS, FOTO_MODO, fotoDePrograma } from '@/constants/imagenes'
+import { useFotoPortada, BotonFoto, SelectorFoto } from '@/components/workout/fotoPortada'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 /**
@@ -341,14 +342,20 @@ function Hero({ hoy }: { hoy: Hoy | null }) {
  */
 function Descanso({ hoy }: { hoy: Hoy }) {
   const pendientes = hoy.semana?.dias.filter(d => d.pendiente) ?? []
+  const foto = useFotoPortada(hoy.programa)
 
   return (
     <View style={h.marco}>
       <Image
-        source={hoy.programa ? fotoDePrograma(hoy.programa) : FOTOS.gimnasio.fuente}
+        source={foto.fuente}
         style={StyleSheet.absoluteFill} contentFit="cover" transition={280}
       />
       <Velo />
+      <BotonFoto onPress={foto.abrir} />
+      <SelectorFoto
+        abierto={foto.eligiendo} actual={foto.elegida}
+        onCerrar={foto.cerrar} onElegir={id => void foto.elegir(id)}
+      />
       <View style={h.dentro}>
         <Etiqueta texto="HOY DESCANSAS" tono="hecho" />
         <View style={{ gap: Spacing[3] }}>
@@ -474,14 +481,20 @@ function YaEstá({ hoy }: { hoy: Hoy }) {
     { series: 0, volumen: 0, minutos: 0, kcal: 0 },
   )
   const quedaDia = hoy.semana?.dias.some(d => !d.hecho && !d.esHoy)
+  const foto = useFotoPortada(hoy.programa)
 
   return (
     <View style={h.marco}>
       <Image
-        source={hoy.programa ? fotoDePrograma(hoy.programa) : FOTOS.gimnasio.fuente}
+        source={foto.fuente}
         style={StyleSheet.absoluteFill} contentFit="cover" transition={280}
       />
       <Velo />
+      <BotonFoto onPress={foto.abrir} />
+      <SelectorFoto
+        abierto={foto.eligiendo} actual={foto.elegida}
+        onCerrar={foto.cerrar} onElegir={id => void foto.elegir(id)}
+      />
       <View style={h.dentro}>
         <Etiqueta texto="HOY YA ESTÁ" tono="hecho" />
 
