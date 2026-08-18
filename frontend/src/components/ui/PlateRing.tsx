@@ -37,11 +37,20 @@ import {
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 const N = Colors.neon
 
-// Geometría del arco, en unidades del viewBox. El lienzo es más ancho que el
-// arco porque las etiquetas viven fuera de él y necesitan sitio.
+/*
+ * Geometría del arco. El radio es 79 y no 88 POR LAS ETIQUETAS.
+ *
+ * Con 88, la etiqueta «mín» —que cae a la izquierda y se alinea por su
+ * derecha— empezaba en x = -3: fuera del lienzo. El SVG la recortaba y en
+ * pantalla se leía «nín». Un fallo que solo se ve ampliando la captura, porque
+ * a tamaño real parece una letra mal dibujada y no un texto cortado.
+ *
+ * El radio de las etiquetas (R + 15) deja además hueco entre el trazo y el
+ * texto: pegadas al arco se leen como parte de él.
+ */
 const VB = 232
 const C = 116
-const R = 88
+const R = 79
 const SW = 13
 const INICIO = 135
 const BARRIDO = 270
@@ -133,7 +142,7 @@ export function PlateRing({ consumed, limites, size = 268 }: Props) {
           const ang = INICIO + BARRIDO * m.f
           const a = polar(ang, R - MEDIA_MARCA)
           const b = polar(ang, R + MEDIA_MARCA)
-          const t = polar(ang, R + 20)
+          const t = polar(ang, R + 15)
           const izquierda = t.x < C - 2
           return (
             <React.Fragment key={m.texto}>

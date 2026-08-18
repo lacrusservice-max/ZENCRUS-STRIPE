@@ -157,10 +157,6 @@ export default function NutritionScreen() {
   const tramo = tramoDe(totalCalories, limites)
   const colorTramo = COLOR_TRAMO[tramo]
 
-  const remaining = Math.max(0, caloriesTarget - totalCalories)
-  const overBy = Math.max(0, totalCalories - caloriesTarget)
-  const underFloorBy = Math.max(0, caloriesFloor - totalCalories)
-  const pct = caloriesTarget > 0 ? (totalCalories / caloriesTarget) * 100 : 0
   const coachNote = buildCoachNote(budgets, Math.max(0, proteinTarget - totalProtein))
 
   const closed = budgets.filter(b => b.status !== 'pending')
@@ -239,16 +235,25 @@ export default function NutritionScreen() {
             <Text style={s.animoTxt}>{fraseDelDia(totalCalories, limites)}</Text>
           </View>
 
+          {/*
+            AQUÍ SOLO LA ADHERENCIA.
+
+            Había un tercer veredicto —«te pasaste de la meta», «vas dentro»— con
+            su propia aritmética, y discrepaba de las otras dos piezas: con 2.098
+            kcal y el techo en 2.400, el plato decía EN LA META y la frase «vas
+            excelente» mientras esta línea decía «te pasaste de la meta». Las
+            tres miraban el mismo día y solo esta usaba la meta como si fuera el
+            techo.
+
+            No se ha migrado a `tramoCalorico`: se ha QUITADO. Ya lo dicen la
+            pastilla del plato y la frase, y un tercer texto repitiéndolo es
+            justo el ruido que sobra en esta pantalla. La adherencia se queda
+            porque es lo único que no está en ninguna otra parte.
+          */}
           <View style={s.verdict}>
-            <View style={[s.verdictDot, pct > 100 && { backgroundColor: NEON.redSoft }]} />
+            <View style={[s.verdictDot, { backgroundColor: colorTramo }]} />
             <Text style={s.verdictTxt}>
-              {/* Con el día en blanco, «vas dentro de meta» es falso: aún no
-                  hay nada que juzgar. El veredicto solo aplica al día vivo. */}
-              {totalCalories === 0 ? 'Sin registrar aún'
-                : overBy > 0 ? 'Te pasaste de la meta'
-                : remaining === 0 ? 'Meta alcanzada'
-                : underFloorBy > 0 ? 'Por debajo del mínimo'
-                : 'Vas dentro de meta'}
+              {totalCalories === 0 ? 'Sin registrar aún' : 'Reparto entre comidas'}
             </Text>
             <Text style={s.verdictPct}>
               <Text style={s.verdictPctB}>{adherence} %</Text> adherencia

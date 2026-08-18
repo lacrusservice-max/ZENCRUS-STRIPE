@@ -42,7 +42,11 @@ export default function LoginScreen() {
       await login(email.trim().toLowerCase(), password)
       router.replace('/(tabs)')
     } catch (err: any) {
-      console.error('[LOGIN_ERROR]', JSON.stringify({ status: err?.response?.status, data: err?.response?.data, msg: err?.message, isCircuit: err?.isCircuitOpen, isOffline: err?.isOffline }))
+      /* `warn` y no `error`: escribir mal la contraseña es un caso previsto, no
+         un fallo del sistema. Con `error`, Expo Go lo pinta como banner rojo a
+         pantalla completa y parece que la app se ha roto cuando lo único que
+         pasa es que hay que volver a teclear. */
+      console.warn('[login] no se pudo entrar:', JSON.stringify({ status: err?.response?.status, data: err?.response?.data, msg: err?.message, isCircuit: err?.isCircuitOpen, isOffline: err?.isOffline }))
       const msg = err?.response?.data?.message || err?.message || 'Error al iniciar sesión'
       if (err?.response?.data?.data?.requiresVerification) {
         Alert.alert('Verifica tu correo', msg, [
