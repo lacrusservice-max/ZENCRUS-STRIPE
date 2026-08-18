@@ -4,16 +4,31 @@
 # ─────────────────────────────────────────────────────────
 #
 # ── El problema que resuelve ────────────────────────────────────────────────
-# Con el teclado del Mac conectado al simulador, la distribución española no
-# mapea la `@` ni la `?`: el campo sencillamente IGNORA la tecla. Escribir un
-# correo dejaba «lacrusservice» y descartaba todo lo que venía después de la
-# arroba, y parecía un fallo de la app.
+# Con el teclado del Mac conectado al simulador, la `@` y la `?` no llegan al
+# campo. Y no fallan igual, que es lo que despistaba:
+#
+#   - en un campo normal, `@` sale como `"` y `?` como `_`. Es el mapeo de un
+#     teclado US contra la distribución española: Shift+2 es `@` en US y `"` en
+#     español, así que se traduce mal, no se pierde;
+#   - en un campo de correo (keyboardType="email-address") la `@` CORTA la
+#     entrada. Escribir «prueba@correo.com» deja «prueba» y tira el resto. Es
+#     exactamente lo que pasaba al iniciar sesión.
+#
+# Con el teclado de PANTALLA no hay traducción posible: la `@` es una tecla y se
+# toca. Por eso la solución es desconectar el físico, y no casar distribuciones.
 #
 # ── Por qué no basta con el ajuste ──────────────────────────────────────────
 # `ConnectHardwareKeyboard` solo se LEE al arrancar Simulator.app, y Simulator
 # vuelca sus preferencias al SALIR, así que puede pisar el valor que acabas de
 # escribir. Ponerlo a mano una vez no aguanta: hay que escribirlo con la app
-# cerrada y volver a abrirla. Eso es lo único que hace este script de especial.
+# cerrada y volver a abrirla.
+#
+# ── Y SIMULATOR.APP TIENE QUE ESTAR ABIERTA ─────────────────────────────────
+# Esto es lo que costó encontrar. El panel del simulador que va dentro del chat
+# NO usa Simulator.app: habla directo con CoreSimulator. Con Simulator.app
+# cerrada el ajuste no lo lee nadie, iOS da por hecho que hay un teclado físico
+# y NO saca el de pantalla: el campo se enfoca, parpadea el cursor, y no hay
+# ninguna arroba que tocar. Por eso este script la abre y la deja abierta.
 #
 # Uso:  ./scripts/simulador.sh [UDID]
 
