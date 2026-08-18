@@ -18,10 +18,22 @@ import {
   CoachMessage,
   CoachContext,
 } from '@/services/aiCoachService'
+import {
+  confirmar, cancelar, deshacer, type Confirmacion,
+} from '@/services/confirmacionesService'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import { Screen } from '@/components/ui/Screen'
 import { TabBar } from '@/constants/layout'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
+
+/**
+ * En qué estado está una tarjeta de confirmación.
+ *
+ * «cerrada» es el cajón de sastre honesto: el servidor dijo que no —caducó, ya
+ * se había resuelto en otro sitio— y lo único que se sabe es que esa propuesta
+ * dejó de estar viva. Se enseña su mensaje y ahí acaba.
+ */
+type EstadoTarjeta = 'abierta' | 'aplicada' | 'cancelada' | 'deshecha' | 'cerrada'
 
 const QUICK_QUESTIONS = [
   '¿Qué debería comer hoy para complementar mis macros?',
@@ -127,6 +139,177 @@ function TypingIndicator() {
   )
 }
 
+// ── Tarjeta de confirmación ────────────────────────────────────────────────────
+
+/**
+ * Lo que ZENA propone y todavía no ha hecho. §10.
+ *
+ * ── Por qué se enseñan las dos cifras ───────────────────────────────────────
+ * «Tus calorías serán 1.850» obliga a acordarse de cuántas eran para saber si
+ * eso es un ajuste o un despeñadero, y nadie se sabe de memoria sus gramos de
+ * grasa. Con «2.100 → 1.850» delante, la magnitud se ve sin pensar — que es lo
+ * único que se puede juzgar en los dos segundos que dura mirar una tarjeta.
+ *
+ * ── Por qué el botón de confirmar no es rojo ────────────────────────────────
+ * En esta paleta el rojo es lo que exige atención, y aquí lo que la exige son
+ * los números, no el botón. Un «Confirmar» en rojo neón es un botón que se
+ * toca antes de leer, y una confirmación que se toca sin leer no confirma
+ * nada: solo añade un paso.
+ */
+function TarjetaConfirmacion({
+  confirmacion,
+  onResuelta,
+}: {
+  confirmacion: Confirmacion
+  onResuelta: (id: string, estado: EstadoTarjeta, mensaje: string) => void
+}) {
+  const [trabajando, setTrabajando] = useState(false)
+
+  const responder = async (que: 'confirmar' | 'cancelar' | 'deshacer') => {
+    if (trabajando) return
+    setTrabajando(true)
+    const fn = que === 'confirmar' ? confirmar : que === 'cancelar' ? cancelar : deshacer
+    const r = await fn(confirmacion.id)
+    // Si el servidor dice que no —caducó, ya se resolvió— la tarjeta se cierra
+    // igual con SU mensaje. Dejarla abierta invitaría a volver a intentarlo
+    // contra algo que ya no existe.
+    const estado: EstadoTarjeta = !r.ok ? 'cerrada'
+      : que === 'confirmar' ? 'aplicada'
+      : que === 'cancelar' ? 'cancelada'
+      : 'deshecha'
+    onResuelta(confirmacion.id, estado, r.mensaje)
+    setTrabajando(false)
+  }
+
+  return (
+    <View style={[b.wrap, b.wrapLeft]}>
+      <View style={{ width: 32 }} />
+      <View style={tc.card}>
+        <View style={tc.encabezado}>
+          <Ionicons name="swap-horizontal" size={14} color={Colors.neon.red} />
+          <Text style={tc.titulo}>ZENA propone un cambio</Text>
+        </View>
+
+        {confirmacion.cambios.map((c, i) => (
+          <View key={`${c.etiqueta}-${i}`} style={tc.fila}>
+            <Text style={tc.etiqueta}>{c.etiqueta}</Text>
+            <View style={tc.valores}>
+              <Text style={tc.antes}>{c.antes ?? '—'}</Text>
+              <Ionicons name="arrow-forward" size={11} color={Colors.neon.w3} />
+              <Text style={tc.despues}>
+                {c.despues}{c.unidad ? ` ${c.unidad}` : ''}
+              </Text>
+            </View>
+          </View>
+        ))}
+
+        <Text style={tc.nota}>Nada cambia hasta que lo confirmes.</Text>
+
+        <View style={tc.botones}>
+          <TouchableOpacity
+            style={[tc.btn, tc.btnFantasma]}
+            onPress={() => responder('cancelar')}
+            disabled={trabajando}
+            accessibilityRole="button"
+            accessibilityLabel="Cancelar el cambio propuesto"
+          >
+            <Text style={tc.btnFantasmaTxt}>Ahora no</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[tc.btn, tc.btnPrincipal, trabajando && tc.btnApagado]}
+            onPress={() => responder('confirmar')}
+            disabled={trabajando}
+            accessibilityRole="button"
+            accessibilityLabel="Confirmar y aplicar el cambio"
+          >
+            {trabajando
+              ? <ActivityIndicator size="small" color={Colors.neon.void} />
+              : <Text style={tc.btnPrincipalTxt}>Confirmar</Text>}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  )
+}
+
+/**
+ * La misma tarjeta cuando ya se resolvió.
+ *
+ * El botón de deshacer solo aparece si de verdad se aplicó algo. Ofrecer
+ * «deshacer» sobre algo que se canceló sería ofrecer deshacer la nada, y el
+ * usuario tendría que averiguar por su cuenta qué haría ese botón.
+ */
+function TarjetaResuelta({
+  estado, mensaje, onDeshacer, deshaciendo,
+}: {
+  estado: EstadoTarjeta
+  mensaje: string
+  onDeshacer: () => void
+  deshaciendo: boolean
+}) {
+  const icono = estado === 'aplicada' ? 'checkmark-circle' : 'close-circle'
+  const color = estado === 'aplicada' ? Colors.neon.white : Colors.neon.w3
+
+  return (
+    <View style={[b.wrap, b.wrapLeft]}>
+      <View style={{ width: 32 }} />
+      <View style={[tc.card, tc.cardApagada]}>
+        <View style={tc.encabezado}>
+          <Ionicons name={icono} size={14} color={color} />
+          <Text style={[tc.titulo, { color }]}>{mensaje}</Text>
+        </View>
+        {estado === 'aplicada' && (
+          <TouchableOpacity
+            style={[tc.btn, tc.btnFantasma, { alignSelf: 'flex-start', marginTop: Spacing[2] }]}
+            onPress={onDeshacer}
+            disabled={deshaciendo}
+            accessibilityRole="button"
+            accessibilityLabel="Deshacer este cambio"
+          >
+            <Text style={tc.btnFantasmaTxt}>{deshaciendo ? 'Deshaciendo…' : 'Deshacer'}</Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  )
+}
+
+const tc = StyleSheet.create({
+  card: {
+    flex: 1, maxWidth: '86%',
+    backgroundColor: Colors.neon.pane,
+    borderRadius: BorderRadius.lg, borderBottomLeftRadius: 4,
+    borderWidth: 1, borderColor: Colors.neon.redDim,
+    padding: Spacing[4], gap: Spacing[2],
+  },
+  cardApagada: { borderColor: Colors.neon.edge, gap: 0 },
+  encabezado: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
+  titulo: {
+    fontSize: 11, fontWeight: '800', color: Colors.neon.red,
+    textTransform: 'uppercase', letterSpacing: 0.8, flexShrink: 1,
+  },
+  fila: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
+    gap: Spacing[3], paddingVertical: Spacing[1],
+  },
+  etiqueta: { fontSize: Typography.fontSize.sm, color: Colors.neon.w2, flexShrink: 1 },
+  valores: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
+  // El valor viejo tachado y apagado: se enseña para comparar, no para leerlo.
+  antes: { fontSize: Typography.fontSize.sm, color: Colors.neon.w3, textDecorationLine: 'line-through' },
+  despues: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.neon.white },
+  nota: { fontSize: 11, color: Colors.neon.w3, marginTop: Spacing[1] },
+  botones: { flexDirection: 'row', gap: Spacing[2], marginTop: Spacing[2] },
+  btn: {
+    borderRadius: BorderRadius.full, paddingHorizontal: Spacing[4], paddingVertical: Spacing[2],
+    alignItems: 'center', justifyContent: 'center', minHeight: 36,
+  },
+  btnPrincipal: { flex: 1, backgroundColor: Colors.neon.white },
+  btnPrincipalTxt: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: Colors.neon.void },
+  btnFantasma: { borderWidth: 1, borderColor: Colors.neon.edge },
+  btnFantasmaTxt: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.w2 },
+  btnApagado: { opacity: 0.6 },
+})
+
 // ── Premium Gate Banner ────────────────────────────────────────────────────────
 
 function PremiumGate() {
@@ -172,6 +355,29 @@ export default function ChatScreen() {
   const [sending, setSending] = useState(false)
   const [topeAlcanzado, setTopeAlcanzado] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
+
+  /**
+   * Cómo acabó cada tarjeta, por id de propuesta.
+   *
+   * Vive fuera de los mensajes porque una tarjeta cambia de estado sin que el
+   * mensaje que la trajo cambie en nada. Reescribir el mensaje entero para
+   * marcar que se confirmó obligaría a copiar toda la lista en cada toque.
+   */
+  const [resueltas, setResueltas] = useState<Record<string, { estado: EstadoTarjeta; mensaje: string }>>({})
+  const [deshaciendo, setDeshaciendo] = useState<string | null>(null)
+
+  const marcarResuelta = useCallback((id: string, estado: EstadoTarjeta, mensaje: string) => {
+    setResueltas(prev => ({ ...prev, [id]: { estado, mensaje } }))
+  }, [])
+
+  const manejarDeshacer = useCallback(async (id: string) => {
+    setDeshaciendo(id)
+    const r = await deshacer(id)
+    // Si no se pudo —pasaron las 24 h, ya estaba deshecho— se enseña el motivo
+    // del servidor y la tarjeta deja de ofrecer el botón.
+    setResueltas(prev => ({ ...prev, [id]: { estado: r.ok ? 'deshecha' : 'cerrada', mensaje: r.mensaje } }))
+    setDeshaciendo(null)
+  }, [])
 
   const today = hoyLocal()
   const healthScore = scoreHistory.find(s => (s as any).date === today)?.total
@@ -228,8 +434,8 @@ export default function ChatScreen() {
     await incrementAI()
 
     try {
-      const reply = await coachSend(content, messages, context)
-      const assistantMsg = createMessage('assistant', reply)
+      const { texto, confirmaciones } = await coachSend(content, messages, context)
+      const assistantMsg = createMessage('assistant', texto, confirmaciones)
       setMessages(prev => [...prev, assistantMsg])
     } catch (err: any) {
       // El 429 no es un fallo: es el tope del día, y trae escrito qué decir.
@@ -297,7 +503,30 @@ export default function ChatScreen() {
           contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          {messages.map(msg => <MessageBubble key={msg.id} msg={msg} />)}
+          {messages.map(msg => (
+            <View key={msg.id}>
+              <MessageBubble msg={msg} />
+              {/*
+                Las tarjetas van DEBAJO del mensaje que las propuso: ZENA dice
+                qué cambiaría y justo ahí está el botón. Separarlas dejaría el
+                «¿lo confirmas?» a una distancia que crece con la conversación.
+              */}
+              {msg.confirmaciones?.map(c => {
+                const resuelta = resueltas[c.id]
+                return resuelta
+                  ? (
+                    <TarjetaResuelta
+                      key={c.id}
+                      estado={resuelta.estado}
+                      mensaje={resuelta.mensaje}
+                      deshaciendo={deshaciendo === c.id}
+                      onDeshacer={() => manejarDeshacer(c.id)}
+                    />
+                  )
+                  : <TarjetaConfirmacion key={c.id} confirmacion={c} onResuelta={marcarResuelta} />
+              })}
+            </View>
+          ))}
           {sending && <TypingIndicator />}
 
           {/* Quick questions (show when only welcome msg) */}

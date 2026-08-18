@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import api from './api'
+import type { Confirmacion } from './confirmacionesService'
 
 export interface CoachContext {
   totalCalories: number
@@ -21,6 +22,21 @@ export interface CoachMessage {
   role: 'user' | 'assistant'
   content: string
   timestamp: number
+  /**
+   * Lo que ZENA propuso en este mensaje y aún no está aplicado (§10).
+   *
+   * Va colgado del mensaje y no en una lista aparte porque la tarjeta tiene
+   * que salir DEBAJO de lo que ZENA acaba de decir. Separadas, el texto
+   * («te bajo 150 kcal, ¿lo confirmas?») y el botón acaban a distinta altura
+   * en cuanto la conversación sigue.
+   */
+  confirmaciones?: Confirmacion[]
+}
+
+/** Lo que contesta el servidor a un mensaje: el texto y lo que haya propuesto. */
+export interface RespuestaCoach {
+  texto: string
+  confirmaciones: Confirmacion[]
 }
 
 const SESSION_KEY = 'coach_session_id'
@@ -67,7 +83,7 @@ export async function sendMessage(
   message: string,
   history: CoachMessage[],
   context: CoachContext
-): Promise<string> {
+): Promise<RespuestaCoach> {
   const sessionId = await getOrCreateSession()
 
   try {
@@ -76,8 +92,7 @@ export async function sendMessage(
       context,
       history: history.slice(-10),
     }, { timeout: ESPERA_CHAT_MS, headers: cabeceraFecha() })
-    const aiMessage = data?.data?.aiMessage
-    return aiMessage?.content ?? 'No pude generar una respuesta. Intenta de nuevo.'
+    return leerRespuesta(data)
   } catch (err: any) {
     if (err?.response?.status === 404) {
       await AsyncStorage.removeItem(SESSION_KEY)
@@ -85,12 +100,23 @@ export async function sendMessage(
       const { data } = await api.post(`/chat/sessions/${newSessionId}/messages`, {
         content: message,
       }, { timeout: ESPERA_CHAT_MS, headers: cabeceraFecha() })
-      return data?.data?.aiMessage?.content ?? 'No pude generar una respuesta. Intenta de nuevo.'
+      return leerRespuesta(data)
     }
     throw err
   }
 }
 
-export function createMessage(role: 'user' | 'assistant', content: string): CoachMessage {
-  return { id: Date.now().toString() + Math.random(), role, content, timestamp: Date.now() }
+function leerRespuesta(data: any): RespuestaCoach {
+  return {
+    texto: data?.data?.aiMessage?.content ?? 'No pude generar una respuesta. Intenta de nuevo.',
+    confirmaciones: data?.data?.confirmaciones ?? [],
+  }
+}
+
+export function createMessage(
+  role: 'user' | 'assistant',
+  content: string,
+  confirmaciones?: Confirmacion[],
+): CoachMessage {
+  return { id: Date.now().toString() + Math.random(), role, content, timestamp: Date.now(), confirmaciones }
 }

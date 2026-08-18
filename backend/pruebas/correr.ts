@@ -12,17 +12,25 @@
 import { pruebasDeRachas } from './rachas'
 import { pruebasDeTracking } from './tracking'
 import { pruebasDeMigracion } from './migracion'
+import { pruebasDeConfirmaciones } from './confirmaciones'
+import { pruebasDeCatalogo } from './catalogo'
+import { pruebasDeCuidado } from './cuidado'
+import { pruebasDeDescomposicion } from './descomposicion'
 import { resumen, limpiar } from './apoyo'
 
 async function main() {
   console.log('\n╔══════════════════════════════════════════════════════════════╗')
-  console.log('║  PRUEBAS e2e · /tracking                                     ║')
+  console.log('║  PRUEBAS e2e · /tracking y confirmaciones de ZENA             ║')
   console.log('║  Escriben en la base REAL con fechas centinela de 2098.      ║')
   console.log('╚══════════════════════════════════════════════════════════════╝')
 
   pruebasDeRachas()
   await pruebasDeTracking()
   await pruebasDeMigracion()
+  await pruebasDeConfirmaciones()
+  await pruebasDeCatalogo()
+  await pruebasDeCuidado()
+  await pruebasDeDescomposicion()
 
   const fallidas = resumen()
   process.exit(fallidas === 0 ? 0 : 1)

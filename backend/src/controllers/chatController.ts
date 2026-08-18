@@ -8,6 +8,8 @@ import { devolverCuota, fechaDelUsuario } from '../middleware/aiQuota'
 import { construirSystemPrompt } from '../services/aiSystemPrompt'
 import { calcularNutricion, PerfilUsuario } from '../services/nutritionCalculator'
 import { AI_TOOLS, executeAiTool } from '../services/aiTools'
+import { ligarAMensaje, type AccionPendiente } from '../services/confirmaciones'
+import { cuidadoDeEsteMensaje, faltanLosRecursos, RECURSOS_MX } from '../services/cuidado'
 
 const aiClient = new DeepSeekClient(process.env.DEEPSEEK_API_KEY || '')
 
@@ -216,8 +218,22 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
   // System prompt + aviso de que ZENA puede ejecutar cambios reales con herramientas.
   const toolsHint = `\n\nPUEDES EJECUTAR CAMBIOS REALES en la app del usuario mediante herramientas: cambiar su objetivo, actualizar su peso/actividad, ajustar sus targets nutricionales (calorías/macros/comidas) y regenerar su plan. Cuando el usuario pida un cambio de este tipo, USA la herramienta correspondiente en lugar de solo describirlo. Después confirma con lenguaje natural y cálido lo que hiciste.`
 
+  /**
+   * El §12, y por qué va justo aquí y no antes.
+   *
+   * Este bloque depende del usuario Y del mensaje que acaba de escribir, así
+   * que es lo más volátil de todo el prompt. La caché de DeepSeek es por
+   * prefijo: cualquier byte que cambie invalida lo que venga detrás. Puesto
+   * arriba costaría los 8.800 tokens de la base de conocimiento en CADA
+   * mensaje de CADA usuario; puesto aquí, al final, no rompe nada.
+   *
+   * `toolsHint` va delante suyo por lo mismo, aunque sea fijo: lo que importa
+   * es que lo que cambia quede al final, en orden de volatilidad.
+   */
+  const cuidado = await cuidadoDeEsteMensaje(userId, String(content), String(id))
+
   const messages = [
-    { role: 'system', content: systemPrompt + toolsHint },
+    { role: 'system', content: systemPrompt + toolsHint + (cuidado.bloque ? `\n\n${cuidado.bloque}` : '') },
     ...history,
     { role: 'user', content },
   ]
@@ -301,6 +317,17 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
   const VERBOS_REGISTRO = /\b(ap[uú]nta|agrega|a[ñn]ade|registra|s[uú]ma|mete|anota)/i
   const pidioApuntar = VERBOS_REGISTRO.test(String(content))
 
+  /**
+   * Lo que ZENA propone y el usuario tiene que confirmar (§10).
+   *
+   * Las herramientas de riesgo alto ya no escriben: dejan aquí su propuesta y
+   * la app la pinta con el antes y el después. Se recogen a lo largo de todas
+   * las rondas porque el modelo puede proponer más de una cosa en un mismo
+   * mensaje —«ajústame las calorías y rehazme la dieta»— y las dos tarjetas
+   * tienen que llegar juntas.
+   */
+  const pendientes: AccionPendiente[] = []
+
   const buscoSinApuntar = () =>
     pidioApuntar && usadas.has('buscar_alimento') && !usadas.has('registrar_comida')
 
@@ -358,7 +385,10 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
       for (const call of respuesta.toolCalls) {
         let args: Record<string, any> = {}
         try { args = JSON.parse(call.function?.arguments || '{}') } catch { /* args vacíos */ }
-        const result = await executeAiTool(call.function?.name, args, userId, { hoy: fechaDelUsuario(req) })
+        const result = await executeAiTool(call.function?.name, args, userId, {
+          hoy: fechaDelUsuario(req),
+          pendientes,
+        })
         if (call.function?.name) usadas.add(call.function.name)
         conversacion.push({ role: 'tool', tool_call_id: call.id, content: result })
       }
@@ -393,11 +423,33 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
     await devolverCuota(req)
   }
 
+  /**
+   * Los teléfonos, garantizados.
+   *
+   * El prompt le pide a ZENA que los dé, y normalmente los da. Pero «el modelo
+   * normalmente hace caso» no es un nivel de cumplimiento aceptable cuando lo
+   * que está en juego es que alguien tenga a quién llamar — el §1 lo pone por
+   * escrito: lo que pueda subir de «prompt» a «arquitectura», sube.
+   *
+   * Se comprueba que los dos números estén de verdad en la respuesta, y si
+   * falta alguno se añaden. La calidez la escribe el modelo; que el número esté
+   * bien lo garantiza esto.
+   */
+  if (cuidado.contencion && faltanLosRecursos(finalText)) {
+    logger.warn(`Chat ${id}: la respuesta de contención no traía los recursos; se añaden`)
+    finalText = `${finalText}\n\n${RECURSOS_MX}`
+  }
+
   const { data: aiMessage } = await supabase
     .from('messages')
     .insert({ session_id: id, sender_type: 'ai', content: finalText })
     .select()
     .single()
+
+  // La propuesta se guardó durante el bucle, cuando este mensaje todavía no
+  // existía. Se ata ahora para que la tarjeta vuelva a salir en su sitio
+  // cuando el usuario recargue el hilo.
+  await ligarAMensaje(pendientes.map(p => p.id), id, aiMessage?.id ?? null)
 
   await supabase
     .from('chat_sessions')
@@ -406,7 +458,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
 
   res.status(200).json({
     success: true,
-    data: { userMessage, aiMessage },
+    data: { userMessage, aiMessage, confirmaciones: pendientes },
   } satisfies ApiResponse)
 }
 

@@ -3,11 +3,10 @@ import { logger } from '../config/logger'
 import { searchCatalog, getCatalogFoodById } from './catalogService'
 import { searchFoods as buscarEnFatSecret, isConfigured as fatsecretConfigurado, type FatSecretFood } from './fatsecretService'
 import { darDeAltaAlimento, normalizarNombre } from './altaAlimento'
+import { componerPlatillo, esFallo } from './descomposicion'
 import { calcularRachas, sumarDias } from './streaks'
-import {
-  perfilClinicoDe, revisarCalorias, revisarProteina,
-  revisarPesoObjetivo, revisarPesoActual,
-} from './limitesClinicos'
+import { revisarPesoActual } from './limitesClinicos'
+import { prepararAccion, type AccionPendiente } from './confirmaciones'
 
 // ── Definición de herramientas (formato OpenAI/DeepSeek) ──────────────────────
 // La IA (ZENA) puede invocarlas para ejecutar cambios reales en el plan del usuario.
@@ -143,6 +142,39 @@ export const AI_TOOLS = [
   {
     type: 'function',
     function: {
+      name: 'dar_alta_alimento',
+      description: 'Crea en el catálogo un platillo compuesto que NO existe todavía, a partir de sus ingredientes. Úsala solo cuando buscar_alimento no haya devuelto nada que sirva y el usuario quiera registrar un platillo mexicano preparado (cochinita pibil, chilaquiles, pozole...). ANTES busca cada ingrediente con buscar_alimento para obtener su food_id: los valores nutricionales salen de esos ingredientes, no de lo que tú recuerdes. Después registra el platillo con registrar_comida usando el id que devuelva esta herramienta.',
+      parameters: {
+        type: 'object',
+        properties: {
+          nombre: {
+            type: 'string',
+            description: 'El platillo, en singular y sin cantidad ni marca. "Cochinita pibil", no "2 tacos de cochinita".',
+          },
+          ingredientes: {
+            type: 'array',
+            description: 'La receta de UNA preparación completa, con los gramos de cada ingrediente en crudo o listo para comer, como corresponda. Entre 2 y 15.',
+            items: {
+              type: 'object',
+              properties: {
+                food_id: { type: 'string', description: 'El id que devolvió buscar_alimento para ese ingrediente.' },
+                gramos: { type: 'number', description: 'Cuántos gramos de ese ingrediente lleva la receta completa.' },
+              },
+              required: ['food_id', 'gramos'],
+            },
+          },
+          porcion_g: {
+            type: 'number',
+            description: 'Cuánto pesa una ración normal del platillo, en gramos. Si no lo sabes, omítelo.',
+          },
+        },
+        required: ['nombre', 'ingredientes'],
+      },
+    },
+  },
+  {
+    type: 'function',
+    function: {
       name: 'registrar_comida',
       description: 'Apunta en el diario del usuario un alimento que ya encontraste con buscar_alimento. Úsala cuando pida registrar, apuntar, agregar o añadir algo que comió. Necesita el food_id EXACTO que devolvió la búsqueda: no lo inventes ni lo escribas de memoria.',
       parameters: {
@@ -232,20 +264,8 @@ export const AI_TOOLS = [
 // Dos campos paralelos leen el objetivo con vocabularios distintos:
 // goals.primary (generación de dieta con IA) y goals.main_goal (pantalla de Perfil).
 // Se escriben ambos siempre para que ningún lado quede desactualizado.
-const OBJETIVO_MAP: Record<string, string> = {
-  perder_grasa: 'weight_loss',
-  ganar_musculo: 'muscle_gain',
-  mantener: 'maintenance',
-  recomposicion: 'recomposicion',
-  rendimiento: 'performance',
-}
-const OBJETIVO_MAIN_GOAL_MAP: Record<string, string> = {
-  perder_grasa: 'lose_fat',
-  ganar_musculo: 'gain_muscle',
-  mantener: 'maintain',
-  recomposicion: 'maintain',
-  rendimiento: 'maintain',
-}
+// Las correspondencias de objetivo se mudaron a `confirmaciones`, que es
+// quien las escribe desde que `actualizar_objetivo` pasa por confirmación.
 const ACTIVIDAD_MAP: Record<string, string> = {
   sedentario: 'sedentary',
   ligero: 'light',
@@ -254,10 +274,6 @@ const ACTIVIDAD_MAP: Record<string, string> = {
   muy_activo: 'very_active',
 }
 
-async function getGoals(userId: string): Promise<Record<string, any>> {
-  const { data } = await supabase.from('users').select('goals').eq('id', userId).maybeSingle()
-  return (data?.goals && typeof data.goals === 'object') ? data.goals : {}
-}
 
 /**
  * Los seis huecos del diario, dichos como los dice la gente.
@@ -322,6 +338,16 @@ const redondear = (n: number) => Math.round(n * 10) / 10
  */
 export interface ContextoHerramienta {
   hoy?: string
+  /**
+   * Dónde dejan su propuesta las herramientas que confirman (§10).
+   *
+   * `executeAiTool` devuelve texto porque su destinatario es el modelo, y el
+   * modelo solo lee texto. Pero la tarjeta del antes y el después va para la
+   * app, que necesita los datos desglosados. En vez de cambiarle el tipo de
+   * retorno a las trece herramientas para que lo aproveche una, la propuesta
+   * se deja aquí y el controlador la recoge al terminar la ronda.
+   */
+  pendientes?: AccionPendiente[]
 }
 
 export async function executeAiTool(
@@ -906,19 +932,6 @@ export async function executeAiTool(
           `Fuente: ${alimento.sourceLabel}.`
       }
 
-      case 'actualizar_objetivo': {
-        if (typeof args.peso_objetivo === 'number') {
-          const v = revisarPesoObjetivo(args.peso_objetivo, await perfilClinicoDe(userId))
-          if (!v.ok) return v.motivo!
-        }
-        const goals = await getGoals(userId)
-        goals.primary = OBJETIVO_MAP[args.objetivo] ?? goals.primary ?? 'maintenance'
-        goals.main_goal = OBJETIVO_MAIN_GOAL_MAP[args.objetivo] ?? goals.main_goal ?? 'maintain'
-        if (typeof args.peso_objetivo === 'number') goals.goal_weight = args.peso_objetivo
-        const { error } = await supabase.from('users').update({ goals, updated_at: new Date().toISOString() }).eq('id', userId)
-        if (error) throw error
-        return `Objetivo actualizado a "${args.objetivo}"${args.peso_objetivo ? ` con peso objetivo ${args.peso_objetivo} kg` : ''}.`
-      }
       case 'actualizar_datos_fisicos': {
         if (typeof args.peso === 'number') {
           const v = revisarPesoActual(args.peso)
@@ -935,50 +948,97 @@ export async function executeAiTool(
         ].filter(Boolean)
         return `Datos físicos actualizados: ${partes.join(' y ')}.`
       }
-      case 'actualizar_targets_nutricionales': {
-        // IMPORTANTE: estos son los mismos nombres planos que usa el editor de
-        // targets en Perfil y que lee la pantalla de Nutrición (goals.calories_target,
-        // goals.protein_g, etc.) — nunca anidar en goals.custom_targets, esa ruta
-        // no la lee ninguna pantalla y el cambio de la IA quedaría invisible.
-        // Los límites del §12, ANTES de tocar nada. Antes esto escribía
-        // directo: «ponme en 800 calorías» se guardaba tal cual, aunque
-        // `nutritionCalculator` tuviera su piso — porque este camino no pasaba
-        // por él.
-        const perfil = await perfilClinicoDe(userId)
-        if (typeof args.calorias === 'number') {
-          const v = revisarCalorias(args.calorias, perfil)
-          if (!v.ok) return v.motivo!
-        }
-        if (typeof args.proteina === 'number') {
-          const v = revisarProteina(args.proteina, perfil)
-          if (!v.ok) return v.motivo!
+      /**
+       * ── Las que confirma el usuario ───────────────────────────────────────
+       *
+       * Cambiar el objetivo, mover los targets y rehacer el plan son las tres
+       * herramientas que el §10 marca «Confirma». Aquí NO escriben: dejan la
+       * propuesta guardada y la app la enseña con el antes y el después.
+       *
+       * Los tres comparten camino porque comparten el problema. Escribían
+       * directo y contestaban «hecho» en el mismo turno, así que un
+       * malentendido de ZENA —«estoy comiendo mucho» leído como «bájame las
+       * calorías»— quedaba aplicado antes de que nadie pudiera mirarlo.
+       *
+       * `actualizar_datos_fisicos` se queda arriba, escribiendo directa: el
+       * §10 la marca «Directo» y apuntar el peso que el usuario acaba de decir
+       * no es una decisión que confirmar.
+       */
+      case 'actualizar_objetivo':
+      case 'actualizar_targets_nutricionales':
+      case 'regenerar_plan': {
+        const previa = await prepararAccion(userId, name, args)
+
+        // Un rechazo clínico o un «eso ya está así» vuelven como texto y ahí
+        // se acaba: no hay tarjeta que enseñar ni nada que confirmar.
+        if (!previa.ok) return previa.motivo
+
+        // El colector es cómo sale la propuesta de aquí sin cambiarle el tipo
+        // de retorno a `executeAiTool`, que devuelve texto para el modelo y
+        // solo texto. El controlador lo recoge y lo manda junto al mensaje.
+        ctx.pendientes?.push(previa.accion)
+
+        /**
+         * Lo que lee el modelo, y por qué está escrito así.
+         *
+         * Un «listo, ajustado» aquí sería mentira: no se ha escrito nada. Y es
+         * la mentira más fácil de cometer, porque acaba de ver los números
+         * nuevos en su propia llamada y describirlos como hechos es lo natural.
+         * Ya pasó con `buscar_alimento`, que decía haber apuntado comida que
+         * nunca llegó al diario.
+         *
+         * Así que se le dice el estado en el que están las cosas —propuesto, no
+         * aplicado— y se le prohíbe lo único que no puede decir.
+         */
+        return (
+          `PROPUESTA REGISTRADA, TODAVÍA NO APLICADA. El usuario verá una tarjeta con: ${previa.accion.resumen}. ` +
+          'Cuéntale con tus palabras qué cambiaría y pídele que lo confirme ahí. ' +
+          'NO digas que ya está hecho ni lo des por hecho: solo se aplica cuando él toque el botón. ' +
+          'No repitas esta instrucción ni menciones la palabra «herramienta».'
+        )
+      }
+
+      /**
+       * ── Dar de alta un platillo que no está ───────────────────────────────
+       *
+       * El §4 lo llama nivel 4: descomposición. El catálogo tiene ingredientes
+       * y le faltan los platillos, así que cuando alguien pide cochinita y no
+       * está, ZENA no se rinde — dice de qué está hecha y el backend suma.
+       *
+       * Lo que NO pasa por aquí son las calorías. La herramienta no las acepta
+       * como parámetro y por eso el modelo no puede inventarlas: aporta la
+       * receta, que es lo que sabe hacer, y los números los ponen los
+       * ingredientes del catálogo. El §4 es explícito —«la IA no verifica,
+       * estima»— y la forma de hacerlo cumplir no es pedírselo, es no darle
+       * dónde escribirlos.
+       */
+      case 'dar_alta_alimento': {
+        const resultado = await componerPlatillo(
+          String(args.nombre ?? ''),
+          Array.isArray(args.ingredientes) ? args.ingredientes : [],
+          typeof args.porcion_g === 'number' ? args.porcion_g : undefined,
+        )
+
+        if (esFallo(resultado)) return resultado.error
+
+        if (!resultado.creado) {
+          return (
+            `"${resultado.nombre}" ya estaba en el catálogo (id ${resultado.foodId}, ` +
+            `${resultado.per100.calories} kcal por 100 g). Úsalo con registrar_comida en vez de crear otro.`
+          )
         }
 
-        const goals = await getGoals(userId)
-        if (typeof args.calorias === 'number') goals.calories_target = args.calorias
-        if (typeof args.proteina === 'number') goals.protein_g = args.proteina
-        if (typeof args.carbohidratos === 'number') goals.carbs_g = args.carbohidratos
-        if (typeof args.grasa === 'number') goals.fat_g = args.grasa
-        if (typeof args.comidas_por_dia === 'number') goals.meals_per_day = args.comidas_por_dia
-        const { error } = await supabase.from('users').update({ goals, updated_at: new Date().toISOString() }).eq('id', userId)
-        if (error) throw error
-        const cambios = [
-          typeof args.calorias === 'number' ? `${args.calorias} kcal` : null,
-          typeof args.proteina === 'number' ? `${args.proteina}g proteína` : null,
-          typeof args.carbohidratos === 'number' ? `${args.carbohidratos}g carbos` : null,
-          typeof args.grasa === 'number' ? `${args.grasa}g grasa` : null,
-          typeof args.comidas_por_dia === 'number' ? `${args.comidas_por_dia} comidas/día` : null,
-        ].filter(Boolean).join(', ')
-        return `Objetivos nutricionales ajustados: ${cambios}.`
+        const receta = resultado.receta.map(i => `${i.nombre} ${i.gramos} g`).join(', ')
+        return (
+          `Alta hecha: "${resultado.nombre}" (id ${resultado.foodId}). ` +
+          `${resultado.per100.calories} kcal, ${resultado.per100.protein} g de proteína, ` +
+          `${resultado.per100.carbs} g de carbos y ${resultado.per100.fat} g de grasa por 100 g. ` +
+          `Una porción son ${resultado.porcionG} g. Calculado a partir de: ${receta}. ` +
+          'Ahora regístralo con registrar_comida usando ese id. Al decírselo al usuario, ' +
+          'menciona que el valor está calculado a partir de sus ingredientes, no medido.'
+        )
       }
-      case 'regenerar_plan': {
-        const goals = await getGoals(userId)
-        goals.needs_regen = args.tipo
-        goals.needs_regen_at = new Date().toISOString()
-        const { error } = await supabase.from('users').update({ goals, updated_at: new Date().toISOString() }).eq('id', userId)
-        if (error) throw error
-        return `Marcado para regenerar: ${args.tipo}. Se generará un plan nuevo con tu perfil actualizado.`
-      }
+
       default:
         return `Herramienta desconocida: ${name}.`
     }

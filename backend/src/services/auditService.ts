@@ -15,6 +15,20 @@ export type AuditAction =
   | 'suspicious_activity'
   | 'rate_limit_hit'
   | 'unauthorized_access'
+  // Todo lo que ZENA propone sobre el plan del usuario, y qué se hizo con
+  // ello. El §16 quiere ver justo esto en el panel: lo que la validación
+  // clínica paró, y la proporción entre lo confirmado, lo cancelado y lo
+  // deshecho — que es como se mide si ZENA entiende lo que le piden.
+  | 'ia_accion_propuesta'
+  | 'ia_accion_confirmada'
+  | 'ia_accion_cancelada'
+  | 'ia_accion_deshecha'
+  | 'ia_accion_rechazada'
+  // §12. `contencion_activada` es la única de todo este tipo que el §16 marca
+  // como urgencia inmediata; las otras dos son revisión diaria.
+  | 'contencion_activada'
+  | 'tca_nivel_2'
+  | 'tca_nivel_3'
 
 interface AuditEntry {
   userId?: string

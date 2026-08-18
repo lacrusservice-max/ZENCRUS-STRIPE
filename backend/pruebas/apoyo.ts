@@ -99,6 +99,21 @@ export function resumen(): number {
 /** Para encadenar suites sin que el marcador se reinicie. */
 export const marcador = () => ({ pasadas, fallidas })
 
+/**
+ * Cuándo empezó todo esto.
+ *
+ * `acciones_pendientes`, `plan_versions` y `audit_logs` no tienen fecha
+ * centinela por donde agarrarlas: sus filas llevan la de verdad, la de ahora
+ * mismo. Lo que sí se puede afirmar es que nada anterior a este instante lo
+ * escribieron las pruebas, y eso basta para borrar solo lo suyo.
+ *
+ * El margen es de segundos, así que el riesgo real es que el usuario confirme
+ * un cambio de ZENA desde su teléfono justo mientras corre el banco. Si eso
+ * llega a preocupar, la alternativa es apuntar los ids de cada fila creada —
+ * más código y más frágil, porque basta olvidarse de uno.
+ */
+export const ARRANQUE = new Date().toISOString()
+
 // ── El ciclado de macros: guardar y devolver ─────────────────────────────────
 // Es una fila por usuario y las pruebas la sobrescriben. Sin esto, correr el
 // banco le cambiaría a alguien su ciclado de verdad.
@@ -119,6 +134,25 @@ async function restaurarCiclo(): Promise<void> {
   } else {
     await supabase.from('macro_cycles').delete().eq('user_id', USUARIO)
   }
+}
+
+// ── Los objetivos del usuario: guardar y devolver ────────────────────────────
+// `users.goals` es una columna de una fila, igual que el ciclado, y las
+// confirmaciones la escriben. Aquí no vale borrar: hay que dejarla como estaba
+// o el usuario abre la app y sus calorías son otras.
+
+let goalsPrevios: Record<string, unknown> | null = null
+let goalsGuardados = false
+
+export async function guardarGoals(): Promise<void> {
+  const { data } = await supabase.from('users').select('goals').eq('id', USUARIO).maybeSingle()
+  goalsPrevios = (data?.goals ?? null) as Record<string, unknown> | null
+  goalsGuardados = true
+}
+
+async function restaurarGoals(): Promise<void> {
+  if (!goalsGuardados) return
+  await supabase.from('users').update({ goals: goalsPrevios }).eq('id', USUARIO)
 }
 
 // ── Limpieza ─────────────────────────────────────────────────────────────────
@@ -142,6 +176,37 @@ export async function limpiar(): Promise<void> {
     // siembra el servidor NO se tocan: son los del usuario.
     supabase.from('habit_definitions').delete().eq('user_id', USUARIO).like('habit_key', `${PREFIJO}%`),
     supabase.from('meal_logs').delete().eq('user_id', USUARIO).gte('log_date', CENTINELA),
+    // Las tres del flujo de confirmación, acotadas por el arranque del banco.
+    supabase.from('acciones_pendientes').delete().eq('user_id', USUARIO).gte('created_at', ARRANQUE),
+    supabase.from('plan_versions').delete().eq('user_id', USUARIO).gte('created_at', ARRANQUE),
+    supabase.from('audit_logs').delete().eq('user_id', USUARIO).gte('created_at', ARRANQUE)
+      .like('action', 'ia_accion_%'),
+    // §12. Las alertas de contención y los avisos de nivel 2/3 que levanten
+    // las pruebas: nunca son de una persona, siempre de un caso inventado.
+    supabase.from('audit_logs').delete().eq('user_id', USUARIO).gte('created_at', ARRANQUE)
+      .in('action', ['contencion_activada', 'tca_nivel_2', 'tca_nivel_3']),
+    supabase.from('senales_tca').delete().eq('user_id', USUARIO).gte('detectada_at', ARRANQUE),
   ])
   await restaurarCiclo()
+  await restaurarGoals()
+  await limpiarCatalogo()
+}
+
+/**
+ * Los platillos de prueba del catálogo COMÚN.
+ *
+ * `foods` no tiene `user_id`: lo que se cree ahí lo ve todo el mundo en el
+ * buscador, así que no vale la fecha centinela. La red es el nombre: todo lo
+ * que crean las pruebas empieza por `t_`, y esto barre lo que sobreviva a un
+ * fallo a mitad. Va después de las demás porque las recetas apuntan a
+ * ingredientes reales y hay que soltarlas antes de borrar la ficha.
+ */
+async function limpiarCatalogo(): Promise<void> {
+  const { data } = await supabase.from('foods').select('id').like('name', 't\\_%')
+  for (const f of data ?? []) {
+    await supabase.from('food_recipes').delete().eq('food_id', f.id)
+    await supabase.from('food_nutrients').delete().eq('food_id', f.id)
+    await supabase.from('food_portions').delete().eq('food_id', f.id)
+    await supabase.from('foods').delete().eq('id', f.id)
+  }
 }

@@ -4,6 +4,7 @@ import userRoutes from './user.routes'
 import dietRoutes from './diet.routes'
 import workoutRoutes from './workout.routes'
 import chatRoutes from './chat.routes'
+import confirmacionesRoutes from './confirmaciones.routes'
 import subscriptionRoutes from './subscription.routes'
 import adminRoutes from './admin.routes'
 import setupRoutes from './setup.routes'
@@ -59,6 +60,7 @@ router.use('/users', userRoutes)
 router.use('/diet', dietRoutes)
 router.use('/workout', workoutRoutes)
 router.use('/chat', chatRoutes)
+router.use('/confirmaciones', confirmacionesRoutes)
 router.use('/subscriptions', subscriptionRoutes)
 router.use('/admin', adminRoutes)
 router.use('/setup', setupRoutes)

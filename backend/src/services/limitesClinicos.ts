@@ -68,10 +68,30 @@ export interface PerfilClinico {
   nivelActividad?: string
 }
 
+/**
+ * Por qué se rechazó, para quien necesite distinguirlo sin leer el texto.
+ *
+ * La detección del §12 se apoya en esto. Sin un código, saber si alguien pidió
+ * calorías por debajo de su metabolismo obligaría a buscar una frase dentro
+ * del motivo — y ese motivo está escrito para que ZENA se lo repita al
+ * usuario, así que se va a reescribir. Una señal clínica que se rompe al
+ * mejorar una redacción no es una señal.
+ */
+export type MotivoRechazo =
+  | 'no_es_numero'
+  | 'bajo_piso_absoluto'
+  | 'bajo_tmb'
+  | 'deficit_excesivo'
+  | 'proteina_insuficiente'
+  | 'imc_bajo'
+  | 'imc_alto'
+  | 'peso_imposible'
+
 export interface Veredicto {
   ok: boolean
   /** Qué se rechaza y por qué, en palabras que ZENA pueda repetir tal cual. */
   motivo?: string
+  codigo?: MotivoRechazo
 }
 
 const FACTOR_ACTIVIDAD: Record<string, number> = {
@@ -133,13 +153,14 @@ export function metabolismoBasal(p: PerfilClinico): number | null {
  */
 export function revisarCalorias(kcal: number, p: PerfilClinico): Veredicto {
   if (!Number.isFinite(kcal) || kcal <= 0) {
-    return { ok: false, motivo: 'Esas calorías no son un número válido.' }
+    return { ok: false, codigo: 'no_es_numero', motivo: 'Esas calorías no son un número válido.' }
   }
 
   const piso = PISO_KCAL[p.sexo]
   if (kcal < piso) {
     return {
       ok: false,
+      codigo: 'bajo_piso_absoluto',
       motivo: `No puedo fijar ${Math.round(kcal)} kcal: por debajo de ${piso} hay riesgo de deficiencia de micronutrientes y de RED-S. ` +
         `El mínimo que puedo dejar son ${piso} kcal. Si el usuario quiere bajar de peso más rápido, la salida es mover más, no comer menos que eso.`,
     }
@@ -149,6 +170,7 @@ export function revisarCalorias(kcal: number, p: PerfilClinico): Veredicto {
   if (tmb !== null && kcal < tmb) {
     return {
       ok: false,
+      codigo: 'bajo_tmb',
       motivo: `No puedo fijar ${Math.round(kcal)} kcal: es menos de lo que su cuerpo gasta en reposo (${Math.round(tmb)} kcal). ` +
         `Comer por debajo del metabolismo basal de forma sostenida baja el gasto y la masa magra. Propón ${Math.round(tmb)} kcal o más.`,
     }
@@ -159,6 +181,7 @@ export function revisarCalorias(kcal: number, p: PerfilClinico): Veredicto {
     const sugerido = Math.round(get - DEFICIT_MAX)
     return {
       ok: false,
+      codigo: 'deficit_excesivo',
       motivo: `No puedo fijar ${Math.round(kcal)} kcal: sería un déficit de ${Math.round(get - kcal)} kcal sobre su gasto (${get} kcal). ` +
         `Por encima de ${DEFICIT_MAX} el cortisol sube y se pierde más músculo que grasa. Lo más agresivo que puedo dejar son ${sugerido} kcal.`,
     }
@@ -170,7 +193,7 @@ export function revisarCalorias(kcal: number, p: PerfilClinico): Veredicto {
 /** ¿Se puede fijar esta proteína? */
 export function revisarProteina(gramos: number, p: PerfilClinico): Veredicto {
   if (!Number.isFinite(gramos) || gramos <= 0) {
-    return { ok: false, motivo: 'Esa cantidad de proteína no es un número válido.' }
+    return { ok: false, codigo: 'no_es_numero', motivo: 'Esa cantidad de proteína no es un número válido.' }
   }
   if (!p.peso) return { ok: true }
 
@@ -178,6 +201,7 @@ export function revisarProteina(gramos: number, p: PerfilClinico): Veredicto {
   if (gramos < minimo) {
     return {
       ok: false,
+      codigo: 'proteina_insuficiente',
       motivo: `No puedo fijar ${Math.round(gramos)} g de proteína: para ${p.peso} kg el mínimo son ${minimo} g. ` +
         'Por debajo se pierde masa magra, y en déficit eso va más rápido.',
     }
@@ -193,7 +217,7 @@ export function revisarProteina(gramos: number, p: PerfilClinico): Veredicto {
  */
 export function revisarPesoObjetivo(kg: number, p: PerfilClinico): Veredicto {
   if (!Number.isFinite(kg) || kg <= 0) {
-    return { ok: false, motivo: 'Ese peso objetivo no es un número válido.' }
+    return { ok: false, codigo: 'no_es_numero', motivo: 'Ese peso objetivo no es un número válido.' }
   }
   if (!p.talla) return { ok: true }
 
@@ -204,6 +228,7 @@ export function revisarPesoObjetivo(kg: number, p: PerfilClinico): Veredicto {
     const minimo = Math.ceil(IMC_MIN * m * m)
     return {
       ok: false,
+      codigo: 'imc_bajo',
       motivo: `No puedo fijar ${kg} kg como meta: para ${p.talla} cm eso es un IMC de ${imc.toFixed(1)}, por debajo del rango saludable. ` +
         `Lo más bajo que puedo dejar son ${minimo} kg. Y díselo con cuidado: si insiste, ofrécele hablarlo con un profesional en vez de repetirle el número.`,
     }
@@ -213,6 +238,7 @@ export function revisarPesoObjetivo(kg: number, p: PerfilClinico): Veredicto {
     const maximo = Math.floor(IMC_MAX * m * m)
     return {
       ok: false,
+      codigo: 'imc_alto',
       motivo: `No puedo fijar ${kg} kg como meta: para ${p.talla} cm es un IMC de ${imc.toFixed(1)}. ` +
         `Lo más alto que puedo dejar son ${maximo} kg. Si busca ganar masa, se hace por etapas y midiendo composición, no fijando el peso final de golpe.`,
     }
@@ -232,6 +258,7 @@ export function revisarPesoActual(kg: number): Veredicto {
   if (!Number.isFinite(kg) || kg < 25 || kg > 400) {
     return {
       ok: false,
+      codigo: 'peso_imposible',
       motivo: `${kg} kg no parece un peso real. Pregúntale de nuevo antes de guardarlo.`,
     }
   }
