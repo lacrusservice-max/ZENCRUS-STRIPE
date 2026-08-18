@@ -26,12 +26,17 @@ import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
 import { suggestCalorieAdjustment, Goal } from '@/utils/calorieAdjustment'
 import api from '@/services/api'
 import { PlateRing } from '@/components/ui/PlateRing'
+import { AnilloMacro, COLOR_MACRO } from '@/components/nutrition/AnilloMacro'
+import {
+  limitesDe, tramoDe, COLOR_TRAMO, ETIQUETA_TRAMO, frase as fraseDelDia, aviso as avisoDelDia,
+} from '@/utils/tramoCalorico'
 import { CountUp } from '@/components/ui/CountUp'
 import { ZIcon, ZIconName } from '@/components/ui/ZencrusIcon'
 import { Colors } from '@/constants/theme'
 import { TabBar } from '@/constants/layout'
 import { computeMealBudgets, describeMealStatus, buildCoachNote, MealBudget } from '@/utils/mealBudget'
 import { FoodConsole } from '@/components/nutrition/FoodConsole'
+import { FondoPlato } from '@/components/nutrition/FondoPlato'
 import { emojiForFood } from '@/data/foodEmoji'
 
 const NEON = Colors.neon
@@ -60,10 +65,18 @@ export default function NutritionScreen() {
   } = useNutritionStore()
 
   const goals = (user as any)?.goals ?? {}
-  const caloriesTarget = goals.calories_target ?? 2000
-  // Piso del día. Si el perfil no trae uno guardado, se deriva del objetivo:
-  // por debajo del 85 % el déficit deja de ser sostenible.
-  const caloriesFloor  = goals.calories_min ?? Math.round(caloriesTarget * 0.85)
+
+  /**
+   * Piso, meta y techo salen todos de `limitesDe`.
+   *
+   * Antes el piso se derivaba aquí y el techo sencillamente NO EXISTÍA: la
+   * pantalla solo sabía «meta» y «te pasaste de la meta», que son cosas
+   * distintas. Pasarse doscientas kcal de la meta un día de entreno no es
+   * pasarse; pasarse seiscientas sí. Sin techo no había forma de decirlo.
+   */
+  const limites = limitesDe(goals)
+  const caloriesTarget = limites.meta
+  const caloriesFloor  = limites.minimo
   const proteinTarget  = goals.protein_g ?? 150
   const carbsTarget    = goals.carbs_g ?? 200
   const fatTarget      = goals.fat_g ?? 65
@@ -72,6 +85,9 @@ export default function NutritionScreen() {
   const { measurements, load: loadMeasurements } = useBodyMeasurementsStore()
   const [dismissedAdjustment, setDismissedAdjustment] = useState(false)
   const [applyingAdjustment, setApplyingAdjustment] = useState(false)
+  /* El aviso se cierra para la sesión, no para siempre: mañana el día es otro
+     y el consejo vuelve a valer. */
+  const [avisoCerrado, setAvisoCerrado] = useState(false)
   const [consoleOpen, setConsoleOpen] = useState(false)
   const [consoleMeal, setConsoleMeal] = useState<string | null>(null)
 
@@ -127,6 +143,9 @@ export default function NutritionScreen() {
   )
   const budgetById = Object.fromEntries(budgets.map(b => [b.id, b]))
 
+  const tramo = tramoDe(totalCalories, limites)
+  const colorTramo = COLOR_TRAMO[tramo]
+
   const remaining = Math.max(0, caloriesTarget - totalCalories)
   const overBy = Math.max(0, totalCalories - caloriesTarget)
   const underFloorBy = Math.max(0, caloriesFloor - totalCalories)
@@ -150,6 +169,7 @@ export default function NutritionScreen() {
 
   return (
     <View style={s.root}>
+      <FondoPlato />
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         <ScrollView
           showsVerticalScrollIndicator={false}
@@ -177,38 +197,22 @@ export default function NutritionScreen() {
 
           {/* ── Estado del día ── */}
           <View style={s.plate}>
-            <PlateRing
-              size={276}
-              target={caloriesTarget}
-              consumed={totalCalories}
-              minTarget={caloriesFloor}
-            />
+            <PlateRing size={238} consumed={totalCalories} limites={limites} />
             <View style={s.plateCenter} pointerEvents="none">
-              <CountUp
-                value={overBy > 0 ? overBy : remaining}
-                style={[s.plateNum, overBy > 0 && s.plateNumOver]}
-              />
-              <Text style={s.plateLbl}>{overBy > 0 ? 'KCAL DE MÁS' : 'KCAL RESTANTES'}</Text>
-              <Text style={s.plateOf}>
-                {Math.round(totalCalories).toLocaleString('es-MX')} de {caloriesTarget.toLocaleString('es-MX')} kcal
-              </Text>
+              <CountUp value={remaining} style={s.plateNum} />
+              <Text style={s.plateLbl}>RESTANTES</Text>
+              {/* La pastilla dice el tramo con palabras: el color solo no basta
+                  para quien no distingue verde de ámbar. */}
+              <View style={[s.plateChip, { borderColor: colorTramo }]}>
+                <Text style={[s.plateChipTxt, { color: colorTramo }]}>{ETIQUETA_TRAMO[tramo]}</Text>
+              </View>
             </View>
           </View>
 
-          {/* Leyenda de límites del anillo */}
-          <View style={s.legend}>
-            <View style={s.legendItem}>
-              <View style={[s.legendMark, { backgroundColor: NEON.steelSoft }]} />
-              <Text style={s.legendTxt}>Mín {caloriesFloor.toLocaleString('es-MX')}</Text>
-            </View>
-            <View style={s.legendItem}>
-              <View style={s.legendBand} />
-              <Text style={s.legendTxt}>Zona óptima</Text>
-            </View>
-            <View style={s.legendItem}>
-              <View style={[s.legendMark, { backgroundColor: NEON.white }]} />
-              <Text style={s.legendTxt}>Meta {caloriesTarget.toLocaleString('es-MX')}</Text>
-            </View>
+          {/* La línea que NO se cierra: dice cómo vas, en una sola frase. */}
+          <View style={s.animo}>
+            <View style={[s.animoDot, { backgroundColor: colorTramo }]} />
+            <Text style={s.animoTxt}>{fraseDelDia(totalCalories, limites)}</Text>
           </View>
 
           <View style={s.verdict}>
@@ -227,42 +231,43 @@ export default function NutritionScreen() {
             </Text>
           </View>
 
-          {/* ── Aviso de exceso ── */}
-          {overBy > 0 && (
-            <View style={s.limitOver}>
-              <ZIcon name="warning" size={15} color={NEON.red} weight={2} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.limitOverTitle}>
-                  Te pasaste por {overBy.toLocaleString('es-MX')} kcal
-                </Text>
-                <Text style={s.limitBody}>
-                  Un día no define la semana. Mañana bajamos{' '}
-                  {Math.min(overBy, 300).toLocaleString('es-MX')} kcal y quedamos parejos.
-                </Text>
-              </View>
-            </View>
-          )}
+          {/*
+            EL AVISO, QUE SE PUEDE CERRAR.
 
-          {/* ── Aviso de piso: comer de menos también cuenta ── */}
-          {overBy === 0 && underFloorBy > 0 && (
-            <View style={s.limitLow}>
-              <ZIcon name="target" size={14} color={NEON.steelSoft} weight={2} />
-              <View style={{ flex: 1 }}>
-                <Text style={s.limitLowTitle}>
-                  Te faltan {underFloorBy.toLocaleString('es-MX')} kcal para el mínimo
-                </Text>
-                <Text style={s.limitBody}>
-                  Tu piso son {caloriesFloor.toLocaleString('es-MX')} kcal. Comer de menos
-                  también frena el progreso.
-                </Text>
+            Antes eran dos bloques distintos —uno para pasarse, otro para el
+            piso— y solo cubrían dos de los cuatro tramos: quien iba en la meta
+            o acababa de cruzar el mínimo no leía nada. Ahora es uno que cambia
+            de texto, y con su ×: el consejo largo verlo cada vez que abres
+            cansa, y saturaba justamente la pantalla que hay que poder mirar de
+            un vistazo. La frase de arriba se queda; esta tarjeta no.
+          */}
+          {!avisoCerrado && (() => {
+            const av = avisoDelDia(totalCalories, limites)
+            return (
+              <View style={[s.aviso, {
+                borderColor: colorTramo + '6B',
+                backgroundColor: colorTramo + '1F',
+              }]}>
+                <View style={{ flex: 1 }}>
+                  <Text style={[s.avisoTitulo, { color: colorTramo }]}>{av.titulo}</Text>
+                  <Text style={s.avisoCuerpo}>{av.cuerpo}</Text>
+                </View>
+                <TouchableOpacity
+                  style={s.avisoCerrar}
+                  onPress={() => setAvisoCerrado(true)}
+                  hitSlop={10}
+                  accessibilityLabel="Cerrar el aviso"
+                >
+                  <Text style={s.avisoCerrarTxt}>×</Text>
+                </TouchableOpacity>
               </View>
-            </View>
-          )}
+            )
+          })()}
 
           <View style={s.macros}>
-            <Macro label="Proteína" value={totalProtein} target={proteinTarget} tone={NEON.white} />
-            <Macro label="Carbos"   value={totalCarbs}   target={carbsTarget}   tone={NEON.w2} />
-            <Macro label="Grasas"   value={totalFat}     target={fatTarget}     tone={NEON.steelSoft} />
+            <AnilloMacro nombre="Proteína" valor={totalProtein} meta={proteinTarget} color={COLOR_MACRO.proteina} />
+            <AnilloMacro nombre="Carbos"   valor={totalCarbs}   meta={carbsTarget}   color={COLOR_MACRO.carbos} />
+            <AnilloMacro nombre="Grasas"   valor={totalFat}     meta={fatTarget}     color={COLOR_MACRO.grasas} />
           </View>
 
           {/* ── Ajuste sugerido ── */}
@@ -392,30 +397,6 @@ function Section({ title, note }: { title: string; note?: string }) {
   )
 }
 
-/**
- * Macro como barra, no como anillo.
- *
- * Tres anillos junto al medidor principal competían con él y obligaban a leer
- * cuatro círculos para entender un día. La barra es un dato de apoyo y se lee
- * de un vistazo; además el color separa los tres: blanco, blanco atenuado y
- * acero, reservando el rojo para lo que exige atención.
- */
-function Macro({ label, value, target, tone }: {
-  label: string; value: number; target: number; tone: string
-}) {
-  const pct = target > 0 ? Math.min(value / target, 1) : 0
-  return (
-    <View style={s.macro}>
-      <View style={s.macroTop}>
-        <Text style={s.macroLbl}>{label.toUpperCase()}</Text>
-        <Text style={s.macroVal}>{Math.round(value)}<Text style={s.macroTarget}>/{target}g</Text></Text>
-      </View>
-      <View style={s.macroTrack}>
-        <View style={[s.macroFill, { width: `${pct * 100}%` as any, backgroundColor: tone }]} />
-      </View>
-    </View>
-  )
-}
 
 function MealCard({ meal, budget, onAdd, onRemove, onToggle }: {
   meal: MealSlot
@@ -568,48 +549,54 @@ const s = StyleSheet.create({
   dayLblOn: { color: NEON.redSoft },
 
   // Estado
-  plate: { alignItems: 'center', justifyContent: 'flex-start', marginTop: 18 },
-  // El arco abre por abajo, así que la cifra se asienta algo por encima del
-  // centro geométrico para quedar ópticamente centrada dentro del medidor.
-  plateCenter: { position: 'absolute', top: '34%', alignItems: 'center' },
-  plateOf: { fontSize: 11, color: NEON.w3, marginTop: 7 },
-  plateNum: {
-    fontSize: 58, fontWeight: '800', color: NEON.white,
-    letterSpacing: -3, lineHeight: 60, fontVariant: ['tabular-nums'],
+  plate: { alignItems: 'center', justifyContent: 'center', marginTop: 14 },
+  /* El texto va CENTRADO en el arco, no colgado del borde superior.
+     Con `top: 34%` la cifra flotaba alta y descuadrada respecto al aro; el
+     centro del SVG y el del texto son el mismo punto, así que basta centrar. */
+  plateCenter: {
+    position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+    alignItems: 'center', justifyContent: 'center',
   },
-  plateLbl: { fontSize: 8.5, fontWeight: '800', letterSpacing: 2.2, color: NEON.w3, marginTop: 9 },
-  plateNumOver: { color: NEON.red },
+  /* 46, no 58: a 58 la cifra de cuatro dígitos se salía del aro por los lados
+     y el medidor dejaba de leerse como una pieza. */
+  plateNum: {
+    fontSize: 46, fontWeight: '800', color: NEON.white,
+    letterSpacing: -2.4, lineHeight: 48, fontVariant: ['tabular-nums'],
+  },
+  plateLbl: { fontSize: 8, fontWeight: '800', letterSpacing: 2, color: NEON.w3, marginTop: 6 },
+
+  plateChip: {
+    marginTop: 9, paddingHorizontal: 10, paddingVertical: 4,
+    borderRadius: 999, borderWidth: 1,
+  },
+  plateChipTxt: { fontSize: 8, fontWeight: '800', letterSpacing: 1.3 },
+
+  /* La frase que se queda. Una línea, sin caja: si llevara fondo y borde
+     competiría con el aviso de debajo y volvería a saturar. */
+  animo: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 7,
+    paddingHorizontal: 20, marginTop: 14,
+  },
+  animoDot: { width: 6, height: 6, borderRadius: 3, marginTop: 5 },
+  animoTxt: { flex: 1, fontSize: 12, lineHeight: 17, color: NEON.w2 },
+
+  aviso: {
+    flexDirection: 'row', alignItems: 'flex-start', gap: 10,
+    marginHorizontal: 20, marginTop: 14,
+    borderRadius: 14, borderWidth: 1, padding: 12,
+  },
+  avisoTitulo: { fontSize: 12.5, fontWeight: '800' },
+  avisoCuerpo: { fontSize: 11.5, lineHeight: 16, color: NEON.w2, marginTop: 2 },
+  avisoCerrar: {
+    width: 22, height: 22, borderRadius: 11,
+    backgroundColor: 'rgba(255,255,255,0.10)',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  avisoCerrarTxt: { fontSize: 15, lineHeight: 17, color: NEON.w2, fontWeight: '600' },
 
   // Leyenda de límites del anillo
-  legend: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
-    gap: 16, marginTop: 14,
-  },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  legendMark: { width: 2, height: 11, borderRadius: 1 },
-  legendBand: { width: 14, height: 6, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.22)' },
-  legendTxt: { fontSize: 10.5, fontWeight: '600', color: NEON.w3 },
 
   // Avisos de límite
-  limitOver: {
-    flexDirection: 'row', gap: 10, alignItems: 'flex-start',
-    marginHorizontal: 20, marginTop: 12, padding: 13, borderRadius: 14,
-    backgroundColor: NEON.redDim, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
-  },
-  limitOverTitle: {
-    fontSize: 12.5, fontWeight: '800', color: NEON.red,
-    letterSpacing: 0.2, marginBottom: 3,
-  },
-  limitLow: {
-    flexDirection: 'row', gap: 10, alignItems: 'flex-start',
-    marginHorizontal: 20, marginTop: 12, padding: 12, borderRadius: 12,
-    backgroundColor: NEON.paneHi, borderWidth: 1, borderColor: NEON.edge,
-  },
-  limitLowTitle: {
-    fontSize: 12, fontWeight: '800', color: NEON.steelSoft,
-    letterSpacing: 0.2, marginBottom: 3,
-  },
-  limitBody: { fontSize: 11.5, lineHeight: 16, color: NEON.w2 },
 
   verdict: {
     flexDirection: 'row', alignItems: 'center', gap: 9,
