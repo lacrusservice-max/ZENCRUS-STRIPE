@@ -63,6 +63,16 @@ const ARCO = camino(INICIO, BARRIDO)
 const ARCO_EXCESO = camino(INICIO + BARRIDO * FRACCION_TECHO, BARRIDO * (1 - FRACCION_TECHO))
 
 /**
+ * Las marcas miden EXACTAMENTE el grosor del trazo.
+ *
+ * Iban de R-9 a R+9 sobre un trazo de 13, así que asomaban por los dos lados
+ * como palitos clavados. Y esa punta mentía: el límite parecía empezar antes de
+ * donde empieza. Cruzando el trazo justo de borde a borde, la marca lo corta en
+ * el punto exacto y no hay nada que interpretar.
+ */
+const MEDIA_MARCA = SW / 2
+
+/**
  * 440 ms, no 1.100.
  *
  * Apuntar una comida y esperar a que el arco termine de crecer convierte un
@@ -108,25 +118,27 @@ export function PlateRing({ consumed, limites, size = 268 }: Props) {
       <Svg width={size} height={size} viewBox={`0 0 ${VB} ${VB}`}>
         <Path d={ARCO} fill="none" stroke="rgba(255,255,255,0.09)"
               strokeWidth={SW} strokeLinecap="round" />
+        {/* Punta cuadrada: la redonda adelantaba el rojo medio trazo y lo metía
+            en el lado bueno del techo. */}
         <Path d={ARCO_EXCESO} fill="none" stroke="rgba(255,59,71,0.30)"
-              strokeWidth={SW} strokeLinecap="round" />
+              strokeWidth={SW} strokeLinecap="butt" />
 
         <AnimatedPath
           d={ARCO} fill="none" stroke={color}
-          strokeWidth={SW} strokeLinecap="round"
+          strokeWidth={SW} strokeLinecap="butt"
           strokeDasharray={LARGO} animatedProps={props}
         />
 
         {marcas.map(m => {
           const ang = INICIO + BARRIDO * m.f
-          const a = polar(ang, R - 9)
-          const b = polar(ang, R + 9)
-          const t = polar(ang, R + 22)
+          const a = polar(ang, R - MEDIA_MARCA)
+          const b = polar(ang, R + MEDIA_MARCA)
+          const t = polar(ang, R + 20)
           const izquierda = t.x < C - 2
           return (
             <React.Fragment key={m.texto}>
               <Line x1={a.x} y1={a.y} x2={b.x} y2={b.y}
-                    stroke={`rgba(255,255,255,${m.op})`} strokeWidth={m.grosor} strokeLinecap="round" />
+                    stroke={`rgba(255,255,255,${m.op})`} strokeWidth={m.grosor} strokeLinecap="butt" />
               <SvgText
                 x={t.x} y={t.y + 3.5}
                 textAnchor={izquierda ? 'end' : 'start'}

@@ -58,6 +58,7 @@ interface AuthState {
   resetPassword: (token: string, password: string) => Promise<void>
   logout: () => Promise<void>
   setUser: (user: User) => void
+  refrescarPerfil: () => Promise<void>
 }
 
 const SECURE_OPTS = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY }
@@ -256,6 +257,25 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   },
 
   setUser: (user) => set({ user }),
+
+  /**
+   * Vuelve a pedir el perfil y actualiza el store.
+   *
+   * Guardar desde una pantalla ya refresca el store con lo que devuelve el
+   * servidor, así que lo inmediato está cubierto. Esto es para lo OTRO: las
+   * metas también se cambian desde el chat —ZENA puede proponerlas y aplicarlas—
+   * y desde el ajuste semanal. Sin esto, cambiabas tu meta hablando con ZENA y
+   * Nutrición seguía enseñando la vieja hasta cerrar la app.
+   *
+   * Si falla, no toca nada. Es un refresco de cortesía: perder la conexión un
+   * momento no puede vaciar el perfil que ya está en pantalla.
+   */
+  refrescarPerfil: async () => {
+    try {
+      const { data } = await api.get('/users/profile')
+      if (data?.data) set({ user: data.data })
+    } catch { /* lo que hay en pantalla sigue valiendo */ }
+  },
 }))
 
 /**

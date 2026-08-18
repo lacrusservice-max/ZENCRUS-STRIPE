@@ -17,6 +17,12 @@
  * pasarse. Con la meta al final, cumplirla clavada y pasarse cien gramos
  * dejaban el anillo idéntico —lleno— y ese dato se perdía. Pasarse de proteína
  * suele ser buena noticia y pasarse de grasas no tanto: hay que poder verlo.
+ *
+ * ── Y lo dice con palabras, no solo con la rayita ───────────────────────────
+ * Al pasarse, el «/150 g» se convierte en «+21 g» en rojo y el nombre del macro
+ * también se pone rojo. La rayita sola no avisa: hay que estar mirando el arco y
+ * saber qué significa esa marca. Con tres anillos pequeños en fila, lo que se lee
+ * de un vistazo es el texto — así que el texto es el que tiene que decirlo.
  */
 
 import { useEffect } from 'react'
@@ -57,6 +63,16 @@ const ARCO_COMPLETO = camino(INICIO, BARRIDO)
 const ARCO_EXCESO = camino(INICIO + BARRIDO * FRACCION_META, BARRIDO * (1 - FRACCION_META))
 
 /**
+ * La marca del límite mide EXACTAMENTE lo que mide el trazo.
+ *
+ * Iba de R-6 a R+6 sobre un trazo de 6,5 de grosor, así que asomaba por los dos
+ * lados como un palito clavado. Y esa punta que sobresalía mentía: el límite
+ * parecía empezar antes de donde empieza. Una marca que cruza el trazo justo de
+ * borde a borde lo corta en el punto exacto y no añade nada que interpretar.
+ */
+const MEDIA_MARCA = SW / 2
+
+/**
  * La duración es corta a propósito.
  *
  * Apuntar una comida y esperar a que el anillo termine de crecer convierte un
@@ -75,7 +91,12 @@ interface Props {
   color: string
 }
 
+/** El rojo del exceso: el mismo que usa el techo de las kcal. */
+const EXCESO = '#FF3B47'
+
 export function AnilloMacro({ nombre, valor, meta, color }: Props) {
+  const pasado = meta > 0 && valor > meta
+  const deMas = Math.round(valor - meta)
   const avance = useSharedValue(0)
 
   useEffect(() => {
@@ -87,8 +108,8 @@ export function AnilloMacro({ nombre, valor, meta, color }: Props) {
     strokeDashoffset: LARGO * (1 - avance.value),
   }))
 
-  const marca = polar(INICIO + BARRIDO * FRACCION_META, R - 6)
-  const marcaFin = polar(INICIO + BARRIDO * FRACCION_META, R + 6)
+  const marca = polar(INICIO + BARRIDO * FRACCION_META, R - MEDIA_MARCA)
+  const marcaFin = polar(INICIO + BARRIDO * FRACCION_META, R + MEDIA_MARCA)
 
   return (
     <View style={s.caja}>
@@ -96,27 +117,33 @@ export function AnilloMacro({ nombre, valor, meta, color }: Props) {
         <Svg viewBox={`0 0 ${VB} ${VB}`} width="100%" height="100%">
           <Path d={ARCO_COMPLETO} fill="none" stroke="rgba(255,255,255,0.10)"
                 strokeWidth={SW} strokeLinecap="round" />
-          {/* El terreno de más allá de la meta, para que se vea antes de llegar. */}
+          {/* El terreno de más allá de la meta, para que se vea antes de llegar.
+              Con punta cuadrada: la redonda lo adelantaba medio trazo y el rojo
+              invadía el lado bueno de la marca. */}
           <Path d={ARCO_EXCESO} fill="none" stroke="rgba(255,59,71,0.28)"
-                strokeWidth={SW} strokeLinecap="round" />
+                strokeWidth={SW} strokeLinecap="butt" />
+          {/* Lo consumido. Punta cuadrada también: con la redonda, la punta se
+              adelantaba medio trazo y parecía que llevabas más de lo que llevas. */}
           <AnimatedPath
             d={ARCO_COMPLETO} fill="none" stroke={color}
-            strokeWidth={SW} strokeLinecap="round"
+            strokeWidth={SW} strokeLinecap="butt"
             strokeDasharray={LARGO} animatedProps={props}
           />
           <Line
             x1={marca.x} y1={marca.y} x2={marcaFin.x} y2={marcaFin.y}
-            stroke="rgba(255,255,255,0.85)" strokeWidth={2} strokeLinecap="round"
+            stroke="rgba(255,255,255,0.9)" strokeWidth={1.8} strokeLinecap="butt"
           />
         </Svg>
 
         {/* El hueco de abajo del arco es donde cabe el texto. */}
         <View style={s.centro} pointerEvents="none">
           <Text style={[s.gramos, { color }]}>{Math.round(valor)}</Text>
-          <Text style={s.de}>/{meta} g</Text>
+          <Text style={[s.de, pasado && { color: EXCESO, fontWeight: '800' }]}>
+            {pasado ? `+${deMas} g` : `/${meta} g`}
+          </Text>
         </View>
       </View>
-      <Text style={s.nombre}>{nombre}</Text>
+      <Text style={[s.nombre, pasado && { color: EXCESO }]}>{nombre}</Text>
     </View>
   )
 }

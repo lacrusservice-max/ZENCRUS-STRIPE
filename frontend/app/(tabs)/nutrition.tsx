@@ -58,7 +58,7 @@ function mealIcon(id: string): ZIconName {
 
 export default function NutritionScreen() {
   const router = useRouter()
-  const { user, setUser } = useAuthStore()
+  const { user, setUser, refrescarPerfil } = useAuthStore()
   const {
     meals, totalCalories, totalProtein, totalCarbs, totalFat,
     loadToday, addEntries, removeEntry, toggleEntryActive,
@@ -102,7 +102,18 @@ export default function NutritionScreen() {
    * `useFocusEffect` es lo que la despierta al volver — y el diario es lo
    * primero que uno mira después de apuntar algo.
    */
-  useFocusEffect(useCallback(() => { loadToday() }, []))
+  useFocusEffect(useCallback(() => {
+    loadToday()
+    /**
+     * Y también el perfil, no solo las comidas.
+     *
+     * Las metas se cambian desde tres sitios —Ajustes, el ajuste semanal y ZENA
+     * en el chat— y solo el primero deja la pantalla delante. Sin esto, cambiar
+     * la meta hablando con ZENA y volver aquí seguía enseñando la vieja: el
+     * plato en verde con una meta que ya no era la tuya.
+     */
+    void refrescarPerfil()
+  }, []))
   useEffect(() => { loadMeasurements() }, [])
 
   // ── Ajuste calórico semanal ─────────────────────────────────────────────
@@ -199,8 +210,21 @@ export default function NutritionScreen() {
           <View style={s.plate}>
             <PlateRing size={238} consumed={totalCalories} limites={limites} />
             <View style={s.plateCenter} pointerEvents="none">
-              <CountUp value={remaining} style={s.plateNum} />
-              <Text style={s.plateLbl}>RESTANTES</Text>
+              {/*
+                LO CONSUMIDO, SUBIENDO. No lo que queda, bajando.
+
+                El arco crece con lo que comes; con la cuenta atrás, el número
+                bajaba mientras el arco subía y los dos contaban historias
+                opuestas. Además «1,240» dice exactamente dónde estás, y «760
+                restantes» obliga a restar mentalmente para saberlo.
+
+                Lo que falta no se pierde: lo dicen la frase de abajo y el aviso,
+                que es donde se lee como una frase y no como un número suelto.
+              */}
+              <CountUp value={totalCalories} style={s.plateNum} />
+              <Text style={s.plateLbl}>
+                DE {limites.meta.toLocaleString('es-MX')} · TECHO {limites.techo.toLocaleString('es-MX')}
+              </Text>
               {/* La pastilla dice el tramo con palabras: el color solo no basta
                   para quien no distingue verde de ámbar. */}
               <View style={[s.plateChip, { borderColor: colorTramo }]}>
@@ -563,7 +587,7 @@ const s = StyleSheet.create({
     fontSize: 46, fontWeight: '800', color: NEON.white,
     letterSpacing: -2.4, lineHeight: 48, fontVariant: ['tabular-nums'],
   },
-  plateLbl: { fontSize: 8, fontWeight: '800', letterSpacing: 2, color: NEON.w3, marginTop: 6 },
+  plateLbl: { fontSize: 7.5, fontWeight: '800', letterSpacing: 1.1, color: NEON.w3, marginTop: 7 },
 
   plateChip: {
     marginTop: 9, paddingHorizontal: 10, paddingVertical: 4,
