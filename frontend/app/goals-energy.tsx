@@ -40,17 +40,29 @@ export default function GoalsEnergyScreen() {
   const [floor, setFloor] = useState<number>(
     goals.calories_min ?? Math.round((goals.calories_target ?? 2000) * 0.85),
   )
+  const [ceiling, setCeiling] = useState<number>(
+    goals.calories_max ?? Math.round((goals.calories_target ?? 2000) * 1.15),
+  )
   const [protein, setProtein] = useState<number>(goals.protein_g ?? 150)
   const [carbs, setCarbs] = useState<number>(goals.carbs_g ?? 200)
   const [fat, setFat] = useState<number>(goals.fat_g ?? 65)
   const [saving, setSaving] = useState(false)
 
-  // El piso nunca debe superar la meta: al bajar la meta, arrastra al piso.
+  /**
+   * Los tres van encadenados: piso ≤ meta ≤ techo.
+   *
+   * Mover la meta arrastra a los otros dos si se quedan del lado equivocado. Sin
+   * esto, bajar la meta a 1.800 con el piso en 1.900 deja la app diciendo a la
+   * vez «te falta para el mínimo» y «ya estás en la meta». El servidor rechaza
+   * esa combinación, pero el usuario no debería llegar a mandarla.
+   */
   const setTargetSafe = (v: number) => {
     setTarget(v)
     if (floor > v) setFloor(Math.round(v * 0.85))
+    if (ceiling < v) setCeiling(Math.round(v * 1.15))
   }
   const setFloorSafe = (v: number) => setFloor(Math.min(v, target))
+  const setCeilingSafe = (v: number) => setCeiling(Math.max(v, target))
 
   const kcalP = protein * KCAL_PER_G.protein
   const kcalC = carbs * KCAL_PER_G.carbs
@@ -68,6 +80,7 @@ export default function GoalsEnergyScreen() {
           ...goals,
           calories_target: Math.round(target),
           calories_min: Math.round(floor),
+          calories_max: Math.round(ceiling),
           protein_g: Math.round(protein),
           carbs_g: Math.round(carbs),
           fat_g: Math.round(fat),
@@ -128,11 +141,30 @@ export default function GoalsEnergyScreen() {
           onChange={setFloorSafe}
         />
 
+        <DialCard
+          icon="flame"
+          title="Límite máximo"
+          sub="Techo del día — a partir de aquí, te pasaste"
+          value={ceiling}
+          unit="kcal"
+          readout="kcal máximas"
+          max={5000}
+          step={25}
+          presets={[
+            Math.round(target * 1.10),
+            Math.round(target * 1.15),
+            Math.round(target * 1.25),
+          ]}
+          onChange={setCeilingSafe}
+        />
+
         <View style={s.note}>
           <ZIcon name="target" size={13} color={N.steelSoft} weight={1.9} />
           <Text style={s.noteTxt}>
-            <Text style={s.noteB}>El mínimo no es una meta, es un piso.</Text> ZENCRUS avisa
-            cuando te quedas debajo porque comer de menos frena el progreso tanto como pasarse.
+            <Text style={s.noteB}>El mínimo es un piso y el máximo un techo; la meta va en
+            medio.</Text> ZENCRUS avisa por debajo del piso porque comer de menos frena el
+            progreso tanto como pasarse, y por encima del techo porque pasarse doscientas kcal
+            un día de entreno no es lo mismo que pasarse seiscientas.
           </Text>
         </View>
 

@@ -29,6 +29,7 @@ export interface User {
      * Sin valor guardado se deriva del objetivo (85 %).
      */
     calories_min?: number
+    calories_max?: number
     protein_g?: number
     carbs_g?: number
     fat_g?: number

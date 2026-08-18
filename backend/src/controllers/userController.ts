@@ -7,8 +7,54 @@ import { calcularNutricion, PerfilUsuario } from '../services/nutritionCalculato
 import { listByPrefix, readUrls } from '../services/media'
 import { purgeUserContent } from './socialContentController'
 
+/**
+ * LAS METAS DEL DÍA, DENTRO DE `goals`
+ * ────────────────────────────────────
+ * `goals` es una columna JSONB, no una tabla de columnas, pero eso no la exime
+ * de validarse: sin schema, el middleware la BORRABA del cuerpo antes de llegar
+ * aquí —Zod quita lo que no conoce— y el update se guardaba sin ella.
+ *
+ * Consecuencia: la pantalla de Metas de energía y el ajuste semanal de Nutrición
+ * decían «guardado» y no guardaban nada. Quien tocaba su meta la veía volver al
+ * valor derivado al reabrir la app, sin ningún error de por medio.
+ *
+ * `passthrough` deja pasar las claves que escriben otras partes —main_goal,
+ * target_weight, meals_per_day— sin tener que enumerarlas aquí. Las columnas
+ * sensibles de la tabla (role, subscription_tier, email_verified) siguen fuera:
+ * las protege el schema del cuerpo, no este.
+ */
+const metasSchema = z.object({
+  calories_target: z.number().int().min(800).max(8000).optional(),
+  calories_min: z.number().int().min(600).max(8000).optional(),
+  /** El techo del día: por encima, la app avisa de que te pasaste. */
+  calories_max: z.number().int().min(800).max(9000).optional(),
+  protein_g: z.number().int().min(0).max(500).optional(),
+  carbs_g: z.number().int().min(0).max(900).optional(),
+  fat_g: z.number().int().min(0).max(400).optional(),
+  meals_per_day: z.number().int().min(1).max(8).optional(),
+}).passthrough().superRefine((g, ctx) => {
+  /**
+   * Piso ≤ meta ≤ techo, siempre.
+   *
+   * Se comprueba aquí y no en la pantalla porque la pantalla no es el único
+   * cliente: el ajuste semanal escribe contra el mismo endpoint, y ZENA puede
+   * proponer metas desde el chat. Un piso por encima de la meta deja la app
+   * diciendo a la vez «te falta» y «te pasaste».
+   */
+  const { calories_min: min, calories_target: meta, calories_max: techo } = g
+  if (min != null && meta != null && min > meta) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['calories_min'],
+      message: 'El mínimo no puede superar la meta' })
+  }
+  if (techo != null && meta != null && techo < meta) {
+    ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['calories_max'],
+      message: 'El techo no puede quedar por debajo de la meta' })
+  }
+})
+
 export const updateProfileSchema = z.object({
   body: z.object({
+    goals: metasSchema.optional(),
     full_name: z.string().min(2).max(100).optional(),
     weight: z.number().min(20).max(300).optional(),
     height: z.number().min(100).max(250).optional(),
