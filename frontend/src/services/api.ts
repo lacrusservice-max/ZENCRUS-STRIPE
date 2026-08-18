@@ -171,10 +171,38 @@ api.interceptors.response.use(
   },
   async (error: AxiosError) => {
     const status = error.response?.status
-    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean }
 
-    // Registrar falla en circuit breaker (solo en 5xx y errores de red)
-    if (!status || status >= 500) {
+    /**
+     * `error.config` FALTA cuando el error no nació de una peticion.
+     *
+     * Los dos rechazos del interceptor de arriba -sin cobertura y circuito
+     * abierto- son `Error` planos: nunca llegaron a tener config. Sin esta
+     * guarda, la linea del `url` de abajo reventaba con «Cannot read property
+     * 'url' of undefined», y ese TypeError SUSTITUIA al error de verdad. Tres
+     * consecuencias, todas vistas en el log de arranque:
+     *
+     *   - la pantalla ensenaba esa jerga en vez de «Sin conexion a internet»;
+     *   - se perdian las banderas `isOffline` / `isCircuitOpen`, asi que quien
+     *     las comprueba dejaba de distinguir un caso del otro;
+     *   - y el arranque de sesion lo tomaba por un fallo de red cualquiera,
+     *     que es como se llegaba a la app abierta y sin datos.
+     */
+    const originalRequest = (error.config ?? {}) as AxiosRequestConfig & { _retry?: boolean }
+
+    /**
+     * El circuito mide si el SERVIDOR esta caido. No todo fallo dice eso.
+     *
+     * Que este movil se quede sin cobertura no significa que el servidor este
+     * mal, y un rechazo del circuito ya abierto no es informacion nueva: es su
+     * propio eco. Contarlos hacia que SE MANTUVIERA ABIERTO SOLO -cada
+     * pantalla que intentaba cargar sumaba un fallo mas y volvia a empujar los
+     * treinta segundos hacia adelante-, asi que el corte no se acababa
+     * mientras la app siguiera abierta. Justo lo contrario de lo que hace
+     * falta: cortar un rato y volver a probar.
+     */
+    const propio = error as { isOffline?: boolean; isCircuitOpen?: boolean }
+    const loDiceElServidor = !propio.isOffline && !propio.isCircuitOpen
+    if (loDiceElServidor && (!status || status >= 500)) {
       circuitBreaker.onFailure()
     }
 
