@@ -95,9 +95,13 @@ export async function search(req: Request, res: Response) {
   const region = typeof req.query.region === 'string' ? req.query.region.toUpperCase() : 'MX'
 
   let catalog: CatalogFood[] = []
+  // Se distingue «el catálogo dijo que no hay nada» de «el catálogo no
+  // contestó». Son la misma lista vacía y significan lo contrario.
+  let catalogoContesto = true
   try {
     catalog = await searchCatalog(q)
   } catch (err) {
+    catalogoContesto = false
     logger.error(`Catálogo "${q}": ${err instanceof Error ? err.message : err}`)
   }
 
@@ -116,8 +120,27 @@ export async function search(req: Request, res: Response) {
 
   const data = [...catalog.map(presentCatalog), ...extra.map(presentFatSecret)]
 
-  if (data.length === 0 && catalog.length === 0 && extra.length === 0 && !isConfigured()) {
-    // Ni catálogo propio ni FatSecret disponible: se distingue de "sin resultados".
+  /**
+   * Un 503 solo cuando de verdad no se pudo buscar.
+   *
+   * Antes esto respondía «el catálogo no está disponible» a CUALQUIER búsqueda
+   * sin resultados mientras no hubiera fuente externa configurada — y como en
+   * producción no la hay, se lo decía hasta a un `zzzqqxx` que no existe en
+   * ninguna base del mundo. Dos consecuencias, las dos malas:
+   *
+   *   · La app lo trataba como caída, se iba a su lista local de básicos y
+   *     enseñaba «lo más parecido». El usuario pedía cochinita y le salía otra
+   *     cosa con un aviso de que el catálogo estaba roto. No lo estaba: 2.855
+   *     alimentos contestando, simplemente sin ese.
+   *   · Y ZENA se quedaba sin el camino del §4: al no llegar la lista, no había
+   *     candidato externo que dar de alta, así que el alimento nuevo nunca
+   *     entraba al catálogo.
+   *
+   * Una lista vacía es una respuesta legítima: buscamos y no está. Lo que sí
+   * es una caída es que el catálogo propio no conteste, y eso es lo que se
+   * mide ahora.
+   */
+  if (!catalogoContesto && extra.length === 0) {
     return res.status(503).json({
       success: false,
       message: 'El catálogo de alimentos no está disponible en este momento.',

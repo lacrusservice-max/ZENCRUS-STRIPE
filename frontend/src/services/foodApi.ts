@@ -164,13 +164,24 @@ export async function searchFoods(query: string, _signal?: AbortSignal): Promise
   const local = searchLocal(q)
 
   const remoteRaw = await fromBackend('/foods/search', { q })
-  const remote: Food[] = Array.isArray(remoteRaw)
+
+  /**
+   * Contestar con nada NO es lo mismo que no contestar.
+   *
+   * Aquí se daba por caída la búsqueda en cuanto la lista remota venía vacía,
+   * y entonces el panel decía «sin conexión» y enseñaba los básicos locales.
+   * Pero el catálogo tiene miles de alimentos y no tiene todos: que no esté la
+   * cochinita es una respuesta correcta, no un fallo de red. El usuario veía
+   * un aviso de avería y «lo más parecido» a algo que sí había preguntado bien.
+   *
+   * `null` es lo único que significa que no se pudo preguntar.
+   */
+  const contesto = Array.isArray(remoteRaw)
+  const remote: Food[] = contesto
     ? remoteRaw.map(fromApi).filter((f): f is Food => f !== null)
     : []
 
-  // Sin nada remoto, la búsqueda se marca como caída para que el panel lo
-  // diga en vez de fingir que ese alimento no existe.
-  if (remote.length === 0) {
+  if (!contesto) {
     return { foods: local, offline: local.length === 0 }
   }
 
@@ -178,7 +189,11 @@ export async function searchFoods(query: string, _signal?: AbortSignal): Promise
   // básicos locales encabezan porque son justo lo que se registra a diario.
   const merged = dedupe([...local, ...clean(remote, q)]).slice(0, 40)
 
-  remember(searchCache, key, merged)
+  // Lo vacío no se cachea. En cuanto ZENA dé de alta ese alimento —que es lo
+  // que hace el §4 cuando alguien pide algo que no está— la siguiente búsqueda
+  // tiene que encontrarlo, no repetir el «no hay» que guardamos hace un rato.
+  if (merged.length > 0) remember(searchCache, key, merged)
+
   return { foods: merged, offline: false }
 }
 
