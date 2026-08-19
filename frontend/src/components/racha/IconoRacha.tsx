@@ -81,7 +81,6 @@ export function IconoRacha({ dias, encendida }: Props) {
           </Svg>
           <Text style={[r.dias, !encendida && r.diasOff]}>{dias}</Text>
         </View>
-        <Text style={r.pie}>RACHA</Text>
       </Pressable>
     </View>
   )
@@ -104,15 +103,14 @@ const r = StyleSheet.create({
     borderRadius: BotonIA.size / 2,
     borderWidth: 1,
   },
-  cajaOn: { backgroundColor: 'rgba(255,90,0,0.14)', borderColor: 'rgba(255,122,24,0.45)' },
-  cajaOff: { backgroundColor: 'rgba(255,255,255,0.05)', borderColor: 'rgba(255,255,255,0.12)' },
+  /* OPACOS a propósito. Esto flota sobre el scroll: con fondo translúcido se
+     leía a través el texto de la tarjeta que pasa por debajo, y la palabra
+     «RACHA» se cruzaba con las kcal de la comida. Lo que flota, tapa. */
+  cajaOn: { backgroundColor: '#2A1206', borderColor: 'rgba(255,122,24,0.5)' },
+  cajaOff: { backgroundColor: '#17171A', borderColor: 'rgba(255,255,255,0.14)' },
   dias: {
     fontSize: 14, fontWeight: '900', color: '#fff',
     fontVariant: ['tabular-nums'], letterSpacing: -0.3,
   },
   diasOff: { color: 'rgba(255,255,255,0.45)' },
-  pie: {
-    fontSize: 9, fontWeight: '800', letterSpacing: 0.8,
-    color: 'rgba(255,255,255,0.34)', marginTop: 1,
-  },
 })
