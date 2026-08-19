@@ -133,10 +133,32 @@ export function Meter({ pct, over = 0, height = 3, tone = CT.ink, spillTone = CT
   const a = useAnimatedStyle(() => ({ width: `${fill.value * 100}%` }))
   const b = useAnimatedStyle(() => ({ width: `${spill.value * 100}%` }))
 
+  /*
+   * LOS DOS TRAMOS SE TOCAN, ASÍ QUE NO PUEDEN SER DOS PÍLDORAS
+   *
+   * Van uno al lado del otro en fila y ambos llevaban `borderRadius: height`,
+   * que redondea las CUATRO esquinas. En la frontera chocaban entonces dos
+   * semicírculos: el trazo se estrechaba hasta desaparecer y dejaba dos muescas
+   * del color de la pista, arriba y abajo, con forma de reloj de arena. Sobre
+   * una barra de 3 pt de alto eso es una barra partida en dos.
+   *
+   * Redondeados van solo los extremos que de verdad son extremos: el izquierdo
+   * del primero y el derecho del segundo. La costura, a tope.
+   */
+  const hayExceso = over > 0
+
   return (
     <View style={[p.meterTrack, { height, borderRadius: height }]}>
-      <AnimatedView style={[a, { height, backgroundColor: tone, borderRadius: height }]} />
-      <AnimatedView style={[b, { height, backgroundColor: spillTone, borderRadius: height }]} />
+      <AnimatedView style={[a, {
+        height, backgroundColor: tone,
+        borderTopLeftRadius: height, borderBottomLeftRadius: height,
+        borderTopRightRadius: hayExceso ? 0 : height,
+        borderBottomRightRadius: hayExceso ? 0 : height,
+      }]} />
+      <AnimatedView style={[b, {
+        height, backgroundColor: spillTone,
+        borderTopRightRadius: height, borderBottomRightRadius: height,
+      }]} />
     </View>
   )
 }

@@ -48,7 +48,24 @@ const LADO = 130
 const C = LADO / 2
 const R = 46
 const GROSOR = 9
-const HUECO = 5      // grados de aire entre un día y el siguiente
+/*
+ * EL AIRE ENTRE DÍAS, CONTANDO LAS TAPAS
+ * ──────────────────────────────────────
+ * Eran 5°, y no bastaban: a radio 46 son 4,0 px de arco, pero cada punta
+ * redondeada se proyecta GROSOR/2 = 4,5 px más allá del extremo del trazo, una
+ * por cada lado del hueco. Nueve píxeles de tapa para cuatro de aire: los siete
+ * arcos se solapaban y el anillo se leía como una pista continua — justo lo
+ * contrario de lo que promete esta pantalla, que es contar siete días.
+ *
+ * Con la semana en blanco era peor: los dos remates translúcidos se pisaban y
+ * el 16 % de blanco se componía consigo mismo, dejando siete manchas ovaladas
+ * más claras donde debía haber hueco.
+ *
+ * 14° dan 11,2 px de arco: 9 se los comen las tapas y quedan 2,2 px de aire
+ * real, que es lo que separa un segmento del siguiente sin que el anillo se
+ * deshaga en trocitos.
+ */
+const HUECO = 14
 const PASO = 360 / 7
 
 /** Un punto del anillo. 0° es arriba y se avanza en el sentido del reloj. */

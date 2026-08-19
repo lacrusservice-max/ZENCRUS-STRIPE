@@ -38,7 +38,12 @@ export function LevelBadge() {
           </View>
         </View>
         <View style={lb.barBg}>
-          <View style={[lb.barFill, { width: `${pct * 100}%` as any }]} />
+          {/* `getLevelProgress()` YA devuelve 0–100, no 0–1. Multiplicarlo otra
+              vez daba anchos de 200 %, 1.000 %… que el overflow del carril
+              recortaba, así que la barra salía llena con 20 XP de 500 mientras
+              el texto de debajo decía «20 / 500». El recorte escondía el error
+              y lo hacía pasar por un diseño. */}
+          <View style={[lb.barFill, { width: `${Math.min(100, Math.max(0, pct))}%` as any }]} />
         </View>
         {next && (
           <Text style={lb.next}>{totalXP - current.minXP} / {next.minXP - current.minXP} XP para {next.name} {next.emoji}</Text>

@@ -80,10 +80,25 @@ export function ReviewStage({
     { kcal: 0, prot: 0, carbs: 0, fat: 0 },
   ), [drafts])
 
+  /*
+   * LA ESCALA CRECE PARA QUE EL EXCESO QUEPA
+   *
+   * Antes el segundo tramo se medía como «lo que sobra del carril»
+   * (`Math.min(1 - basePct, …)`). Eso lo estrangulaba justo en el caso para el
+   * que existe: al llegar lo consumido al presupuesto, su ancho valía cero y el
+   * medidor se pintaba entero del gris de fondo mientras el texto de al lado
+   * decía «excede el presupuesto». El único tramo que puede avisar del exceso
+   * desaparecía exactamente cuando había exceso.
+   *
+   * Ahora la escala es lo previsto —lo comido más lo que estás a punto de
+   * apuntar— o el presupuesto, lo que sea mayor. Así el rojo siempre tiene
+   * sitio donde dibujarse, y cuánto ocupa dice cuánto te pasas.
+   */
   const free = Math.max(0, dailyTarget - dailyConsumed)
   const over = totals.kcal > free
-  const basePct = dailyTarget > 0 ? Math.min(dailyConsumed / dailyTarget, 1) : 0
-  const addPct = dailyTarget > 0 ? Math.min(totals.kcal / dailyTarget, 1 - basePct) : 0
+  const escala = Math.max(dailyTarget, dailyConsumed + totals.kcal)
+  const basePct = escala > 0 ? dailyConsumed / escala : 0
+  const addPct = escala > 0 ? totals.kcal / escala : 0
 
   const patch = (id: string, next: Draft | null) => {
     onChange(next
@@ -121,7 +136,7 @@ export function ReviewStage({
         <View style={{ marginTop: 13 }}>
           <Meter
             pct={basePct}
-            over={over ? 1 - basePct : addPct}
+            over={addPct}
             tone={CT.ink4}
             spillTone={over ? CT.signal : CT.ink}
           />

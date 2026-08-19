@@ -154,8 +154,23 @@ function FoodRow({ food, expanded, onToggle, consumed, budget, onCommit }: {
     setAmount(presets[Math.floor(presets.length / 2)])
   }
 
-  const basePct = budget > 0 ? Math.min(1, consumed / budget) : 0
-  const addPct = budget > 0 ? Math.min(1 - basePct, macros.calories / budget) : 0
+  /*
+   * LA ESCALA CRECE PARA QUE EL EXCESO QUEPA
+   *
+   * Antes el segundo tramo se medía como «lo que sobra del carril»
+   * (`Math.min(1 - basePct, …)`). Eso lo estrangulaba justo en el caso para el
+   * que existe: al llegar lo consumido al presupuesto, su ancho valía cero y el
+   * medidor se pintaba entero del gris de fondo mientras el texto de al lado
+   * decía «excede el presupuesto». El único tramo que puede avisar del exceso
+   * desaparecía exactamente cuando había exceso.
+   *
+   * Ahora la escala es lo previsto —lo comido más lo que estás a punto de
+   * apuntar— o el presupuesto, lo que sea mayor. Así el rojo siempre tiene
+   * sitio donde dibujarse, y cuánto ocupa dice cuánto te pasas.
+   */
+  const escala = Math.max(budget, consumed + macros.calories)
+  const basePct = escala > 0 ? consumed / escala : 0
+  const addPct = escala > 0 ? macros.calories / escala : 0
   const over = budget > 0 && consumed + macros.calories > budget
 
   return (
