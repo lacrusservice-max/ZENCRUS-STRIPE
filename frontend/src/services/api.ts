@@ -228,9 +228,13 @@ api.interceptors.response.use(
       // `try` porque el `catch` lo necesita tanto como el camino feliz.
       const generacionAlEmpezar = generacionSesion
 
-      try {
+      // Fuera del `try` por lo mismo que el contador: el `catch` necesita saber
+      // QUÉ token se mandó para decidir si el 401 era de este o de uno ya caduco.
+      let tokenEnviado: string | null = null
 
-        const refreshToken = await SecureStore.getItemAsync('refreshToken')
+      try {
+        tokenEnviado = await SecureStore.getItemAsync('refreshToken')
+        const refreshToken = tokenEnviado
         if (!refreshToken) throw new Error('No refresh token')
 
         const SECURE_OPTS = { keychainAccessible: SecureStore.WHEN_UNLOCKED_THIS_DEVICE_ONLY }
@@ -315,6 +319,37 @@ api.interceptors.response.use(
          */
         const sinTokenGuardado = (refreshError as Error)?.message === 'No refresh token'
         const rechazadoPorElServidor = st === 401 || st === 403 || sinTokenGuardado
+
+        /**
+         * ¿EL 401 ES DEL TOKEN QUE HAY GUARDADO AHORA, O DE UNO YA CADUCO?
+         *
+         * Es la tercera capa del mismo problema, y la que faltaba. Las otras dos
+         * cubren el login (el contador de generación) y los fallos de red. Esta
+         * cubre la carrera entre dos refrescos.
+         *
+         * Al arrancar la app salen varias peticiones a la vez. Si el token de
+         * acceso está caducado, TODAS fallan con 401 y todas quieren refrescar.
+         * La cola de aquí arriba deja pasar una sola... pero `initialize()` corre
+         * por su cuenta y puede colarse en paralelo. La primera rota el token y
+         * guarda el nuevo; la segunda llega con el viejo, y el servidor lo
+         * rechaza —con razón— como «familia desconocida».
+         *
+         * Y ahí estaba el daño: ese 401 borraba las credenciales, que para
+         * entonces ya eran las BUENAS, las que la otra petición acababa de
+         * guardar. Recargar la app te echaba, y por eso pasaba solo al recargar
+         * y no mientras la usabas.
+         *
+         * El propio servidor lo dice en su registro: «un token viejo no prueba
+         * nada y no puede costarle la sesión a nadie». Aquí se le hace caso: si
+         * lo guardado ya no es lo que mandamos, otro lo rotó y esta sesión vive.
+         */
+        const guardadoAhora = await SecureStore.getItemAsync('refreshToken').catch(() => null)
+        const eraElVigente = !guardadoAhora || guardadoAhora === tokenEnviado
+
+        if (rechazadoPorElServidor && !eraElVigente) {
+          console.warn('[auth] 401 de un token que otra petición ya rotó: la sesión sigue')
+          return Promise.reject(refreshError)
+        }
 
         if (rechazadoPorElServidor) {
           await SecureStore.deleteItemAsync('accessToken').catch(() => {})
