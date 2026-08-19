@@ -22,7 +22,17 @@ export const STRIPE_PLANS: Record<CheckoutTier, { label: string; price: string; 
   },
 }
 
-export async function startStripePaymentSheet(tier: CheckoutTier): Promise<void> {
+/**
+ * Devuelve `true` solo si el usuario COMPLETÓ el pago.
+ *
+ * Antes no devolvía nada y el cancelado hacía un `return` seco, así que
+ * resolvía igual que un pago hecho. Quien llamaba no tenía forma de
+ * distinguirlos: cerrar la hoja de Stripe con la X llevaba derecho a
+ * «Confirmando tu pago…» y de ahí a una pantalla sin salida, sin que hubiera
+ * ocurrido ningún cargo. El comentario de `subscription.tsx` afirmaba justo lo
+ * contrario de lo que hacía el código.
+ */
+export async function startStripePaymentSheet(tier: CheckoutTier): Promise<boolean> {
   const { data } = await api.post('/subscriptions/checkout', { tier, provider: 'stripe' })
   const { mode, clientSecret, ephemeralKey, customerId } = data?.data ?? {}
 
@@ -72,9 +82,11 @@ export async function startStripePaymentSheet(tier: CheckoutTier): Promise<void>
 
   const { error } = await presentPaymentSheet()
   if (error) {
-    if (error.code === 'Canceled') return
+    // Cerrar la hoja no es un fallo, pero tampoco es un pago.
+    if (error.code === 'Canceled') return false
     throw new Error(error.message)
   }
+  return true
 }
 
 export async function getCurrentSubscription() {

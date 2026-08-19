@@ -2,12 +2,18 @@ import { useEffect } from 'react'
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native'
 import { useRouter } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import { COBRO_ACTIVO } from '@/constants/acceso'
 
 export default function CheckoutCancelled() {
   const router = useRouter()
 
+  /* Con el cobro apagado esta pantalla no debe devolver a la tarifa: era la
+     única de la app que empujaba a pagar SOLA, con un temporizador que a los
+     4 s te plantaba en el selector de planes sin haber tocado nada. */
+  const destino = COBRO_ACTIVO ? '/subscription' : '/(tabs)'
+
   useEffect(() => {
-    const t = setTimeout(() => router.replace('/subscription'), 4000)
+    const t = setTimeout(() => router.replace(destino), 4000)
     return () => clearTimeout(t)
   }, [])
 
@@ -16,8 +22,8 @@ export default function CheckoutCancelled() {
       <Ionicons name="close-circle-outline" size={80} color="#6B6B7E" />
       <Text style={styles.title}>Pago cancelado</Text>
       <Text style={styles.sub}>No se realizó ningún cargo.</Text>
-      <TouchableOpacity style={styles.btn} onPress={() => router.replace('/subscription')}>
-        <Text style={styles.btnText}>Ver planes</Text>
+      <TouchableOpacity style={styles.btn} onPress={() => router.replace(destino)}>
+        <Text style={styles.btnText}>{COBRO_ACTIVO ? 'Ver planes' : 'Volver a la app'}</Text>
       </TouchableOpacity>
     </View>
   )

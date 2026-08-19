@@ -60,11 +60,13 @@ export default function SubscriptionScreen() {
     setConfirmVisible(false)
     setLoading(true)
     try {
-      // Requiere tarjeta SIEMPRE — startStripePaymentSheet solo resuelve si el usuario
-      // completó el PaymentSheet de Stripe (SetupIntent con tarjeta real registrada).
-      await startStripePaymentSheet(selected)
-      // No asumimos éxito local: /checkout/success confirma contra el backend real
-      // (el webhook de Stripe tarda unos segundos en procesar la suscripción).
+      // `false` = el usuario cerró la hoja de Stripe. No se sigue a la pantalla
+      // de confirmación: no hay nada que confirmar y se quedaba dando vueltas
+      // esperando un webhook que no iba a llegar.
+      const pago = await startStripePaymentSheet(selected)
+      if (!pago) return
+      // Tampoco se asume éxito local: /checkout/success confirma contra el
+      // backend real, porque el webhook de Stripe tarda unos segundos.
       router.replace({ pathname: '/checkout/success', params: { plan: selected } })
     } catch (err: any) {
       const msg = err?.response?.data?.message ?? err?.message ?? 'No se pudo iniciar el pago. Intenta de nuevo.'

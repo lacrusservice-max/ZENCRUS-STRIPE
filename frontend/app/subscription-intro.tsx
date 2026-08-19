@@ -5,8 +5,9 @@ import {
   useColorScheme,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { router } from 'expo-router'
+import { router, Redirect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import { COBRO_ACTIVO } from '@/constants/acceso'
 import { useAuthStore } from '@/store/authStore'
 import { PRICING } from '@/store/premiumStore'
 import { Colors, Spacing, Typography } from '@/constants/theme'
@@ -139,6 +140,21 @@ export default function SubscriptionIntroScreen() {
 
   const headerOpacity = useRef(new Animated.Value(0)).current
   const trialOpacity = useRef(new Animated.Value(0)).current
+
+  /**
+   * Esta pantalla no tiene salida: sus dos únicos botones son «Suscribirme» y
+   * «Cerrar sesión», y se llega siempre por `replace`, así que tampoco hay pila
+   * para volver atrás. Con el cobro apagado ya no la enruta nadie, pero sigue
+   * siendo una ruta viva de expo-router: un deep link a /subscription-intro
+   * dejaría a alguien encerrado entre pagar o desloguearse. Se cierra la puerta
+   * desde dentro.
+   *
+   * Va aquí abajo, después de los hooks, y no al entrar en el componente: un
+   * `return` antes de ellos rompe la regla de que todo render llame a los
+   * mismos, y aunque hoy la constante no cambie en caliente, es la clase de
+   * atajo que revienta el día que alguien la convierta en estado.
+   */
+  if (!COBRO_ACTIVO) return <Redirect href="/(tabs)" />
 
   const logoSource = colorScheme === 'light'
     ? require('@/assets/images/logo-negro.png')

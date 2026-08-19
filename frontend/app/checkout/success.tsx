@@ -66,9 +66,19 @@ export default function CheckoutSuccess() {
       <View style={styles.container}>
         <Ionicons name="time-outline" size={64} color={Colors.dark.textSecondary} />
         <Text style={styles.title}>Estamos confirmando tu pago</Text>
-        <Text style={styles.sub}>A veces tarda unos segundos más. Puedes reintentar o volver más tarde — tu pago con Stripe ya se procesó.</Text>
+        {/* El texto afirmaba «tu pago con Stripe ya se procesó», y aquí se llega
+            justamente cuando NO se ha podido confirmar. Y el único botón era
+            «Reintentar»: sin salida, dando vueltas a un webhook que podía no
+            llegar nunca. */}
+        <Text style={styles.sub}>
+          A veces tarda unos segundos más. Puedes reintentar, o entrar y seguir a lo tuyo
+          — si el cobro se completó, tu plan se activa solo.
+        </Text>
         <TouchableOpacity style={styles.continueBtn} onPress={() => { setStatus('checking'); attempts.current = 0 }}>
           <Text style={styles.continueBtnTxt}>Reintentar</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.salidaBtn} onPress={() => router.replace('/(tabs)')}>
+          <Text style={styles.salidaTxt}>Entrar a ZENCRUS</Text>
         </TouchableOpacity>
       </View>
     )
@@ -114,5 +124,7 @@ const styles = StyleSheet.create({
   featureRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], paddingVertical: Spacing[2] },
   featureLabel: { flex: 1, color: Colors.dark.text, fontSize: Typography.fontSize.sm, fontWeight: '600' },
   continueBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: Spacing[2], backgroundColor: Colors.primary[500], borderRadius: BorderRadius.xl, paddingVertical: Spacing[4], paddingHorizontal: Spacing[8], width: '100%' },
+  salidaBtn: { marginTop: 10, paddingVertical: 12, paddingHorizontal: 24 },
+  salidaTxt: { color: 'rgba(255,255,255,0.6)', fontSize: 14, fontWeight: '600' },
   continueBtnTxt: { color: '#fff', fontSize: Typography.fontSize.base, fontWeight: '800' },
 })
