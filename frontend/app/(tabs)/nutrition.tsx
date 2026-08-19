@@ -12,7 +12,7 @@
  * consola de dos etapas con su propia máquina de estados.
  */
 
-import { aFechaLocal } from '@/utils/fechas'
+import { aFechaLocal, hoyLocal } from '@/utils/fechas'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator,
@@ -37,6 +37,8 @@ import { Colors } from '@/constants/theme'
 import { TabBar } from '@/constants/layout'
 import { computeMealBudgets, describeMealStatus, buildCoachNote, MealBudget } from '@/utils/mealBudget'
 import { FoodConsole } from '@/components/nutrition/FoodConsole'
+import { RachaEncendida } from '@/components/racha/RachaEncendida'
+import { useRachaDelDia } from '@/hooks/useRachaDelDia'
 import { FondoPlato } from '@/components/nutrition/FondoPlato'
 import { emojiForFood } from '@/data/foodEmoji'
 
@@ -115,6 +117,7 @@ export default function NutritionScreen() {
   /* El resumen de la semana se relee cuando cambia el día O el total de hoy:
      así, al apuntar una comida, la barrita de ese día crece sin salir de la
      pantalla. Solo al enfocar no bastaba. */
+  const racha = useRachaDelDia()
   const [semana, setSemana] = useState<{ iso: string; calorias: number; registrado: boolean }[]>([])
   useEffect(() => { void resumenSemana().then(setSemana) }, [date, totalCalories])
 
@@ -483,9 +486,22 @@ export default function NutritionScreen() {
           dailyConsumed={totalCalories}
           dailyTarget={caloriesTarget}
           onClose={() => setConsoleOpen(false)}
-          onCommit={addEntries}
+          onCommit={entradas => {
+            addEntries(entradas)
+            /* Solo cuenta para la racha si se apunta en HOY. Registrar el
+               sábado desde el lunes es corregir el historial, no hacer algo
+               hoy, y encender la racha por eso sería regalarla. */
+            if (date === hoyLocal()) void racha.registrarGesto('loggedFood')
+          }}
         />
       )}
+
+      <RachaEncendida
+        visible={racha.visible}
+        dias={racha.dias}
+        semana={racha.semana}
+        onCerrar={racha.cerrar}
+      />
     </View>
   )
 }

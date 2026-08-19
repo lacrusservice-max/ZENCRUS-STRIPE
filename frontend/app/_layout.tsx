@@ -42,6 +42,7 @@ import { useRecoveryStore } from '@/store/recoveryStore'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { NetworkBanner } from '@/components/NetworkBanner'
 import { BotonZena } from '@/components/ui/BotonZena'
+import { RachaFlotante } from '@/components/racha/RachaFlotante'
 import { migrarSeguimiento, vaciarCola } from '@/store/trackingSync'
 import { migrarHistorico, vaciarCola as vaciarColaNutricion } from '@/store/nutritionSync'
 
@@ -162,6 +163,7 @@ export default function RootLayout() {
                 en el mismo sitio en todas las pantallas, también en las que se
                 añadan después. */}
             <BotonZena />
+            <RachaFlotante />
             <NetworkBanner />
           </View>
         </SafeAreaProvider>
