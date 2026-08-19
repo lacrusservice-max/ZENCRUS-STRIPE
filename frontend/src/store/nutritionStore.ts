@@ -87,6 +87,32 @@ function todayKey() {
   return hoyLocal()
 }
 
+/**
+ * Las kcal de cada uno de los últimos seis días, para la tira de la semana.
+ *
+ * Lee de disco y no del servidor: la tira se pinta al abrir la pantalla y una
+ * espera de red ahí se vería como un parpadeo de seis huecos que se rellenan.
+ * Lo que hay en disco es lo que ya se sincronizó, que para un vistazo basta.
+ *
+ * `registrado: false` es un día sin nada apuntado, y no lo mismo que un día a
+ * cero kcal: la tira lo dibuja distinto —hueco en vez de barra— porque la
+ * diferencia es justo la que invita a tocarlo.
+ */
+export async function resumenSemana(dias = 6): Promise<{ iso: string; calorias: number; registrado: boolean }[]> {
+  const isos = Array.from({ length: dias }, (_, i) => haceDias(dias - 1 - i))
+  const pares = await AsyncStorage.multiGet(isos.map(d => `nutrition_${d}`))
+  return pares.map(([clave, raw], i) => {
+    if (!raw) return { iso: isos[i], calorias: 0, registrado: false }
+    try {
+      const { meals } = JSON.parse(raw)
+      const { totalCalories } = computeTotals(meals ?? MEAL_DEFAULTS)
+      return { iso: isos[i], calorias: totalCalories, registrado: totalCalories > 0 }
+    } catch {
+      return { iso: isos[i], calorias: 0, registrado: false }
+    }
+  })
+}
+
 function computeTotals(meals: MealSlot[]) {
   let cal = 0, prot = 0, carbs = 0, fat = 0, fiber = 0
   meals.forEach(m => m.entries.forEach(e => {

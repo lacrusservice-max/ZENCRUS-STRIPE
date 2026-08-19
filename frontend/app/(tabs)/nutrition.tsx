@@ -22,14 +22,14 @@ import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useAuthStore } from '@/store/authStore'
-import { useNutritionStore, MealSlot } from '@/store/nutritionStore'
+import { resumenSemana, useNutritionStore, MealSlot } from '@/store/nutritionStore'
 import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
 import { suggestCalorieAdjustment, Goal } from '@/utils/calorieAdjustment'
 import api from '@/services/api'
 import { PlateRing } from '@/components/ui/PlateRing'
 import { AnilloMacro } from '@/components/nutrition/AnilloMacro'
 import {
-  limitesDe, tramoDe, COLOR_TRAMO, ETIQUETA_TRAMO, frase as fraseDelDia, aviso as avisoDelDia,
+  limitesDe, tramoDe, COLOR_TRAMO, ETIQUETA_TRAMO, fraccion, frase as fraseDelDia, aviso as avisoDelDia,
 } from '@/utils/tramoCalorico'
 import { CountUp } from '@/components/ui/CountUp'
 import { ZIcon, ZIconName } from '@/components/ui/ZencrusIcon'
@@ -112,6 +112,12 @@ export default function NutritionScreen() {
      variable `date` de arriba porque el callback va sin dependencias a
      propósito —se quiere en CADA foco— y con `date` dentro se quedaría mirando
      el valor del primer render. */
+  /* El resumen de la semana se relee cuando cambia el día O el total de hoy:
+     así, al apuntar una comida, la barrita de ese día crece sin salir de la
+     pantalla. Solo al enfocar no bastaba. */
+  const [semana, setSemana] = useState<{ iso: string; calorias: number; registrado: boolean }[]>([])
+  useEffect(() => { void resumenSemana().then(setSemana) }, [date, totalCalories])
+
   useFocusEffect(useCallback(() => {
     loadToday(useNutritionStore.getState().date)
     /**
@@ -209,20 +215,43 @@ export default function NutritionScreen() {
               macros, y lo que se apunte se guarda en ESE día. No hay pantalla
               aparte porque no hace falta ninguna — el store ya trabajaba por
               fecha, solo que nadie podía pedirle otra. */}
+          <View style={s.weekHead}>
+            <Text style={s.weekTitle}>TU SEMANA</Text>
+            <Text style={s.weekCount}>
+              {semana.filter(d => d.registrado).length} de {semana.length || 6} días
+            </Text>
+          </View>
           <View style={s.week}>
-            {weekStrip(date).map(d => (
-              <TouchableOpacity
-                key={d.iso}
-                style={[s.day, d.activo && s.dayOn]}
-                onPress={() => { Haptics.selectionAsync(); void loadToday(d.iso) }}
-                activeOpacity={0.7}
-              >
-                <Text style={[s.dayNum, d.activo && s.dayNumOn]}>{d.day}</Text>
-                <Text style={[s.dayLbl, d.activo && s.dayLblOn]}>{d.short}</Text>
-                {/* Un punto para no perder de vista cuál es hoy cuando estás en otro. */}
-                {d.esHoy && !d.activo && <View style={s.dayHoy} />}
-              </TouchableOpacity>
-            ))}
+            {weekStrip(date).map(d => {
+              const r = semana.find(x => x.iso === d.iso)
+              const tr = r?.registrado ? tramoDe(r.calorias, limites) : null
+              return (
+                <TouchableOpacity
+                  key={d.iso}
+                  style={[s.day, d.activo && s.dayOn]}
+                  onPress={() => { Haptics.selectionAsync(); void loadToday(d.iso) }}
+                  activeOpacity={0.7}
+                >
+                  <Text style={[s.dayNum, d.activo && s.dayNumOn]}>{d.day}</Text>
+                  <Text style={[s.dayLbl, d.activo && s.dayLblOn]}>{d.short}</Text>
+                  {/* Cómo fue ese día, con el MISMO semáforo del anillo grande.
+                      Un día sin apuntar no lleva barra sino un trazo hueco: la
+                      diferencia entre «comí poco» y «no lo registré» es justo lo
+                      que hace que uno quiera tocarlo. */}
+                  {tr ? (
+                    <View style={s.dayBar}>
+                      <View style={[s.dayBarFill, {
+                        width: `${Math.max(8, fraccion(r!.calorias, limites) * 100)}%`,
+                        backgroundColor: COLOR_TRAMO[tr],
+                      }]} />
+                    </View>
+                  ) : (
+                    <View style={s.dayVacio} />
+                  )}
+                  {d.esHoy && !d.activo && <View style={s.dayHoy} />}
+                </TouchableOpacity>
+              )
+            })}
           </View>
 
           {/* ── Estado del día ── */}
@@ -618,9 +647,9 @@ const s = StyleSheet.create({
   h1Accent: { color: NEON.red },
 
   // Semana
-  week: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, marginTop: 20 },
+  week: { flexDirection: 'row', gap: 6, paddingHorizontal: 20 },
   day: {
-    flex: 1, alignItems: 'center', paddingVertical: 9, borderRadius: 13,
+    flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 10, borderRadius: 13,
     backgroundColor: NEON.pane,
   },
   dayOn: { backgroundColor: 'rgba(255,31,61,0.16)' },
@@ -630,6 +659,27 @@ const s = StyleSheet.create({
   dayLblOn: { color: NEON.redSoft },
   /* Marca dónde está hoy cuando estás mirando otro día. Va abajo del todo para
      no competir con el número. */
+  weekHead: {
+    flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between',
+    paddingHorizontal: 24, marginTop: 20, marginBottom: 8,
+  },
+  weekTitle: { fontSize: 9.5, fontWeight: '800', letterSpacing: 1.9, color: NEON.w2 },
+  weekCount: { fontSize: 9.5, color: NEON.w3, fontVariant: ['tabular-nums'] },
+  dayBar: {
+    /* `alignSelf: stretch` es imprescindible: el recuadro del día centra a sus
+       hijos, así que un View sin ancho propio se encoge a cero y la barra
+       desaparecía entera —carril incluido—. El hueco de al lado sí se veía
+       porque lleva un ancho fijo. */
+    alignSelf: 'stretch',
+    height: 2.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.10)',
+    marginTop: 5, marginHorizontal: 6, overflow: 'hidden',
+  },
+  dayBarFill: { height: '100%', borderRadius: 2 },
+  /* Hueco, no barra a cero: un carril vacío se leería como «cero kcal». */
+  dayVacio: {
+    height: 2.5, width: 12, borderRadius: 2, marginTop: 5, alignSelf: 'center',
+    borderTopWidth: 1.5, borderColor: NEON.w4, borderStyle: 'dashed',
+  },
   dayHoy: {
     position: 'absolute', bottom: 4, width: 3, height: 3, borderRadius: 2,
     backgroundColor: NEON.w3,
