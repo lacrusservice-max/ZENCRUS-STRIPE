@@ -73,7 +73,9 @@ export function tramoDe(consumido: number, l: Limites): Tramo {
 export const COLOR_TRAMO: Record<Tramo, string> = {
   bajo:   '#8A8D98',
   minimo: '#FFC542',
-  meta:   '#29D07B',
+  /* Esmeralda, elegido mirándolo. El anterior (#29D07B) llevaba demasiado
+     azul y se leía como verde menta: barato al lado del rojo de marca. */
+  meta:   '#00C853',
   pasado: '#FF3B47',
 }
 
@@ -103,6 +105,30 @@ export function fraccion(consumido: number, l: Limites): number {
   const fin = finDeEscala(l)
   return fin > 0 ? Math.min(1, Math.max(0, consumido / fin)) : 0
 }
+
+/**
+ * Los mismos cuatro tramos, para un macro.
+ *
+ * Proteína, carbos y grasas se colorean con el MISMO semáforo que las kcal:
+ * gris por debajo del mínimo, ámbar dentro del mínimo, verde en la meta y rojo
+ * pasado el tope. Idea de Sergio, y es mejor que darle a cada macro un color
+ * propio: con un color fijo el anillo solo dice CUÁNTO llevas, y hay que mirar
+ * la rayita y hacer la cuenta para saber si eso es bueno o malo. Con el
+ * semáforo, el color ya lo dice.
+ *
+ * Y de paso quita de la pantalla tres colores que no eran de la marca.
+ *
+ * Los límites salen de la meta con las mismas proporciones que las kcal —85 %
+ * y 115 %— para que el lenguaje sea el mismo en toda la pantalla. Un día habrá
+ * que dejar afinar cada macro por separado: pasarse de proteína no es lo mismo
+ * que pasarse de grasas. Pero inventar hoy una regla distinta por macro sería
+ * peor que una simple y predecible.
+ */
+export const limitesDeMacro = (meta: number): Limites => ({
+  meta,
+  minimo: Math.round(meta * 0.85),
+  techo: Math.round(meta * 1.15),
+})
 
 const nf = (n: number) => Math.round(n).toLocaleString('es-MX')
 

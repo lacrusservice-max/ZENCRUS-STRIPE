@@ -68,8 +68,57 @@ function camino(desde: number, barrido: number, radio = R) {
 }
 
 const LARGO = (BARRIDO / 360) * 2 * Math.PI * R
-const ARCO = camino(INICIO, BARRIDO)
-const ARCO_EXCESO = camino(INICIO + BARRIDO * FRACCION_TECHO, BARRIDO * (1 - FRACCION_TECHO))
+
+/**
+ * REMATES REDONDEADOS, PERO EXACTOS
+ * ─────────────────────────────────
+ * Una punta redonda se extiende medio grosor de trazo MÁS ALLÁ del punto donde
+ * acaba el recorrido. Eso obliga a elegir entre dos cosas malas:
+ *
+ *   · todo en punta cuadrada — exacto, pero la pista redondeada de fondo asoma
+ *     por los extremos y deja huecos oscuros sin rellenar;
+ *   · todo en punta redonda — bonito, pero cada extremo miente medio trazo:
+ *     unas 49 kcal en esta escala, y el rojo del exceso invade el lado bueno
+ *     del techo.
+ *
+ * No hay que elegir: se redondea Y se descuenta. Cada arco se acorta δ por cada
+ * extremo redondeado, y la punta vuelve a caer justo donde toca. δ es el ángulo
+ * que ocupa medio trazo sobre este radio.
+ */
+const DELTA = ((SW / 2) / R) * (180 / Math.PI)
+
+/** El recorrido completo, acortado para que sus remates caigan en los bordes. */
+const ARCO = camino(INICIO + DELTA, BARRIDO - DELTA * 2)
+
+/** El exceso: empieza EN el techo, no medio trazo antes. */
+const ARCO_EXCESO = camino(
+  INICIO + BARRIDO * FRACCION_TECHO + DELTA,
+  BARRIDO * (1 - FRACCION_TECHO) - DELTA * 2,
+)
+
+/** Y su longitud, que ya no es la del recorrido entero. */
+const LARGO_PINTADO = ((BARRIDO - DELTA * 2) / 360) * 2 * Math.PI * R
+
+/** Donde nace el arco, para el punto de arranque. */
+const ARRANQUE = polar(INICIO + DELTA)
+
+/**
+ * De la fracción del RECORRIDO a la fracción del TRAZO.
+ *
+ * No son la misma. El recorrido lógico va de 0 a BARRIDO; el trazo pintado
+ * empieza δ después y acaba δ antes, porque sus puntas redondas cubren esos δ.
+ *
+ * Para que el borde de la punta caiga justo en `BARRIDO · f`, el trazo tiene que
+ * acabar δ ANTES de ese punto. Sin esta conversión la punta cae bien solo al
+ * 100 %, y en el resto se adelanta — que es el error que tenía la versión de
+ * puntas cuadradas, solo que al revés.
+ */
+function fraccionDeTrazo(f: number): number {
+  const util = BARRIDO - DELTA * 2
+  if (util <= 0) return 0
+  return Math.min(1, Math.max(0, (BARRIDO * f - DELTA * 2) / util))
+}
+
 
 /**
  * Las marcas miden EXACTAMENTE el grosor del trazo.
@@ -106,11 +155,11 @@ export function PlateRing({ consumed, limites, size = 268 }: Props) {
 
   const avance = useSharedValue(0)
   useEffect(() => {
-    avance.value = withTiming(objetivo, { duration: DURACION, easing: CURVA })
+    avance.value = withTiming(fraccionDeTrazo(objetivo), { duration: DURACION, easing: CURVA })
   }, [objetivo, avance])
 
   const props = useAnimatedProps(() => ({
-    strokeDashoffset: LARGO * (1 - avance.value),
+    strokeDashoffset: LARGO_PINTADO * (1 - avance.value),
   }))
 
   /** Las tres marcas, cada una con su nombre al lado. */
@@ -120,22 +169,34 @@ export function PlateRing({ consumed, limites, size = 268 }: Props) {
     { f: limites.techo  / fin, texto: 'techo', op: 0.85, grosor: 3, tope: true },
   ]
 
-  const punta = polar(INICIO + BARRIDO * objetivo)
 
   return (
     <View style={[s.marco, { width: size, height: size }]}>
       <Svg width={size} height={size} viewBox={`0 0 ${VB} ${VB}`}>
         <Path d={ARCO} fill="none" stroke="rgba(255,255,255,0.09)"
               strokeWidth={SW} strokeLinecap="round" />
-        {/* Punta cuadrada: la redonda adelantaba el rojo medio trazo y lo metía
-            en el lado bueno del techo. */}
-        <Path d={ARCO_EXCESO} fill="none" stroke="rgba(255,59,71,0.30)"
-              strokeWidth={SW} strokeLinecap="butt" />
 
+        <Path d={ARCO_EXCESO} fill="none" stroke="rgba(255,59,71,0.30)"
+              strokeWidth={SW} strokeLinecap="round" />
+
+        {/*
+          EL PUNTO DE ARRANQUE.
+
+          Una punta redonda mide 9,4° de ancho: eso es lo mínimo que el SVG puede
+          dibujar de este arco. Por debajo de ahí no pinta nada — o sea que los
+          primeros 99 kcal del día dejaban el anillo quieto, y apuntar un café
+          parecía no registrarse.
+
+          El punto lo resuelve: en cuanto hay algo apuntado, el arco nace. Cuando
+          crece, queda debajo y no se nota.
+        */}
+        {consumed > 0 && (
+          <Circle cx={ARRANQUE.x} cy={ARRANQUE.y} r={SW / 2} fill={color} />
+        )}
         <AnimatedPath
           d={ARCO} fill="none" stroke={color}
-          strokeWidth={SW} strokeLinecap="butt"
-          strokeDasharray={LARGO} animatedProps={props}
+          strokeWidth={SW} strokeLinecap="round"
+          strokeDasharray={LARGO_PINTADO} animatedProps={props}
         />
 
         {marcas.map(m => {
@@ -160,9 +221,6 @@ export function PlateRing({ consumed, limites, size = 268 }: Props) {
           )
         })}
 
-        {consumed > 0 && (
-          <Circle cx={punta.x} cy={punta.y} r={4.5} fill={color} />
-        )}
       </Svg>
     </View>
   )

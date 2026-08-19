@@ -18,20 +18,27 @@
  * dejaban el anillo idéntico —lleno— y ese dato se perdía. Pasarse de proteína
  * suele ser buena noticia y pasarse de grasas no tanto: hay que poder verlo.
  *
- * ── Y lo dice con palabras, no solo con la rayita ───────────────────────────
- * Al pasarse, el «/150 g» se convierte en «+21 g» en rojo y el nombre del macro
- * también se pone rojo. La rayita sola no avisa: hay que estar mirando el arco y
- * saber qué significa esa marca. Con tres anillos pequeños en fila, lo que se lee
- * de un vistazo es el texto — así que el texto es el que tiene que decirlo.
+ * ── El mismo semáforo que las kcal ──────────────────────────────────────────
+ * Gris por debajo del mínimo, ámbar dentro del mínimo, verde en la meta y rojo
+ * pasado el tope: exactamente los cuatro tramos del arco grande.
+ *
+ * Antes cada macro tenía un color fijo —rosa, azul, turquesa— y eso tenía dos
+ * problemas. Uno de marca: tres colores que no son de ZENCRUS, y la pantalla
+ * dejaba de parecer suya. Y otro de información: con un color fijo, el anillo
+ * solo dice CUÁNTO llevas; para saber si eso es bueno o malo hay que mirar la
+ * rayita y hacer la cuenta. Con el semáforo, el color ya lo dice.
+ *
+ * El «+21 g» se queda porque da la cifra exacta, que el color no puede dar.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useMemo } from 'react'
 import { View, Text, StyleSheet } from 'react-native'
-import Svg, { Path, Line } from 'react-native-svg'
+import Svg, { Path, Circle, Line } from 'react-native-svg'
 import Animated, {
   useSharedValue, useAnimatedProps, withTiming, Easing,
 } from 'react-native-reanimated'
 import { Colors, Typography } from '@/constants/theme'
+import { limitesDeMacro, tramoDe, COLOR_TRAMO, FRACCION_TECHO, finDeEscala, fraccion } from '@/utils/tramoCalorico'
 
 const AnimatedPath = Animated.createAnimatedComponent(Path)
 const N = Colors.neon
@@ -44,7 +51,7 @@ const R = 39
 const SW = 6.5
 const INICIO = 135        // grados absolutos: extremo inferior izquierdo
 const BARRIDO = 270
-const FRACCION_META = 0.85
+
 
 /** Punto del arco para un ángulo absoluto, con 0° arriba. */
 function polar(grados: number, radio = R) {
@@ -58,9 +65,43 @@ function camino(desde: number, barrido: number, radio = R) {
   return `M${a.x.toFixed(2)},${a.y.toFixed(2)} A${radio},${radio} 0 ${barrido > 180 ? 1 : 0},1 ${b.x.toFixed(2)},${b.y.toFixed(2)}`
 }
 
-const LARGO = (BARRIDO / 360) * 2 * Math.PI * R
-const ARCO_COMPLETO = camino(INICIO, BARRIDO)
-const ARCO_EXCESO = camino(INICIO + BARRIDO * FRACCION_META, BARRIDO * (1 - FRACCION_META))
+/**
+ * Remates redondeados y exactos, igual que el plato.
+ *
+ * Una punta redonda se extiende medio grosor más allá del punto donde acaba el
+ * recorrido. Con la pista redondeada y el progreso cuadrado, la pista asomaba
+ * por los extremos y dejaba huecos oscuros sin rellenar. Se redondea todo Y se
+ * descuenta ese medio trazo, así que la punta cae donde toca y no sobra nada.
+ */
+const DELTA = ((SW / 2) / R) * (180 / Math.PI)
+
+const ARCO_COMPLETO = camino(INICIO + DELTA, BARRIDO - DELTA * 2)
+const ARCO_EXCESO = camino(
+  INICIO + BARRIDO * FRACCION_TECHO + DELTA,
+  BARRIDO * (1 - FRACCION_TECHO) - DELTA * 2,
+)
+const LARGO = ((BARRIDO - DELTA * 2) / 360) * 2 * Math.PI * R
+
+/** Donde nace el arco: sin esto, los primeros gramos no se ven. */
+const ARRANQUE = polar(INICIO + DELTA)
+
+/**
+ * De la fracción del RECORRIDO a la fracción del TRAZO.
+ *
+ * No son la misma. El recorrido lógico va de 0 a BARRIDO; el trazo pintado
+ * empieza δ después y acaba δ antes, porque sus puntas redondas cubren esos δ.
+ *
+ * Para que el borde de la punta caiga justo en `BARRIDO · f`, el trazo tiene que
+ * acabar δ ANTES de ese punto. Sin esta conversión la punta cae bien solo al
+ * 100 %, y en el resto se adelanta — que es el error que tenía la versión de
+ * puntas cuadradas, solo que al revés.
+ */
+function fraccionDeTrazo(f: number): number {
+  const util = BARRIDO - DELTA * 2
+  if (util <= 0) return 0
+  return Math.min(1, Math.max(0, (BARRIDO * f - DELTA * 2) / util))
+}
+
 
 /**
  * La marca del límite mide EXACTAMENTE lo que mide el trazo.
@@ -88,28 +129,34 @@ interface Props {
   valor: number
   /** Gramos objetivo. */
   meta: number
-  color: string
 }
 
-/** El rojo del exceso: el mismo que usa el techo de las kcal. */
-const EXCESO = '#FF3B47'
-
-export function AnilloMacro({ nombre, valor, meta, color }: Props) {
-  const pasado = meta > 0 && valor > meta
+export function AnilloMacro({ nombre, valor, meta }: Props) {
+  /* Memoizado porque entra en las dependencias del efecto: sin esto es un
+     objeto nuevo en cada render y la animación se relanzaría sin parar. */
+  const limites = useMemo(() => limitesDeMacro(meta), [meta])
+  const tramo = tramoDe(valor, limites)
+  const color = COLOR_TRAMO[tramo]
+  const pasado = valor > meta
   const deMas = Math.round(valor - meta)
-  const avance = useSharedValue(0)
 
+  const avance = useSharedValue(0)
   useEffect(() => {
-    const f = meta > 0 ? Math.min(1, (valor / meta) * FRACCION_META) : 0
-    avance.value = withTiming(f, { duration: DURACION, easing: CURVA })
-  }, [valor, meta, avance])
+    avance.value = withTiming(fraccionDeTrazo(fraccion(valor, limites)), { duration: DURACION, easing: CURVA })
+  }, [valor, limites, avance])
 
   const props = useAnimatedProps(() => ({
     strokeDashoffset: LARGO * (1 - avance.value),
   }))
 
-  const marca = polar(INICIO + BARRIDO * FRACCION_META, R - MEDIA_MARCA)
-  const marcaFin = polar(INICIO + BARRIDO * FRACCION_META, R + MEDIA_MARCA)
+  /* Las tres marcas, en la misma proporción que el arco grande. Sin etiqueta:
+     en 74 px no cabe texto, y el color del anillo ya dice en qué tramo vas. */
+  const fin = finDeEscala(limites)
+  const marcas = [limites.minimo / fin, limites.meta / fin, limites.techo / fin].map((f, i) => ({
+    a: polar(INICIO + BARRIDO * f, R - MEDIA_MARCA),
+    b: polar(INICIO + BARRIDO * f, R + MEDIA_MARCA),
+    fuerte: i === 2,
+  }))
 
   return (
     <View style={s.caja}>
@@ -117,33 +164,37 @@ export function AnilloMacro({ nombre, valor, meta, color }: Props) {
         <Svg viewBox={`0 0 ${VB} ${VB}`} width="100%" height="100%">
           <Path d={ARCO_COMPLETO} fill="none" stroke="rgba(255,255,255,0.10)"
                 strokeWidth={SW} strokeLinecap="round" />
-          {/* El terreno de más allá de la meta, para que se vea antes de llegar.
-              Con punta cuadrada: la redonda lo adelantaba medio trazo y el rojo
-              invadía el lado bueno de la marca. */}
+          {/* El terreno de más allá de la meta, para que se vea antes de llegar. */}
           <Path d={ARCO_EXCESO} fill="none" stroke="rgba(255,59,71,0.28)"
-                strokeWidth={SW} strokeLinecap="butt" />
-          {/* Lo consumido. Punta cuadrada también: con la redonda, la punta se
-              adelantaba medio trazo y parecía que llevabas más de lo que llevas. */}
+                strokeWidth={SW} strokeLinecap="round" />
+          {/* El arco nace de un punto: una punta redonda no puede dibujarse más
+              estrecha que ella misma, así que sin esto los primeros gramos
+              dejaban el anillo quieto. */}
+          {valor > 0 && <Circle cx={ARRANQUE.x} cy={ARRANQUE.y} r={SW / 2} fill={color} />}
           <AnimatedPath
             d={ARCO_COMPLETO} fill="none" stroke={color}
-            strokeWidth={SW} strokeLinecap="butt"
+            strokeWidth={SW} strokeLinecap="round"
             strokeDasharray={LARGO} animatedProps={props}
           />
-          <Line
-            x1={marca.x} y1={marca.y} x2={marcaFin.x} y2={marcaFin.y}
-            stroke="rgba(255,255,255,0.9)" strokeWidth={1.8} strokeLinecap="butt"
-          />
+          {marcas.map((m, i) => (
+            <Line
+              key={i}
+              x1={m.a.x} y1={m.a.y} x2={m.b.x} y2={m.b.y}
+              stroke={m.fuerte ? 'rgba(255,255,255,0.9)' : 'rgba(255,255,255,0.5)'}
+              strokeWidth={m.fuerte ? 2 : 1.4} strokeLinecap="butt"
+            />
+          ))}
         </Svg>
 
         {/* El hueco de abajo del arco es donde cabe el texto. */}
         <View style={s.centro} pointerEvents="none">
           <Text style={[s.gramos, { color }]}>{Math.round(valor)}</Text>
-          <Text style={[s.de, pasado && { color: EXCESO, fontWeight: '800' }]}>
+          <Text style={[s.de, pasado && { color, fontWeight: '800' }]}>
             {pasado ? `+${deMas} g` : `/${meta} g`}
           </Text>
         </View>
       </View>
-      <Text style={[s.nombre, pasado && { color: EXCESO }]}>{nombre}</Text>
+      <Text style={s.nombre}>{nombre}</Text>
     </View>
   )
 }
@@ -176,9 +227,3 @@ const s = StyleSheet.create({
   },
 })
 
-/** Los tres colores, aparte de los semánticos para no confundirse con ellos. */
-export const COLOR_MACRO = {
-  proteina: '#FF2D78',
-  carbos: '#5B8DEF',
-  grasas: '#22E0C8',
-} as const

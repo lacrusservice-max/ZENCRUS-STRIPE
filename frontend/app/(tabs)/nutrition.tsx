@@ -26,7 +26,7 @@ import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
 import { suggestCalorieAdjustment, Goal } from '@/utils/calorieAdjustment'
 import api from '@/services/api'
 import { PlateRing } from '@/components/ui/PlateRing'
-import { AnilloMacro, COLOR_MACRO } from '@/components/nutrition/AnilloMacro'
+import { AnilloMacro } from '@/components/nutrition/AnilloMacro'
 import {
   limitesDe, tramoDe, COLOR_TRAMO, ETIQUETA_TRAMO, frase as fraseDelDia, aviso as avisoDelDia,
 } from '@/utils/tramoCalorico'
@@ -294,9 +294,9 @@ export default function NutritionScreen() {
           })()}
 
           <View style={s.macros}>
-            <AnilloMacro nombre="Proteína" valor={totalProtein} meta={proteinTarget} color={COLOR_MACRO.proteina} />
-            <AnilloMacro nombre="Carbos"   valor={totalCarbs}   meta={carbsTarget}   color={COLOR_MACRO.carbos} />
-            <AnilloMacro nombre="Grasas"   valor={totalFat}     meta={fatTarget}     color={COLOR_MACRO.grasas} />
+            <AnilloMacro nombre="Proteína" valor={totalProtein} meta={proteinTarget} />
+            <AnilloMacro nombre="Carbos"   valor={totalCarbs}   meta={carbsTarget} />
+            <AnilloMacro nombre="Grasas"   valor={totalFat}     meta={fatTarget} />
           </View>
 
           {/* ── Ajuste sugerido ── */}
