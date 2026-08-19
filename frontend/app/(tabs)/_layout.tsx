@@ -5,6 +5,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
+import { COBRO_ACTIVO } from '@/constants/acceso'
 import { useAuthStore } from '@/store/authStore'
 import { Colors, Glass } from '@/constants/theme'
 import { getCurrentSubscription } from '@/services/stripeService'
@@ -247,7 +248,7 @@ const tb = StyleSheet.create({
  * que abra el archivo. Borrarlo lo convertiría en algo que hay que reescribir
  * —y recordar— dentro de unos meses.
  */
-const EXIGIR_PLAN = false
+const EXIGIR_PLAN = COBRO_ACTIVO
 
 export default function TabsLayout() {
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)

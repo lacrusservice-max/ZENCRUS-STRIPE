@@ -6,6 +6,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import { COBRO_ACTIVO } from '@/constants/acceso'
 import { useAuthStore } from '@/store/authStore'
 import { Colors, Spacing, Typography, BorderRadius } from '@/constants/theme'
 
@@ -61,7 +62,10 @@ function MacroCard({ label, value, unit, color, icon, delay }: MacroCardProps) {
 // ── AI message generator ──────────────────────────────────────────────────────
 
 function getAIMessage(name: string, goal: string, calories: number): string {
-  const firstName = name?.split(' ')[0] ?? 'Atleta'
+  /* El `??` no cubría el nombre vacío: `''.split(' ')[0]` es `''`, que no es
+     null, así que el saludo salía como «, con 2000 kcal/día…» con la coma
+     colgando. Pasa siempre que el perfil aún no ha terminado de cargar. */
+  const firstName = name?.trim().split(' ')[0] || 'Atleta'
   const goalKey = goal ?? 'maintain'
 
   if (goalKey === 'lose_fat') {
@@ -93,7 +97,7 @@ export default function WelcomeScreen() {
   const fat = goals?.fat_g ?? 65
   const fiber = goals?.fiber_g ?? 28
   const mainGoal = goals?.main_goal ?? 'maintain'
-  const firstName = user?.full_name?.split(' ')[0] ?? 'Atleta'
+  const firstName = user?.full_name?.trim().split(' ')[0] || 'Atleta'
 
   const aiMessage = getAIMessage(user?.full_name ?? '', mainGoal, calories)
 
@@ -197,13 +201,27 @@ export default function WelcomeScreen() {
           </View>
 
           {/* CTA */}
+          {/* El último paso del registro.
+              Con el cobro apagado se entra directo: el plan de arriba ya está
+              calculado y guardado, así que mandar a elegir tarifa sería pedir
+              una tarjeta para ver algo que ya es suyo. Con el cobro encendido
+              vuelve el camino de siempre —planes y checkout—, que sigue entero
+              detrás del interruptor. */}
           <Animated.View style={{ opacity: btnOpacity, marginTop: Spacing[6] }}>
-            <TouchableOpacity style={s.ctaBtn} onPress={() => router.replace('/subscription-intro')} activeOpacity={0.85}>
+            <TouchableOpacity
+              style={s.ctaBtn}
+              onPress={() => router.replace(COBRO_ACTIVO ? '/subscription-intro' : '/(tabs)')}
+              activeOpacity={0.85}
+            >
               <View style={s.ctaShine} pointerEvents="none" />
-              <Text style={s.ctaText}>Elegir mi plan y empezar gratis</Text>
+              <Text style={s.ctaText}>
+                {COBRO_ACTIVO ? 'Elegir mi plan y empezar gratis' : 'Empezar'}
+              </Text>
               <Ionicons name="arrow-forward" size={20} color="#fff" />
             </TouchableOpacity>
-            <Text style={s.skipText}>5 días gratis en cualquier plan · después se cobra automáticamente</Text>
+            {COBRO_ACTIVO && (
+              <Text style={s.skipText}>5 días gratis en cualquier plan · después se cobra automáticamente</Text>
+            )}
           </Animated.View>
         </ScrollView>
       </SafeAreaView>
