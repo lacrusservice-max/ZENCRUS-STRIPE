@@ -52,35 +52,23 @@ function stepsToKm(steps: number): number {
 
 const today = () => hoyLocal()
 
-const DEMO_STEPS: StepEntry[] = Array.from({ length: 7 }, (_, i) => {
-  const steps = Math.floor(Math.random() * 5000) + 4000
-  return {
-    date: haceDias(i),
-    steps,
-    caloriesBurned: stepsToCalories(steps),
-    distanceKm: stepsToKm(steps),
-    activeMinutes: Math.floor(steps / 100),
-  }
-})
-
-const DEMO_HR: HeartRateEntry[] = [
-  { timestamp: new Date().toISOString(), bpm: 62, type: 'resting' },
-  { timestamp: new Date(Date.now() - 3600000).toISOString(), bpm: 142, type: 'active' },
-  { timestamp: new Date(Date.now() - 7200000).toISOString(), bpm: 158, type: 'peak' },
-]
-
-const DEMO_SLEEP: SleepEntry[] = Array.from({ length: 7 }, (_, i) => {
-  const hours = 5.5 + Math.random() * 3
-  return {
-    date: haceDias(i),
-    bedtime: '23:00',
-    wakeTime: '07:00',
-    totalHours: Math.round(hours * 10) / 10,
-    quality: hours >= 7.5 ? 'excellent' : hours >= 6.5 ? 'good' : hours >= 5.5 ? 'fair' : 'poor',
-    deepSleepHours: Math.round(hours * 0.2 * 10) / 10,
-    remSleepHours: Math.round(hours * 0.25 * 10) / 10,
-  }
-})
+/**
+ * AQUÍ HABÍA SIETE DÍAS DE PASOS Y DE SUEÑO INVENTADOS
+ * ═══════════════════════════════════════════════════
+ * `DEMO_STEPS` y `DEMO_SLEEP` generaban una semana entera con `Math.random()`,
+ * y `todaySteps` arrancaba con un número al azar entre 2.000 y 5.000. No eran
+ * un ejemplo de una pantalla de bienvenida: eran el ESTADO INICIAL del store, y
+ * el store persiste. O sea que se inventaban una vez, se guardaban en el
+ * teléfono y a partir de ahí pasaban por datos del usuario.
+ *
+ * El síntoma se veía en la app: abrir Salud enseñaba 2.519 pasos, y al volver
+ * un rato después 3.458. Nadie había andado. Y el «Score de recuperación» se
+ * calculaba con ese sueño falso, así que el número que la app da como
+ * indicación de cómo estás salía de un dado.
+ *
+ * No hay dato hasta que alguien lo registra. Un cero honesto se puede rellenar;
+ * un número inventado no se puede distinguir de uno real.
+ */
 
 interface HealthTrackerState {
   stepHistory: StepEntry[]
@@ -104,16 +92,16 @@ interface HealthTrackerState {
   getRestingHeartRate: () => number
   getSleepForDate: (date: string) => SleepEntry | null
   getStepsForDate: (date: string) => StepEntry | null
-  getTodayProgress: () => { steps: number; pct: number; calories: number; km: number; activeMin: number }
+  getTodayProgress: () => { registrado: boolean; steps: number; pct: number; calories: number; km: number; activeMin: number }
 }
 
 export const useHealthTrackerStore = create<HealthTrackerState>()(
   persist(
     (set, get) => ({
-      stepHistory: DEMO_STEPS,
-      heartRateHistory: DEMO_HR,
-      sleepHistory: DEMO_SLEEP,
-      todaySteps: Math.floor(Math.random() * 3000) + 2000,
+      stepHistory: [],
+      heartRateHistory: [],
+      sleepHistory: [],
+      todaySteps: 0,
       isTrackingSteps: false,
       stepGoal: 10000,
       sleepGoal: 8,
@@ -243,17 +231,22 @@ export const useHealthTrackerStore = create<HealthTrackerState>()(
         return get().sleepHistory.find(e => e.date === date) ?? null
       },
 
-      getStepsForDate: (date) => {
-        if (date === today()) {
-          const s = get().todaySteps
-          return { date, steps: s, caloriesBurned: stepsToCalories(s), distanceKm: stepsToKm(s), activeMinutes: Math.floor(s / 100) }
-        }
-        return get().stepHistory.find(e => e.date === date) ?? null
-      },
+      /**
+       * `null` significa SIN REGISTRAR, y no es lo mismo que cero.
+       *
+       * Antes, para hoy devolvía siempre un objeto —aunque nadie hubiera
+       * apuntado nada— así que quien lo pintaba no tenía forma de distinguir
+       * «no hay dato» de «anduve 0 pasos». Con datos inventados de fondo daba
+       * igual; ahora que el historial arranca vacío, es la diferencia entre una
+       * gráfica honesta y una llena de ceros que parecen medidos.
+       */
+      getStepsForDate: (date) => get().stepHistory.find(e => e.date === date) ?? null,
 
       getTodayProgress: () => {
         const { todaySteps, stepGoal } = get()
         return {
+          /** Si nadie lo ha apuntado hoy, no hay progreso que enseñar. */
+          registrado: get().stepHistory.some(e => e.date === today()),
           steps: todaySteps,
           pct: Math.min(100, Math.round((todaySteps / stepGoal) * 100)),
           calories: stepsToCalories(todaySteps),
@@ -262,6 +255,33 @@ export const useHealthTrackerStore = create<HealthTrackerState>()(
         }
       },
     }),
-    { name: 'zencrus-health-tracker', storage: createJSONStorage(() => AsyncStorage) }
+    {
+      name: 'zencrus-health-tracker',
+      storage: createJSONStorage(() => AsyncStorage),
+      /**
+       * Versión 1: se tira lo que había guardado.
+       *
+       * Sin esto el arreglo no llegaría a nadie que ya tenga la app: el estado
+       * inicial solo se usa la PRIMERA vez, y a partir de ahí manda lo que hay
+       * en disco — que es justamente la semana inventada. Cambiar el código sin
+       * migrar habría dejado los números falsos exactamente donde estaban.
+       *
+       * Se descarta todo el historial en vez de intentar salvar algo: no hay
+       * forma de saber qué entradas eran inventadas y cuáles se registraron a
+       * mano después, y conservar un dato dudoso es peor que empezar limpio.
+       * Los objetivos sí se conservan, que esos sí los eligió el usuario.
+       */
+      version: 1,
+      migrate: (guardado: any, versionPrevia: number) => {
+        if (versionPrevia >= 1) return guardado
+        return {
+          ...guardado,
+          stepHistory: [],
+          heartRateHistory: [],
+          sleepHistory: [],
+          todaySteps: 0,
+        }
+      },
+    }
   )
 )
