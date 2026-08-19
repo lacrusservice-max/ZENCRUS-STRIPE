@@ -42,9 +42,12 @@ import { emojiForFood } from '@/data/foodEmoji'
 
 const NEON = Colors.neon
 
+/* «Plan semanal · Organiza la semana» salió de aquí: planificar la semana ya no
+   es ir a otro sitio, es tocar un día en la tira de arriba. Dos puertas a lo
+   mismo, una de ellas escondida al final de la pantalla, solo confundían.
+   La ruta /meal-planner sigue en el proyecto, sin acceso desde aquí. */
 const TOOLS: { icon: ZIconName; label: string; note: string; route: string | null }[] = [
   { icon: 'codex',  label: 'Recetas',      note: 'Qué cocinar hoy',       route: '/recipes' },
-  { icon: 'layers', label: 'Plan semanal', note: 'Organiza la semana',    route: '/meal-planner' },
   { icon: 'stack',  label: 'Compras',      note: 'Lista de la despensa',  route: '/grocery' },
   { icon: 'gauge',  label: 'Medidas',      note: 'Peso y composición',    route: '/measurements' },
 ]
