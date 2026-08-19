@@ -1,4 +1,5 @@
 import { useEffect, useCallback } from 'react'
+import { cargarPreferenciaHaptica } from '@/utils/haptica'
 import { View } from 'react-native'
 import { Stack } from 'expo-router'
 import { StatusBar } from 'expo-status-bar'
@@ -69,6 +70,9 @@ export default function RootLayout() {
   const [fontsLoaded] = useFonts({
     Rajdhani_500Medium, Rajdhani_600SemiBold, Rajdhani_700Bold,
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold })
+
+  // La háptica se puede apagar; hay a quien le molesta y hay que respetarlo.
+  useEffect(() => { void cargarPreferenciaHaptica() }, [])
 
   useEffect(() => {
     initialize()

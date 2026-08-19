@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { GlassCard, GlassProgress } from '@/components/ui/Glass'
 import { Colors, Spacing, Typography } from '@/constants/theme'
 import { useNutritionStore } from '@/store/nutritionStore'
+import { confirmar, elegir, logro } from '@/utils/haptica'
 
 const WATER_TARGET = 8
 
@@ -13,6 +14,12 @@ const WATER_TARGET = 8
 export function WaterWidget() {
   const { waterGlasses, addWater, removeWater } = useNutritionStore()
   const pct = waterGlasses / WATER_TARGET
+
+  /* El vaso que cierra la meta se siente distinto a los siete anteriores. Es
+     el gesto que más veces al día se repite en toda la app, así que es donde
+     más se nota que el móvil conteste — y donde antes no contestaba nada. */
+  const beber = () => { addWater(); waterGlasses + 1 >= WATER_TARGET ? logro() : confirmar() }
+  const quitar = () => { if (waterGlasses > 0) { removeWater(); elegir() } }
 
   return (
     <GlassCard>
@@ -25,10 +32,10 @@ export function WaterWidget() {
           <Text style={w.val}>{waterGlasses}<Text style={w.sub}> / {WATER_TARGET} vasos</Text></Text>
         </View>
         <View style={w.btnRow}>
-          <TouchableOpacity style={w.btn} onPress={removeWater} activeOpacity={0.7}>
+          <TouchableOpacity style={w.btn} onPress={quitar} activeOpacity={0.7}>
             <Ionicons name="remove" size={16} color="rgba(255,255,255,0.7)" />
           </TouchableOpacity>
-          <TouchableOpacity style={[w.btn, w.btnAdd]} onPress={addWater} activeOpacity={0.7}>
+          <TouchableOpacity style={[w.btn, w.btnAdd]} onPress={beber} activeOpacity={0.7}>
             <Ionicons name="add" size={16} color="#fff" />
           </TouchableOpacity>
         </View>

@@ -13,13 +13,13 @@
  */
 
 import { aFechaLocal } from '@/utils/fechas'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
-import * as Haptics from 'expo-haptics'
+import { elegir, confirmar, logro, ojo } from '@/utils/haptica'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useAuthStore } from '@/store/authStore'
 import { resumenSemana, useNutritionStore, MealSlot } from '@/store/nutritionStore'
@@ -173,6 +173,29 @@ export default function NutritionScreen() {
   const tramo = tramoDe(totalCalories, limites)
   const colorTramo = COLOR_TRAMO[tramo]
 
+  /**
+   * LO QUE HACE QUE LA APP NO SE SIENTA SECA
+   * ────────────────────────────────────────
+   * No es que vibren los botones: eso lo hace cualquiera. Es que el móvil te
+   * conteste cuando pasa algo que te importa. Aquí el momento es cruzar la
+   * meta del día —y pasarse del techo—, y llega mientras miras el número
+   * subir, sin que hayas tocado nada más que «añadir».
+   *
+   * Se dispara solo AL CRUZAR, comparando con el tramo anterior. Si se
+   * disparara mientras estás en la meta, cada alimento que apuntaras después
+   * volvería a felicitarte y en dos días sería ruido. Y la primera carga no
+   * cuenta: abrir la app con la meta ya hecha ayer no es un logro de ahora.
+   */
+  const tramoPrevio = useRef<string | null>(null)
+  useEffect(() => {
+    const antes = tramoPrevio.current
+    tramoPrevio.current = tramo
+    if (antes === null || antes === tramo) return
+    if (tramo === 'meta') logro()
+    else if (tramo === 'pasado') ojo()
+  }, [tramo])
+
+
   const coachNote = buildCoachNote(budgets, Math.max(0, proteinTarget - totalProtein))
 
   const closed = budgets.filter(b => b.status !== 'pending')
@@ -229,7 +252,7 @@ export default function NutritionScreen() {
                 <TouchableOpacity
                   key={d.iso}
                   style={[s.day, d.activo && s.dayOn]}
-                  onPress={() => { Haptics.selectionAsync(); void loadToday(d.iso) }}
+                  onPress={() => { elegir(); void loadToday(d.iso) }}
                   activeOpacity={0.7}
                 >
                   <Text style={[s.dayNum, d.activo && s.dayNumOn]}>{d.day}</Text>

@@ -8,6 +8,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { useRouter } from 'expo-router'
 import { useHealthTrackerStore } from '@/store/healthTrackerStore'
 import { useRecoveryStore, type RecoveryEntry } from '@/store/recoveryStore'
+import { elegir, confirmar, logro } from '@/utils/haptica'
 import { useHabitsStore } from '@/store/habitsStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
@@ -348,7 +349,15 @@ function HabitsSection() {
             <TouchableOpacity
               key={habit.id}
               style={[hb.row, i < habits.length - 1 && hb.rowBorder]}
-              onPress={() => toggleToday(habit.id)}
+              onPress={() => {
+                /* Marcar el último hábito pendiente cierra el día: eso sí es
+                   un logro. Desmarcar no se celebra —solo se acusa recibo—
+                   porque felicitar a alguien por deshacer algo es raro. */
+                toggleToday(habit.id)
+                if (done) { elegir(); return }
+                const faltaban = habits.filter(h => !today[h.id]).length
+                faltaban <= 1 ? logro() : confirmar()
+              }}
               activeOpacity={0.7}
             >
               <View style={[hb.check, done && hb.checkOn]}>
