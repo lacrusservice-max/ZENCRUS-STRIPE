@@ -270,7 +270,9 @@ export function FoodConsole({
                   onParsed={collectParsed}
                 />
               )}
-              {method === 'escanear' && <ScanPanel onCommit={e => collect(e)} />}
+              {method === 'escanear' && (
+                <ScanPanel onCommit={e => collect(e)} onBuscar={() => setMethod('buscar')} />
+              )}
               {method === 'recetas' && (
                 <RecipePanel consumed={consumed} budget={budget} onCommit={e => collect(e)} />
               )}

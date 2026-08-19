@@ -48,35 +48,21 @@ const METRIC_EMOJIS: Record<DuelMetric, string> = {
   health_score: '⭐',
 }
 
-const DEMO_DUELS: Duel[] = [
-  {
-    id: 'd1',
-    metric: 'steps',
-    duration: 7,
-    xpReward: 300,
-    status: 'active',
-    challenger: {
-      userId: 'me',
-      userName: 'Tú',
-      userHandle: '@yo',
-      userLevel: 4,
-      progress: 42350,
-      isWinner: false,
-    },
-    opponent: {
-      userId: 'u2',
-      userName: 'Carlos Mendoza',
-      userHandle: '@carlosfit',
-      userLevel: 7,
-      progress: 38700,
-      isWinner: false,
-    },
-    startDate: new Date(Date.now() - 3 * 86400000).toISOString(),
-    endDate: new Date(Date.now() + 4 * 86400000).toISOString(),
-    createdAt: new Date(Date.now() - 3 * 86400000).toISOString(),
-    message: '¡A ver quién camina más esta semana! 😤',
-  },
-]
+/**
+ * NO HAY DUELOS DE EJEMPLO, Y NO PUEDE HABERLOS.
+ *
+ * Aquí vivía un duelo activo contra «Carlos Mendoza @carlosfit», que llevaba
+ * 38.700 pasos de una semana que nadie había andado. No era un hueco de diseño:
+ * al abrir Duelos por primera vez, la app afirmaba que una persona concreta te
+ * había retado y te iba ganando. Es la peor forma de dato inventado de las tres
+ * que había, porque las otras inventaban comida y esta inventaba gente.
+ *
+ * Un duelo es un acuerdo entre dos: no puede nacer del estado inicial de un
+ * store, igual que no puede nacer un mensaje recibido. Mientras el servidor no
+ * los conozca, la lista arranca vacía y las dos pantallas ya saben qué enseñar
+ * —Duelos tiene su estado vacío con «Crear primer duelo» y la tarjeta de
+ * Progreso se esconde sola.
+ */
 
 interface DuelState {
   duels: Duel[]
@@ -96,7 +82,7 @@ interface DuelState {
 export const useDuelStore = create<DuelState>()(
   persist(
     (set, get) => ({
-      duels: DEMO_DUELS,
+      duels: [],
 
       load: async () => {},
 
@@ -185,7 +171,21 @@ export const useDuelStore = create<DuelState>()(
       getMetricLabel: (m) => METRIC_LABELS[m],
       getMetricEmoji: (m) => METRIC_EMOJIS[m],
     }),
-    { name: 'zencrus-duels', storage: createJSONStorage(() => AsyncStorage) }
+    {
+      name: 'zencrus-duels',
+      storage: createJSONStorage(() => AsyncStorage),
+      /**
+       * Vaciar la lista de arriba no basta: el estado inicial solo se usa la
+       * PRIMERA vez que se abre la app. En cualquier móvil donde ya se abriera,
+       * Carlos Mendoza está escrito en disco y seguiría apareciendo para
+       * siempre. Esta migración lo borra una vez y no vuelve a tocar nada.
+       */
+      version: 1,
+      migrate: (guardado: any, versionPrevia: number) => {
+        if (versionPrevia >= 1) return guardado
+        return { ...guardado, duels: [] }
+      },
+    }
   )
 )
 
