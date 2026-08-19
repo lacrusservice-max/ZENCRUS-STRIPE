@@ -67,7 +67,8 @@ interface NutritionState {
   totalFat: number
   totalFiber: number
 
-  loadToday: () => Promise<void>
+  /** Sin argumento carga hoy; con una fecha `YYYY-MM-DD`, ese día. */
+  loadToday: (fecha?: string) => Promise<void>
   addEntry: (mealId: string, entry: FoodEntry) => void
   /** Agrega varias entradas a la vez, repartidas por comida — usado por Confirmar alimentos. */
   addEntries: (entriesByMeal: Record<string, FoodEntry[]>) => void
@@ -154,17 +155,28 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
    * recargara. Lo mismo con un móvil nuevo o un día recién empezado — que es
    * justo cuando no hay caché.
    */
-  loadToday: async () => {
-    const key = todayKey()
+  /**
+   * Carga un día. Sin argumento, hoy.
+   *
+   * El resto del store ya trabajaba por fecha —`nutrition_${date}` en disco y
+   * `sincronizarEntradas(get().date, …)` contra el servidor—, así que apuntar
+   * `date` a otro día basta para que apuntar comidas, el agua y el borrado
+   * caigan donde toca. Lo único que faltaba era poder pedirlo.
+   */
+  loadToday: async (fecha?: string) => {
+    const key = fecha ?? todayKey()
+    const esHoy = key === todayKey()
     try {
       const raw = await AsyncStorage.getItem(`nutrition_${key}`)
       if (raw) {
         const saved = JSON.parse(raw)
         set({ ...saved, date: key, ...computeTotals(saved.meals ?? MEAL_DEFAULTS) })
       } else {
-        // Sin nada guardado hoy, se arranca en blanco arrastrando la racha de
-        // ayer, y el servidor completa lo que falte.
-        const yRaw = await AsyncStorage.getItem(`nutrition_${haceDias(1)}`)
+        /* La racha se arrastra SOLO al abrir hoy. Un día pasado sin nada
+           guardado es un día que no se apuntó: heredarle la racha de su víspera
+           le pondría un número que no se ganó, y además pisaría la racha real
+           en cuanto se guardara algo. */
+        const yRaw = esHoy ? await AsyncStorage.getItem(`nutrition_${haceDias(1)}`) : null
         const prevStreak = yRaw ? (JSON.parse(yRaw).streak ?? 0) : 0
         set({ date: key, meals: MEAL_DEFAULTS, waterGlasses: 0, streak: prevStreak, ...computeTotals(MEAL_DEFAULTS) })
       }

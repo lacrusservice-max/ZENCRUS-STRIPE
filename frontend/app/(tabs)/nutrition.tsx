@@ -19,6 +19,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
+import * as Haptics from 'expo-haptics'
 import { useRouter, useFocusEffect } from 'expo-router'
 import { useAuthStore } from '@/store/authStore'
 import { useNutritionStore, MealSlot } from '@/store/nutritionStore'
@@ -61,7 +62,7 @@ export default function NutritionScreen() {
   const { user, setUser, refrescarPerfil } = useAuthStore()
   const {
     meals, totalCalories, totalProtein, totalCarbs, totalFat,
-    loadToday, addEntries, removeEntry, toggleEntryActive,
+    date, loadToday, addEntries, removeEntry, toggleEntryActive,
   } = useNutritionStore()
 
   const goals = (user as any)?.goals ?? {}
@@ -102,8 +103,14 @@ export default function NutritionScreen() {
    * `useFocusEffect` es lo que la despierta al volver — y el diario es lo
    * primero que uno mira después de apuntar algo.
    */
+  /* Se recarga el día que se está mirando, no hoy: si estabas repasando el
+     sábado y vuelves de la consola de comida, saltar a hoy te quitaría de
+     delante justo lo que acabas de apuntar. Se lee del store y no de la
+     variable `date` de arriba porque el callback va sin dependencias a
+     propósito —se quiere en CADA foco— y con `date` dentro se quedaría mirando
+     el valor del primer render. */
   useFocusEffect(useCallback(() => {
-    loadToday()
+    loadToday(useNutritionStore.getState().date)
     /**
      * Y también el perfil, no solo las comidas.
      *
@@ -189,16 +196,29 @@ export default function NutritionScreen() {
               <Text style={s.kick}>ZENCRUS · NUTRICIÓN</Text>
             </View>
             <Text style={s.h1}>Tu plato</Text>
-            <Text style={s.h1}>de <Text style={s.h1Accent}>hoy</Text></Text>
+            {/* Mirando el sábado, un titular que dice «hoy» es sencillamente
+                falso, y encima es lo primero que se lee. */}
+            <Text style={s.h1}>de <Text style={s.h1Accent}>{tituloDia(date)}</Text></Text>
           </View>
 
-          {/* ── Semana ── */}
+          {/* ── Semana ──
+              Tocar un día lo abre aquí mismo: cambia el diario, el plato y los
+              macros, y lo que se apunte se guarda en ESE día. No hay pantalla
+              aparte porque no hace falta ninguna — el store ya trabajaba por
+              fecha, solo que nadie podía pedirle otra. */}
           <View style={s.week}>
-            {weekStrip().map(d => (
-              <View key={d.iso} style={[s.day, d.isToday && s.dayOn]}>
-                <Text style={[s.dayNum, d.isToday && s.dayNumOn]}>{d.day}</Text>
-                <Text style={[s.dayLbl, d.isToday && s.dayLblOn]}>{d.short}</Text>
-              </View>
+            {weekStrip(date).map(d => (
+              <TouchableOpacity
+                key={d.iso}
+                style={[s.day, d.activo && s.dayOn]}
+                onPress={() => { Haptics.selectionAsync(); void loadToday(d.iso) }}
+                activeOpacity={0.7}
+              >
+                <Text style={[s.dayNum, d.activo && s.dayNumOn]}>{d.day}</Text>
+                <Text style={[s.dayLbl, d.activo && s.dayLblOn]}>{d.short}</Text>
+                {/* Un punto para no perder de vista cuál es hoy cuando estás en otro. */}
+                {d.esHoy && !d.activo && <View style={s.dayHoy} />}
+              </TouchableOpacity>
             ))}
           </View>
 
@@ -539,17 +559,46 @@ function MealCard({ meal, budget, onAdd, onRemove, onToggle }: {
 
 // ── Utilidades ────────────────────────────────────────────────────────────────
 
-function weekStrip() {
+/**
+ * Los seis días de la tira.
+ *
+ * `activo` es el día que se está mirando, que ya no tiene por qué ser hoy: la
+ * tira dejó de ser un adorno con el último recuadro encendido y ahora es el
+ * mando para movserse por la semana. Se conservan los dos datos por separado
+ * —`esHoy` y `activo`— porque hacen cosas distintas: uno decide el resalte y el
+ * otro permite señalar cuál es hoy aunque estés mirando el martes.
+ */
+/**
+ * Qué poner después de «Tu plato de …».
+ *
+ * Hoy y ayer se dicen por su nombre porque es como los llama cualquiera; del
+ * resto se da el día de la semana, que es lo que uno recuerda («el sábado comí
+ * fuera»). La fecha completa no aporta: ya está en la tira, justo debajo.
+ */
+function tituloDia(iso: string): string {
+  const hoy = aFechaLocal(new Date())
+  if (iso === hoy) return 'hoy'
+  const ayer = new Date(); ayer.setDate(ayer.getDate() - 1)
+  if (iso === aFechaLocal(ayer)) return 'ayer'
+  const LARGO = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado']
+  const [a, m, d] = iso.split('-').map(Number)
+  return `el ${LARGO[new Date(a, m - 1, d).getDay()]}`
+}
+
+function weekStrip(seleccionado: string) {
   const SHORT = ['Do', 'Lu', 'Ma', 'Mi', 'Ju', 'Vi', 'Sá']
   const today = new Date()
+  const hoyIso = aFechaLocal(today)
   return Array.from({ length: 6 }, (_, i) => {
     const d = new Date(today)
     d.setDate(today.getDate() - (5 - i))
+    const iso = aFechaLocal(d)
     return {
-      iso: aFechaLocal(d),
+      iso,
       day: d.getDate(),
       short: SHORT[d.getDay()],
-      isToday: i === 5,
+      esHoy: iso === hoyIso,
+      activo: iso === seleccionado,
     }
   })
 }
@@ -576,6 +625,12 @@ const s = StyleSheet.create({
   dayNumOn: { color: NEON.white },
   dayLbl: { fontSize: 8, fontWeight: '800', letterSpacing: 1.2, color: NEON.w3, marginTop: 3 },
   dayLblOn: { color: NEON.redSoft },
+  /* Marca dónde está hoy cuando estás mirando otro día. Va abajo del todo para
+     no competir con el número. */
+  dayHoy: {
+    position: 'absolute', bottom: 4, width: 3, height: 3, borderRadius: 2,
+    backgroundColor: NEON.w3,
+  },
 
   // Estado
   plate: { alignItems: 'center', justifyContent: 'center', marginTop: 14 },
