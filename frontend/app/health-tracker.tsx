@@ -23,17 +23,47 @@ const QUALITY_LABELS = {
 
 // ── Mini Bar Chart ──────────────────────────────────────────────────────────
 
-function BarChart({ data, maxVal, color, unit }: { data: { date: string; value: number }[]; maxVal: number; color: string; unit: string }) {
+/**
+ * Un día sin medir no pinta barra.
+ *
+ * El `Math.max(4, ...)` de antes garantizaba un tocón del 4 % en TODAS las
+ * columnas, hubiera dato o no. Con el historial relleno de valores inventados
+ * eso no se notaba; en cuanto el historial pasó a arrancar vacío, la gráfica se
+ * quedó con siete tocones iguales que se leen como siete días medidos y flojos,
+ * en vez de como una semana sin registrar.
+ *
+ * El suelo de 4 % se queda solo para los días que SÍ tienen medición: ahí evita
+ * que un valor pequeño desaparezca del todo, que es para lo que estaba puesto.
+ */
+function BarChart({ data, maxVal, color, unit }: { data: { date: string; value: number | null }[]; maxVal: number; color: string; unit: string }) {
+  /* Con los siete días vacíos, la rejilla quedaba como un rectángulo de 100 px
+     en blanco con los nombres de los días debajo: parece que la gráfica no ha
+     cargado. Decir que no hay nada ocupa lo mismo y se entiende. */
+  if (!data.some(d => d.value != null && d.value > 0)) {
+    return (
+      <View style={[chart.wrap, chart.vacio]}>
+        <Text style={chart.vacioTxt}>Sin registros esta semana</Text>
+      </View>
+    )
+  }
+
   return (
     <View style={chart.wrap}>
       {data.slice().reverse().map((d, i) => {
-        const pct = maxVal > 0 ? Math.min(1, d.value / maxVal) : 0
+        const hay = d.value != null && d.value > 0
+        const pct = hay && maxVal > 0 ? Math.min(1, (d.value as number) / maxVal) : 0
         const date = new Date(d.date + 'T12:00:00')
         return (
           <View key={i} style={chart.col}>
-            <Text style={chart.val} numberOfLines={1}>{d.value > 0 ? (unit === 'h' ? d.value.toFixed(1) : d.value >= 1000 ? `${(d.value / 1000).toFixed(1)}k` : d.value) : ''}</Text>
+            <Text style={chart.val} numberOfLines={1}>
+              {hay
+                ? (unit === 'h'
+                    ? (d.value as number).toFixed(1)
+                    : (d.value as number) >= 1000 ? `${((d.value as number) / 1000).toFixed(1)}k` : d.value)
+                : ''}
+            </Text>
             <View style={chart.barWrap}>
-              <View style={[chart.bar, { height: `${Math.max(4, pct * 100)}%` as any, backgroundColor: color }]} />
+              {hay && <View style={[chart.bar, { height: `${Math.max(4, pct * 100)}%` as any, backgroundColor: color }]} />}
             </View>
             <Text style={chart.label}>{DAYS[date.getDay()]}</Text>
           </View>
@@ -45,6 +75,8 @@ function BarChart({ data, maxVal, color, unit }: { data: { date: string; value: 
 
 const chart = StyleSheet.create({
   wrap: { flexDirection: 'row', gap: 6, height: 100, alignItems: 'flex-end', paddingBottom: 20 },
+  vacio: { alignItems: 'center', justifyContent: 'center', paddingBottom: 0 },
+  vacioTxt: { fontSize: 11, color: 'rgba(255,255,255,0.28)' },
   col: { flex: 1, alignItems: 'center', height: '100%', justifyContent: 'flex-end' },
   barWrap: { width: '70%', height: 70, justifyContent: 'flex-end' },
   bar: { width: '100%', borderRadius: 3, minHeight: 4 },
@@ -81,7 +113,11 @@ function RingProgress({ pct, size = 90, color, children }: { pct: number; size?:
 // ── Add Steps Modal ─────────────────────────────────────────────────────────
 
 function AddStepsModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { addSteps, setTodaySteps, todaySteps } = useHealthTrackerStore()
+  const { addSteps, setTodaySteps, getTodayProgress } = useHealthTrackerStore()
+  /* `todaySteps` es un contador persistido que no se reinicia de un día para
+     otro, así que decía «Pasos actuales hoy: 8.000» con los del lunes. Los de
+     hoy salen del historial, que lleva la fecha. */
+  const hoy = getTodayProgress()
   const { updateStats } = useAchievementStore()
   const [mode, setMode] = useState<'add' | 'set'>('add')
   const [val, setVal] = useState('')
@@ -100,7 +136,11 @@ function AddStepsModal({ visible, onClose }: { visible: boolean; onClose: () => 
       <View style={asp.overlay}>
         <View style={asp.card}>
           <Text style={asp.title}>Registrar pasos</Text>
-          <Text style={asp.sub}>Pasos actuales hoy: {todaySteps.toLocaleString()}</Text>
+          <Text style={asp.sub}>
+            {hoy.registrado
+              ? `Pasos actuales hoy: ${hoy.steps.toLocaleString('es-MX')}`
+              : 'Hoy todavía no has registrado pasos'}
+          </Text>
           <View style={asp.modeTabs}>
             {(['add', 'set'] as const).map(m => (
               <TouchableOpacity key={m} style={[asp.modeTab, mode === m && asp.modeTabActive]} onPress={() => setMode(m)}>
@@ -224,7 +264,9 @@ function LogHRModal({ visible, onClose }: { visible: boolean; onClose: () => voi
       <View style={asp.overlay}>
         <View style={asp.card}>
           <Text style={asp.title}>Registrar frecuencia cardíaca</Text>
-          <Text style={asp.sub}>FC en reposo actual: {resting} BPM</Text>
+          <Text style={asp.sub}>
+            {resting != null ? `FC en reposo actual: ${resting} BPM` : 'Aún no has medido tu FC en reposo'}
+          </Text>
           <View style={{ flexDirection: 'row', gap: Spacing[2], marginBottom: Spacing[4] }}>
             {(['resting', 'active', 'peak'] as const).map(t => (
               <TouchableOpacity key={t} style={[asp.modeTab, type === t && asp.modeTabActive]} onPress={() => setType(t)}>
@@ -278,6 +320,24 @@ export default function HealthTrackerScreen() {
   const sleepData = weekly.map(d => ({ date: d.date, value: d.sleepHours }))
   const hrData = weekly.map(d => ({ date: d.date, value: d.avgHeartRate }))
 
+  /**
+   * La media es de los días MEDIDOS, no de siete.
+   *
+   * Estas cuatro cifras dividían la suma entre 7 siempre. Quien registrara dos
+   * días de la semana veía su media partida entre siete: 12.000 pasos el lunes y
+   * 10.000 el martes daban «3.143 pasos/día», un número que no le había pasado a
+   * nadie. Y con la semana entera en blanco daba «0 pasos/día», que se lee como
+   * una semana sedentaria en vez de como una semana sin datos.
+   */
+  const mediaDe = (valores: (number | null)[]): number | null => {
+    const medidos = valores.filter((v): v is number => v != null && v > 0)
+    if (!medidos.length) return null
+    return medidos.reduce((a, b) => a + b, 0) / medidos.length
+  }
+  const mediaPasos = mediaDe(weekly.map(d => d.steps))
+  const mediaSueno = mediaDe(weekly.map(d => d.sleepHours))
+  const mediaKcal = mediaDe(weekly.map(d => d.caloriesBurned))
+
   return (
     <Screen>
       <ScreenHeader
@@ -318,21 +378,36 @@ export default function HealthTrackerScreen() {
               <Text style={s.logTxt}>+ Registrar</Text>
             </TouchableOpacity>
           </View>
+          {/* Sin registro no hay cifra, ni derivadas, ni barra. Las kcal, los km
+              y los minutos activos SALEN de los pasos: si los pasos no están
+              medidos, esos tres ceros son tres afirmaciones más, no una. */}
           <View style={s.stepsRow}>
             <View style={{ alignItems: 'flex-start' }}>
-              <Text style={s.bigNum}>{progress.steps.toLocaleString()}</Text>
-              <Text style={s.bigSub}>de {stepGoal.toLocaleString()} pasos</Text>
+              <Text style={[s.bigNum, !progress.registrado && s.numVacio]}>
+                {progress.registrado ? progress.steps.toLocaleString('es-MX') : '—'}
+              </Text>
+              <Text style={s.bigSub}>
+                {progress.registrado
+                  ? `de ${stepGoal.toLocaleString('es-MX')} pasos`
+                  : `sin registro · meta ${stepGoal.toLocaleString('es-MX')}`}
+              </Text>
             </View>
-            <View style={{ alignItems: 'flex-end', gap: 4 }}>
-              <Text style={s.metaStat}>🔥 {progress.calories} kcal</Text>
-              <Text style={s.metaStat}>📍 {progress.km} km</Text>
-              <Text style={s.metaStat}>⏱ {progress.activeMin} min activo</Text>
-            </View>
+            {progress.registrado && (
+              <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                <Text style={s.metaStat}>🔥 {progress.calories} kcal</Text>
+                <Text style={s.metaStat}>📍 {progress.km} km</Text>
+                <Text style={s.metaStat}>⏱ {progress.activeMin} min activo</Text>
+              </View>
+            )}
           </View>
-          <View style={s.progressBg}>
-            <View style={[s.progressFill, { width: `${progress.pct}%` as any, backgroundColor: Colors.primary[500] }]} />
-          </View>
-          <Text style={s.progressLabel}>{progress.pct}% de tu meta diaria</Text>
+          {progress.registrado && (
+            <>
+              <View style={s.progressBg}>
+                <View style={[s.progressFill, { width: `${progress.pct}%` as any, backgroundColor: Colors.primary[500] }]} />
+              </View>
+              <Text style={s.progressLabel}>{progress.pct}% de tu meta diaria</Text>
+            </>
+          )}
           <BarChart data={stepsData} maxVal={stepGoal} color={Colors.primary[500]} unit="pasos" />
         </View>
 
@@ -377,15 +452,20 @@ export default function HealthTrackerScreen() {
           </View>
           <View style={s.hrRow}>
             <View style={{ alignItems: 'center', flex: 1 }}>
-              <Text style={s.hrBig}>{restingHR}</Text>
+              <Text style={[s.hrBig, restingHR == null && s.hrVacio]}>{restingHR ?? '—'}</Text>
               <Text style={s.hrSub}>BPM en reposo</Text>
-              <Text style={[s.hrZone, { color: restingHR <= 60 ? Colors.accent.green : restingHR <= 80 ? Colors.primary[400] : Colors.accent.red }]}>
-                {restingHR <= 60 ? 'Atlético' : restingHR <= 80 ? 'Normal' : 'Elevado'}
-              </Text>
+              {/* Sin pulso no hay veredicto: llamar «Atlético» a quien no se ha
+                  medido nunca es exactamente el número inventado de antes, pero
+                  escrito con letras. */}
+              {restingHR != null && (
+                <Text style={[s.hrZone, { color: restingHR <= 60 ? Colors.accent.green : restingHR <= 80 ? Colors.primary[400] : Colors.accent.red }]}>
+                  {restingHR <= 60 ? 'Atlético' : restingHR <= 80 ? 'Normal' : 'Elevado'}
+                </Text>
+              )}
             </View>
             <View style={s.divider} />
             <View style={{ alignItems: 'center', flex: 1 }}>
-              <Text style={s.hrBig}>{avgHR}</Text>
+              <Text style={[s.hrBig, avgHR == null && s.hrVacio]}>{avgHR ?? '—'}</Text>
               <Text style={s.hrSub}>BPM promedio hoy</Text>
             </View>
           </View>
@@ -397,19 +477,25 @@ export default function HealthTrackerScreen() {
           <Text style={s.cardTitle}>📊 Resumen semanal</Text>
           <View style={s.weekGrid}>
             <View style={s.weekCard}>
-              <Text style={s.weekVal}>{Math.round(weekly.reduce((s, d) => s + d.steps, 0) / 7).toLocaleString()}</Text>
+              <Text style={[s.weekVal, mediaPasos == null && s.weekVacio]}>
+                {mediaPasos != null ? Math.round(mediaPasos).toLocaleString('es-MX') : '—'}
+              </Text>
               <Text style={s.weekLabel}>pasos/día</Text>
             </View>
             <View style={s.weekCard}>
-              <Text style={s.weekVal}>{(weekly.reduce((s, d) => s + d.sleepHours, 0) / weekly.filter(d => d.sleepHours > 0).length || 0).toFixed(1)}h</Text>
+              <Text style={[s.weekVal, mediaSueno == null && s.weekVacio]}>
+                {mediaSueno != null ? `${mediaSueno.toFixed(1)}h` : '—'}
+              </Text>
               <Text style={s.weekLabel}>sueño/noche</Text>
             </View>
             <View style={s.weekCard}>
-              <Text style={s.weekVal}>{Math.round(weekly.reduce((s, d) => s + d.caloriesBurned, 0) / 7)}</Text>
+              <Text style={[s.weekVal, mediaKcal == null && s.weekVacio]}>
+                {mediaKcal != null ? Math.round(mediaKcal) : '—'}
+              </Text>
               <Text style={s.weekLabel}>kcal/día</Text>
             </View>
             <View style={s.weekCard}>
-              <Text style={s.weekVal}>{restingHR}</Text>
+              <Text style={[s.weekVal, restingHR == null && s.weekVacio]}>{restingHR ?? '—'}</Text>
               <Text style={s.weekLabel}>BPM reposo</Text>
             </View>
           </View>
@@ -452,6 +538,7 @@ const s = StyleSheet.create({
   logTxt: { fontSize: 11, fontWeight: '700', color: Colors.primary[400] },
   stepsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: Spacing[3] },
   bigNum: { fontSize: 36, fontWeight: '800', color: Colors.dark.text, lineHeight: 40 },
+  numVacio: { color: 'rgba(255,255,255,0.28)', fontWeight: '700' },
   bigSub: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, marginTop: 2 },
   metaStat: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary },
   progressBg: { height: 8, backgroundColor: Colors.dark.background, borderRadius: 4, overflow: 'hidden', marginBottom: Spacing[2] },
@@ -464,10 +551,12 @@ const s = StyleSheet.create({
   emptyLogTxt: { fontSize: Typography.fontSize.sm, color: Colors.dark.textTertiary, textAlign: 'center' },
   hrRow: { flexDirection: 'row', alignItems: 'center', marginBottom: Spacing[4] },
   hrBig: { fontSize: 32, fontWeight: '800', color: Colors.dark.text },
+  hrVacio: { color: 'rgba(255,255,255,0.28)', fontWeight: '700' },
   hrSub: { fontSize: 10, color: Colors.dark.textSecondary, marginTop: 2 },
   hrZone: { fontSize: 11, fontWeight: '700', marginTop: 4 },
   divider: { width: 1, height: 60, backgroundColor: Colors.dark.border, marginHorizontal: Spacing[4] },
   weekGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[3] },
   weekCard: { flex: 1, minWidth: '45%', backgroundColor: Colors.dark.background, borderRadius: 10, padding: Spacing[4], alignItems: 'center', borderWidth: 1, borderColor: Colors.dark.border },
   weekVal: { fontSize: Typography.fontSize.xl, fontWeight: '800', color: Colors.dark.text },
+  weekVacio: { color: 'rgba(255,255,255,0.28)', fontWeight: '700' },
   weekLabel: { fontSize: 10, color: Colors.dark.textTertiary, marginTop: 4 } })

@@ -1,9 +1,12 @@
-import { hoyLocal, haceDias } from '@/utils/fechas'
+import { hoyLocal, haceDias, aFechaLocal } from '@/utils/fechas'
 import { create } from 'zustand'
 import { persist, createJSONStorage } from 'zustand/middleware'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 
 export interface StepEntry {
+  /* Si existe la entrada, es porque ese día se registró: aquí no hay nulls. El
+     «no registrado» se representa por la AUSENCIA de entrada, y es el resumen
+     —DailyHealthSummary— el que lo traduce a null para quien pinta. */
   date: string
   steps: number
   caloriesBurned: number
@@ -29,15 +32,59 @@ export interface SleepEntry {
 
 export interface DailyHealthSummary {
   date: string
-  steps: number
-  caloriesBurned: number
-  distanceKm: number
-  activeMinutes: number
-  avgHeartRate: number
-  restingHeartRate: number
-  sleepHours: number
+  /** null = ese día no se registró nada. Cero pasos es otra cosa. */
+  steps: number | null
+  caloriesBurned: number | null
+  distanceKm: number | null
+  activeMinutes: number | null
+  /** null = no hay ni una medición ese día. No es lo mismo que cero. */
+  avgHeartRate: number | null
+  /** null = no hay ni una medición ese día. No es lo mismo que cero. */
+  restingHeartRate: number | null
+  /** null = esa noche no se registró. */
+  sleepHours: number | null
   sleepQuality: SleepEntry['quality'] | null
 }
+
+/**
+ * EL DÍA EN QUE OCURRIÓ, NO EL DÍA EN UTC.
+ *
+ * Las mediciones se guardan con `new Date().toISOString()`, que es UTC, y las
+ * fechas de la app vienen de `hoyLocal()`. Comparar la una con la otra por
+ * `timestamp.startsWith(fecha)` desplaza el día entero.
+ *
+ * Comprobado: una medición tomada a las 19:30 en México se guarda como
+ * `2026-08-20T01:30Z`, así que `startsWith('2026-08-19')` da false y la
+ * medición de esa tarde NO cuenta como de hoy. En la práctica, todo lo que
+ * alguien registre después de las seis de la tarde se cae del día.
+ *
+ * Al revés pasa igual: en Madrid, algo medido a la 01:00 se guarda con la fecha
+ * del día anterior y aparece en el día que no es.
+ */
+const diaLocalDe = (timestamp: string): string => aFechaLocal(new Date(timestamp))
+
+/** Más viejo que esto, el pulso en reposo ya no describe cómo estás hoy. */
+/**
+ * LOS PASOS DE HOY SON LOS DE HOY.
+ *
+ * `todaySteps` es un contador suelto, persistido, y NADIE lo reinicia al cambiar
+ * de día: los únicos que lo escriben son `setTodaySteps` y `addSteps`. Quien
+ * registraba 8.000 pasos el lunes y abría la app el miércoles se encontraba esos
+ * mismos 8.000 presentados como los de hoy —en la portada, en el resumen semanal
+ * y en el anillo de movimiento— hasta que volviera a registrar.
+ *
+ * Peor aún: `addSteps` sumaba sobre ese arrastre, así que 2.000 pasos el
+ * miércoles se convertían en 10.000 y se guardaban así en el historial. El dato
+ * no solo se enseñaba mal: se escribía mal.
+ *
+ * El historial sí lleva la fecha en cada entrada, así que es la fuente de verdad
+ * y `todaySteps` pasa a ser un espejo del que nadie depende para saber el día.
+ */
+const pasosDeHoy = (historial: StepEntry[]): StepEntry | null =>
+  historial.find(e => e.date === hoyLocal()) ?? null
+
+/** Más viejo que esto, el pulso en reposo ya no describe cómo estás hoy. */
+const VENTANA_PULSO_DIAS = 7
 
 const STEPS_PER_CALORIE = 0.04
 const STEPS_PER_KM = 1312
@@ -88,8 +135,8 @@ interface HealthTrackerState {
   stopStepTracking: () => void
   getTodaySummary: () => DailyHealthSummary
   getWeeklySummary: () => DailyHealthSummary[]
-  getAvgHeartRate: (date?: string) => number
-  getRestingHeartRate: () => number
+  getAvgHeartRate: (date?: string) => number | null
+  getRestingHeartRate: (date?: string) => number | null
   getSleepForDate: (date: string) => SleepEntry | null
   getStepsForDate: (date: string) => StepEntry | null
   getTodayProgress: () => { registrado: boolean; steps: number; pct: number; calories: number; km: number; activeMin: number }
@@ -110,8 +157,8 @@ export const useHealthTrackerStore = create<HealthTrackerState>()(
       load: async () => {},
 
       addSteps: (steps) => {
-        const newTotal = get().todaySteps + steps
-        get().setTodaySteps(newTotal)
+        // Sobre los de hoy, no sobre el arrastre del último día registrado.
+        get().setTodaySteps((pasosDeHoy(get().stepHistory)?.steps ?? 0) + steps)
       },
 
       setTodaySteps: (steps) => {
@@ -172,19 +219,17 @@ export const useHealthTrackerStore = create<HealthTrackerState>()(
       stopStepTracking: () => set({ isTrackingSteps: false }),
 
       getTodaySummary: () => {
-        const { todaySteps } = get()
+        const hoy = pasosDeHoy(get().stepHistory)
         const todaySleep = get().getSleepForDate(today())
-        const avgHR = get().getAvgHeartRate(today())
-        const restHR = get().getRestingHeartRate()
         return {
           date: today(),
-          steps: todaySteps,
-          caloriesBurned: stepsToCalories(todaySteps),
-          distanceKm: stepsToKm(todaySteps),
-          activeMinutes: Math.floor(todaySteps / 100),
-          avgHeartRate: avgHR,
-          restingHeartRate: restHR,
-          sleepHours: todaySleep?.totalHours ?? 0,
+          steps: hoy?.steps ?? null,
+          caloriesBurned: hoy?.caloriesBurned ?? null,
+          distanceKm: hoy?.distanceKm ?? null,
+          activeMinutes: hoy?.activeMinutes ?? null,
+          avgHeartRate: get().getAvgHeartRate(today()),
+          restingHeartRate: get().getRestingHeartRate(),
+          sleepHours: todaySleep?.totalHours ?? null,
           sleepQuality: todaySleep?.quality ?? null,
         }
       },
@@ -193,38 +238,93 @@ export const useHealthTrackerStore = create<HealthTrackerState>()(
         const { stepHistory, sleepHistory } = get()
         return Array.from({ length: 7 }, (_, i) => {
           const date = haceDias(i)
-          const step = date === today()
-            ? { steps: get().todaySteps, caloriesBurned: stepsToCalories(get().todaySteps), distanceKm: stepsToKm(get().todaySteps), activeMinutes: Math.floor(get().todaySteps / 100) }
-            : stepHistory.find(e => e.date === date)
+          /* La columna de hoy salía de `todaySteps` en vez del historial, que es
+             como se colaba el arrastre del último día registrado en el día de
+             hoy. El historial ya tiene la entrada de hoy si existe. */
+          const step = stepHistory.find(e => e.date === date)
           const sleep = sleepHistory.find(e => e.date === date)
           return {
             date,
-            steps: step?.steps ?? 0,
-            caloriesBurned: step?.caloriesBurned ?? 0,
-            distanceKm: step?.distanceKm ?? 0,
-            activeMinutes: step?.activeMinutes ?? 0,
+            steps: step?.steps ?? null,
+            caloriesBurned: step?.caloriesBurned ?? null,
+            distanceKm: step?.distanceKm ?? null,
+            activeMinutes: step?.activeMinutes ?? null,
             avgHeartRate: get().getAvgHeartRate(date),
-            restingHeartRate: get().getRestingHeartRate(),
-            sleepHours: sleep?.totalHours ?? 0,
+            restingHeartRate: get().getRestingHeartRate(date),
+            sleepHours: sleep?.totalHours ?? null,
             sleepQuality: sleep?.quality ?? null,
           }
         })
       },
 
+      /**
+       * SIN PULSACIONES NO HAY PULSO, Y SE DICE.
+       *
+       * Aquí había un `return 72` y en el de abajo un `return 65`, que se
+       * disparaban justo cuando no había ninguna medición. No eran valores por
+       * defecto inofensivos: el 65 entraba en el score de recuperación
+       * (recoveryStore) y salía convertido en un «70 · Score de hoy» en verde,
+       * a 40 px, en una app recién instalada que no había medido nada. El
+       * usuario leía que estaba recuperado al 70 %, y el texto de ayuda de al
+       * lado remataba diciendo que el número venía «de sueño y frecuencia
+       * cardíaca» —dándole procedencia falsa a una constante.
+       *
+       * Un número medio y creíble es peor que un hueco: el hueco se ve, y el
+       * número se cree.
+       */
+      /**
+       * Un pico no entra en una media.
+       *
+       * Esto promediaba los tres tipos juntos y la pantalla lo rotulaba «BPM
+       * promedio hoy». Un pico de 180 tomado al acabar de correr y un reposo de
+       * 55 de por la mañana dan 118: un número que no le ha pasado al corazón de
+       * nadie en todo el día. No estaba inventado —los dos extremos son reales—
+       * pero la etiqueta le daba un significado que no tiene, que es el mismo
+       * vicio por el que se han quitado el 72 y el 65.
+       *
+       * Un pico es por definición un extremo, y los extremos se miran aparte.
+       */
       getAvgHeartRate: (date) => {
         const { heartRateHistory } = get()
+        const sinPicos = heartRateHistory.filter(e => e.type !== 'peak')
         const entries = date
-          ? heartRateHistory.filter(e => e.timestamp.startsWith(date))
-          : heartRateHistory.slice(0, 10)
-        if (!entries.length) return 72
+          ? sinPicos.filter(e => diaLocalDe(e.timestamp) === date)
+          : sinPicos.slice(0, 10)
+        if (!entries.length) return null
         return Math.round(entries.reduce((sum, e) => sum + e.bpm, 0) / entries.length)
       },
 
-      getRestingHeartRate: () => {
-        const { heartRateHistory } = get()
-        const resting = heartRateHistory.filter(e => e.type === 'resting')
-        if (!resting.length) return 65
-        return Math.round(resting.slice(0, 7).reduce((s, e) => s + e.bpm, 0) / Math.min(resting.length, 7))
+      /**
+       * El `date` es nuevo, y arregla algo que el fallback tapaba.
+       *
+       * Sin fecha responde por los últimos siete registros —el pulso en reposo
+       * de estos días—, que es lo que quiere la portada. Pero `getWeeklySummary`
+       * lo llamaba SIN fecha para cada uno de los siete días, así que pintaba el
+       * pulso de hoy en el martes pasado y en el lunes anterior: una línea plana
+       * que parecía una semana medida y era el mismo dato repetido siete veces.
+       */
+      getRestingHeartRate: (date) => {
+        const resting = get().heartRateHistory.filter(e => e.type === 'resting')
+        /**
+         * Siete DÍAS, no siete registros.
+         *
+         * `slice(0, 7)` cogía los siete últimos apuntes sin mirar cuándo se
+         * hicieron, y el historial guarda hasta 500 y se persiste. Con una sola
+         * medición de hace tres meses y ninguna desde entonces, la pantalla
+         * seguía anunciando «FC en reposo actual: 62 BPM» indefinidamente, con
+         * su etiqueta «Atlético» al lado. No es un número inventado: es uno
+         * caducado presentado como de ahora, que engaña igual.
+         *
+         * Y de paso el score de recuperación no volvía a dar null nunca, así que
+         * el estado «sin datos» era inalcanzable para cualquiera que se hubiera
+         * medido una vez en su vida.
+         */
+        const desde = haceDias(VENTANA_PULSO_DIAS)
+        const entries = date
+          ? resting.filter(e => diaLocalDe(e.timestamp) === date)
+          : resting.filter(e => diaLocalDe(e.timestamp) >= desde)
+        if (!entries.length) return null
+        return Math.round(entries.reduce((s, e) => s + e.bpm, 0) / entries.length)
       },
 
       getSleepForDate: (date) => {
@@ -243,15 +343,18 @@ export const useHealthTrackerStore = create<HealthTrackerState>()(
       getStepsForDate: (date) => get().stepHistory.find(e => e.date === date) ?? null,
 
       getTodayProgress: () => {
-        const { todaySteps, stepGoal } = get()
+        const { stepGoal } = get()
+        const hoy = pasosDeHoy(get().stepHistory)
+        const steps = hoy?.steps ?? 0
         return {
           /** Si nadie lo ha apuntado hoy, no hay progreso que enseñar. */
-          registrado: get().stepHistory.some(e => e.date === today()),
-          steps: todaySteps,
-          pct: Math.min(100, Math.round((todaySteps / stepGoal) * 100)),
-          calories: stepsToCalories(todaySteps),
-          km: stepsToKm(todaySteps),
-          activeMin: Math.floor(todaySteps / 100),
+          registrado: hoy != null,
+          steps,
+          // La guarda del cero evita un 'NaN%' de anchura si la meta llegara a 0.
+          pct: stepGoal > 0 ? Math.min(100, Math.round((steps / stepGoal) * 100)) : 0,
+          calories: stepsToCalories(steps),
+          km: stepsToKm(steps),
+          activeMin: Math.floor(steps / 100),
         }
       },
     }),

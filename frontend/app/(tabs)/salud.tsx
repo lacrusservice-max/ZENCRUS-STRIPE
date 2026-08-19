@@ -21,31 +21,55 @@ const SLEEP_QUALITY: Record<string, string> = {
 
 // ── Hoy: pasos + sueño ─────────────────────────────────────────────────────────
 
+/**
+ * Las dos celdas cuentan el mismo vacío de la misma forma.
+ *
+ * Antes no: la de sueño distinguía «sin registro» y pintaba «—», y la de pasos
+ * de al lado soltaba un «0» enorme en blanco. Dos celdas gemelas, una honesta y
+ * otra no, a tres centímetros la una de la otra. Mientras el historial venía
+ * relleno de datos inventados nadie lo notaba, porque el cero no aparecía nunca.
+ *
+ * Y la barra desaparece cuando no hay medición, en las dos. Un carril vacío no
+ * es neutro: dice «llevas el 0 % de tu meta», que es una afirmación sobre el día
+ * de alguien de quien no sabemos nada todavía.
+ */
 function TodaySection() {
-  const { getTodaySummary, stepGoal, sleepGoal } = useHealthTrackerStore()
+  const { getTodaySummary, getTodayProgress, stepGoal, sleepGoal } = useHealthTrackerStore()
   const today = getTodaySummary()
-  const stepPct = Math.min((today?.steps ?? 0) / stepGoal, 1)
-  const sleepH = today?.sleepHours ?? 0
-  const sleepPct = Math.min(sleepH / sleepGoal, 1)
+  const pasos = getTodayProgress()
+
+  // Guardas contra meta 0: sin ellas la anchura sale 'NaN%' y el carril se rompe.
+  const stepPct = stepGoal > 0 ? Math.min(pasos.steps / stepGoal, 1) : 0
+  const sleepH = today.sleepHours          // null = esa noche no se registró
+  const durmio = sleepH != null && sleepH > 0
+  const sleepPct = durmio && sleepGoal > 0 ? Math.min(sleepH / sleepGoal, 1) : 0
 
   return (
     <View style={s.section}>
       <View style={ht.grid}>
         <View style={ht.cell}>
           <Ionicons name="walk" size={22} color={Colors.primary[400]} style={ht.cellEmoji} />
-          <Text style={ht.cellVal}>{(today?.steps ?? 0).toLocaleString()}</Text>
-          <Text style={ht.cellLabel}>pasos hoy</Text>
-          <View style={ht.miniBarBg}>
-            <View style={[ht.miniBarFill, { width: `${stepPct * 100}%` as any, backgroundColor: Colors.primary[400] }]} />
-          </View>
+          <Text style={[ht.cellVal, !pasos.registrado && ht.cellValVacio]}>
+            {pasos.registrado ? pasos.steps.toLocaleString('es-MX') : '—'}
+          </Text>
+          <Text style={ht.cellLabel}>{pasos.registrado ? 'pasos hoy' : 'sin registro'}</Text>
+          {pasos.registrado && (
+            <View style={ht.miniBarBg}>
+              <View style={[ht.miniBarFill, { width: `${stepPct * 100}%` as any, backgroundColor: Colors.primary[400] }]} />
+            </View>
+          )}
         </View>
         <View style={ht.cell}>
           <Ionicons name="moon" size={22} color={Colors.secondary[400]} style={ht.cellEmoji} />
-          <Text style={ht.cellVal}>{sleepH > 0 ? `${sleepH.toFixed(1)}h` : '—'}</Text>
-          <Text style={ht.cellLabel}>{today?.sleepQuality ? SLEEP_QUALITY[today.sleepQuality] : 'sin registro'}</Text>
-          <View style={ht.miniBarBg}>
-            <View style={[ht.miniBarFill, { width: `${sleepPct * 100}%` as any, backgroundColor: Colors.secondary[400] }]} />
-          </View>
+          <Text style={[ht.cellVal, !durmio && ht.cellValVacio]}>
+            {durmio ? `${sleepH.toFixed(1)}h` : '—'}
+          </Text>
+          <Text style={ht.cellLabel}>{today.sleepQuality ? SLEEP_QUALITY[today.sleepQuality] : 'sin registro'}</Text>
+          {durmio && (
+            <View style={ht.miniBarBg}>
+              <View style={[ht.miniBarFill, { width: `${sleepPct * 100}%` as any, backgroundColor: Colors.secondary[400] }]} />
+            </View>
+          )}
         </View>
       </View>
     </View>
@@ -57,6 +81,9 @@ const ht = StyleSheet.create({
   cell: { width: '47%', backgroundColor: Glass.card, borderRadius: BorderRadius.lg, padding: Spacing[4], borderWidth: 1, borderColor: Glass.cardBorder },
   cellEmoji: { fontSize: 20, marginBottom: Spacing[1] },
   cellVal: { fontSize: Typography.fontSize.xl, fontWeight: '900', color: '#fff' },
+  /* El hueco no compite con el dato: si el «—» pesara lo mismo que un número,
+     seguiría leyéndose como una medición. */
+  cellValVacio: { color: 'rgba(255,255,255,0.28)', fontWeight: '700' },
   cellLabel: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
   miniBarBg: { height: 3, backgroundColor: Glass.cardBorder, borderRadius: 2, marginTop: Spacing[2], overflow: 'hidden' },
   miniBarFill: { height: 3, borderRadius: 2 },
@@ -66,16 +93,29 @@ const ht = StyleSheet.create({
 
 const RECOVERY_LABELS = ['Muy bajo', 'Bajo', 'Normal', 'Bueno', 'Excelente']
 
-function StepperRow({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) {
+/**
+ * Sin tocar nada, no hay respuesta.
+ *
+ * Las tres filas arrancaban en 3 con tres puntos encendidos y el rótulo
+ * «Normal»: el formulario venía contestado. Quien abriera el check-in y pulsara
+ * «Guardar» sin mirar, persistía un 3/3/3 que nadie había dicho — y ese
+ * check-in entra en el score de recuperación con la mitad del peso.
+ *
+ * Es el mismo pecado que el pulso de 65, solo que en vez de fabricar el dato al
+ * leerlo lo fabrica al escribirlo, que es peor: queda guardado.
+ */
+function StepperRow({ label, value, onChange }: { label: string; value: number | null; onChange: (v: number) => void }) {
   return (
     <View style={rc.stepperRow}>
       <Text style={rc.stepperLabel}>{label}</Text>
       <View style={rc.dots}>
         {[1, 2, 3, 4, 5].map(n => (
-          <TouchableOpacity key={n} onPress={() => onChange(n)} style={[rc.dot, n <= value && rc.dotOn]} activeOpacity={0.7} />
+          <TouchableOpacity key={n} onPress={() => onChange(n)} style={[rc.dot, value != null && n <= value && rc.dotOn]} activeOpacity={0.7} />
         ))}
       </View>
-      <Text style={rc.stepperHint}>{RECOVERY_LABELS[value - 1]}</Text>
+      <Text style={[rc.stepperHint, value == null && rc.stepperHintVacio]}>
+        {value != null ? RECOVERY_LABELS[value - 1] : 'sin marcar'}
+      </Text>
     </View>
   )
 }
@@ -83,11 +123,13 @@ function StepperRow({ label, value, onChange }: { label: string; value: number; 
 function RecoveryModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
   const { logToday, getToday } = useRecoveryStore()
   const existing = getToday()
-  const [energy, setEnergy] = useState(existing?.energy ?? 3)
-  const [soreness, setSoreness] = useState(existing?.soreness ?? 3)
-  const [stress, setStress] = useState(existing?.stress ?? 3)
+  const [energy, setEnergy] = useState<number | null>(existing?.energy ?? null)
+  const [soreness, setSoreness] = useState<number | null>(existing?.soreness ?? null)
+  const [stress, setStress] = useState<number | null>(existing?.stress ?? null)
+  const completo = energy != null && soreness != null && stress != null
 
   const handleSave = async () => {
+    if (!completo) return
     await logToday({ energy, soreness, stress })
     onClose()
   }
@@ -104,8 +146,14 @@ function RecoveryModal({ visible, onClose }: { visible: boolean; onClose: () => 
             <StepperRow label="Energía" value={energy} onChange={setEnergy} />
             <StepperRow label="Dolor muscular (5 = sin dolor)" value={soreness} onChange={setSoreness} />
             <StepperRow label="Estrés (5 = muy relajado)" value={stress} onChange={setStress} />
-            <TouchableOpacity style={rc.saveBtn} onPress={handleSave}>
-              <Text style={rc.saveBtnTxt}>Guardar check-in</Text>
+            <TouchableOpacity
+              style={[rc.saveBtn, !completo && rc.saveBtnOff]}
+              onPress={handleSave}
+              disabled={!completo}
+            >
+              <Text style={rc.saveBtnTxt}>
+                {completo ? 'Guardar check-in' : 'Marca las tres para guardar'}
+              </Text>
             </TouchableOpacity>
           </View>
         </SafeAreaView>
@@ -114,15 +162,37 @@ function RecoveryModal({ visible, onClose }: { visible: boolean; onClose: () => 
   )
 }
 
+/**
+ * EL SCORE QUE SALÍA DE LA NADA
+ * ─────────────────────────────
+ * Esta tarjeta enseñaba un 70 en verde a cualquiera que abriese la app por
+ * primera vez. No lo calculaba mal: `getRestingHeartRate()` devolvía 65 cuando
+ * no había ni una pulsación medida, y de ese 65 salía un score de 70 exacto,
+ * siempre el mismo. Debajo, el texto de ayuda remataba diciendo que el número
+ * venía «de sueño y frecuencia cardíaca», que era falso y además le daba
+ * procedencia de dato objetivo.
+ *
+ * Ahora el score puede no existir, y cuando no existe se dice. Y cuando existe
+ * a medias, el texto nombra SOLO las señales que de verdad han entrado, en vez
+ * de recitar una lista fija.
+ */
 function RecoverySection() {
   const [modal, setModal] = useState(false)
-  const { getRecoveryScore, getToday, getWeeklyAverage, getTrend } = useRecoveryStore()
+  const { getRecoveryScore, getRecoverySources, getToday, getWeeklyAverage, getTrend } = useRecoveryStore()
   const score = getRecoveryScore()
+  const fuentes = getRecoverySources()
   const todayEntry = getToday()
   const weekAvg = getWeeklyAverage()
   const trend = getTrend()
 
-  const scoreColor = score >= 70 ? Colors.accent.green : score >= 40 ? Colors.accent.orange : Colors.primary[500]
+  const scoreColor = score == null
+    ? 'rgba(255,255,255,0.28)'
+    : score >= 70 ? Colors.accent.green : score >= 40 ? Colors.accent.orange : Colors.primary[500]
+
+  /* Nombra lo que hay, no lo que podría haber. Sin esto el texto afirmaba una
+     procedencia que en la mitad de los casos no era la real. */
+  const medido = [fuentes.sueno && 'tu sueño', fuentes.pulso && 'tus pulsaciones'].filter(Boolean) as string[]
+  const listaMedida = medido.length === 2 ? `${medido[0]} y ${medido[1]}` : medido[0]
 
   return (
     <View style={s.section}>
@@ -135,10 +205,17 @@ function RecoverySection() {
       <GlassCard>
         <View style={rc.scoreRow}>
           <View>
-            <Text style={[rc.scoreVal, { color: scoreColor }]}>{score}</Text>
-            <Text style={rc.scoreSub}>Score de hoy</Text>
+            <Text style={[rc.scoreVal, score == null && rc.scoreVacio, { color: scoreColor }]}>
+              {score ?? '—'}
+            </Text>
+            <Text style={rc.scoreSub}>{score == null ? 'Sin datos todavía' : 'Score de hoy'}</Text>
           </View>
-          {weekAvg && (
+          {/* `trend` puede valer 'none' —serie sin puntos suficientes— y los
+              ternarios de abajo no lo contemplan: caería al ramal final y
+              pintaría «Estable», afirmando estabilidad de algo que no se ha
+              medido. Hoy lo tapa el guarda de weekAvg, pero depender de eso es
+              frágil, así que se pide explícitamente. */}
+          {weekAvg && trend !== 'none' && (
             <View style={rc.trendBox}>
               <Ionicons
                 name={trend === 'up' ? 'trending-up' : trend === 'down' ? 'trending-down' : 'remove'}
@@ -151,10 +228,32 @@ function RecoverySection() {
             </View>
           )}
         </View>
-        <GlassProgress pct={score / 100} color={scoreColor} height={5} style={{ marginTop: Spacing[3] }} />
-        {!todayEntry && (
-          <Text style={rc.hint}>Registra cómo te sientes para un score más preciso — hoy se calcula solo con sueño y frecuencia cardíaca.</Text>
+        {/* Sin score no hay barra: una barra al 0 % se lee como «estás a cero»,
+            y de lo que no se ha medido no se puede decir eso. */}
+        {score != null && (
+          <GlassProgress pct={score / 100} color={scoreColor} height={5} style={{ marginTop: Spacing[3] }} />
         )}
+        {/* Tres estados, y ninguno recita una lista fija de señales. El de en
+            medio nombra lo que de verdad ha entrado; el último existe porque un
+            80 a secas, hecho con una señal de tres, se lee como un veredicto
+            completo. */}
+        {score == null ? (
+          <Text style={rc.hint}>
+            Aún no hay nada con lo que puntuar tu recuperación. Registra cómo te sientes
+            y el score aparece aquí.
+          </Text>
+        ) : !todayEntry ? (
+          <Text style={rc.hint}>
+            {listaMedida
+              ? `Registra cómo te sientes para afinarlo — hoy sale solo de ${listaMedida}.`
+              : 'Registra cómo te sientes para afinarlo.'}
+          </Text>
+        ) : !listaMedida ? (
+          <Text style={rc.hint}>
+            Sale solo de tu check-in. Apunta tu sueño o tus pulsaciones en reposo en el
+            tracker y contarán también.
+          </Text>
+        ) : null}
       </GlassCard>
       <RecoveryModal visible={modal} onClose={() => setModal(false)} />
     </View>
@@ -164,6 +263,10 @@ function RecoverySection() {
 const rc = StyleSheet.create({
   scoreRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   scoreVal: { fontSize: 40, fontWeight: '900' },
+  /* Un guión a 40 px con peso 900 no se lee como «no hay dato»: se lee como una
+     barra de carga a medio pintar. Al bajarlo se ve por lo que es —un hueco— y
+     además deja de competir con el titular de la tarjeta. */
+  scoreVacio: { fontSize: 30, fontWeight: '700', lineHeight: 42 },
   scoreSub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.5)', marginTop: -2 },
   trendBox: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: BorderRadius.base, paddingHorizontal: Spacing[3], paddingVertical: Spacing[2] },
   trendTxt: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: 'rgba(255,255,255,0.7)' },
@@ -178,7 +281,9 @@ const rc = StyleSheet.create({
   dot: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: Glass.cardBorder },
   dotOn: { backgroundColor: Colors.primary[500], borderColor: Colors.primary[500] },
   stepperHint: { fontSize: 11, color: 'rgba(255,255,255,0.4)' },
+  stepperHintVacio: { color: 'rgba(255,255,255,0.28)', fontStyle: 'italic' },
   saveBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.lg, padding: Spacing[4], alignItems: 'center', marginTop: Spacing[2] },
+  saveBtnOff: { opacity: 0.4 },
   saveBtnTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
 })
 

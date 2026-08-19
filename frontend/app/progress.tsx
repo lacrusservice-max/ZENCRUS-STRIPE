@@ -676,14 +676,16 @@ export default function ProgressScreen() {
               <ActivityRings
                 size={92}
                 rings={[
-                  { label: 'Movimiento', value: trackerProgress.pct / 100, color: Colors.accent.orange },
-                  { label: 'Entrenamiento', value: workedOut ? 1 : 0.08, color: Colors.secondary[400] },
+                  { label: 'Movimiento', value: trackerProgress.registrado ? trackerProgress.pct / 100 : 0, color: Colors.accent.orange },
+                  // Aquí ponía 0.08 para que el anillo no se viera vacío: un 8 % de un
+                  // entrenamiento que no se ha hecho. Relleno cosmético que afirma algo.
+                  { label: 'Entrenamiento', value: workedOut ? 1 : 0, color: Colors.secondary[400] },
                   { label: 'Constancia', value: ((workedOut ? 1 : 0) + (checkInDone ? 1 : 0) + (waterGlasses >= 8 ? 1 : 0)) / 3, color: Colors.primary[400] },
                 ]}
               />
               <RingsLegend
                 rings={[
-                  { label: 'Movimiento', display: `${Math.round(trackerProgress.pct)}%`, color: Colors.accent.orange },
+                  { label: 'Movimiento', display: trackerProgress.registrado ? `${Math.round(trackerProgress.pct)}%` : '—', color: Colors.accent.orange },
                   { label: 'Entrenamiento', display: workedOut ? 'Listo' : 'Pendiente', color: Colors.secondary[400] },
                   { label: 'Constancia', display: `${Math.round((((workedOut ? 1 : 0) + (checkInDone ? 1 : 0) + (waterGlasses >= 8 ? 1 : 0)) / 3) * 100)}%`, color: Colors.primary[400] },
                 ]}
@@ -826,11 +828,18 @@ export default function ProgressScreen() {
                 <Ionicons name="walk-outline" size={20} color={Colors.accent.orange} />
               </View>
               <Text style={act.label}>Pasos</Text>
-              <Text style={[act.bigVal, { fontSize: 20, color: Colors.accent.orange }]}>
-                {trackerProgress.steps.toLocaleString()}
+              {/* La tarjeta de sueño de al lado ya distinguía «—»; esta pintaba
+                  un 0 y un «0 % de la meta» que se leen como un día sedentario
+                  en vez de como un día sin medir. */}
+              <Text style={[act.bigVal, { fontSize: 20, color: trackerProgress.registrado ? Colors.accent.orange : 'rgba(255,255,255,0.28)' }]}>
+                {trackerProgress.registrado ? trackerProgress.steps.toLocaleString('es-MX') : '—'}
               </Text>
-              <GlassProgress pct={trackerProgress.pct / 100} color={Colors.accent.orange} height={4} style={{ marginTop: 8 }} />
-              <Text style={act.sub}>{Math.round(trackerProgress.pct)}% de la meta</Text>
+              {trackerProgress.registrado && (
+                <GlassProgress pct={trackerProgress.pct / 100} color={Colors.accent.orange} height={4} style={{ marginTop: 8 }} />
+              )}
+              <Text style={act.sub}>
+                {trackerProgress.registrado ? `${Math.round(trackerProgress.pct)}% de la meta` : 'sin registro'}
+              </Text>
             </TouchableOpacity>
 
             {/* Sleep */}
@@ -846,7 +855,9 @@ export default function ProgressScreen() {
               {sleepLog && (
                 <GlassProgress pct={Math.min(sleepLog.totalHours / 9, 1)} color="#9B8FFF" height={4} style={{ marginTop: 8 }} />
               )}
-              <Text style={act.sub}>{restHR} BPM reposo</Text>
+              {/* Con restHR en null esto pintaba « BPM reposo», una unidad
+                  suelta sin número delante. */}
+              <Text style={act.sub}>{restHR != null ? `${restHR} BPM reposo` : 'FC sin medir'}</Text>
             </TouchableOpacity>
           </ScrollView>
         </View>

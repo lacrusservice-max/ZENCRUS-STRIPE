@@ -2,6 +2,9 @@ import { hoyLocal, haceDias } from '@/utils/fechas'
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { useHealthTrackerStore } from './healthTrackerStore'
+import {
+  puntuarRecuperacion, fuentesDeRecuperacion, SenalesRecuperacion,
+} from '@/utils/scoreRecuperacion'
 
 /**
  * Escala 1-5 en las tres, siempre "más alto = mejor" para que promediar
@@ -27,10 +30,31 @@ interface RecoveryState {
   getToday: () => RecoveryEntry | null
   getWeeklyAverage: () => { energy: number; soreness: number; stress: number } | null
   getTrend: () => 'up' | 'down' | 'flat' | 'none'
-  getRecoveryScore: () => number
+  /** null = no hay ni una señal con la que puntuar. */
+  getRecoveryScore: () => number | null
+  /** Qué señales sostienen el score de hoy. */
+  getRecoverySources: () => { checkIn: boolean; sueno: boolean; pulso: boolean }
 }
 
 function today() { return hoyLocal() }
+
+/**
+ * De dónde sale cada señal.
+ *
+ * `sleepQuality` y el pulso pueden ser null, y esa es la información importante:
+ * significan «no registrado», no «cero». Antes el pulso nunca llegaba null
+ * porque el store fabricaba un 65, y de ahí venía el score fantasma.
+ */
+function senalesDeHoy(get: () => RecoveryState): SenalesRecuperacion {
+  const salud = useHealthTrackerStore.getState()
+  const calidad = salud.getTodaySummary().sleepQuality
+  const hoy = get().getToday()
+  return {
+    checkIn: hoy ? { energy: hoy.energy, soreness: hoy.soreness, stress: hoy.stress } : null,
+    sueno: calidad ? SLEEP_QUALITY_SCORE[calidad] : null,
+    pulso: salud.getRestingHeartRate(),
+  }
+}
 
 function trimEntries(entries: Record<string, RecoveryEntry>): Record<string, RecoveryEntry> {
   const keys = Object.keys(entries).sort()
@@ -102,28 +126,19 @@ export const useRecoveryStore = create<RecoveryState>((set, get) => ({
     return 'flat'
   },
 
-  getRecoveryScore: () => {
-    const today_ = get().getToday()
-    const summary = useHealthTrackerStore.getState().getTodaySummary()
-    const sleepScore = summary.sleepQuality ? SLEEP_QUALITY_SCORE[summary.sleepQuality] : null
-    const restingHR = useHealthTrackerStore.getState().getRestingHeartRate()
-    const hrScore = Math.max(0, Math.min(100, 100 - (restingHR - 50) * 2))
+  /**
+   * El cálculo vive en `@/utils/scoreRecuperacion`, no aquí.
+   *
+   * Este método daba 70 a cualquiera que abriera la app por primera vez, y el
+   * fallo sobrevivió meses porque estaba enredado con zustand, AsyncStorage y
+   * otro store: no había forma de preguntarle «¿qué contestas sin datos?» sin
+   * montar media app. Sacada la lógica a una función pura, esa pregunta es una
+   * línea de prueba — y es exactamente la primera que hay escrita allí.
+   *
+   * Aquí solo queda recoger las tres señales de donde viven.
+   */
+  getRecoveryScore: () => puntuarRecuperacion(senalesDeHoy(get)),
 
-    if (!today_) {
-      // Sin check-in subjetivo hoy: usar solo señales objetivas.
-      const parts = [sleepScore, hrScore].filter((v): v is number => v != null)
-      if (!parts.length) return 0
-      return Math.round(parts.reduce((s, v) => s + v, 0) / parts.length)
-    }
-
-    const subjectiveAvg = (today_.energy + today_.soreness + today_.stress) / 3
-    const subjectiveScore = (subjectiveAvg / 5) * 100
-
-    const objective = [sleepScore, hrScore].filter((v): v is number => v != null)
-    const objectiveScore = objective.length
-      ? objective.reduce((s, v) => s + v, 0) / objective.length
-      : subjectiveScore
-
-    return Math.round(subjectiveScore * 0.5 + objectiveScore * 0.5)
-  },
+  /** Qué señales sostienen el score, para que la pantalla no invente su origen. */
+  getRecoverySources: () => fuentesDeRecuperacion(senalesDeHoy(get)),
 }))

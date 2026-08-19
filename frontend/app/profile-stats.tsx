@@ -32,8 +32,22 @@ function TrainingTotals() {
   // guardarse en el teléfono.
   const totalWorkouts = datos?.historico.sesiones ?? 0
   const totalHours = Math.round(((datos?.historico.minutos ?? 0) / 60) * 10) / 10
-  // Aproximación de calorías totales quemadas a partir del historial diario de salud.
-  const totalCalories = getWeeklySummary().reduce((sum, d) => sum + d.caloriesBurned, 0) * 4 // ~ extrapolado a un mes de historial disponible
+  /**
+   * Lo quemado esta semana, y NADA más.
+   *
+   * Aquí ponía `... * 4 // ~ extrapolado a un mes`: cogía los siete días que hay
+   * y los multiplicaba por cuatro para rellenar un mes que nunca se midió. Iba
+   * rotulado «Calorías», a secas, en un bloque titulado «Totales», así que las
+   * tres cuartas partes de esa cifra eran una suposición presentada como
+   * historial. Y multiplicaba también los días vacíos, que valían cero: quien
+   * registrara un solo día veía ese día multiplicado por cuatro.
+   *
+   * Ahora se suma lo que hay, los días sin registro no cuentan, y la etiqueta
+   * dice de qué periodo habla.
+   */
+  const calSemana = getWeeklySummary()
+    .reduce((sum, d) => sum + (d.caloriesBurned ?? 0), 0)
+  const totalCalories = calSemana > 0 ? calSemana : null
 
   return (
     <View style={s.section}>
@@ -53,8 +67,11 @@ function TrainingTotals() {
         <View style={tt.divider} />
         <View style={tt.cell}>
           <Ionicons name="flame" size={18} color={Colors.accent.orange} />
-          <Text style={tt.val}>{totalCalories.toLocaleString()}</Text>
-          <Text style={tt.label}>Calorías totales</Text>
+          <Text style={[tt.val, totalCalories == null && tt.vacio]}>
+            {totalCalories != null ? totalCalories.toLocaleString('es-MX') : '—'}
+          </Text>
+          {/* «totales» prometía todo el historial y solo hay siete días. */}
+          <Text style={tt.label}>Calorías (7 días)</Text>
         </View>
       </View>
     </View>
@@ -64,6 +81,7 @@ function TrainingTotals() {
 const tt = StyleSheet.create({
   row: { flexDirection: 'row', backgroundColor: Glass.card, borderRadius: BorderRadius.lg, borderWidth: 1, borderColor: Glass.cardBorder, paddingVertical: Spacing[4] },
   cell: { flex: 1, alignItems: 'center', gap: 4 },
+  vacio: { color: 'rgba(255,255,255,0.28)' },
   divider: { width: 1, backgroundColor: Glass.cardBorder },
   val: { fontSize: Typography.fontSize.lg, fontWeight: '900', color: '#fff' },
   label: { fontSize: 10, color: 'rgba(255,255,255,0.45)', textAlign: 'center' },
