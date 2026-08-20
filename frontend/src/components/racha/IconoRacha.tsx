@@ -26,6 +26,7 @@ import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { BotonIA } from '@/constants/layout'
 import { tocar } from '@/utils/haptica'
+import { hitoDe } from '@/constants/hitosRacha'
 
 /** El logo, vectorizado del PNG. viewBox 700×646. */
 const LOGO =
@@ -48,6 +49,9 @@ interface Props {
 export function IconoRacha({ dias, encendida }: Props) {
   const insets = useSafeAreaInsets()
   const segmentos = useSegments()
+  /* El icono lleva el color del hito al que has llegado: rojo al empezar, azul
+     a los 100, morado a los 200… El mismo tono que tendrá la celebración. */
+  const hito = hitoDe(dias)
 
   if (!PANTALLAS.includes(segmentos[segmentos.length - 1] ?? '')) return null
   if (dias <= 0) return null
@@ -64,13 +68,17 @@ export function IconoRacha({ dias, encendida }: Props) {
         accessibilityLabel={`Racha de ${dias} ${dias === 1 ? 'día' : 'días'}`}
         style={{ alignItems: 'center' }}
       >
-        <View style={[r.caja, encendida ? r.cajaOn : r.cajaOff]}>
+        <View style={[
+          r.caja,
+          encendida
+            ? { backgroundColor: hito.fondo, borderColor: hito.neon + '80' }
+            : r.cajaOff,
+        ]}>
           <Svg width={MARCA} height={MARCA * 646 / 700} viewBox="0 0 700 646">
             <Defs>
               <LinearGradient id="fuegoIcono" x1="0" y1="1" x2="0.35" y2="0">
-                <Stop offset="0" stopColor="#FF2A00" />
-                <Stop offset="0.5" stopColor="#FF7A18" />
-                <Stop offset="1" stopColor="#FFD36A" />
+                <Stop offset="0" stopColor={hito.neon} />
+                <Stop offset="1" stopColor={hito.claro} />
               </LinearGradient>
             </Defs>
             <Path
@@ -106,7 +114,7 @@ const r = StyleSheet.create({
   /* OPACOS a propósito. Esto flota sobre el scroll: con fondo translúcido se
      leía a través el texto de la tarjeta que pasa por debajo, y la palabra
      «RACHA» se cruzaba con las kcal de la comida. Lo que flota, tapa. */
-  cajaOn: { backgroundColor: '#2A1206', borderColor: 'rgba(255,122,24,0.5)' },
+  cajaOn: { borderWidth: 1 },
   cajaOff: { backgroundColor: '#17171A', borderColor: 'rgba(255,255,255,0.14)' },
   dias: {
     fontSize: 14, fontWeight: '900', color: '#fff',
