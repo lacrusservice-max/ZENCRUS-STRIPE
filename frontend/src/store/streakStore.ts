@@ -169,7 +169,10 @@ export const useStreakStore = create<StreakState>((set, get) => ({
         const dia = porFecha.get(date)
         if (dia?.protegido) return { date, status: 'protected' as DayStatus }
         if (dia && isDayComplete(aDia(dia))) return { date, status: 'completed' as DayStatus }
-        // Hoy todavía puede completarse: no es un día perdido.
+        /* Hoy todavía puede completarse, así que sin actividad va como `empty`
+           y no como día perdido. Ojo con el orden: la comprobación de completo
+           va ANTES, porque si hoy ya cuenta tiene que salir `completed` — si no,
+           la racha actual parece rota y la pantalla no encuentra su inicio. */
         return { date, status: (date === hoy ? 'empty' : 'missed') as DayStatus }
       })
     }

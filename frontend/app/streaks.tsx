@@ -47,10 +47,17 @@ export default function RachasScreen() {
   const { streakShields } = useAchievementStore()
   const [historial, setHistorial] = useState<DiaHistorial[]>([])
   const [abierto, setAbierto] = useState<Hito | null>(null)
+  const [cargando, setCargando] = useState(true)
 
   useEffect(() => {
     void load()
-    void getHistory(84).then(h => setHistorial(h as DiaHistorial[]))
+    /* Sin el `catch`, un fallo de red dejaba la pantalla muda: el calendario en
+       blanco, sin semana típica y sin rachas anteriores, y nada que explicara
+       por qué. Ahora al menos se sabe que no hay historial. */
+    getHistory(84)
+      .then(h => setHistorial(h as DiaHistorial[]))
+      .catch(() => setHistorial([]))
+      .finally(() => setCargando(false))
   }, [])
 
   const hito = useMemo(() => hitoDe(currentStreak), [currentStreak])
@@ -174,7 +181,11 @@ export default function RachasScreen() {
         {/* ── Calendario ── */}
         <Rotulo texto="Doce semanas" retraso={320} />
         <Animated.View entering={FadeInDown.delay(340).duration(420)} style={[s.seccion, s.caja]}>
-          <Calendario historial={historial} hito={hito} />
+          {historial.length > 0
+            ? <Calendario historial={historial} hito={hito} />
+            : <Text style={s.vacio}>
+                {cargando ? 'Cargando tu historial…' : 'Aún no hay historial que enseñar.'}
+              </Text>}
         </Animated.View>
 
         {/* ── Semana típica ── */}
@@ -286,6 +297,8 @@ function Calendario({ historial, hito }: { historial: DiaHistorial[]; hito: Hito
   /* El historial viene de hoy hacia atrás; se invierte para que el calendario
      se lea de izquierda (antiguo) a derecha (hoy), como cualquier calendario. */
   const dias = [...historial].reverse()
+  const semanas: DiaHistorial[][] = []
+  for (let i = 0; i < dias.length; i += 7) semanas.push(dias.slice(i, i + 7))
   const color = (d: DiaHistorial) =>
     d.status === 'completed' ? hito.neon
       : d.status === 'protected' ? '#2E9BFF8C'
@@ -294,9 +307,16 @@ function Calendario({ historial, hito }: { historial: DiaHistorial[]; hito: Hito
 
   return (
     <View>
+      {/* En columnas de siete —una por semana—, como cualquier calendario de
+          contribuciones: por filas de doce, un lunes caería en distinta altura
+          cada semana y el patrón semanal no se vería. */}
       <View style={s.cal}>
-        {dias.map(d => (
-          <View key={d.date} style={[s.calDia, { backgroundColor: color(d) }]} />
+        {semanas.map((sem, i) => (
+          <View key={i} style={s.calCol}>
+            {sem.map(d => (
+              <View key={d.date} style={[s.calDia, { backgroundColor: color(d) }]} />
+            ))}
+          </View>
         ))}
       </View>
       <View style={s.leyenda}>
@@ -407,8 +427,10 @@ const s = StyleSheet.create({
   escudoTitulo: { fontSize: 12.5, fontWeight: '800', color: '#fff' },
   escudoSub: { fontSize: 9.5, color: N.w3, marginTop: 1, lineHeight: 14 },
 
-  cal: { flexDirection: 'row', flexWrap: 'wrap', gap: 3 },
-  calDia: { width: `${100 / 12}%`, aspectRatio: 1, borderRadius: 3, maxWidth: 20 },
+  vacio: { fontSize: 11.5, color: N.w3, textAlign: 'center', paddingVertical: 16 },
+  cal: { flexDirection: 'row', gap: 3 },
+  calCol: { flex: 1, gap: 3 },
+  calDia: { width: '100%', aspectRatio: 1, borderRadius: 2.5 },
   leyenda: { flexDirection: 'row', flexWrap: 'wrap', gap: 10, marginTop: 10 },
   leyendaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   leyendaCubo: { width: 9, height: 9, borderRadius: 3 },
