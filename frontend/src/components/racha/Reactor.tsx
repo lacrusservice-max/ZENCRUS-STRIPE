@@ -18,7 +18,7 @@
  * que es lo que hace que el nivel se mueva de forma perceptible cada día.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect } from 'react'
 import { View, Text, StyleSheet, Pressable } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay, withRepeat,
@@ -75,7 +75,7 @@ const BRASAS = [
 
 function Brasa({ dato, alto, base }: {
   dato: typeof BRASAS[number]
-  alto: number
+  alto: SharedValue<number>
   base: SharedValue<number>
 }) {
   const v = useSharedValue(0)
@@ -88,11 +88,11 @@ function Brasa({ dato, alto, base }: {
     /* Nacen en la superficie del núcleo y suben. Al ir atadas a `base`, cuando
        el nivel sube las brasas arrancan más arriba: salen del fuego, no de un
        punto fijo del tubo. */
-    const desde = alto * (0.04 + base.value * 0.92)
+    const desde = alto.value * (0.04 + base.value * 0.92)
     return {
       opacity: interpolate(v.value, [0, 0.15, 0.75, 1], [0, 0.9, 0.5, 0]),
       transform: [
-        { translateY: -(desde + v.value * alto * 0.55) },
+        { translateY: -(desde + v.value * alto.value * 0.55) },
         { translateX: v.value * dato.deriva },
         { scale: interpolate(v.value, [0, 1], [1, 0.35]) },
       ],
@@ -122,13 +122,26 @@ export function Reactor({ dias, onHito }: Props) {
      Reanimated no interpola alturas en porcentaje de forma fiable: el núcleo
      se quedaba clavado en su valor inicial y parecía que no había animación
      ninguna. Con la medida real se anima un número de píxeles, que sí. */
-  const [altoTubo, setAltoTubo] = useState(0)
+  /* También como shared value: los estilos animados leen de aquí en vez de
+     capturar el estado de React, que en la nueva arquitectura no siempre
+     reevalúa el worklet al cambiar. */
+  const alto = useSharedValue(0)
   const nivel = useSharedValue(0)
   const hervor = useSharedValue(0)
   const testigo = useSharedValue(0)
 
+  /* Los bucles NO dependen de la medida del tubo.
+     Estaban detrás de un `if (!altoTubo) return` junto con la subida del
+     núcleo, así que mientras `onLayout` no respondiera no arrancaba NADA: ni el
+     hervor, ni el testigo, ni las brasas. Una sola guarda mal puesta dejaba la
+     pantalla entera congelada. */
   useEffect(() => {
-    if (!altoTubo) return
+    hervor.value = withRepeat(withTiming(1, { duration: 2100, easing: Easing.inOut(Easing.quad) }), -1, true)
+    testigo.value = withRepeat(
+      withSequence(withTiming(1, { duration: 900 }), withTiming(0.35, { duration: 900 })), -1, false)
+  }, [])
+
+  useEffect(() => {
     /* Arranca desde cero en cada montaje para que la subida SE VEA. Sin esto,
        al volver a la pantalla el núcleo ya estaría arriba y la animación —que
        es lo que cuenta la historia— se la perdería quien vuelve. */
@@ -136,25 +149,22 @@ export function Reactor({ dias, onHito }: Props) {
     nivel.value = withDelay(280, withTiming(alturaDe(dias), {
       duration: 1400, easing: Easing.out(Easing.cubic),
     }))
-    hervor.value = withRepeat(withTiming(1, { duration: 2100, easing: Easing.inOut(Easing.quad) }), -1, true)
-    testigo.value = withRepeat(
-      withSequence(withTiming(1, { duration: 900 }), withTiming(0.35, { duration: 900 })), -1, false)
-  }, [dias, altoTubo])
+  }, [dias])
 
   const eNucleo = useAnimatedStyle(() => ({
-    height: Math.max(10, altoTubo * (0.04 + nivel.value * 0.92)),
+    height: Math.max(10, alto.value * (0.04 + nivel.value * 0.92)),
     transform: [{ scaleY: interpolate(hervor.value, [0, 1], [1, 1.03]) }],
   }))
   const eTestigo = useAnimatedStyle(() => ({ opacity: testigo.value }))
   const eMarca = useAnimatedStyle(() => ({
-    bottom: Math.max(6, altoTubo * (0.02 + nivel.value * 0.92)),
+    bottom: Math.max(6, alto.value * (0.02 + nivel.value * 0.92)),
     opacity: nivel.value > 0.02 ? 1 : 0,
   }))
 
   return (
     <View style={s.marco}>
       {/* ── La columna ── */}
-      <View style={s.tubo} onLayout={e => setAltoTubo(e.nativeEvent.layout.height)}>
+      <View style={s.tubo} onLayout={e => { alto.value = e.nativeEvent.layout.height }}>
         <Animated.View style={[s.nucleo, eNucleo]}>
           <LinearGradient
             colors={['#FFE9C4', '#FF9166', '#FF4A2E', '#8E1B0A']}
@@ -180,8 +190,8 @@ export function Reactor({ dias, onHito }: Props) {
         </View>
 
         {/* Las brasas, sobre el núcleo y bajo los anillos. */}
-        {altoTubo > 0 && BRASAS.map((b, i) => (
-          <Brasa key={i} dato={b} alto={altoTubo} base={nivel} />
+        {BRASAS.map((b, i) => (
+          <Brasa key={i} dato={b} alto={alto} base={nivel} />
         ))}
 
         <Animated.View style={[s.testigo, eTestigo]} pointerEvents="none">
