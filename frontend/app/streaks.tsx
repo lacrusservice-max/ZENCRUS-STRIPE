@@ -50,14 +50,28 @@ export default function RachasScreen() {
   const [cargando, setCargando] = useState(true)
 
   useEffect(() => {
-    void load()
-    /* Sin el `catch`, un fallo de red dejaba la pantalla muda: el calendario en
-       blanco, sin semana típica y sin rachas anteriores, y nada que explicara
-       por qué. Ahora al menos se sabe que no hay historial. */
-    getHistory(84)
-      .then(h => setHistorial(h as DiaHistorial[]))
-      .catch(() => setHistorial([]))
-      .finally(() => setCargando(false))
+    /* `load()` PRIMERO y esperado, no en paralelo. `getHistory` pregunta al
+       store si hoy ya cuenta para decidir el estado del día de hoy, y si se
+       lanzan a la vez responde con la actividad todavía sin cargar: el día sale
+       vacío, la racha parece rota y la cabecera dice «enciéndela hoy» a alguien
+       que acaba de encenderla.
+
+       Y el `catch`, porque sin él un fallo de red dejaba la pantalla muda:
+       calendario en blanco, sin semana típica y sin rachas anteriores, sin nada
+       que explicara por qué. */
+    let vivo = true
+    void (async () => {
+      try {
+        await load()
+        const h = await getHistory(84)
+        if (vivo) setHistorial(h as DiaHistorial[])
+      } catch {
+        if (vivo) setHistorial([])
+      } finally {
+        if (vivo) setCargando(false)
+      }
+    })()
+    return () => { vivo = false }
   }, [])
 
   const hito = useMemo(() => hitoDe(currentStreak), [currentStreak])
