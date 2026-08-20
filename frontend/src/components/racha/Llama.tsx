@@ -41,7 +41,11 @@ export function Llama({ tam, neon, claro, apagada, fondo = '#08080C' }: Props) {
      primera llama que se monte define el color de todas las demás. */
   const id = `llama${contador++}`
   return (
-    <Svg width={tam} height={tam} viewBox="0 0 24 24">
+    /* El viewBox va ceñido al trazado, no a la retícula: el dibujo ocupa de
+       7,9 a 20,1 en X, así que con `0 0 24 24` quedaba descentrado dos unidades
+       a la derecha y con aire de sobra arriba. Cuadrado —20,5 de lado— para que
+       no se deforme, y centrado en el propio contenido. */
+    <Svg width={tam} height={tam} viewBox="3.75 1.2 20.5 20.5">
       <Defs>
         <LinearGradient id={id} x1="0" y1="1" x2="0.3" y2="0">
           <Stop offset="0" stopColor={neon} />

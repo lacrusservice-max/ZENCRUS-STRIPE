@@ -22,7 +22,7 @@ import { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, Pressable } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay, withRepeat,
-  withSequence, Easing, interpolate,
+  withSequence, Easing, interpolate, type SharedValue,
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { HITOS, type Hito } from '@/constants/hitosRacha'
@@ -53,6 +53,62 @@ export function alturaDe(dias: number): number {
      encendido igualmente: un reactor a cero se lee como apagado, y la racha
      de cero días es un estado transitorio, no una avería. */
   return Math.max(0.04, (dias / ESCALA[0].desde) * paso * 0.5)
+}
+
+/**
+ * Las brasas que suben del núcleo.
+ *
+ * Estaban en la maqueta y se me quedaron fuera al pasarlo a la app: sin ellas
+ * el tubo es un rectángulo con relleno, y con ellas se lee como algo que arde.
+ *
+ * Las posiciones y los ritmos son fijos, no sorteados: con `Math.random` cada
+ * render las recolocaría y el ojo pillaría el salto.
+ */
+const BRASAS = [
+  { x: 0.22, tam: 3, dur: 2400, espera: 0,    deriva: -5 },
+  { x: 0.58, tam: 2, dur: 3100, espera: 700,  deriva: 4 },
+  { x: 0.38, tam: 4, dur: 2700, espera: 1300, deriva: 6 },
+  { x: 0.72, tam: 2, dur: 3400, espera: 400,  deriva: -3 },
+  { x: 0.46, tam: 3, dur: 2900, espera: 1900, deriva: 2 },
+  { x: 0.30, tam: 2, dur: 3600, espera: 2400, deriva: 7 },
+]
+
+function Brasa({ dato, alto, base }: {
+  dato: typeof BRASAS[number]
+  alto: number
+  base: SharedValue<number>
+}) {
+  const v = useSharedValue(0)
+  useEffect(() => {
+    v.value = withDelay(dato.espera, withRepeat(
+      withTiming(1, { duration: dato.dur, easing: Easing.out(Easing.quad) }), -1, false))
+  }, [])
+
+  const e = useAnimatedStyle(() => {
+    /* Nacen en la superficie del núcleo y suben. Al ir atadas a `base`, cuando
+       el nivel sube las brasas arrancan más arriba: salen del fuego, no de un
+       punto fijo del tubo. */
+    const desde = alto * (0.04 + base.value * 0.92)
+    return {
+      opacity: interpolate(v.value, [0, 0.15, 0.75, 1], [0, 0.9, 0.5, 0]),
+      transform: [
+        { translateY: -(desde + v.value * alto * 0.55) },
+        { translateX: v.value * dato.deriva },
+        { scale: interpolate(v.value, [0, 1], [1, 0.35]) },
+      ],
+    }
+  })
+
+  return (
+    <Animated.View
+      style={[
+        s.brasa,
+        { left: `${dato.x * 100}%`, width: dato.tam, height: dato.tam, borderRadius: dato.tam },
+        e,
+      ]}
+      pointerEvents="none"
+    />
+  )
 }
 
 interface Props {
@@ -122,6 +178,11 @@ export function Reactor({ dias, onHito }: Props) {
             />
           ))}
         </View>
+
+        {/* Las brasas, sobre el núcleo y bajo los anillos. */}
+        {altoTubo > 0 && BRASAS.map((b, i) => (
+          <Brasa key={i} dato={b} alto={altoTubo} base={nivel} />
+        ))}
 
         <Animated.View style={[s.testigo, eTestigo]} pointerEvents="none">
           <Text style={s.testigoTxt}>ACTIVO</Text>
@@ -263,6 +324,13 @@ const s = StyleSheet.create({
   rejillaLinea: { height: 1, backgroundColor: 'rgba(255,255,255,0.05)' },
   aros: { ...StyleSheet.absoluteFillObject, justifyContent: 'space-around' },
   aro: { height: 7 },
+  brasa: {
+    position: 'absolute', bottom: 0,
+    backgroundColor: '#FFD3A8',
+    shadowColor: '#FF9166', shadowOpacity: 0.95, shadowRadius: 5,
+    shadowOffset: { width: 0, height: 0 },
+    zIndex: 5,
+  },
   testigo: {
     position: 'absolute', top: 8, alignSelf: 'center',
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,

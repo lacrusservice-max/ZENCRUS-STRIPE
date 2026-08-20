@@ -271,11 +271,11 @@ export default function RachasScreen() {
 // ── Piezas ────────────────────────────────────────────────────────────────────
 
 /** El personaje del hito actual, en redondo. */
-function Retrato({ hito }: { hito: Hito }) {
+function Retrato({ hito, tam = 92 }: { hito: Hito; tam?: number }) {
   const player = useVideoPlayer(hito.video, p => { p.loop = true; p.muted = true; p.play() })
   useEffect(() => () => { try { player.pause() } catch { /* ya destruido */ } }, [])
   return (
-    <View style={[s.retrato, { shadowColor: hito.neon }]}>
+    <View style={[s.retrato, { width: tam, height: tam, borderRadius: tam / 2, shadowColor: hito.neon }]}>
       <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
     </View>
   )
@@ -370,7 +370,10 @@ function FichaHito({ hito, dias, onCerrar }: { hito: Hito; dias: number; onCerra
   return (
     <Pressable style={s.velo} onPress={onCerrar}>
       <Animated.View entering={FadeInDown.duration(300)} style={[s.ficha, { borderColor: hito.neon + '59' }]}>
-        <View style={[s.fichaPunto, { backgroundColor: hito.neon, shadowColor: hito.neon }]} />
+        {/* El personaje de ese color, no un punto.
+            Lo que se desbloquea ES el vídeo: enseñarlo aquí convierte la ficha
+            en un avance de lo que vas a ver, que es lo que de verdad tira. */}
+        <Retrato hito={hito} tam={104} />
         <Text style={[s.fichaNum, { color: hito.claro }]}>{hito.desde}</Text>
         <Text style={s.fichaTitulo}>{hito.titulo.toUpperCase()}</Text>
         <Text style={s.fichaTexto}>
@@ -394,7 +397,7 @@ function aFecha(iso: string): Date {
 const s = StyleSheet.create({
   hero: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingTop: 4 },
   retrato: {
-    width: 92, height: 92, borderRadius: 46, overflow: 'hidden', backgroundColor: '#000',
+    overflow: 'hidden', backgroundColor: '#000',
     shadowOpacity: 0.55, shadowRadius: 26, shadowOffset: { width: 0, height: 0 },
   },
   numero: { fontSize: 50, fontWeight: '900', letterSpacing: -3, lineHeight: 52, fontVariant: ['tabular-nums'] },
@@ -478,8 +481,7 @@ const s = StyleSheet.create({
     width: '100%', maxWidth: 300, borderRadius: 22, padding: 22, alignItems: 'center',
     backgroundColor: '#0B0B10', borderWidth: 1,
   },
-  fichaPunto: { width: 12, height: 12, borderRadius: 7, shadowOpacity: 0.9, shadowRadius: 12, shadowOffset: { width: 0, height: 0 } },
-  fichaNum: { fontSize: 44, fontWeight: '900', letterSpacing: -2.4, marginTop: 10, fontVariant: ['tabular-nums'] },
+  fichaNum: { fontSize: 44, fontWeight: '900', letterSpacing: -2.4, marginTop: 14, fontVariant: ['tabular-nums'] },
   fichaTitulo: { fontSize: 8.5, fontWeight: '900', letterSpacing: 2.6, color: N.w3, marginTop: 2 },
   fichaTexto: { fontSize: 12.5, color: N.w2, textAlign: 'center', lineHeight: 18, marginTop: 13 },
   fichaBoton: { marginTop: 18, height: 42, width: '100%', borderRadius: 21, alignItems: 'center', justifyContent: 'center', borderWidth: 1 },
