@@ -22,30 +22,11 @@
 
 import { Pressable, View, Text, StyleSheet } from 'react-native'
 import { useSegments, router } from 'expo-router'
-import Svg, { Path, Defs, LinearGradient, Stop } from 'react-native-svg'
+import { Llama } from './Llama'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { BotonIA } from '@/constants/layout'
 import { tocar } from '@/utils/haptica'
 import { hitoDe } from '@/constants/hitosRacha'
-
-/**
- * Una llama, no el logo.
- *
- * El logo de ZENCRUS identifica la marca, no la idea: en la cabecera, junto al
- * avatar de ZENA, dos marcas de la casa a tres centímetros no dicen qué es cada
- * una. Una llama se entiende sin leer nada — es el signo universal de racha, y
- * además es literalmente lo que hace el personaje del vídeo.
- *
- * Trazada a mano sobre retícula de 24: cuerpo asimétrico con la punta cayendo a
- * la derecha —una llama simétrica parece una gota— y un corazón interior que se
- * recorta para dar profundidad a 26 px, que es donde se ve.
- */
-const LLAMA =
-  'M13.4 1.2c.5 3.4-.9 4.6-2.3 6.4-1.5 1.9-3.2 4-3.2 7.2 0 3.9 2.8 6.9 6.1 6.9' +
-  's6.1-2.7 6.1-6.6c0-2.4-1-4.3-2.1-5.9-.4 1.3-1.2 2.2-2.2 2.5.8-3.4-.4-7.3-2.4-10.5z'
-const CORAZON =
-  'M13.1 10.9c.3 2 .9 2.7 1.7 3.9.5.8.8 1.6.8 2.5 0 1.7-1.2 2.9-2.6 2.9' +
-  's-2.6-1.2-2.6-3c0-1.9 1.5-3.1 2.7-6.3z'
 
 /* Solo donde se puede alimentar la racha. En Salud o Perfil sería un adorno. */
 const PANTALLAS = ['nutrition', 'workout']
@@ -90,18 +71,13 @@ export function IconoRacha({ dias, encendida, onRepetir }: Props) {
             ? { backgroundColor: hito.fondo, borderColor: hito.neon + '80' }
             : r.cajaOff,
         ]}>
-          <Svg width={MARCA} height={MARCA} viewBox="0 0 24 24">
-            <Defs>
-              <LinearGradient id="fuegoIcono" x1="0" y1="1" x2="0.35" y2="0">
-                <Stop offset="0" stopColor={hito.neon} />
-                <Stop offset="1" stopColor={hito.claro} />
-              </LinearGradient>
-            </Defs>
-            <Path d={LLAMA} fill={encendida ? 'url(#fuegoIcono)' : 'rgba(255,255,255,0.26)'} />
-            {/* El corazón va del color del fondo, no blanco: así el hueco se lee
-                como profundidad y no como una segunda llama pegada dentro. */}
-            <Path d={CORAZON} fill={encendida ? hito.fondo : '#17171A'} opacity={encendida ? 1 : 0.85} />
-          </Svg>
+          <Llama
+            tam={MARCA}
+            neon={hito.neon}
+            claro={hito.claro}
+            apagada={!encendida}
+            fondo={encendida ? hito.fondo : '#17171A'}
+          />
           <Text style={[r.dias, !encendida && r.diasOff]}>{dias}</Text>
         </View>
       </Pressable>

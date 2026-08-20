@@ -18,7 +18,7 @@
  * que es lo que hace que el nivel se mueva de forma perceptible cada día.
  */
 
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { View, Text, StyleSheet, Pressable } from 'react-native'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay, withRepeat,
@@ -26,6 +26,7 @@ import Animated, {
 } from 'react-native-reanimated'
 import { LinearGradient } from 'expo-linear-gradient'
 import { HITOS, type Hito } from '@/constants/hitosRacha'
+import { Llama } from './Llama'
 import { Colors } from '@/constants/theme'
 
 const N = Colors.neon
@@ -61,33 +62,43 @@ interface Props {
 }
 
 export function Reactor({ dias, onHito }: Props) {
+  /* La altura del tubo, medida al vuelo.
+     Reanimated no interpola alturas en porcentaje de forma fiable: el núcleo
+     se quedaba clavado en su valor inicial y parecía que no había animación
+     ninguna. Con la medida real se anima un número de píxeles, que sí. */
+  const [altoTubo, setAltoTubo] = useState(0)
   const nivel = useSharedValue(0)
   const hervor = useSharedValue(0)
   const testigo = useSharedValue(0)
 
   useEffect(() => {
+    if (!altoTubo) return
+    /* Arranca desde cero en cada montaje para que la subida SE VEA. Sin esto,
+       al volver a la pantalla el núcleo ya estaría arriba y la animación —que
+       es lo que cuenta la historia— se la perdería quien vuelve. */
+    nivel.value = 0
     nivel.value = withDelay(280, withTiming(alturaDe(dias), {
       duration: 1400, easing: Easing.out(Easing.cubic),
     }))
     hervor.value = withRepeat(withTiming(1, { duration: 2100, easing: Easing.inOut(Easing.quad) }), -1, true)
     testigo.value = withRepeat(
       withSequence(withTiming(1, { duration: 900 }), withTiming(0.35, { duration: 900 })), -1, false)
-  }, [dias])
+  }, [dias, altoTubo])
 
   const eNucleo = useAnimatedStyle(() => ({
-    height: `${4 + nivel.value * 92}%`,
+    height: Math.max(10, altoTubo * (0.04 + nivel.value * 0.92)),
     transform: [{ scaleY: interpolate(hervor.value, [0, 1], [1, 1.03]) }],
   }))
   const eTestigo = useAnimatedStyle(() => ({ opacity: testigo.value }))
   const eMarca = useAnimatedStyle(() => ({
-    bottom: `${2 + nivel.value * 92}%`,
+    bottom: Math.max(6, altoTubo * (0.02 + nivel.value * 0.92)),
     opacity: nivel.value > 0.02 ? 1 : 0,
   }))
 
   return (
     <View style={s.marco}>
       {/* ── La columna ── */}
-      <View style={s.tubo}>
+      <View style={s.tubo} onLayout={e => setAltoTubo(e.nativeEvent.layout.height)}>
         <Animated.View style={[s.nucleo, eNucleo]}>
           <LinearGradient
             colors={['#FFE9C4', '#FF9166', '#FF4A2E', '#8E1B0A']}
@@ -195,11 +206,17 @@ function Peldano({ hito, dias, indice, onPress }: {
           {esSiguiente && (
             <Animated.View style={[s.onda, { borderColor: hito.neon }, eOnda]} pointerEvents="none" />
           )}
-          <View style={[
-            s.punto,
-            { backgroundColor: logrado || esSiguiente ? hito.neon : 'rgba(255,255,255,0.2)' },
-            desenfoque > 0 && { opacity: 0.55 },
-          ]} />
+          {/* La llama, no un punto: es el signo de la racha y lo que hace que
+              cada peldaño se lea como fuego y no como una viñeta. */}
+          <View style={desenfoque > 0 ? { opacity: 0.5 } : undefined}>
+            <Llama
+              tam={18}
+              neon={hito.neon}
+              claro={hito.claro}
+              apagada={!logrado && !esSiguiente}
+              fondo="#10101A"
+            />
+          </View>
         </View>
 
         <View style={[s.textos, desenfoque > 0 && { opacity: 0.75 }]}>
@@ -267,7 +284,6 @@ const s = StyleSheet.create({
     shadowRadius: 14, shadowOffset: { width: 0, height: 0 },
   },
   onda: { position: 'absolute', width: 42, height: 42, borderRadius: 22, borderWidth: 1.5 },
-  punto: { width: 11, height: 11, borderRadius: 6 },
 
   textos: { flex: 1 },
   cifra: { fontSize: 16, fontWeight: '900', letterSpacing: -0.7, fontVariant: ['tabular-nums'] },
