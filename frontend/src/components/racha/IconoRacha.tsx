@@ -44,9 +44,11 @@ interface Props {
   dias: number
   /** true si el día de hoy ya cuenta. */
   encendida: boolean
+  /** Pulsación larga: vuelve a poner la celebración, sin gastar el día. */
+  onRepetir?: () => void
 }
 
-export function IconoRacha({ dias, encendida }: Props) {
+export function IconoRacha({ dias, encendida, onRepetir }: Props) {
   const insets = useSafeAreaInsets()
   const segmentos = useSegments()
   /* El icono lleva el color del hito al que has llegado: rojo al empezar, azul
@@ -63,6 +65,8 @@ export function IconoRacha({ dias, encendida }: Props) {
     >
       <Pressable
         onPress={() => { tocar(); router.push('/streaks') }}
+        onLongPress={() => { if (onRepetir) { tocar(); onRepetir() } }}
+        delayLongPress={450}
         hitSlop={8}
         accessibilityRole="button"
         accessibilityLabel={`Racha de ${dias} ${dias === 1 ? 'día' : 'días'}`}
