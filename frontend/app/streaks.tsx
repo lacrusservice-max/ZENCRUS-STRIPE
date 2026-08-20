@@ -22,6 +22,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native'
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated'
 import { useVideoPlayer, VideoView } from 'expo-video'
+import { Image } from 'expo-image'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
 import { Reactor } from '@/components/racha/Reactor'
 import { useStreakStore } from '@/store/streakStore'
@@ -271,11 +272,22 @@ export default function RachasScreen() {
 // ── Piezas ────────────────────────────────────────────────────────────────────
 
 /** El personaje del hito actual, en redondo. */
+/**
+ * El personaje, sin espera.
+ *
+ * El póster —el primer fotograma como imagen— se pinta al momento y el vídeo se
+ * monta encima. Antes había uno o dos segundos de agujero negro mientras el
+ * reproductor abría el archivo, y en una pantalla que va de celebrar algo, ese
+ * hueco es justo lo contrario de lo que se busca.
+ *
+ * El corte no se ve porque el póster ES el primer fotograma del vídeo.
+ */
 function Retrato({ hito, tam = 92 }: { hito: Hito; tam?: number }) {
   const player = useVideoPlayer(hito.video, p => { p.loop = true; p.muted = true; p.play() })
   useEffect(() => () => { try { player.pause() } catch { /* ya destruido */ } }, [])
   return (
     <View style={[s.retrato, { width: tam, height: tam, borderRadius: tam / 2, shadowColor: hito.neon }]}>
+      <Image source={hito.poster} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
       <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
     </View>
   )

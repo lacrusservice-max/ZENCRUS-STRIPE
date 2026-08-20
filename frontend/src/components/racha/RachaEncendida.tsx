@@ -32,6 +32,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, Modal, Pressable, Dimensions } from 'react-native'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { LinearGradient } from 'expo-linear-gradient'
+import { Image } from 'expo-image'
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay, withSpring, withRepeat,
@@ -200,6 +201,10 @@ export function RachaEncendida({ visible, dias, semana, onCerrar }: Props) {
               </Pressable>
 
               <View style={s.marco}>
+                {/* El póster va debajo y sin transición: la celebración salta
+                    en el instante en que apuntas algo, y un hueco negro de dos
+                    segundos justo ahí se lleva por delante el momento. */}
+                <Image source={hito.poster} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
                 {montado && (
                   <VideoView
                     player={player}

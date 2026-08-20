@@ -30,6 +30,15 @@ export interface Hito {
   fondo: string
   titulo: string
   video: number
+  /**
+   * El primer fotograma, como imagen.
+   *
+   * El vídeo tarda un segundo o dos en abrirse —más por el tunnel de Expo Go—
+   * y hasta entonces se veía un hueco negro. El póster pesa 11 KB, aparece al
+   * instante y el vídeo lo tapa cuando arranca: el corte no se nota porque es
+   * exactamente el mismo fotograma.
+   */
+  poster: number
 }
 
 /**
@@ -37,12 +46,12 @@ export interface Hito {
  * al revés todo el mundo se quedaría en «primera racha» para siempre.
  */
 export const HITOS: Hito[] = [
-  { desde: 1000, neon: '#E4E8F0', claro: '#FFFFFF', fondo: '#14161C', titulo: 'Mil días',      video: require('@/assets/video/racha-blanca.mp4') },
-  { desde: 600,  neon: '#FFB01F', claro: '#FFD98A', fondo: '#2E1B00', titulo: 'Seiscientos',   video: require('@/assets/video/racha-dorada.mp4') },
-  { desde: 400,  neon: '#39D353', claro: '#93F0A2', fondo: '#04220C', titulo: 'Cuatrocientos', video: require('@/assets/video/racha-verde.mp4') },
-  { desde: 200,  neon: '#A855F7', claro: '#D6ABFF', fondo: '#1B0A2E', titulo: 'Doscientos',    video: require('@/assets/video/racha-morada.mp4') },
-  { desde: 100,  neon: '#2E9BFF', claro: '#8FD0FF', fondo: '#04182E', titulo: 'Cien días',     video: require('@/assets/video/racha-azul.mp4') },
-  { desde: 1,    neon: '#FF4A2E', claro: '#FF9166', fondo: '#2A0E06', titulo: 'Primera racha', video: require('@/assets/video/racha-roja.mp4') },
+  { desde: 1000, neon: '#E4E8F0', claro: '#FFFFFF', fondo: '#14161C', titulo: 'Mil días',      video: require('@/assets/video/racha-blanca.mp4') , poster: require('@/assets/video/poster-blanca.jpg') },
+  { desde: 600,  neon: '#FFB01F', claro: '#FFD98A', fondo: '#2E1B00', titulo: 'Seiscientos',   video: require('@/assets/video/racha-dorada.mp4') , poster: require('@/assets/video/poster-dorada.jpg') },
+  { desde: 400,  neon: '#39D353', claro: '#93F0A2', fondo: '#04220C', titulo: 'Cuatrocientos', video: require('@/assets/video/racha-verde.mp4') , poster: require('@/assets/video/poster-verde.jpg') },
+  { desde: 200,  neon: '#A855F7', claro: '#D6ABFF', fondo: '#1B0A2E', titulo: 'Doscientos',    video: require('@/assets/video/racha-morada.mp4') , poster: require('@/assets/video/poster-morada.jpg') },
+  { desde: 100,  neon: '#2E9BFF', claro: '#8FD0FF', fondo: '#04182E', titulo: 'Cien días',     video: require('@/assets/video/racha-azul.mp4') , poster: require('@/assets/video/poster-azul.jpg') },
+  { desde: 1,    neon: '#FF4A2E', claro: '#FF9166', fondo: '#2A0E06', titulo: 'Primera racha', video: require('@/assets/video/racha-roja.mp4') , poster: require('@/assets/video/poster-roja.jpg') },
 ]
 
 /** El hito que corresponde a una racha. Nunca devuelve undefined con días ≥ 1. */
