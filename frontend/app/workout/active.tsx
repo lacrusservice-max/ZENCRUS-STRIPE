@@ -23,6 +23,8 @@
  */
 
 import { hoyLocal } from '@/utils/fechas'
+import { RachaEncendida } from '@/components/racha/RachaEncendida'
+import { useRachaDelDia } from '@/hooks/useRachaDelDia'
 import { useState, useEffect, useMemo, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView, TextInput,
@@ -37,7 +39,6 @@ import * as Haptics from 'expo-haptics'
 import { useKeepAwake } from 'expo-keep-awake'
 import { useSessionStore, SerieLocal } from '@/store/sessionStore'
 import { useWorkoutStore } from '@/store/workoutStore'
-import { useStreakStore } from '@/store/streakStore'
 import { useAchievementStore } from '@/store/achievementStore'
 import { historialEjercicio } from '@/services/sessionService'
 import type { Modo, TipoCarga, TipoSerie, Serie, Marca } from '@/services/sessionService'
@@ -273,6 +274,7 @@ function ElegirModo({ onElegir }: { onElegir: (m: Modo) => void }) {
 // ── Pantalla ─────────────────────────────────────────────────────────────────
 
 export default function SesionActiva() {
+  const racha = useRachaDelDia()
   useKeepAwake()   // la pantalla no se apaga a mitad de una serie
 
   const {
@@ -282,7 +284,6 @@ export default function SesionActiva() {
     programId?: string; week?: string; day?: string; title?: string
   }>()
   const { routines } = useWorkoutStore()
-  const { markActivity } = useStreakStore()
   const { addXP } = useAchievementStore()
 
   const {
@@ -684,7 +685,11 @@ export default function SesionActiva() {
       return
     }
 
-    await markActivity(hoyLocal(), { loggedWorkout: true })
+    /* Ya no basta con marcar el día: `registrarGesto` marca Y enciende la
+       racha si es el primer gesto de hoy. Terminar una sesión es el momento
+       más ganado de todos, así que si alguien llega aquí sin haber apuntado
+       nada antes, es aquí donde toca celebrarlo. */
+    void racha.registrarGesto('loggedWorkout')
     await addXP(25 + marcasDeLaSesion.length * 15)
     setTerminada({
       duracion, series: totalSeries, volumen,
@@ -722,13 +727,23 @@ export default function SesionActiva() {
    */
   if (terminada) {
     return (
-      <Resumen
-        datos={terminada}
-        marcas={terminada.marcas}
-        titulo={terminada.titulo}
-        modo={modo}
-        posters={huecos.map(h => h.poster ?? null)}
-      />
+      <>
+        <Resumen
+          datos={terminada}
+          marcas={terminada.marcas}
+          titulo={terminada.titulo}
+          modo={modo}
+          posters={huecos.map(h => h.poster ?? null)}
+        />
+        {/* Encima del resumen: la racha es lo primero que hay que ver, y el
+            resumen queda detrás esperando a que se cierre. */}
+        <RachaEncendida
+          visible={racha.visible}
+          dias={racha.dias}
+          semana={racha.semana}
+          onCerrar={racha.cerrar}
+        />
+      </>
     )
   }
 

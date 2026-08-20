@@ -30,6 +30,8 @@
  */
 
 import { useState, useCallback } from 'react'
+import { RachaEncendida } from '@/components/racha/RachaEncendida'
+import { useRachaDelDia } from '@/hooks/useRachaDelDia'
 import {
   View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator,
 } from 'react-native'
@@ -75,6 +77,14 @@ import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 const OBJETIVO_SEMANA = 4
 
 export default function EntrenaHoy() {
+  /* Empezar la rutina cuenta para la racha igual que apuntar una comida: es
+     el gesto con el que alguien dice «hoy sí». */
+  const rachaDia = useRachaDelDia()
+  const racha = {
+    ...rachaDia,
+    empezar: () => { void rachaDia.registrarGesto('loggedWorkout') },
+  }
+
   const { restaurar } = useSessionStore()
 
   const [hoy, setHoy] = useState<Hoy | null>(null)
@@ -156,7 +166,7 @@ export default function EntrenaHoy() {
           <>
             {/* ── 1 · QUÉ HAGO HOY ─────────────────────────────────────── */}
             <Animated.View entering={FadeIn.duration(420)} style={s.zonaHero}>
-              <Hero hoy={hoy} />
+              <Hero hoy={hoy} onEmpezar={racha.empezar} />
             </Animated.View>
 
             {/* ── 2 · TU SEMANA, EN VERTICAL ───────────────────────────── */}
@@ -304,6 +314,12 @@ export default function EntrenaHoy() {
           </>
         )}
       </ScrollView>
+      <RachaEncendida
+        visible={racha.visible}
+        dias={racha.dias}
+        semana={racha.semana}
+        onCerrar={racha.cerrar}
+      />
     </Screen>
   )
 }
@@ -318,11 +334,11 @@ export default function EntrenaHoy() {
  * suelta. Enseñar dos a la vez obliga a elegir, que es justo lo que esta
  * pantalla viene a evitar.
  */
-function Hero({ hoy }: { hoy: Hoy | null }) {
+function Hero({ hoy, onEmpezar }: { hoy: Hoy | null; onEmpezar: () => void }) {
   if (!hoy) return <SinConexion />
 
   if (hoy.estado === 'abierta' && hoy.abierta) return <AMedias s={hoy.abierta} />
-  if (hoy.estado === 'toca' && hoy.dia) return <TocaHoy hoy={hoy} />
+  if (hoy.estado === 'toca' && hoy.dia) return <TocaHoy hoy={hoy} onEmpezar={onEmpezar} />
   if (hoy.estado === 'hecho') return <YaEstá hoy={hoy} />
   // Descanso NO es lo mismo que no tener plan, y caía en el mismo sitio: quien
   // había puesto el jueves libre leía «todavía no sigues ningún plan».
@@ -452,12 +468,13 @@ function AMedias({ s: sesion }: { s: NonNullable<Hoy['abierta']> }) {
  * puede cambiar, cada ejercicio lleva al suyo y la lista se despliega entera.
  * Aquí solo queda decidir a dónde va «Empezar».
  */
-function TocaHoy({ hoy }: { hoy: Hoy }) {
+function TocaHoy({ hoy, onEmpezar }: { hoy: Hoy; onEmpezar: () => void }) {
   return (
     <HoyGrande
       hoy={hoy}
       onEmpezar={() => {
         void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy)
+        onEmpezar()
         router.push('/workout/program/day')
       }}
     />
