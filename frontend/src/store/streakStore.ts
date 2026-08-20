@@ -162,11 +162,19 @@ export const useStreakStore = create<StreakState>((set, get) => ({
     const hoy = todayKey()
     const datos = await traerActividad(haceDias(days - 1), hoy, hoy)
 
+    /* Lo de HOY manda desde el teléfono, no desde el servidor.
+       Quien acaba de apuntar el desayuno ya tiene el día hecho, pero la
+       sincronización tarda: si el historial se fía solo del servidor, la racha
+       actual aparece rota durante unos minutos —su último tramo no llega a
+       hoy— y la pantalla dice «enciéndela hoy» a alguien que ya la encendió. */
+    const hoyCuenta = isDayComplete(get().getTodayActivity())
+
     if (datos) {
       const porFecha = new Map(datos.days.map(d => [d.date, d]))
       return Array.from({ length: days }, (_, i) => {
         const date = haceDias(days - 1 - i)
         const dia = porFecha.get(date)
+        if (date === hoy && hoyCuenta) return { date, status: 'completed' as DayStatus }
         if (dia?.protegido) return { date, status: 'protected' as DayStatus }
         if (dia && isDayComplete(aDia(dia))) return { date, status: 'completed' as DayStatus }
         /* Hoy todavía puede completarse, así que sin actividad va como `empty`
@@ -188,6 +196,7 @@ export const useStreakStore = create<StreakState>((set, get) => ({
       }
       const raw = await AsyncStorage.getItem(`activity_${key}`)
       const activity: DailyActivity | null = raw ? JSON.parse(raw) : null
+      if (i === 0 && hoyCuenta) { out.push({ date: key, status: 'completed' }); continue }
       if (activity && isDayComplete(activity)) out.push({ date: key, status: 'completed' })
       else out.push({ date: key, status: i === 0 ? 'empty' : 'missed' })
     }

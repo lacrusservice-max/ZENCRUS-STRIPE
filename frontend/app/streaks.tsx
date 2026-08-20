@@ -71,6 +71,10 @@ export default function RachasScreen() {
   const previas = useMemo(() => rachasPrevias(historial), [historial])
   const patron = useMemo(() => patronSemanal(historial), [historial])
   const flojo = useMemo(() => diaFlojo(patron), [patron])
+  const mejorDia = useMemo(
+    () => Math.max(0.01, ...patron.filter((v): v is number => v != null)),
+    [patron],
+  )
   const hoy = getTodayActivity()
 
   /* El progreso hacia el siguiente hito se mide DENTRO del tramo, no desde
@@ -201,7 +205,11 @@ export default function RachasScreen() {
                       /* `null` es «no hay datos suficientes», no «cero»: se pinta
                          un tocón gris en vez de una barra a ras, que se leería
                          como que ese día siempre fallas. */
-                      { height: `${v == null ? 8 : Math.max(8, v * 100)}%` },
+                      /* Relativo al mejor día, no al 100 % absoluto. Con pocas
+                         semanas de historial todas las proporciones son bajas y
+                         en absoluto salían siete tocones idénticos: el patrón
+                         —que es lo único que importa aquí— no se veía. */
+                      { height: `${v == null ? 8 : Math.max(10, (v / mejorDia) * 100)}%` },
                       v == null
                         ? s.patronVacio
                         : { backgroundColor: hito.neon, shadowColor: hito.neon },
