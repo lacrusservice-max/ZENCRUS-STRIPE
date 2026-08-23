@@ -34,6 +34,16 @@ import { readUrls, isStoredKey } from './media'
 /** Lo ÚNICO que puede salir de `users` hacia otra persona. Lista blanca. */
 export const PUBLIC_FIELDS = 'id, username, full_name, profile_picture, bio, is_private' as const
 
+/**
+ * Lo mismo MÁS la portada.
+ *
+ * La portada no está en `PUBLIC_FIELDS` a propósito: esa lista la usan las
+ * listas de seguidores, la búsqueda y los autores de cada comentario, donde la
+ * portada no se pinta. Traerla ahí obligaría a firmar una dirección más por
+ * cada cara de la lista, y son direcciones firmadas que caducan: puro gasto.
+ */
+export const PROFILE_FIELDS = `${PUBLIC_FIELDS}, cover_image` as const
+
 export interface PublicProfile {
   id: string
   username: string | null
@@ -41,6 +51,8 @@ export interface PublicProfile {
   avatar: string | null
   bio: string | null
   isPrivate: boolean
+  /** Portada elegida. `null` = la pantalla cae a la última publicación. */
+  coverImage: string | null
 }
 
 /** Traduce la fila cruda al perfil público. Nada que no esté aquí sale. */
@@ -52,6 +64,9 @@ export function toPublicProfile(row: any): PublicProfile {
     avatar: row.profile_picture ?? null,
     bio: row.bio ?? null,
     isPrivate: !!row.is_private,
+    // Sale `null` cuando la consulta no pidió la columna, que es lo correcto:
+    // en una lista de caras no hay portada que enseñar.
+    coverImage: row.cover_image ?? null,
   }
 }
 
@@ -78,6 +93,17 @@ export async function signAvatars<T extends { avatar: string | null }>(perfiles:
     if (isStoredKey(p.avatar)) p.avatar = firmadas.get(p.avatar) ?? null
   }
   return perfiles
+}
+
+/**
+ * Firma la portada. Aparte de `signAvatars` porque solo hacen falta las dos
+ * pantallas de perfil, no las listas.
+ */
+export async function signCover<T extends { coverImage: string | null }>(perfil: T): Promise<T> {
+  if (!isStoredKey(perfil.coverImage)) return perfil
+  const firmadas = await readUrls([perfil.coverImage])
+  perfil.coverImage = firmadas.get(perfil.coverImage) ?? null
+  return perfil
 }
 
 /** Atajo para cuando solo hay uno. */
@@ -135,7 +161,7 @@ export async function relationOf(viewerId: string, targetId: string): Promise<Re
 async function loadTarget(targetId: string) {
   const { data, error } = await supabase
     .from('users')
-    .select(`${PUBLIC_FIELDS}, is_active`)
+    .select(`${PROFILE_FIELDS}, is_active`)
     .eq('id', targetId)
     .maybeSingle()
   if (error) {
@@ -146,6 +172,59 @@ async function loadTarget(targetId: string) {
 
   const { is_active, ...publico } = data as Record<string, unknown>
   return publico
+}
+
+// ── Bloqueos ─────────────────────────────────────────────────────────────────
+
+/**
+ * Si hay un bloqueo entre dos personas, en cualquiera de los dos sentidos.
+ *
+ * La fila de `blocks` es dirigida —hace falta saber quién bloqueó para que solo
+ * esa persona pueda deshacerlo—, pero para decidir qué se ve da igual el
+ * sentido: si te bloqueé, tampoco quiero verte yo.
+ *
+ * ── Por qué esto REVIENTA en vez de devolver «no hay bloqueo» ───────────────
+ * El resto del módulo, ante un error de consulta, niega el acceso. Aquí no se
+ * puede hacer lo mismo devolviendo algo: «no hay bloqueo» es justamente la
+ * respuesta que ABRE la puerta, y un fallo de red acabaría enseñándole a
+ * alguien el perfil de quien le bloqueó. Así que se lanza, la petición muere
+ * con un 500 y la app enseña «no pudimos cargar» con su botón de reintentar.
+ * Ver de menos se arregla tocando otra vez; ver de más, no.
+ */
+export async function isBlockedBetween(a: string, b: string): Promise<boolean> {
+  if (a === b) return false
+
+  const { data, error } = await supabase
+    .from('blocks')
+    .select('blocker_id')
+    .or(`and(blocker_id.eq.${a},blocked_id.eq.${b}),and(blocker_id.eq.${b},blocked_id.eq.${a})`)
+    .limit(1)
+
+  if (error) {
+    logger.error(`social · isBlockedBetween ${a}↔${b}: ${error.message}`)
+    throw new Error('No pudimos comprobar el bloqueo')
+  }
+  return (data?.length ?? 0) > 0
+}
+
+/**
+ * Todos los identificadores con los que esta persona tiene un bloqueo.
+ *
+ * Lo usan las listas —muros, historias, buscador— para descartar de una vez en
+ * lugar de preguntar por cada fila. Revienta ante error por la misma razón que
+ * `isBlockedBetween`.
+ */
+export async function blockedIds(viewerId: string): Promise<string[]> {
+  const { data, error } = await supabase
+    .from('blocks')
+    .select('blocker_id, blocked_id')
+    .or(`blocker_id.eq.${viewerId},blocked_id.eq.${viewerId}`)
+
+  if (error) {
+    logger.error(`social · blockedIds ${viewerId}: ${error.message}`)
+    throw new Error('No pudimos comprobar los bloqueos')
+  }
+  return (data ?? []).map(r => (r.blocker_id === viewerId ? r.blocked_id : r.blocker_id))
 }
 
 export interface Access {
@@ -168,6 +247,14 @@ export interface Access {
 export async function accessTo(viewerId: string, targetId: string): Promise<Access> {
   const row = await loadTarget(targetId)
   if (!row) return { profile: false, content: false, relation: 'none', target: null }
+
+  // Un bloqueo devuelve exactamente lo mismo que una cuenta que no existe: ni
+  // perfil, ni contenido, ni pista de que la cuenta esté ahí. Si dijera «te ha
+  // bloqueado», el bloqueo sería una notificación —y quien bloquea suele querer
+  // desaparecer, no anunciarse.
+  if (await isBlockedBetween(viewerId, targetId)) {
+    return { profile: false, content: false, relation: 'none', target: null }
+  }
 
   const relation = await relationOf(viewerId, targetId)
   const target = toPublicProfile(row)
@@ -199,7 +286,15 @@ export async function visibleAuthorIds(viewerId: string): Promise<string[]> {
     logger.error(`social · visibleAuthorIds ${viewerId}: ${error.message}`)
     return [viewerId]
   }
-  return [viewerId, ...(data ?? []).map(r => r.following_id)]
+
+  // Bloquear a alguien no borra el seguimiento —para poder devolverlo al
+  // desbloquear—, así que hay que descartarlo aquí. Sin esto, quien bloqueaste
+  // seguiría apareciendo en tu muro de amigos y en tus historias.
+  const bloqueados = new Set(await blockedIds(viewerId))
+  return [
+    viewerId,
+    ...(data ?? []).map(r => r.following_id).filter(id => !bloqueados.has(id)),
+  ]
 }
 
 export interface MessagePermission {
@@ -228,6 +323,12 @@ export async function canMessage(viewerId: string, targetId: string): Promise<Me
 
   const row = await loadTarget(targetId)
   if (!row) return { allowed: false, needsRequest: false, reason: 'Ese usuario no existe' }
+
+  // Mismo mensaje que si no existiera, por lo mismo que en `accessTo`: el
+  // bloqueo no se anuncia.
+  if (await isBlockedBetween(viewerId, targetId)) {
+    return { allowed: false, needsRequest: false, reason: 'Ese usuario no existe' }
+  }
 
   if (!row.is_private) return { allowed: true, needsRequest: false }
 

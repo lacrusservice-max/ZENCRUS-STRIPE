@@ -34,6 +34,11 @@ import {
 import {
   listNotifications, markAllRead, markOneRead, deleteNotification, getBadges,
 } from '../controllers/socialNotificationsController'
+import {
+  savePost, unsavePost, listSaved,
+  blockUser, unblockUser, listBlocked,
+  createReport, reportSchema,
+} from '../controllers/socialSafetyController'
 
 const router = Router()
 
@@ -57,10 +62,18 @@ router.get('/stories', getStories)
 // `/notifications/read` va antes que `/notifications/:id/read`, o «read» se
 // colaría como identificador de notificación.
 router.get('/badges', getBadges)
+
 router.get('/notifications', listNotifications)
 router.post('/notifications/read', markAllRead)
 router.post('/notifications/:id/read', markOneRead)
 router.delete('/notifications/:id', deleteNotification)
+
+// ── Guardados, bloqueos y denuncias ──────────────────────────────────────────
+// Literales, así que van aquí arriba: `/social/saved` por debajo de
+// `/social/users/:id` no llegaría nunca, y `/social/blocked` tampoco.
+router.get('/saved', listSaved)
+router.get('/blocked', listBlocked)
+router.post('/reports', validate(reportSchema), createReport)
 
 // ── Medios y publicaciones ───────────────────────────────────────────────────
 router.post('/media/ticket', validate(ticketSchema), mediaTicket)
@@ -69,6 +82,8 @@ router.get('/posts/:id', getPost)
 router.delete('/posts/:id', deletePost)
 router.post('/posts/:id/like', like)
 router.delete('/posts/:id/like', unlike)
+router.post('/posts/:id/save', savePost)
+router.delete('/posts/:id/save', unsavePost)
 router.get('/posts/:id/comments', getComments)
 router.post('/posts/:id/comments', validate(commentSchema), addComment)
 router.delete('/comments/:id', deleteComment)
@@ -94,5 +109,7 @@ router.get('/users/:id/followers', listFollowers)
 router.get('/users/:id/following', listFollowing)
 router.post('/users/:id/follow', follow)
 router.delete('/users/:id/follow', unfollow)
+router.post('/users/:id/block', blockUser)
+router.delete('/users/:id/block', unblockUser)
 
 export default router

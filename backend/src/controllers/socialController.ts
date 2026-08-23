@@ -15,7 +15,9 @@ import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
 import { supabase } from '../config/supabase'
 import {
-  PUBLIC_FIELDS, toPublicProfile, relationOf, accessTo, signAvatar, signAvatars,
+  PUBLIC_FIELDS, PROFILE_FIELDS, toPublicProfile, relationOf, accessTo, signAvatar, signAvatars,
+  signCover,
+  blockedIds,
 } from '../services/socialAccess'
 import { confirmUpload, typeFromKey, isStoredKey, remove } from '../services/media'
 import { pushTo, TEXTOS, nombreDe } from '../services/push'
@@ -46,6 +48,8 @@ export const updateProfileSchema = z.object({
     // (`avatar/<mi id>/<algo>.jpg`) o una dirección de internet, que es lo que
     // se guardaba antes de que existiera el bucket. `null` quita la foto.
     avatar: z.string().min(1).max(1000).nullable().optional(),
+    // Misma forma que el avatar: clave del bucket o dirección ya guardada.
+    coverImage: z.string().min(1).max(1000).nullable().optional(),
     isPrivate: z.boolean().optional(),
   }),
 })
@@ -90,7 +94,7 @@ export async function getMyProfile(req: Request, res: Response): Promise<void> {
   if (!userId) return noAuth(res)
 
   const { data, error } = await supabase
-    .from('users').select(PUBLIC_FIELDS).eq('id', userId).maybeSingle()
+    .from('users').select(PROFILE_FIELDS).eq('id', userId).maybeSingle()
 
   if (error || !data) {
     logger.error(`social · getMyProfile ${userId}: ${error?.message}`)
@@ -99,7 +103,7 @@ export async function getMyProfile(req: Request, res: Response): Promise<void> {
 
   res.json({
     success: true,
-    data: { ...await signAvatar(toPublicProfile(data)), stats: await statsOf(userId) },
+    data: { ...await signCover(await signAvatar(toPublicProfile(data))), stats: await statsOf(userId) },
   } satisfies ApiResponse)
 }
 
@@ -108,7 +112,7 @@ export async function updateMyProfile(req: Request, res: Response): Promise<void
   const userId = uid(req)
   if (!userId) return noAuth(res)
 
-  const { username, fullName, bio, avatar, isPrivate } = req.body as
+  const { username, fullName, bio, avatar, coverImage, isPrivate } = req.body as
     z.infer<typeof updateProfileSchema>['body']
 
   const patch: Record<string, unknown> = {}
@@ -145,17 +149,43 @@ export async function updateMyProfile(req: Request, res: Response): Promise<void
     }
   }
 
+  if (coverImage !== undefined) {
+    if (coverImage === null) {
+      patch.cover_image = null
+    } else if (isStoredKey(coverImage)) {
+      // `cover/` y no `avatar/` ni `post/`: cada carpeta es de una cosa, y al
+      // cambiar la portada se borra la anterior. Si se pudiera apuntar a la
+      // foto de una publicación, cambiar la portada la borraría del muro.
+      if (!coverImage.startsWith('cover/')) {
+        return fail(res, 422, 'Esa portada no es válida')
+      }
+      if (!coverImage.includes(`/${userId}/`)) return fail(res, 403, 'Ese archivo no es tuyo')
+
+      const tipo = typeFromKey(coverImage)
+      if (!tipo || !tipo.startsWith('image/')) {
+        return fail(res, 415, 'La portada tiene que ser una imagen')
+      }
+      const ok = await confirmUpload(coverImage, tipo)
+      if (!ok.ok) return fail(res, 400, ok.reason ?? 'La portada no se subió correctamente')
+      patch.cover_image = coverImage
+    } else {
+      patch.cover_image = coverImage
+    }
+  }
+
   if (!Object.keys(patch).length) return fail(res, 400, 'No hay nada que cambiar')
 
   // Con qué se queda antes de cambiarlo: si era un archivo del bucket y deja de
   // serlo, hay que borrarlo o se queda ocupando sitio para siempre.
-  const anterior = patch.profile_picture !== undefined
-    ? (await supabase.from('users').select('profile_picture').eq('id', userId).maybeSingle())
-        .data?.profile_picture as string | null
+  const necesitaAnterior = patch.profile_picture !== undefined || patch.cover_image !== undefined
+  const previo = necesitaAnterior
+    ? (await supabase.from('users').select('profile_picture, cover_image').eq('id', userId).maybeSingle()).data
     : null
+  const anterior = (previo?.profile_picture ?? null) as string | null
+  const anteriorPortada = (previo?.cover_image ?? null) as string | null
 
   const { data, error } = await supabase
-    .from('users').update(patch).eq('id', userId).select(PUBLIC_FIELDS).maybeSingle()
+    .from('users').update(patch).eq('id', userId).select(PROFILE_FIELDS).maybeSingle()
 
   if (error) {
     // 23505 es la violación del índice único sobre lower(username). Merece un
@@ -169,8 +199,12 @@ export async function updateMyProfile(req: Request, res: Response): Promise<void
   // Solo después de que el cambio se haya guardado: al revés, un fallo al
   // guardar dejaría el perfil apuntando a un archivo ya borrado.
   if (isStoredKey(anterior) && anterior !== patch.profile_picture) await remove(anterior)
+  if (isStoredKey(anteriorPortada) && anteriorPortada !== patch.cover_image) await remove(anteriorPortada)
 
-  res.json({ success: true, data: await signAvatar(toPublicProfile(data)) } satisfies ApiResponse)
+  res.json({
+    success: true,
+    data: await signCover(await signAvatar(toPublicProfile(data))),
+  } satisfies ApiResponse)
 }
 
 // ── Perfil de otra persona ───────────────────────────────────────────────────
@@ -193,7 +227,7 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
   res.json({
     success: true,
     data: {
-      ...await signAvatar(access.target),
+      ...await signCover(await signAvatar(access.target)),
       relation: access.relation,
       canViewContent: access.content,
       stats: access.content ? await statsOf(req.params.id) : null,
@@ -234,13 +268,21 @@ export async function searchUsers(req: Request, res: Response): Promise<void> {
   if (!limpio) return res.json({ success: true, data: [] } satisfies ApiResponse) as never
   const safe = limpio.replace(/[%_\\]/g, ch => `\\${ch}`)
 
-  const { data, error } = await supabase
+  // Quien tenga un bloqueo conmigo no sale en la búsqueda, igual que no sale
+  // una cuenta desactivada: si apareciera, entrar en su perfil daría «esta
+  // cuenta no existe» y el bloqueo quedaría a la vista de los dos.
+  const bloqueados = await blockedIds(viewerId)
+
+  let consulta = supabase
     .from('users')
     .select(PUBLIC_FIELDS)
     .or(`username.ilike.%${safe}%,full_name.ilike.%${safe}%`)
     .eq('is_active', true)
     .neq('id', viewerId)
     .limit(limit)
+  if (bloqueados.length) consulta = consulta.not('id', 'in', `(${bloqueados.join(',')})`)
+
+  const { data, error } = await consulta
 
   if (error) {
     logger.error(`social · searchUsers "${q}": ${error.message}`)

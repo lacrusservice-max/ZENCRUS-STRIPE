@@ -99,7 +99,13 @@ function client(): S3Client {
  * es una capa más: aunque alguien conociera el esquema, no puede construir la
  * ruta de la foto de otra persona.
  */
-export function newKey(userId: string, contentType: AllowedType, scope: 'post' | 'story' | 'avatar' | 'dm'): string {
+/**
+ * Las carpetas del bucket. `cover` es la portada del perfil: va aparte de
+ * `avatar` para que cambiar una no borre el archivo de la otra.
+ */
+export type MediaScope = 'post' | 'story' | 'avatar' | 'cover' | 'dm'
+
+export function newKey(userId: string, contentType: AllowedType, scope: MediaScope): string {
   const spec = ALLOWED[contentType]
   return `${scope}/${userId}/${randomUUID()}.${spec.ext}`
 }
@@ -159,7 +165,7 @@ export interface UploadTicket {
 export async function createUploadTicket(
   userId: string,
   contentType: AllowedType,
-  scope: 'post' | 'story' | 'avatar' | 'dm',
+  scope: MediaScope,
 ): Promise<UploadTicket> {
   const key = newKey(userId, contentType, scope)
   const uploadUrl = await getSignedUrl(

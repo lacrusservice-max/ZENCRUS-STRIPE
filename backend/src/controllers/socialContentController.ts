@@ -27,6 +27,7 @@ import { logger } from '../config/logger'
 import { supabase } from '../config/supabase'
 import {
   PUBLIC_FIELDS, toPublicProfile, accessTo, visibleAuthorIds, signAvatars,
+  blockedIds,
 } from '../services/socialAccess'
 import {
   createUploadTicket, confirmUpload, readUrls, removeMany, removeByPrefix,
@@ -52,7 +53,7 @@ const MAX_MEDIA = 5
 export const ticketSchema = z.object({
   body: z.object({
     contentType: z.string(),
-    scope: z.enum(['post', 'story', 'avatar', 'dm']),
+    scope: z.enum(['post', 'story', 'avatar', 'cover', 'dm']),
   }),
 })
 
@@ -199,21 +200,31 @@ export async function createPost(req: Request, res: Response): Promise<void> {
  * Se hace en bloque —tres consultas para N publicaciones, no tres por
  * publicación— porque un muro de veinte haría sesenta viajes a la base.
  */
-async function hydrate(rows: any[], viewerId: string) {
+export async function hydrate(rows: any[], viewerId: string) {
   if (!rows.length) return []
   const ids = rows.map(r => r.id)
   const autores = [...new Set(rows.map(r => r.user_id))]
 
-  const [{ data: users }, { data: medios }, { data: likes }] = await Promise.all([
-    supabase.from('users').select(PUBLIC_FIELDS).in('id', autores),
-    supabase.from('post_media').select('post_id, url, media_type, width, height, duration_ms, position')
-      .in('post_id', ids).order('position'),
-    supabase.from('post_likes').select('post_id').eq('user_id', viewerId).in('post_id', ids),
-  ])
+  // Lo guardado se pregunta aquí, junto a los me gusta, y no desde el
+  // controlador de guardados: si aquel llamara a este y este a aquel, los dos
+  // módulos se importarían en círculo. Además es la misma forma de consulta —«de
+  // estas publicaciones, cuáles son mías»— así que vive donde ya está su gemela.
+  const [{ data: users }, { data: medios }, { data: likes }, { data: guardados }] =
+    await Promise.all([
+      supabase.from('users').select(PUBLIC_FIELDS).in('id', autores),
+      supabase.from('post_media').select('post_id, url, media_type, width, height, duration_ms, position')
+        .in('post_id', ids).order('position'),
+      supabase.from('post_likes').select('post_id').eq('user_id', viewerId).in('post_id', ids),
+      supabase.from('saved_posts').select('post_id').eq('user_id', viewerId).in('post_id', ids),
+    ])
 
   const perfiles = await signAvatars((users ?? []).map(toPublicProfile))
   const porAutor = new Map(perfiles.map(p => [p.id, p]))
   const miosLike = new Set((likes ?? []).map(l => l.post_id))
+  // Ante un fallo al leer guardados sale el icono apagado. No es una fuga: lo
+  // peor que pasa es que alguien vuelva a guardar algo que ya tenía, y eso el
+  // `upsert` lo absorbe.
+  const miosGuardados = new Set((guardados ?? []).map(g => g.post_id))
 
   // Todas las URLs de una tacada: una firma por archivo, no una por consulta.
   const claves = (medios ?? []).map(m => m.url)
@@ -240,13 +251,14 @@ async function hydrate(rows: any[], viewerId: string) {
     likes: r.likes_count ?? 0,
     comments: r.comments_count ?? 0,
     likedByMe: miosLike.has(r.id),
+    savedByMe: miosGuardados.has(r.id),
     isMine: r.user_id === viewerId,
     expiresAt: r.expires_at ?? null,
     createdAt: r.created_at,
   }))
 }
 
-const POST_COLS = 'id, user_id, content, kind, visibility, likes_count, comments_count, expires_at, created_at'
+export const POST_COLS = 'id, user_id, content, kind, visibility, likes_count, comments_count, expires_at, created_at'
 
 /**
  * GET /social/feed?scope=foryou|friends&before=&limit=
@@ -285,6 +297,19 @@ export async function getFeed(req: Request, res: Response): Promise<void> {
     q = q.eq('visibility', 'public')
       .eq('author.is_private', false)
       .eq('author.is_active', true)
+
+    /**
+     * Y fuera quien tenga un bloqueo conmigo, en cualquiera de los dos
+     * sentidos. El muro de amigos ya lo hace por su cuenta dentro de
+     * `visibleAuthorIds`; este no pasa por ahí.
+     *
+     * Aquí SÍ vale meter la lista en un `not in(...)`, al revés que con las
+     * cuentas públicas de un poco más arriba: aquella lista crece con el número
+     * de usuarios de la app y reventaba la dirección de la petición; esta son
+     * los bloqueos de UNA persona, que son unos pocos y no crecen con nadie más.
+     */
+    const bloqueados = await blockedIds(viewerId)
+    if (bloqueados.length) q = q.not('user_id', 'in', `(${bloqueados.join(',')})`)
   }
 
   const { data, error } = await q
