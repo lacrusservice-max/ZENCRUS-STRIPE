@@ -96,6 +96,10 @@ export async function borrarMedicion(id: string): Promise<void> {
 
 // ═══ Hábitos ════════════════════════════════════════════════════════════════
 
+export type Momento = 'manana' | 'tarde' | 'noche'
+/** `evitar` es el hábito al revés: cumplir significa NO haberlo hecho. */
+export type TipoHabito = 'hacer' | 'evitar'
+
 export interface HabitoServidor {
   id: string          // la llave; el store la llama `id`
   habitKey: string
@@ -104,25 +108,50 @@ export interface HabitoServidor {
   esDefault: boolean
   activo: boolean
   orden: number
+  momento: Momento
+  hora: string | null          // «07:00», o null si no tiene hora fijada
+  tipo: TipoHabito
+  metaSegundos: number | null  // null = este hábito no lleva cronómetro
 }
 
 /** fecha → hábito → cumplido. La misma forma que ya guarda `habitsStore`. */
 export type RegistrosHabitos = Record<string, Record<string, boolean>>
+/** fecha → hábito → segundos cronometrados. Solo los días que se cronometró. */
+export type SegundosHabitos = Record<string, Record<string, number>>
 
-export async function leerHabitos(desde?: string, hasta?: string): Promise<{ habits: HabitoServidor[]; logs: RegistrosHabitos }> {
+export async function leerHabitos(desde?: string, hasta?: string): Promise<{
+  habits: HabitoServidor[]; logs: RegistrosHabitos; segundos: SegundosHabitos
+}> {
   const q = new URLSearchParams()
   if (desde) q.set('desde', desde)
   if (hasta) q.set('hasta', hasta)
-  return unwrap(await apiGet<{ data: { habits: HabitoServidor[]; logs: RegistrosHabitos } }>(`/tracking/habits?${q}`))
+  return unwrap(await apiGet<{ data: {
+    habits: HabitoServidor[]; logs: RegistrosHabitos; segundos: SegundosHabitos
+  } }>(`/tracking/habits?${q}`))
 }
 
-export async function crearHabito(habitKey: string, label: string, icon: string, orden?: number): Promise<HabitoServidor> {
-  return unwrap(await apiPost<{ data: HabitoServidor }>('/tracking/habits', { habitKey, label, icon, orden }))
+export interface NuevoHabito {
+  orden?: number
+  momento?: Momento
+  hora?: string | null
+  tipo?: TipoHabito
+  metaSegundos?: number | null
+}
+
+export async function crearHabito(
+  habitKey: string, label: string, icon: string, extra: NuevoHabito = {},
+): Promise<HabitoServidor> {
+  return unwrap(await apiPost<{ data: HabitoServidor }>('/tracking/habits', {
+    habitKey, label, icon, ...extra,
+  }))
 }
 
 export async function actualizarHabito(
   habitKey: string,
-  cambios: { label?: string; icon?: string; activo?: boolean; orden?: number },
+  cambios: {
+    label?: string; icon?: string; activo?: boolean; orden?: number
+    momento?: Momento; hora?: string | null; tipo?: TipoHabito; metaSegundos?: number | null
+  },
 ): Promise<HabitoServidor> {
   return unwrap(await apiPatch<{ data: HabitoServidor }>(`/tracking/habits/${habitKey}`, cambios))
 }
@@ -132,12 +161,16 @@ export async function borrarHabito(habitKey: string): Promise<void> {
   await apiDelete(`/tracking/habits/${habitKey}`)
 }
 
-export async function marcarHabito(habitKey: string, fecha: string, hecho: boolean): Promise<void> {
-  await apiPut(`/tracking/habits/${habitKey}/log/${fecha}`, { hecho })
+export async function marcarHabito(
+  habitKey: string, fecha: string, hecho: boolean, segundos?: number,
+): Promise<void> {
+  await apiPut(`/tracking/habits/${habitKey}/log/${fecha}`, {
+    hecho, ...(segundos !== undefined ? { segundos } : {}),
+  })
 }
 
 export async function guardarRegistrosHabitos(
-  logs: Array<{ habitKey: string; date: string; hecho: boolean }>,
+  logs: Array<{ habitKey: string; date: string; hecho: boolean; segundos?: number }>,
 ): Promise<{ count: number; descartados: number }> {
   return unwrap(await apiPost<{ data: { count: number; descartados: number } }>('/tracking/habits/logs/batch', { logs }))
 }

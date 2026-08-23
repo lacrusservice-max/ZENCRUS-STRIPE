@@ -46,7 +46,7 @@ const MIGRADO = 'seguimiento_migrado_v1'
 
 type Pendiente =
   | { tipo: 'medicion'; medicion: NuevaMedicion }
-  | { tipo: 'habito'; habitKey: string; fecha: string; hecho: boolean }
+  | { tipo: 'habito'; habitKey: string; fecha: string; hecho: boolean; segundos?: number }
   | { tipo: 'actividad'; fecha: string; marcas: MarcasDia }
 
 async function leerCola(): Promise<Pendiente[]> {
@@ -86,7 +86,7 @@ export async function vaciarCola(): Promise<{ enviados: number; pendientes: numb
     const p = cola[i]
     try {
       if (p.tipo === 'medicion') await guardarMedicion(p.medicion)
-      else if (p.tipo === 'habito') await marcarHabito(p.habitKey, p.fecha, p.hecho)
+      else if (p.tipo === 'habito') await marcarHabito(p.habitKey, p.fecha, p.hecho, p.segundos)
       else await marcarActividad(p.fecha, p.marcas)
       enviados++
     } catch {
@@ -126,13 +126,15 @@ export async function sincronizarMedicion(medicion: NuevaMedicion): Promise<bool
   }
 }
 
-export async function sincronizarHabito(habitKey: string, fecha: string, hecho: boolean): Promise<boolean> {
+export async function sincronizarHabito(
+  habitKey: string, fecha: string, hecho: boolean, segundos?: number,
+): Promise<boolean> {
   try {
-    await marcarHabito(habitKey, fecha, hecho)
+    await marcarHabito(habitKey, fecha, hecho, segundos)
     void vaciarCola()
     return true
   } catch {
-    await encolar({ tipo: 'habito', habitKey, fecha, hecho })
+    await encolar({ tipo: 'habito', habitKey, fecha, hecho, segundos })
     return false
   }
 }
@@ -241,7 +243,7 @@ export async function migrarSeguimiento(): Promise<ResultadoMigracion> {
     if (!(await traerHabitos())) throw new Error('no se pudieron sembrar los hábitos')
 
     for (const h of habitosDelLegado(await leerJSON<any[]>('habits_list'))) {
-      await crearHabito(h.habitKey, h.label, h.icon, 100)
+      await crearHabito(h.habitKey, h.label, h.icon, { orden: 100 })
       r.habitos++
     }
 

@@ -155,6 +155,59 @@ export async function pruebasDeTracking(): Promise<void> {
   igual(conHuerfanos.body.data.count, 2, 'sube los buenos')
   igual(conHuerfanos.body.data.descartados, 1, 'y avisa del que descartó')
 
+  // ── Momento, hora, tipo y cronómetro ──────────────────────────────────────
+  // Los cuatro campos que la pantalla necesita para agrupar el día, enseñar la
+  // hora al lado de la tarjeta, dar la vuelta a los de «evitar» y cronometrar.
+  const completo = await post('/tracking/habits', {
+    habitKey: `${PREFIJO}crono`, label: 'Sin pantallas', icon: 'phone-portrait',
+    momento: 'noche', hora: '22:30', tipo: 'evitar', metaSegundos: 300,
+  })
+  igual(completo.status, 201, 'se crea con momento, hora, tipo y meta')
+  igual(completo.body.data.momento, 'noche', 'el momento vuelve como se mandó')
+  igual(completo.body.data.hora, '22:30', 'la hora vuelve sin los segundos que añade Postgres')
+  igual(completo.body.data.tipo, 'evitar', 'y el tipo evitar se conserva')
+  igual(completo.body.data.metaSegundos, 300, 'y la meta del cronómetro')
+
+  const suelto = await post('/tracking/habits', {
+    habitKey: `${PREFIJO}suelto`, label: 'Sin nada', icon: 'ellipse',
+  })
+  igual(suelto.body.data.momento, 'manana', 'sin decir nada cae en la mañana')
+  igual(suelto.body.data.tipo, 'hacer', 'y en hacer')
+  igual(suelto.body.data.metaSegundos, null, 'y sin cronómetro')
+
+  igual((await post('/tracking/habits', {
+    habitKey: `${PREFIJO}malo`, label: 'x', icon: 'ellipse', momento: 'madrugada',
+  })).status, 422, 'un momento que no existe se rechaza')
+  igual((await post('/tracking/habits', {
+    habitKey: `${PREFIJO}malo2`, label: 'x', icon: 'ellipse', hora: '25:00',
+  })).status, 422, 'y una hora imposible también')
+
+  const movido = await patch(`/tracking/habits/${PREFIJO}suelto`, { momento: 'tarde', hora: '18:15' })
+  igual(movido.body.data.momento, 'tarde', 'se puede cambiar de momento')
+  igual(movido.body.data.hora, '18:15', 'y ponerle hora')
+  igual((await patch(`/tracking/habits/${PREFIJO}suelto`, { hora: null })).body.data.hora, null,
+    'y quitársela con null, que no es lo mismo que no mandar nada')
+
+  // Lo cronometrado a medias NO se da por cumplido: son dos cosas distintas.
+  igual((await put(`/tracking/habits/${PREFIJO}crono/log/2098-01-02`, { hecho: false, segundos: 120 })).status,
+    200, 'se guardan los segundos cronometrados')
+  const conSegundos = await get('/tracking/habits?desde=2098-01-01&hasta=2098-12-31')
+  igual(conSegundos.body.data.segundos['2098-01-02'][`${PREFIJO}crono`], 120,
+    'y vuelven en su propio mapa, aparte de los sí/no')
+  igual(conSegundos.body.data.logs['2098-01-02'][`${PREFIJO}crono`], false,
+    'sin dar por cumplido lo que va a medias')
+  ok(conSegundos.body.data.segundos['2098-01-01'] === undefined,
+    'los días sin cronometrar no ocupan sitio en el mapa')
+
+  igual((await put(`/tracking/habits/${PREFIJO}crono/log/2098-01-02`, { hecho: true, segundos: 300 })).status,
+    200, 'y al llegar a la meta se marca')
+
+  // Se quitan de la tabla de verdad, no con DELETE —que solo desactiva y deja
+  // la fila puesta—: cuatro líneas más abajo hay una prueba que cuenta filas y
+  // estos dos se la llevarían por delante.
+  await supabase.from('habit_definitions').delete().eq('user_id', USUARIO)
+    .in('habit_key', [`${PREFIJO}crono`, `${PREFIJO}suelto`])
+
   igual((await del(`/tracking/habits/${PREFIJO}leer`)).status, 200, 'se borra un hábito')
   const trasBorrar = await get('/tracking/habits')
   igual(trasBorrar.body.data.habits.length, antes + 1, 'la fila sigue existiendo')

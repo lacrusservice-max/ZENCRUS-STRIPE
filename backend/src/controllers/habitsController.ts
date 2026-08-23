@@ -41,16 +41,23 @@ const FECHA = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'La fecha debe ser YYYY-MM
  * registros viejos seguirían diciendo `sleep` y nadie los reclamaría.
  */
 const POR_DEFECTO = [
-  { habit_key: 'sleep', label: 'Dormir 7h o más', icon: 'moon' },
-  { habit_key: 'water', label: '8 vasos de agua', icon: 'water' },
-  { habit_key: 'workout', label: 'Entrenar', icon: 'barbell' },
-  { habit_key: 'protein', label: 'Proteína objetivo', icon: 'restaurant' },
-  { habit_key: 'mind', label: 'Respirar / meditar 5 min', icon: 'leaf' },
+  { habit_key: 'sleep', label: 'Dormir 7h o más', icon: 'moon', momento: 'noche', hora: '23:00', tipo: 'hacer', meta_segundos: null },
+  { habit_key: 'water', label: '8 vasos de agua', icon: 'water', momento: 'manana', hora: null, tipo: 'hacer', meta_segundos: null },
+  { habit_key: 'workout', label: 'Entrenar', icon: 'barbell', momento: 'tarde', hora: null, tipo: 'hacer', meta_segundos: null },
+  { habit_key: 'protein', label: 'Proteína objetivo', icon: 'restaurant', momento: 'manana', hora: null, tipo: 'hacer', meta_segundos: null },
+  { habit_key: 'mind', label: 'Respirar / meditar 5 min', icon: 'leaf', momento: 'manana', hora: '07:00', tipo: 'hacer', meta_segundos: 300 },
 ]
 
 // ── Esquemas ─────────────────────────────────────────────────────────────────
 
 const LLAVE = z.string().min(1).max(60).regex(/^[a-zA-Z0-9_-]+$/, 'Llave de hábito inválida')
+
+const MOMENTO = z.enum(['manana', 'tarde', 'noche'])
+const TIPO = z.enum(['hacer', 'evitar'])
+/** «07:00». Se guarda como `time`; los segundos no aportan nada aquí. */
+const HORA = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'La hora va como HH:MM')
+/** Hasta 24 h. `null` significa «este hábito no lleva cronómetro». */
+const META = z.number().int().min(1).max(86400)
 
 export const listarHabitosSchema = z.object({
   query: z.object({
@@ -71,6 +78,10 @@ export const crearHabitoSchema = z.object({
     label: z.string().min(1).max(120),
     icon: z.string().min(1).max(60).default('checkmark'),
     orden: z.number().int().min(0).max(999).optional(),
+    momento: MOMENTO.default('manana'),
+    hora: HORA.nullish(),
+    tipo: TIPO.default('hacer'),
+    metaSegundos: META.nullish(),
   }),
 })
 
@@ -81,6 +92,10 @@ export const actualizarHabitoSchema = z.object({
     icon: z.string().min(1).max(60).optional(),
     activo: z.boolean().optional(),
     orden: z.number().int().min(0).max(999).optional(),
+    momento: MOMENTO.optional(),
+    hora: HORA.nullish(),
+    tipo: TIPO.optional(),
+    metaSegundos: META.nullish(),
   }).refine(b => Object.keys(b).length > 0, 'Nada que actualizar'),
 })
 
@@ -88,7 +103,10 @@ export const llaveHabitoSchema = z.object({ params: z.object({ key: LLAVE }) })
 
 export const marcarHabitoSchema = z.object({
   params: z.object({ key: LLAVE, fecha: FECHA }),
-  body: z.object({ hecho: z.boolean().default(true) }),
+  body: z.object({
+    hecho: z.boolean().default(true),
+    segundos: z.number().int().min(0).max(86400).optional(),
+  }),
 })
 
 export const registrarLogsSchema = z.object({
@@ -97,6 +115,7 @@ export const registrarLogsSchema = z.object({
       habitKey: LLAVE,
       date: FECHA,
       hecho: z.boolean(),
+      segundos: z.number().int().min(0).max(86400).optional(),
     })).min(1).max(2000),
   }),
 })
@@ -112,6 +131,11 @@ function aHabito(f: any) {
     esDefault: f.es_default,
     activo: f.activo,
     orden: f.orden,
+    momento: f.momento,
+    // Postgres devuelve `time` como «07:00:00»; a la pantalla le sobra el resto.
+    hora: f.hora ? String(f.hora).slice(0, 5) : null,
+    tipo: f.tipo,
+    metaSegundos: f.meta_segundos,
   }
 }
 
@@ -119,13 +143,24 @@ function aHabito(f: any) {
  * Los registros salen con la forma que el store ya usa —fecha → hábito →
  * booleano— para que no tenga que darles la vuelta al recibirlos.
  */
-function aLogs(filas: any[]): Record<string, Record<string, boolean>> {
+function aLogs(filas: any[]): {
+  logs: Record<string, Record<string, boolean>>
+  segundos: Record<string, Record<string, number>>
+} {
   const logs: Record<string, Record<string, boolean>> = {}
+  const segundos: Record<string, Record<string, number>> = {}
   for (const f of filas) {
     const dia = logs[f.log_date] ?? (logs[f.log_date] = {})
     dia[f.habit_key] = f.hecho
+    // El mapa de segundos va aparte para no cambiarle la forma a `logs`, que
+    // media app ya lee como fecha → hábito → booleano. Solo aparecen los días
+    // en que de verdad se cronometró algo.
+    if (f.segundos) {
+      const s = segundos[f.log_date] ?? (segundos[f.log_date] = {})
+      s[f.habit_key] = f.segundos
+    }
   }
-  return logs
+  return { logs, segundos }
 }
 
 /** Las llaves que el usuario tiene dadas de alta, activas o no. */
@@ -187,7 +222,7 @@ export async function listarHabitos(req: Request, res: Response): Promise<void> 
 
   let q = supabase
     .from('habit_logs')
-    .select('habit_key, log_date, hecho')
+    .select('habit_key, log_date, hecho, segundos')
     .eq('user_id', userId)
     .order('log_date', { ascending: false })
     .limit(limit)
@@ -205,14 +240,14 @@ export async function listarHabitos(req: Request, res: Response): Promise<void> 
 
   res.status(200).json({
     success: true,
-    data: { habits: habitos.map(aHabito), logs: aLogs(registros || []) },
+    data: { habits: habitos.map(aHabito), ...aLogs(registros || []) },
   } satisfies ApiResponse)
 }
 
 /** POST /tracking/habits — un hábito propio. */
 export async function crearHabito(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
-  const { habitKey, label, icon, orden } = req.body
+  const { habitKey, label, icon, orden, momento, hora, tipo, metaSegundos } = req.body
 
   const { data, error } = await supabase
     .from('habit_definitions')
@@ -224,6 +259,10 @@ export async function crearHabito(req: Request, res: Response): Promise<void> {
       es_default: false,
       activo: true,
       orden: orden ?? 100,
+      momento,
+      hora: hora ?? null,
+      tipo,
+      meta_segundos: metaSegundos ?? null,
     }, { onConflict: 'user_id,habit_key' })
     .select()
     .single()
@@ -248,6 +287,11 @@ export async function actualizarHabito(req: Request, res: Response): Promise<voi
   if (b.icon !== undefined) cambios.icon = b.icon
   if (b.activo !== undefined) cambios.activo = b.activo
   if (b.orden !== undefined) cambios.orden = b.orden
+  if (b.momento !== undefined) cambios.momento = b.momento
+  if (b.tipo !== undefined) cambios.tipo = b.tipo
+  // `null` es un valor válido aquí: significa «quítale la hora» / «sin cronómetro».
+  if (b.hora !== undefined) cambios.hora = b.hora
+  if (b.metaSegundos !== undefined) cambios.meta_segundos = b.metaSegundos
 
   const { data, error } = await supabase
     .from('habit_definitions')
@@ -318,7 +362,7 @@ export async function eliminarHabito(req: Request, res: Response): Promise<void>
 export async function marcarHabito(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
   const { key, fecha } = req.params
-  const { hecho } = req.body
+  const { hecho, segundos } = req.body
 
   const conocidas = await llavesDe(userId)
   if (!conocidas.has(key)) {
@@ -329,10 +373,13 @@ export async function marcarHabito(req: Request, res: Response): Promise<void> {
   const { data, error } = await supabase
     .from('habit_logs')
     .upsert(
-      { user_id: userId, habit_key: key, log_date: fecha, hecho },
+      {
+        user_id: userId, habit_key: key, log_date: fecha, hecho,
+        ...(segundos !== undefined ? { segundos } : {}),
+      },
       { onConflict: 'user_id,habit_key,log_date' },
     )
-    .select('habit_key, log_date, hecho')
+    .select('habit_key, log_date, hecho, segundos')
     .single()
 
   if (error) {
@@ -357,7 +404,7 @@ export async function marcarHabito(req: Request, res: Response): Promise<void> {
  */
 export async function registrarLogs(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
-  const { logs } = req.body as { logs: Array<{ habitKey: string; date: string; hecho: boolean }> }
+  const { logs } = req.body as { logs: Array<{ habitKey: string; date: string; hecho: boolean; segundos?: number }> }
 
   const conocidas = await llavesDe(userId)
   const validos = logs.filter(l => conocidas.has(l.habitKey))
@@ -375,7 +422,10 @@ export async function registrarLogs(req: Request, res: Response): Promise<void> 
   const { data, error } = await supabase
     .from('habit_logs')
     .upsert(
-      validos.map(l => ({ user_id: userId, habit_key: l.habitKey, log_date: l.date, hecho: l.hecho })),
+      validos.map(l => ({
+        user_id: userId, habit_key: l.habitKey, log_date: l.date, hecho: l.hecho,
+        ...(l.segundos !== undefined ? { segundos: l.segundos } : {}),
+      })),
       { onConflict: 'user_id,habit_key,log_date' },
     )
     .select('habit_key')
