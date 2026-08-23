@@ -224,12 +224,89 @@ export async function confirmUpload(key: string, expected: AllowedType): Promise
  * `socialAccess`: esta función no sabe de cuentas privadas ni de seguidores, y
  * firmar sin comprobar antes sería abrir la puerta.
  */
+/**
+ * Las firmas ya calculadas, para no repetir el trabajo.
+ *
+ * ── Por qué hace falta ──────────────────────────────────────────────────────
+ * Firmar no habla con la red, pero no es gratis: es criptografía en JavaScript
+ * y va SÍNCRONA. Medido contra este mismo bucket, firmar las 20 direcciones de
+ * una página de la biblioteca cuesta ~200 ms de procesador, y como Node atiende
+ * con un solo hilo, esos 200 ms no son solo la espera de quien pidió: es el
+ * servidor entero parado, sin poder responder a nadie más.
+ *
+ * Y era trabajo tirado. Los pósters del catálogo son los MISMOS 206 para todo
+ * el mundo: se estaban volviendo a firmar, uno por uno, en cada petición de
+ * cada persona.
+ *
+ * ── Guardar una firma no salta ningún permiso ───────────────────────────────
+ * La duda razonable al cachear algo que lleva la palabra «firma» dentro es si
+ * se está abriendo una puerta. No: quien decide si alguien puede ver un archivo
+ * es `socialAccess`, y sigue ejecutándose igual en cada petición ANTES de pedir
+ * la dirección. Esto solo evita recalcular una cadena que habría salido idéntica.
+ *
+ * ── Se suelta antes de que caduque ──────────────────────────────────────────
+ * Se reutiliza durante el 80 % de su vigencia y no hasta el último segundo: una
+ * dirección entregada justo antes de expirar le llegaría al teléfono ya muerta,
+ * y se vería como una imagen rota. Con el margen, lo que se entrega tiene por
+ * delante al menos un 20 % de su vida.
+ */
+const firmasVivas = new Map<string, { url: string; hasta: number }>()
+
+/**
+ * Tope de firmas guardadas.
+ *
+ * Los 206 pósters del catálogo caben de sobra; el resto es rotación de medios
+ * de la comunidad. Sin tope, un servidor que lleva semanas en pie acabaría
+ * guardando una entrada por cada foto que alguien haya mirado alguna vez.
+ */
+const MAX_FIRMAS = 3000
+
+function recordarFirma(clave: string, url: string, ttl: number): void {
+  if (firmasVivas.size >= MAX_FIRMAS) {
+    // Barrido de caducadas antes de tirar nada por la fuerza: en el caso normal
+    // basta con esto y no se pierde ninguna firma todavía útil.
+    const ahora = Date.now()
+    for (const [k, v] of firmasVivas) if (v.hasta <= ahora) firmasVivas.delete(k)
+    // Si aun así sigue lleno, se van las más viejas. Map recorre por orden de
+    // inserción, así que las primeras son las que llevan más tiempo dentro.
+    if (firmasVivas.size >= MAX_FIRMAS) {
+      let sobran = Math.ceil(MAX_FIRMAS * 0.2)
+      for (const k of firmasVivas.keys()) {
+        firmasVivas.delete(k)
+        if (--sobran <= 0) break
+      }
+    }
+  }
+  firmasVivas.set(clave, { url, hasta: Date.now() + ttl * 800 })
+}
+
 export async function readUrl(key: string, ttl = READ_TTL): Promise<string> {
-  return getSignedUrl(
+  // El ttl entra en la clave: la misma pieza pedida con vigencias distintas son
+  // direcciones distintas, y devolver la corta donde se pidió la larga sería
+  // entregar un enlace que muere antes de tiempo.
+  const enCache = `${key}|${ttl}`
+  const guardada = firmasVivas.get(enCache)
+  if (guardada && guardada.hasta > Date.now()) return guardada.url
+
+  const url = await getSignedUrl(
     client(),
     new GetObjectCommand({ Bucket: env.R2_BUCKET, Key: key }),
     { expiresIn: ttl },
   )
+  recordarFirma(enCache, url, ttl)
+  return url
+}
+
+/**
+ * Olvida la firma de una pieza.
+ *
+ * La llama el borrado: dejar viva la dirección de algo que ya no existe haría
+ * que la app se pasara un minuto pidiendo un archivo que devuelve 404.
+ */
+function olvidarFirma(key: string): void {
+  for (const k of firmasVivas.keys()) {
+    if (k.startsWith(`${key}|`)) firmasVivas.delete(k)
+  }
 }
 
 /** Varias a la vez, para no firmar de una en una al montar un muro. */
@@ -247,6 +324,7 @@ export async function readUrls(keys: string[], ttl = READ_TTL): Promise<Map<stri
 // ── Borrado ──────────────────────────────────────────────────────────────────
 
 export async function remove(key: string): Promise<void> {
+  olvidarFirma(key)
   try {
     await client().send(new DeleteObjectCommand({ Bucket: env.R2_BUCKET, Key: key }))
   } catch (e) {
@@ -294,6 +372,7 @@ export async function removeByPrefix(prefix: string): Promise<number> {
 
 export async function removeMany(keys: string[]): Promise<number> {
   if (!keys.length) return 0
+  keys.forEach(olvidarFirma)
   let borradas = 0
   for (let i = 0; i < keys.length; i += 1000) {
     const lote = keys.slice(i, i + 1000)
