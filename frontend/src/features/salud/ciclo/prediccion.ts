@@ -254,7 +254,7 @@ export interface Prediccion {
   ciclosUsados: number
   /** Duración con la que se calculó, y si salió de su historial o de la población. */
   duracionUsada: number
-  fuenteDuracion: 'personal' | 'poblacional'
+  fuenteDuracion: 'personal' | 'declarada' | 'poblacional'
   marco: MarcoFases
   /** Día de ciclo de la fecha de referencia. */
   diaDeCiclo: number
@@ -274,6 +274,18 @@ export interface OpcionesPrediccion {
    * predecir: se dice, en vez de callarse y dar un número inventado.
    */
   sinOvulacion?: boolean
+  /**
+   * Lo que ella declaró en el alta, si lo declaró.
+   *
+   * Es un PRIOR, no una medición: se usa solo mientras no haya historial, y en
+   * cuanto hay ciclos completos manda lo medido. Sirve para que la primera
+   * predicción de un ciclo de 34 días no se haga con los 28 de la población y
+   * falle por casi una semana.
+   *
+   * `fuenteDuracion` lo distingue: 'declarada' no es ni 'personal' ni
+   * 'poblacional', y la pantalla puede decir de dónde sale el número.
+   */
+  declarado?: { duracion: number | null; sangrado: number | null }
 }
 
 /**
@@ -294,7 +306,8 @@ export function predecir(
   const est = estadisticas(periodos)
 
   const personal = est.usados >= 1 && est.media != null
-  const duracion = personal ? est.media! : POBLACION.duracion
+  const declarada = opts.declarado?.duracion ?? null
+  const duracion = personal ? est.media! : (declarada ?? POBLACION.duracion)
   const sd = est.desviacion ?? POBLACION.desviacion
   const n = Math.max(1, est.usados)
 
@@ -317,7 +330,9 @@ export function predecir(
     high: sumarDias(likely, margenDias),
   }
 
-  const diasPeriodo = est.mediaSangrado ?? POBLACION.sangrado
+  const diasPeriodo = est.mediaSangrado
+    ?? opts.declarado?.sangrado
+    ?? POBLACION.sangrado
   const marco = marcoFases(duracion, diasPeriodo)
 
   const transcurridos = diasEntre(ultimo.inicio, opts.hoy)
@@ -363,7 +378,7 @@ export function predecir(
     confianza: calcularConfianza(est.usados, est.desviacion),
     ciclosUsados: est.usados,
     duracionUsada: Math.round(duracion),
-    fuenteDuracion: personal ? 'personal' : 'poblacional',
+    fuenteDuracion: personal ? 'personal' : declarada ? 'declarada' : 'poblacional',
     marco,
     diaDeCiclo,
     fase,

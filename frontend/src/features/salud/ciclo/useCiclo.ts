@@ -53,6 +53,10 @@ export function useCiclo(fecha?: string): EstadoCiclo {
   const logs = useCicloStore(s => s.logs)
   const inicios = useCicloStore(s => s.inicios)
   const modoId = useCicloStore(s => s.perfil.modo)
+  const declarado = useCicloStore(s => ({
+    duracion: s.perfil.duracionDeclarada ?? null,
+    sangrado: s.perfil.sangradoDeclarado ?? null,
+  }))
 
   return useMemo(() => {
     const hoy = fecha ?? hoyLocal()
@@ -63,11 +67,14 @@ export function useCiclo(fecha?: string): EstadoCiclo {
     /* El modo decide si se predice. En embarazo o sin ciclo no hay nada que
        predecir y forzar un número sería peor que el hueco: ver modos.ts. */
     const prediccion = modo.predice
-      ? predecir(periodos, { hoy, sinOvulacion: !modo.ovula })
+      ? predecir(periodos, { hoy, sinOvulacion: !modo.ovula, declarado })
       : null
 
     const marco = prediccion?.marco
-      ?? marcoFases(est.media ?? 28, est.mediaSangrado ?? 5)
+      ?? marcoFases(
+        est.media ?? declarado.duracion ?? 28,
+        est.mediaSangrado ?? declarado.sangrado ?? 5,
+      )
 
     const anomalias = periodos.length
       ? detectarAnomalias({
@@ -103,5 +110,5 @@ export function useCiclo(fecha?: string): EstadoCiclo {
         ? marco.duracion - prediccion.diaDeCiclo + 1
         : null,
     }
-  }, [logs, inicios, modoId, fecha])
+  }, [logs, inicios, modoId, fecha, declarado.duracion, declarado.sangrado])
 }

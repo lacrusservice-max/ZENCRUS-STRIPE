@@ -56,6 +56,13 @@ interface Pendiente {
 /** Lo que el módulo sabe de la usuaria más allá del registro diario. */
 export interface PerfilCiclo {
   modo: ModoVida
+  /**
+   * Lo que declaró en el alta. Prior, no medición: ver la migración 021 y
+   * `OpcionesPrediccion.declarado`.
+   */
+  duracionDeclarada?: number | null
+  sangradoDeclarado?: number | null
+  anticonceptivo?: string | null
 }
 
 interface CicloState {
@@ -86,6 +93,8 @@ interface CicloState {
   declararInicio: (fecha: string) => Promise<void>
   quitarInicio: (fecha: string) => Promise<void>
   setModo: (modo: ModoVida) => Promise<void>
+  setDeclarado: (d: Partial<Pick<PerfilCiclo,
+    'duracionDeclarada' | 'sangradoDeclarado' | 'anticonceptivo'>>) => Promise<void>
   borrarTodo: () => Promise<void>
   getDia: (fecha?: string) => RegistroDia
   /** Cuántos trackers tiene ese día. Sirve para pintar el resumen sin abrir. */
@@ -281,6 +290,27 @@ export const useCicloStore = create<CicloState>((set, get) => ({
   },
 
   /** Cambiar de modo NUNCA borra historial: ver modos.ts. */
+  /**
+   * Guarda lo que se declaró en el alta.
+   *
+   * Va al servidor además de a disco: son dos números y un texto, pero
+   * reinstalar la app y perderlos significa que la primera predicción vuelve a
+   * hacerse con la media de la población — que es justo lo que estos campos
+   * existen para evitar.
+   */
+  setDeclarado: async (d) => {
+    const perfil = { ...get().perfil, ...d }
+    set({ perfil })
+    await AsyncStorage.setItem(PERFIL_KEY, JSON.stringify(perfil))
+    try {
+      await api.guardarPerfil({
+        declaredCycleDays: d.duracionDeclarada ?? undefined,
+        declaredPeriodDays: d.sangradoDeclarado ?? undefined,
+        contraception: d.anticonceptivo ?? undefined,
+      })
+    } catch { /* la cola lo reintenta */ }
+  },
+
   setModo: async (modo) => {
     const perfil = { ...get().perfil, modo }
     set({ perfil })

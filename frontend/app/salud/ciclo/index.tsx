@@ -153,10 +153,19 @@ export default function InicioCiclo() {
               <Azulejo icono="cycle_gota_color" fondo={ACENTO.rojoSuave} tam={58} />
               <Text style={s.vacioTit}>Todavía no puedo predecir</Text>
               <Text style={s.vacioTxt}>
-                Necesito al menos un periodo registrado para dibujar tus fases.
-                Marca los días en que sangres y el anillo aparece solo.
+                Necesito saber cuándo fue tu última regla para dibujar tus fases.
+                Son dos pantallas y se puede cambiar todo después.
               </Text>
-              <BotonPrincipal texto="Registrar hoy" onPress={() => abrirRegistro(0)} />
+              <BotonPrincipal
+                texto="Empezar"
+                onPress={() => { elegir(); router.push('/salud/ciclo/alta') }}
+              />
+              {/* La salida para quien no quiera contestar nada: registrar el
+                  sangrado de hoy también alimenta al motor, solo que tarda un
+                  ciclo más en tener algo que decir. */}
+              <Pressable onPress={() => abrirRegistro(0)} hitSlop={10}>
+                <Text style={s.vacioSalto}>Prefiero solo registrar hoy</Text>
+              </Pressable>
             </View>
           )}
         </Tarjeta>
@@ -319,6 +328,9 @@ const s = StyleSheet.create({
   vacioTxt: {
     fontFamily: FUENTE.cuerpo, fontSize: 14, color: TEXTO.medio,
     textAlign: 'center', lineHeight: 21, marginBottom: 6,
+  },
+  vacioSalto: {
+    fontFamily: FUENTE.fuerte, fontSize: 13.5, color: TEXTO.suave, marginTop: 4,
   },
 
   rotulo: {

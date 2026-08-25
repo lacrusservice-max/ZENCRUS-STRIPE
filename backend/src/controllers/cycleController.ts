@@ -55,6 +55,11 @@ export const guardarPerfilSchema = z.object({
       'perimenopausia', 'anticoncepcion_continua', 'sin_ciclo',
     ]).optional(),
     contraception: z.string().max(80).nullable().optional(),
+    /* Lo que declara en el alta. Los topes son los del CHECK de la 021: si el
+       esquema aceptara más, el error saldría de Postgres y llegaría como un
+       500 en vez de como un «ese número no puede ser». */
+    declaredCycleDays: z.number().int().min(15).max(60).nullable().optional(),
+    declaredPeriodDays: z.number().int().min(1).max(15).nullable().optional(),
     lockBiometric: z.boolean().optional(),
     lockTimeoutS: z.number().int().min(0).max(86_400).optional(),
     discreetMode: z.boolean().optional(),
@@ -122,6 +127,8 @@ function aPerfil(f: any) {
   return {
     cycleEnabled: f.cycle_enabled,
     lifeMode: f.life_mode,
+    declaredCycleDays: f.declared_cycle_days,
+    declaredPeriodDays: f.declared_period_days,
     avgCycleDays: f.avg_cycle_days,
     avgPeriodDays: f.avg_period_days,
     contraception: f.contraception,
@@ -314,6 +321,8 @@ export async function guardarPerfil(req: Request, res: Response): Promise<void> 
   const cambios: Record<string, unknown> = {}
   if (b.lifeMode !== undefined) cambios.life_mode = b.lifeMode
   if (b.contraception !== undefined) cambios.contraception = b.contraception
+  if (b.declaredCycleDays !== undefined) cambios.declared_cycle_days = b.declaredCycleDays
+  if (b.declaredPeriodDays !== undefined) cambios.declared_period_days = b.declaredPeriodDays
   if (b.lockBiometric !== undefined) cambios.lock_biometric = b.lockBiometric
   if (b.lockTimeoutS !== undefined) cambios.lock_timeout_s = b.lockTimeoutS
   if (b.discreetMode !== undefined) cambios.discreet_mode = b.discreetMode

@@ -30,8 +30,12 @@ export const esSinCiclo = (e: unknown): boolean =>
 export interface PerfilCicloServidor {
   cycleEnabled: boolean
   lifeMode: ModoVida
+  /* CALCULADAS a partir de su historial, y `null` mientras no lo haya. */
   avgCycleDays: number | null
   avgPeriodDays: number | null
+  /* DECLARADAS por ella en el alta. Son cosas distintas: ver la migración 021. */
+  declaredCycleDays: number | null
+  declaredPeriodDays: number | null
   contraception: string | null
   lockBiometric: boolean
   lockTimeoutS: number
@@ -61,6 +65,8 @@ export async function leerCiclo(desde?: string, hasta?: string, limit = 3000): P
 
 export async function guardarPerfil(cambios: Partial<{
   lifeMode: ModoVida
+  declaredCycleDays: number
+  declaredPeriodDays: number
   contraception: string | null
   lockBiometric: boolean
   lockTimeoutS: number
