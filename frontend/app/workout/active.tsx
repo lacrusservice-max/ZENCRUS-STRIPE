@@ -668,7 +668,7 @@ export default function SesionActiva() {
     if (totalSeries === 0) {
       Alert.alert('Sin series registradas', 'No hay nada que guardar. ¿Descartar el entrenamiento?', [
         { text: 'Seguir entrenando', style: 'cancel' },
-        { text: 'Descartar', style: 'destructive', onPress: async () => { await descartar(); router.back() } },
+        { text: 'Descartar', style: 'destructive', onPress: async () => { await descartar(); volverA('/(tabs)/workout')() } },
       ])
       return
     }
@@ -703,11 +703,11 @@ export default function SesionActiva() {
   const salir = () => {
     Alert.alert('¿Salir del entrenamiento?', 'Lo registrado se queda guardado. Puedes volver y seguir donde lo dejaste.', [
       { text: 'Seguir', style: 'cancel' },
-      { text: 'Salir', onPress: () => router.back() },
+      { text: 'Salir', onPress: volverA('/(tabs)/workout') },
       {
         text: 'Descartar todo',
         style: 'destructive',
-        onPress: async () => { await descartar(); router.back() },
+        onPress: async () => { await descartar(); volverA('/(tabs)/workout')() },
       },
     ])
   }

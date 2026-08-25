@@ -36,6 +36,7 @@ import {
 import { Image } from '@/components/ui/Imagen'
 import { useEspacioBarra } from '@/components/ui/BarraDeSeccion'
 import { useCasaMaterial } from '@/store/casaMaterialStore'
+import { volverA } from '@/components/workout/MenuSeccion'
 import { ListaAparejos, cuantosCon, EJERCICIOS_SIN_MATERIAL } from '@/components/workout/MaterialCasa'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -281,8 +282,18 @@ export default function TuSemana() {
     // Se retrocede por la lista de pasos visibles, no restando uno: con el
     // paso del material en -1 y editando saltándose el 0, restar caía en huecos.
     const i = visibles.indexOf(paso)
-    if (i <= 0) router.back()
-    else setPaso(visibles[i - 1])
+    if (i > 0) { setPaso(visibles[i - 1]); return }
+
+    /**
+     * Desde el primer paso se sale de la pantalla, pero NO con `router.back()`
+     * a secas: si el asistente se abrió como raíz de la pila —un enlace
+     * profundo, una notificación— no hay a dónde volver y RN escupe
+     * «The action GO_BACK was not handled by any navigator».
+     *
+     * `volverA` es el ayudante que la app ya usa para esto: vuelve si puede y,
+     * si no, va al padre natural, que aquí es la portada del lugar.
+     */
+    volverA(sitio === 'home' ? '/workout/casa' : '/workout/gym')()
   }
 
   const siguiente = () => {

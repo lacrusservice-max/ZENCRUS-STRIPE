@@ -524,7 +524,7 @@ export default function HacerEjercicio() {
           )}
 
           {terminado && (
-            <TouchableOpacity style={s.boton} onPress={() => router.back()} activeOpacity={0.9}>
+            <TouchableOpacity style={s.boton} onPress={volverA('/(tabs)/workout')} activeOpacity={0.9}>
               <Text style={s.botonTxt}>Volver al entrenamiento</Text>
             </TouchableOpacity>
           )}

@@ -49,6 +49,20 @@ export interface DiaCalendario {
 
   ovulacionPredicha: boolean
   fertil: boolean
+  /**
+   * Los seis días de alrededor del día probable de ovulación.
+   *
+   * `fertil` marca toda la banda, y esa banda puede llegar a 25 días cuando
+   * hay pocos ciclos: el margen de la ovulación crece con la incertidumbre y
+   * encima se le suman los 5 días que sobrevive un espermatozoide más el día
+   * después. Pintados todos igual, la pantalla viene a decir «puedes ser fértil
+   * 25 de tus 28 días», que no informa de nada y además sugiere que la
+   * probabilidad es la misma en todos.
+   *
+   * Con el núcleo aparte, la incertidumbre se sigue viendo —no se esconde— pero
+   * la forma dice dónde está el centro.
+   */
+  fertilNucleo: boolean
 
   /** Cuántos trackers se registraron ese día. Pinta el punto de actividad. */
   registros: number
@@ -152,6 +166,15 @@ export function construirMes(e: Entrada): Mes {
       && fecha >= prediccion.ventanaFertil.inicio
       && fecha <= prediccion.ventanaFertil.fin
 
+    /* El núcleo se cuenta desde el día PROBABLE de ovulación, no desde los
+       extremos de su banda: -5 por lo que vive un espermatozoide, +1 por lo que
+       vive el óvulo. */
+    const nucleo = prediccion?.ovulacion
+      ? { inicio: sumarDias(prediccion.ovulacion.likely, -5),
+          fin: sumarDias(prediccion.ovulacion.likely, 1) }
+      : null
+    const fertilNucleo = !!nucleo && fecha >= nucleo.inicio && fecha <= nucleo.fin
+
     dias.push({
       fecha,
       numero: d,
@@ -165,6 +188,7 @@ export function construirMes(e: Entrada): Mes {
       bandaPrediccion,
       ovulacionPredicha,
       fertil,
+      fertilNucleo,
       registros: reg ? Object.keys(reg).length : 0,
     })
 

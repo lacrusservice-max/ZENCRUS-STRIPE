@@ -20,7 +20,7 @@
  */
 
 import { useCallback, useMemo, useRef } from 'react'
-import { View, Text, StyleSheet, Pressable, FlatList } from 'react-native'
+import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
 import { router } from 'expo-router'
 import { useCicloStore } from '@/store/cicloStore'
 import { useCiclo } from '@/features/salud/ciclo/useCiclo'
@@ -38,14 +38,40 @@ import { elegir } from '@/utils/haptica'
 const ATRAS = 12
 const ADELANTE = 3
 
-/** Alto de una tarjeta de mes más su título, para poder saltar al mes actual. */
-const ALTO_MES = 452
+/**
+ * Por qué esto es un `ScrollView` y no una `FlatList`.
+ *
+ * Con `FlatList` hay que decirle a `getItemLayout` cuánto mide cada mes para
+ * poder abrir la pantalla en el actual. Se intentó de dos maneras y las dos
+ * fallaron: con el número a mano, la lista abría dos meses por delante; y
+ * midiendo el primero y corrigiendo, tampoco, porque **los meses NO miden todos
+ * lo mismo** — el mes que contiene hoy lleva la etiqueta «HOY» debajo del día y
+ * eso le añade una fila más alta que a los demás. Cualquier estimación estaba
+ * condenada de antemano.
+ *
+ * Aquí el mes actual dice dónde está —su propio `onLayout`— y se salta a esa
+ * `y` exacta. Sin estimar nada.
+ *
+ * Y se puede permitir: son dieciséis meses, no dieciséis mil. La virtualización
+ * ahorraría unas seiscientas vistas pequeñas, y a cambio traía este problema.
+ */
+
+const mayuscula = (t: string): string => t.charAt(0).toUpperCase() + t.slice(1)
 
 export default function CalendarioCiclo() {
   const logs = useCicloStore(s => s.logs)
   const hoy = hoyLocal()
   const { periodos, prediccion, marco } = useCiclo()
-  const lista = useRef<FlatList<{ año: number; mes: number }>>(null)
+  const lista = useRef<ScrollView>(null)
+  /* Una sola vez: si se saltara cada vez que el mes actual se re-mide, la
+     pantalla se negaría a dejarse desplazar. */
+  const yaSaltado = useRef(false)
+
+  const alSituarseElMesActual = useCallback((y: number) => {
+    if (yaSaltado.current) return
+    yaSaltado.current = true
+    lista.current?.scrollTo({ y: Math.max(0, y - 12), animated: false })
+  }, [])
 
   /* La lista de meses, del más antiguo al más nuevo. Se calcula una vez: si se
      recalculara en cada pintada, `initialScrollIndex` saltaría solo. */
@@ -59,41 +85,34 @@ export default function CalendarioCiclo() {
     return out
   }, [hoy])
 
-  const indiceHoy = ATRAS
-
-  const pintar = useCallback(({ item }: { item: { año: number; mes: number } }) => (
-    <Mes
-      año={item.año}
-      mes={item.mes}
-      esActual={item.año === Number(hoy.slice(0, 4)) && item.mes === Number(hoy.slice(5, 7))}
-      logs={logs}
-      periodos={periodos}
-      prediccion={prediccion}
-      marco={marco}
-      hoy={hoy}
-    />
-  ), [logs, periodos, prediccion, marco, hoy])
+  const añoHoy = Number(hoy.slice(0, 4))
+  const mesHoy = Number(hoy.slice(5, 7))
 
   return (
     <Pantalla fondo={FONDO.calendario}>
-      <FlatList
+      <ScrollView
         ref={lista}
-        data={meses}
-        keyExtractor={m => `${m.año}-${m.mes}`}
-        renderItem={pintar}
-        initialScrollIndex={indiceHoy}
-        getItemLayout={(_, i) => ({ length: ALTO_MES, offset: ALTO_MES * i, index: i })}
-        /* Si la altura estimada no cuadra con la real, `initialScrollIndex`
-           deja la pantalla a medio mes. `onScrollToIndexFailed` es la red: se
-           reintenta una vez ya medido. */
-        onScrollToIndexFailed={info => {
-          setTimeout(() => {
-            lista.current?.scrollToIndex({ index: info.index, animated: false })
-          }, 60)
-        }}
         contentContainerStyle={[s.scroll, { paddingBottom: ALTO_BARRA + 40 }]}
         showsVerticalScrollIndicator={false}
-      />
+      >
+        {meses.map(m => {
+          const esActual = m.año === añoHoy && m.mes === mesHoy
+          return (
+            <Mes
+              key={`${m.año}-${m.mes}`}
+              año={m.año}
+              mes={m.mes}
+              esActual={esActual}
+              onSituarse={esActual ? alSituarseElMesActual : undefined}
+              logs={logs}
+              periodos={periodos}
+              prediccion={prediccion}
+              marco={marco}
+              hoy={hoy}
+            />
+          )
+        })}
+      </ScrollView>
 
       {/* El lápiz del mockup: entra al registro de HOY, no del día que se esté
           mirando — para eso se toca el día. */}
@@ -111,10 +130,12 @@ export default function CalendarioCiclo() {
 
 /* ── Un mes ─────────────────────────────────────────────────────────────── */
 
-function Mes({ año, mes, esActual, logs, periodos, prediccion, marco, hoy }: {
+function Mes({ año, mes, esActual, onSituarse, logs, periodos, prediccion, marco, hoy }: {
   año: number
   mes: number
   esActual: boolean
+  /** Solo lo recibe el mes actual: es el que dice dónde hay que abrir. */
+  onSituarse?: (y: number) => void
   logs: Parameters<typeof construirMes>[0]['logs']
   periodos: Parameters<typeof construirMes>[0]['periodos']
   prediccion: Parameters<typeof construirMes>[0]['prediccion']
@@ -126,9 +147,14 @@ function Mes({ año, mes, esActual, logs, periodos, prediccion, marco, hoy }: {
     [año, mes, logs, periodos, prediccion, marco, hoy])
 
   return (
-    <View style={s.mes}>
+    <View
+      style={s.mes}
+      onLayout={e => onSituarse?.(e.nativeEvent.layout.y)}
+    >
       <View style={s.mesCab}>
-        <Text style={s.mesNombre}>{nombreMes(mes)}</Text>
+        {/* `nombreMes` da «noviembre» en minúscula, que es lo correcto dentro
+            de una frase y se ve mal como titular. */}
+        <Text style={s.mesNombre}>{mayuscula(nombreMes(mes))}</Text>
         <Text style={s.mesAño}>{año}</Text>
         <View style={s.flex} />
         {esActual ? (
@@ -162,6 +188,10 @@ function Celda({ d }: { d: DiaCalendario }) {
   const sangro = (d.sangrado ?? 0) > 0
   const previsto = !sangro && d.periodoPredicho
   const fertil = !sangro && !previsto && d.fertil
+  /* Dentro de la ventana, el núcleo va más fuerte. La diferencia de tono es lo
+     único que distingue «probablemente» de «quizá», y sin ella los dos se leen
+     igual de seguros. */
+  const nucleo = fertil && d.fertilNucleo
 
   const abrir = () => {
     elegir()
@@ -180,6 +210,7 @@ function Celda({ d }: { d: DiaCalendario }) {
         sangro && s.cajaSangrado,
         previsto && s.cajaPrevisto,
         fertil && s.cajaFertil,
+        nucleo && s.cajaFertilNucleo,
         d.hoy && s.cajaHoy,
       ]}>
         {/* El corazón del día de ovulación, como en el mockup. */}
@@ -189,6 +220,7 @@ function Celda({ d }: { d: DiaCalendario }) {
           sangro && s.numeroSangrado,
           previsto && s.numeroPrevisto,
           fertil && s.numeroFertil,
+          nucleo && s.numeroFertilNucleo,
           d.futuro && !sangro && !previsto && !fertil && s.numeroFuturo,
         ]}>
           {d.numero}
@@ -205,7 +237,8 @@ function etiquetaDe(d: DiaCalendario, sangro: boolean, previsto: boolean, fertil
   const partes = [`${d.numero}`]
   if (sangro) partes.push('sangrado registrado')
   else if (previsto) partes.push('periodo previsto')
-  else if (fertil) partes.push('ventana fértil estimada')
+  else if (d.fertilNucleo) partes.push('días más fértiles estimados')
+  else if (fertil) partes.push('ventana fértil estimada, con margen')
   if (d.ovulacionPredicha) partes.push('ovulación estimada')
   if (d.hoy) partes.push('hoy')
   return partes.join(', ')
@@ -250,13 +283,15 @@ const s = StyleSheet.create({
   cajaPrevisto: {
     borderWidth: 1.5, borderStyle: 'dashed', borderColor: ACENTO.periodo,
   },
-  cajaFertil: { backgroundColor: ACENTO.fertilSuave },
+  cajaFertil: { backgroundColor: '#EDF8F8' },
+  cajaFertilNucleo: { backgroundColor: ACENTO.fertilSuave },
   cajaHoy: { borderWidth: 2, borderColor: ACENTO.morado, borderStyle: 'solid' },
 
   numero: { fontFamily: FUENTE.fuerte, fontSize: 15, color: TEXTO.fuerte, ...TABULAR },
   numeroSangrado: { color: '#FFFFFF' },
   numeroPrevisto: { color: ACENTO.periodo },
-  numeroFertil: { color: ACENTO.fertil },
+  numeroFertil: { color: '#7CBFC2' },
+  numeroFertilNucleo: { color: ACENTO.fertil },
   numeroFuturo: { color: '#B6ACCB' },
 
   corazon: {
