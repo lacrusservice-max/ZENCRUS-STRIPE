@@ -54,7 +54,7 @@ function Demo({ uri, alto }: { uri: string; alto: number }) {
 export default function ExerciseScreen() {
   const T = useAppTheme()
   const { width } = useWindowDimensions()
-  const { slug } = useLocalSearchParams<{ slug: string }>()
+  const { slug, place } = useLocalSearchParams<{ slug: string; place?: string }>()
 
   const [ex, setEx] = useState<E.ExerciseDetail | null>(null)
   const [cargando, setCargando] = useState(true)
@@ -244,10 +244,14 @@ export default function ExerciseScreen() {
 
         {/* Acción */}
         <View style={s.bloque}>
+          {/* Al lugar del que vienes; si no llega, lo decide el propio
+              ejercicio: uno que solo se hace en casa no manda al gimnasio. */}
           <TouchableOpacity
             style={[s.principal, { backgroundColor: T.accent, shadowColor: T.accent }]}
             activeOpacity={0.88}
-            onPress={() => router.push('/workout/gym')}
+            onPress={() => router.push(
+              (place === 'home' || (!place && ex.home)) ? '/workout/casa' : '/workout/gym'
+            )}
           >
             <Ionicons name="add" size={19} color="#fff" />
             <Text style={s.principalTxt}>Añadir a una rutina</Text>

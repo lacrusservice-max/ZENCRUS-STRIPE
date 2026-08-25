@@ -171,6 +171,15 @@ export const proponerSchema = z.object({
   query: z.object({
     musculos: z.string().min(1).max(200),
     modo: z.enum(['gym', 'home']).default('gym'),
+    /**
+     * Lo que hay en su casa, separado por comas: `dumbbell,band,barra`.
+     * Solo cuenta con `modo=home`; en un gimnasio hay de todo.
+     *
+     * Ausente = todavía no ha contestado, y entonces NO se filtra. Vacío
+     * (`equipment=`) sí es una respuesta: «no tengo nada», y deja solo el peso
+     * corporal. Son dos cosas distintas y por eso se distinguen.
+     */
+    equipment: z.string().max(120).optional(),
   }),
 })
 
@@ -194,13 +203,25 @@ export async function proponerEjercicios(req: Request, res: Response): Promise<v
   const musculos = String(req.query.musculos).split(',').map(m => m.trim()).filter(Boolean)
   const modo = (req.query.modo === 'home' ? 'home' : 'gym') as 'gym' | 'home'
 
-  const ejercicios = proponerParaMusculos(musculos, modo)
+  // `undefined` y cadena vacía NO son lo mismo: la primera es «no ha
+  // contestado» y la segunda «no tiene nada». Se distinguen aquí.
+  const aparejos = req.query.equipment === undefined
+    ? null
+    : String(req.query.equipment).split(',').map(x => x.trim()).filter(Boolean)
+
+  const ejercicios = proponerParaMusculos(musculos, modo, aparejos)
 
   if (ejercicios.length === 0) {
     // No es un error del servidor: es que pidió músculos que no existen, o que
     // en casa no hay nada para ellos. Se contesta vacío y con el motivo, para
     // que la app pueda decir algo mejor que «no se pudo cargar».
-    ok(res, { ejercicios: [], nombre: nombreDeDia(musculos), motivo: 'sin-ejercicios' })
+    ok(res, {
+      ejercicios: [],
+      nombre: nombreDeDia(musculos),
+      // Distinguir el motivo permite que la app diga «te falta material para
+      // este músculo» en vez del genérico «no hay ejercicios».
+      motivo: modo === 'home' && aparejos ? 'sin-material' : 'sin-ejercicios',
+    })
     return
   }
 
@@ -790,6 +811,9 @@ export async function alternativasDePlan(req: Request, res: Response): Promise<v
       nombre: e.nombre,
       muscleEs: e.muscleEs,
       equipmentEs: e.equipmentEs,
+      // La clave en inglés, además del nombre: es con la que la app decide si
+      // cabe en la casa del usuario. `equipmentEs` es para leer, no para decidir.
+      equipment: e.equipment,
       home: e.home,
       poster: firmadas.get(claves.get(e.slug) ?? '') ?? null,
     })),

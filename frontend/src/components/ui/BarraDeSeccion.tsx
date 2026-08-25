@@ -454,6 +454,24 @@ function Pestana({ icono, lleno, label, activo, accent, apagado, contador = 0, o
   )
 }
 
+/**
+ * EL ESPACIO QUE OCUPA LA BARRA
+ * ═════════════════════════════
+ * La píldora flota ENCIMA del contenido, así que cualquier pantalla con algo
+ * pegado abajo —un botón de «Continuar», un pie de acciones— tiene que dejarle
+ * hueco. Antes cada pantalla se lo inventaba (`Platform.OS === 'ios' ? 34 : 16`)
+ * y por eso en «crear rutina» el botón acababa DEBAJO de la barra, inalcanzable.
+ *
+ * Se exporta desde aquí, junto a la barra que lo causa, para que no vuelva a
+ * desincronizarse: si mañana la píldora crece, crece este número con ella.
+ */
+export const ALTO_PILDORA = 62
+
+export function useEspacioBarra() {
+  const insets = useSafeAreaInsets()
+  return Math.max(insets.bottom, 14) + 6 + ALTO_PILDORA + 12
+}
+
 const b = StyleSheet.create({
   wrap: {
     position: 'absolute',

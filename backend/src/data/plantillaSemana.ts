@@ -248,6 +248,11 @@ export interface EjercicioPropuesto {
   carga?: 'weight' | 'bodyweight' | 'band' | 'assisted' | 'none'
   /** El músculo por el que entró, para poder agrupar en la pantalla. */
   musculo: string
+  /**
+   * Con qué se hace. Viaja para que la app pueda saber, sin pedir nada más, si
+   * un ejercicio del plan dejó de encajar cuando cambia el material de casa.
+   */
+  equipment: string
 }
 
 /**
@@ -274,9 +279,61 @@ function reparto(cuantos: number): number[] {
  * `entorno` filtra por dónde se entrena: en casa no se puede proponer una
  * prensa. Determinista: los mismos músculos dan siempre lo mismo.
  */
+/**
+ * QUÉ HACE FALTA PARA CADA EJERCICIO, MÁS ALLÁ DE SU `equipment`
+ * ═════════════════════════════════════════════════════════════
+ * Estos seis dicen «peso corporal» y es verdad —no llevas hierro—, pero sin
+ * una barra de la que colgarte o un banco donde apoyarte no se pueden hacer.
+ * El catálogo ya los deja fuera de `home`, que es lo correcto para la regla
+ * gruesa; esto es la regla fina, la que sabe si están en TU casa.
+ */
+export const PIDE_APAREJO: Record<string, string> = {
+  'pull-ups': 'barra',
+  'chin-ups': 'barra',
+  'hanging-knee-raises': 'barra',
+  'parralel-bar-dips': 'barra',
+  'inverted-row': 'barra',
+  'bench-dips': 'banco',
+}
+
+/**
+ * ¿Se puede hacer este ejercicio con lo que hay en esa casa?
+ *
+ * ── Esta función es la AUTORIDAD ────────────────────────────────────────────
+ * La app tiene una copia para poder filtrar sin ir al servidor, pero la buena
+ * es esta: el catálogo vive aquí y las reglas viven donde vive el dato. Si las
+ * dos se separan, manda esta y la del cliente se corrige.
+ *
+ * Sin inventario devuelve `true`: antes de que el usuario conteste, esconderle
+ * medio catálogo sería peor que no filtrar.
+ */
+/** Con qué se hace un ejercicio del catálogo. `null` si no está (uno a mano). */
+export function equipoDe(slug: string | undefined): string | null {
+  if (!slug) return null
+  return TODOS.find(f => f.slug === slug)?.equipment ?? null
+}
+
+export function cabeEnCasa(f: { slug: string; equipment: string }, aparejos: string[] | null): boolean {
+  if (!aparejos) return true
+
+  const pide = PIDE_APAREJO[f.slug]
+  if (pide) return aparejos.includes(pide)
+
+  switch (f.equipment) {
+    case 'bodyweight': return true
+    case 'dumbbell': return aparejos.includes('dumbbell')
+    case 'kettlebell': return aparejos.includes('kettlebell')
+    case 'band': return aparejos.includes('band')
+    // Barra, polea, máquina, multipower, landmine y disco no son de casa.
+    default: return false
+  }
+}
+
 export function proponerDia(
   musculos: string[],
   entorno: 'gym' | 'home' = 'gym',
+  /** Lo que hay en su casa. `null` = todavía no ha contestado. */
+  aparejos: string[] | null = null,
 ): EjercicioPropuesto[] {
   const limpios = musculos.filter(m => NOMBRE.has(m))
   if (limpios.length === 0) return []
@@ -290,6 +347,8 @@ export function proponerDia(
     const candidatos = TODOS
       .filter(f => f.muscle === musculo)
       .filter(f => (entorno === 'home' ? f.home : f.gym))
+      // En casa, además, lo que de verdad puede hacer con lo que tiene.
+      .filter(f => entorno !== 'home' || cabeEnCasa(f, aparejos))
       .filter(f => f.pattern !== 'stretch')
       .filter(f => !yaPuestos.has(f.slug))
       /**
@@ -329,6 +388,7 @@ export function proponerDia(
       ...(d.duracion ? { incremento: 5 } : esPeso ? { incremento: incrementoDe(f) } : {}),
       ...(esPeso ? {} : { carga: f.equipment === 'band' ? 'band' as const : 'bodyweight' as const }),
       musculo: f.muscle ?? '',
+      equipment: f.equipment,
     }
   })
 }

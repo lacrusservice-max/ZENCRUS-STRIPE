@@ -99,6 +99,18 @@ export default function Historial() {
   const [modo, setModo] = useState<Modo | null>(
     mode === 'gym' || mode === 'home' || mode === 'outdoor' || mode === 'class' ? mode : null,
   )
+
+  /**
+   * EL HISTORIAL NO SACA DE SU SECCIÓN
+   * ──────────────────────────────────
+   * Entrando desde Gimnasio, ofrecer un filtro «En casa» es ofrecer salir de la
+   * sección desde dentro: tocas y estás viendo sesiones de casa bajo el título
+   * de gimnasio, sin haber pedido cambiar de sitio.
+   *
+   * Cuando se llega con un lugar concreto, el historial es el de ESE lugar y no
+   * hay filtros. Para verlo todo se entra por «Todo», que es otra puerta.
+   */
+  const bloqueado = mode === 'gym' || mode === 'home' || mode === 'outdoor'
   const [cargando, setCargando] = useState(true)
   const [trayendo, setTrayendo] = useState(false)
   const [refrescando, setRefrescando] = useState(false)
@@ -158,19 +170,21 @@ export default function Historial() {
         subtitulo={total > 0 ? `${total} ${total === 1 ? 'entrenamiento' : 'entrenamientos'}` : undefined}
       />
 
-      <View style={s.filtros}>
-        {MODOS.map(m => (
-          <TouchableOpacity
-            key={m.label}
-            style={[s.filtro, modo === m.id && s.filtroOn]}
-            onPress={() => { void Haptics.selectionAsync(); setModo(m.id); setCargando(true) }}
-            activeOpacity={0.85}
-          >
-            <Ionicons name={m.icono} size={13} color={modo === m.id ? Colors.neon.white : Colors.neon.w3} />
-            <Text style={[s.filtroTxt, modo === m.id && s.filtroTxtOn]}>{m.label}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
+      {!bloqueado && (
+        <View style={s.filtros}>
+          {MODOS.map(m => (
+            <TouchableOpacity
+              key={m.label}
+              style={[s.filtro, modo === m.id && s.filtroOn]}
+              onPress={() => { void Haptics.selectionAsync(); setModo(m.id); setCargando(true) }}
+              activeOpacity={0.85}
+            >
+              <Ionicons name={m.icono} size={13} color={modo === m.id ? Colors.neon.white : Colors.neon.w3} />
+              <Text style={[s.filtroTxt, modo === m.id && s.filtroTxtOn]}>{m.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {cargando ? (
         <View style={s.cargando}><ActivityIndicator color={Colors.neon.w3} /></View>

@@ -29,12 +29,10 @@
  * sesión es la única fuente y las demás pantallas la consultan.
  */
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect, useMemo } from 'react'
 import { RachaEncendida } from '@/components/racha/RachaEncendida'
 import { useRachaDelDia } from '@/hooks/useRachaDelDia'
-import {
-  View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator,
-} from 'react-native'
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, RefreshControl, ActivityIndicator, Alert } from 'react-native'
 import { ImageSourcePropType } from 'react-native'
 import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
@@ -47,6 +45,10 @@ import { CabeceraPortada } from '@/components/workout/MenuSeccion'
 import { BotonIA } from '@/constants/layout'
 import { AnilloSemana } from '@/components/workout/AnilloSemana'
 import { HoyGrande } from '@/components/workout/HoyGrande'
+import { useEntrenoRegistro, hoyClave } from '@/store/entrenoRegistroStore'
+import { MaterialCasa } from '@/components/workout/MaterialCasa'
+import { useCasaMaterial, APAREJOS } from '@/store/casaMaterialStore'
+import { desajustesDe, sustituir, faltaLo } from '@/features/entreno/reconciliarCasa'
 import { Cifra } from '@/components/workout/Charts'
 import { Miniatura } from '@/components/workout/Miniatura'
 import { NOMBRE_GRUPO } from '@/components/workout/anatomy'
@@ -117,6 +119,20 @@ const DEL_MODO: Record<ModoEntreno, { titulo: string; foto: 'gimnasio' | 'casa';
 }
 
 export function PortadaEntreno({ modo }: { modo: ModoEntreno }) {
+  /**
+   * EN CASA SE PREGUNTA QUÉ HAY, PERO NO AQUÍ
+   * ──────────────────────────────────────────
+   * La primera vez se pregunta DENTRO de «Editar mi semana», como primer paso,
+   * porque de esa respuesta sale el plan entero. Abrirlo aquí de golpe al
+   * entrar era el defecto: aparecía una vez, no alimentaba nada y no volvía.
+   *
+   * Esto es solo el acceso para CAMBIARLO, en «Tu material», que es donde uno
+   * lo busca cuando compra unas mancuernas.
+   */
+  const materialCasa = useCasaMaterial()
+  const [pidiendoMaterial, setPidiendoMaterial] = useState(false)
+  const [sustituyendo, setSustituyendo] = useState(false)
+
   const suyo = DEL_MODO[modo]
   /* Empezar la rutina cuenta para la racha igual que apuntar una comida: es
      el gesto con el que alguien dice «hoy sí». */
@@ -164,6 +180,14 @@ export function PortadaEntreno({ modo }: { modo: ModoEntreno }) {
     }
   }, [])
 
+  /** Lo del plan de hoy que ya no cabe en su casa. Vacío mientras no conteste. */
+  const desajustes = useMemo(
+    () => (modo === 'home' && hoy?.dia
+      ? desajustesDe(hoy.dia.ejercicios, materialCasa.tengo, materialCasa.preguntado)
+      : []),
+    [modo, hoy?.dia, materialCasa.tengo, materialCasa.preguntado],
+  )
+
   useFocusEffect(useCallback(() => {
     void restaurar()
     void cargar()
@@ -182,6 +206,14 @@ export function PortadaEntreno({ modo }: { modo: ModoEntreno }) {
    * «no tienes plan» —lo tienes—, se deja de imponer el que no cabe aquí.
    */
   const planDeAqui = !hoy?.programa || hoy.programa.mode === modo
+  /**
+   * `planDeAqui` es cierto también cuando NO hay plan ninguno, que es lo que
+   * quiere el Hero. Para los textos hace falta lo otro: que haya un plan Y que
+   * sea de esta sección. Sin esa distinción, En casa decía «Ahora sigues
+   * cesar» —el plan del gimnasio— en una pantalla que no debería saber que
+   * existe la otra.
+   */
+  const hayPlanDeAqui = !!hoy?.programa && hoy.programa.mode === modo
 
 
   return (
@@ -255,9 +287,11 @@ export function PortadaEntreno({ modo }: { modo: ModoEntreno }) {
                   style={s.editarSemana}
                   onPress={() => {
                     void Haptics.selectionAsync()
+                    // El lugar viaja: dentro de Gimnasio no se pregunta si es
+                    // gimnasio o casa, ya lo sabemos por dónde entró.
                     router.push(hoy.programa?.esMio
-                      ? `/workout/program/nuevo?id=${hoy.programa.id}`
-                      : '/workout/program/nuevo')
+                      ? `/workout/program/nuevo?id=${hoy.programa.id}&modo=${modo}`
+                      : `/workout/program/nuevo?modo=${modo}`)
                   }}
                   activeOpacity={0.85}
                 >
@@ -285,6 +319,58 @@ export function PortadaEntreno({ modo }: { modo: ModoEntreno }) {
               * donde tiene sentido contarlo. Un espacio vacío no comunica que
               * falta algo, comunica que la app no tiene nada que ofrecer.
               */}
+            {/**
+              * EL PLAN Y TU CASA, RECONCILIADOS
+              * ─────────────────────────────────
+              * Cambiar el material y que el plan siga mandando ejercicios que
+              * ya no puedes hacer es el fallo que convierte un sistema en un
+              * adorno. Se detecta aquí, se cuenta, y el cambio lo pides tú:
+              * el plan es tuyo y puede que las mancuernas vuelvan la semana
+              * que viene.
+              */}
+            {modo === 'home' && hoy?.dia && desajustes.length > 0 && (
+              <Animated.View entering={FadeInDown.delay(40).duration(380)} style={s.bloque}>
+                <TouchableOpacity
+                  style={s.montar}
+                  disabled={sustituyendo}
+                  onPress={async () => {
+                    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+                    setSustituyendo(true)
+                    const r = await sustituir(desajustes, materialCasa.tengo)
+                    setSustituyendo(false)
+                    const ok = r.filter(x => x.resuelto).length
+                    const no = r.length - ok
+                    Alert.alert(
+                      ok > 0 ? 'Plan actualizado' : 'No pude cambiarlos',
+                      [
+                        ok > 0 ? `Cambié ${ok} ${ok === 1 ? 'ejercicio' : 'ejercicios'} por otros que sí puedes hacer.` : '',
+                        no > 0 ? `${no} sin alternativa para tu material: cámbialos tú desde el día.` : '',
+                      ].filter(Boolean).join('\n\n'),
+                    )
+                    void cargar()
+                  }}
+                  activeOpacity={0.85}
+                >
+                  <View style={s.montarIcono}>
+                    <Ionicons name="swap-horizontal" size={20} color={Colors.neon.redCore} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={s.montarTitulo}>
+                      {desajustes.length} {desajustes.length === 1 ? 'ejercicio no encaja' : 'ejercicios no encajan'} con lo que tienes
+                    </Text>
+                    <Text style={s.montarSub}>
+                      {sustituyendo
+                        ? 'Buscando alternativas…'
+                        : `Piden ${[...new Set(desajustes.map(d => faltaLo(d.equipment)))].join(' y ')}. Toca y los cambio por otros que sí puedas hacer.`}
+                    </Text>
+                  </View>
+                  {sustituyendo
+                    ? <ActivityIndicator color={Colors.neon.w3} />
+                    : <Ionicons name="chevron-forward" size={16} color={Colors.neon.w3} />}
+                </TouchableOpacity>
+              </Animated.View>
+            )}
+
             {hoy && (!hoy.programa || !planDeAqui) && (
               <Animated.View entering={FadeInDown.delay(70).duration(380)} style={s.bloque}>
                 <Text style={s.seccion}>TU SEMANA</Text>
@@ -297,18 +383,24 @@ export function PortadaEntreno({ modo }: { modo: ModoEntreno }) {
                     <Ionicons name="calendar-outline" size={20} color={Colors.neon.redCore} />
                   </View>
                   <View style={{ flex: 1 }}>
-                    {/* Decir «no sigues ningún plan» a quien SÍ sigue uno —solo que
-                        de otro lugar— es mentirle, y encima le hace pensar que ha
-                        perdido su plan. Se nombra el que tiene y se dice qué falta. */}
+                    {/**
+                      * CADA SECCIÓN HABLA SOLO DE SÍ MISMA
+                      * ────────────────────────────────────
+                      * Antes esto nombraba el plan de la OTRA sección —«cesar es de
+                      * gimnasio»— para explicar por qué aquí no había nada. Explicaba
+                      * bien y estaba mal: casa no tiene por qué saber que existe el
+                      * gimnasio, ni al revés.
+                      *
+                      * Se dice lo que falta AQUÍ y no se niega nada de fuera. «No
+                      * tienes plan de casa» es cierto tengas lo que tengas en otro
+                      * sitio; «no sigues ningún plan» sí sería mentira, y encima le
+                      * haría pensar a alguien que ha perdido su plan.
+                      */}
                     <Text style={s.montarTitulo}>
-                      {hoy.programa
-                        ? `«${hoy.programa.nombre}» es de ${hoy.programa.mode === 'home' ? 'casa' : 'gimnasio'}`
-                        : 'Todavía no sigues ningún plan'}
+                      Todavía no tienes plan {modo === 'home' ? 'de casa' : 'de gimnasio'}
                     </Text>
                     <Text style={s.montarSub}>
-                      {hoy.programa
-                        ? `Sigue ahí y no se toca. Para que esta pantalla te diga qué toca cada día ${modo === 'home' ? 'en casa' : 'en el gimnasio'}, monta uno de aquí.`
-                        : 'Con un plan, esta pantalla te dice cada día qué toca, cuánto peso poner y cuándo subirlo. Se monta en un toque.'}
+                      {`Con uno, esta pantalla te dice cada día qué toca ${modo === 'home' ? 'en casa' : 'en el gimnasio'}, cuánto peso poner y cuándo subirlo. Se monta en un toque.`}
                     </Text>
                   </View>
                   <Ionicons name="chevron-forward" size={16} color={Colors.neon.w3} />
@@ -318,12 +410,15 @@ export function PortadaEntreno({ modo }: { modo: ModoEntreno }) {
 
             {/* ── 3 · CÓMO VA LA SEMANA ────────────────────────────────── */}
             <Animated.View entering={FadeInDown.delay(130).duration(380)} style={s.bloque}>
+              {/* `origen` se fuerza a «defecto» si el plan es de la otra sección:
+                  decir «los que pide tu plan» aquí sería citar un plan que en
+                  esta pantalla no existe. */}
               <AnilloSemana
                 dias={hoy?.anillo?.dias ?? []}
                 hoy={hoy?.anillo?.hoy ?? -1}
                 hechos={hoy?.anillo?.hechos ?? 0}
                 objetivo={hoy?.anillo?.objetivo ?? OBJETIVO_SEMANA}
-                origen={hoy?.anillo?.origen ?? 'defecto'}
+                origen={hayPlanDeAqui ? (hoy?.anillo?.origen ?? 'defecto') : 'defecto'}
                 kcal={hoy?.anillo?.kcal ?? 0}
               />
               <View style={s.cifras}>
@@ -337,12 +432,25 @@ export function PortadaEntreno({ modo }: { modo: ModoEntreno }) {
             <Animated.View entering={FadeInDown.delay(190).duration(380)} style={[s.bloque, { gap: Spacing[2] }]}>
               <Text style={s.seccion}>TU MATERIAL</Text>
 
+              {modo === 'home' && (
+                <Acceso
+                  icono="construct-outline"
+                  titulo="Qué tengo en casa"
+                  sub={
+                    materialCasa.tengo.length === 0
+                      ? 'Solo peso corporal · toca para añadir material'
+                      : APAREJOS.filter(a => materialCasa.tengo.includes(a.id)).map(a => a.nombre).join(' · ')
+                  }
+                  onPress={() => setPidiendoMaterial(true)}
+                />
+              )}
+
               <Acceso
                 icono="map-outline"
-                titulo={hoy?.programa ? 'Cambiar de plan' : 'Planes de varias semanas'}
-                sub={hoy?.programa
+                titulo={hayPlanDeAqui ? 'Cambiar de plan' : 'Planes de varias semanas'}
+                sub={hayPlanDeAqui && hoy?.programa
                   ? `Ahora sigues «${hoy.programa.nombre}»`
-                  : 'Que alguien decida por ti qué toca cada día'}
+                  : `Que alguien decida por ti qué toca cada día ${modo === 'home' ? 'en casa' : 'en el gimnasio'}`}
                 onPress={() => router.push(`/workout/programs?mode=${modo}`)}
               />
               <Acceso
@@ -364,6 +472,7 @@ export function PortadaEntreno({ modo }: { modo: ModoEntreno }) {
           </>
         )}
       </ScrollView>
+      <MaterialCasa abierto={pidiendoMaterial} onCerrar={() => setPidiendoMaterial(false)} />
       <RachaEncendida
         visible={racha.visible}
         dias={racha.dias}
@@ -387,6 +496,19 @@ export function PortadaEntreno({ modo }: { modo: ModoEntreno }) {
 function Hero({ hoy, onEmpezar, modo, planDeAqui }: {
   hoy: Hoy | null; onEmpezar: () => void; modo: ModoEntreno; planDeAqui: boolean
 }) {
+  /**
+   * TU REGISTRO POR ENCIMA DEL SERVIDOR
+   * ───────────────────────────────────
+   * `hoy.estado` lo decide el servidor mirando si hay sesiones guardadas. Pero
+   * marcar los ejercicios a mano es igual de válido —hay gente que entrena sin
+   * anotar serie por serie— y esa marca solo existe aquí.
+   *
+   * El hook va ANTES del `if (!hoy)` a propósito: llamar hooks detrás de un
+   * return condicional rompe el orden entre renders y React se queja.
+   */
+  const registroDeHoy = useEntrenoRegistro(st => st.dias[hoyClave()])
+  const cerradoPorMi = registroDeHoy?.cerradoEn != null
+
   if (!hoy) return <SinConexion />
 
   // Una sesión a medias manda SIEMPRE, sea del lugar que sea: lo que está a
@@ -394,8 +516,13 @@ function Hero({ hoy, onEmpezar, modo, planDeAqui }: {
   if (hoy.estado === 'abierta' && hoy.abierta) return <AMedias s={hoy.abierta} />
 
   if (!planDeAqui) return <SinPlan modo={modo} />
+  // Si TÚ lo has dado por hecho, se pasa a «mañana te toca» aunque el servidor
+  // siga creyendo que está pendiente.
+  if (cerradoPorMi && (hoy.estado === 'toca' || hoy.estado === 'hecho')) {
+    return <YaEstá hoy={hoy} marcados={registroDeHoy?.hechos.length ?? 0} modo={modo} />
+  }
   if (hoy.estado === 'toca' && hoy.dia) return <TocaHoy hoy={hoy} onEmpezar={onEmpezar} />
-  if (hoy.estado === 'hecho') return <YaEstá hoy={hoy} />
+  if (hoy.estado === 'hecho') return <YaEstá hoy={hoy} modo={modo} />
   // Descanso NO es lo mismo que no tener plan, y caía en el mismo sitio: quien
   // había puesto el jueves libre leía «todavía no sigues ningún plan».
   if (hoy.estado === 'descanso') return <Descanso hoy={hoy} />
@@ -543,7 +670,7 @@ function TocaHoy({ hoy, onEmpezar }: { hoy: Hoy; onEmpezar: () => void }) {
  * No se esconde ni se ofrece repetir: se enseña lo hecho. Alguien que ya ha
  * cumplido no necesita que le empujen otra vez, necesita ver que cuenta.
  */
-function YaEstá({ hoy }: { hoy: Hoy }) {
+function YaEstá({ hoy, marcados = 0, modo }: { hoy: Hoy; marcados?: number; modo?: ModoEntreno }) {
   const total = hoy.hechasHoy.reduce(
     (a, x) => ({
       series: a.series + (x.total_sets ?? 0),
@@ -555,6 +682,20 @@ function YaEstá({ hoy }: { hoy: Hoy }) {
   )
   const quedaDia = hoy.semana?.dias.some(d => !d.hecho && !d.esHoy)
   const foto = useFotoPortada(hoy.programa)
+
+  /**
+   * QUÉ TOCA MAÑANA
+   * ───────────────
+   * Con lo de hoy cerrado, «HOY YA ESTÁ» deja de ser útil: ya lo sabes, acabas
+   * de hacerlo. Lo que se quiere saber a partir de ese momento es qué viene
+   * después, para saber si mañana hay que madrugar o se descansa.
+   *
+   * `diaSemana` va de 0 (lunes) a 6 (domingo), pero `getDay()` de JS empieza en
+   * domingo. El `+6 % 7` es esa traducción, y sin ella el plan se enseña
+   * corrido un día — que es de los errores más difíciles de ver mirando.
+   */
+  const hoySemana = (new Date().getDay() + 6) % 7
+  const manana = hoy.semana?.dias.find(d => d.diaSemana === (hoySemana + 1) % 7) ?? null
 
   return (
     <View style={h.marco}>
@@ -569,14 +710,27 @@ function YaEstá({ hoy }: { hoy: Hoy }) {
         onCerrar={foto.cerrar} onElegir={id => void foto.elegir(id)}
       />
       <View style={h.dentro}>
-        <Etiqueta texto="HOY YA ESTÁ" tono="hecho" />
+        <Etiqueta texto={manana ? "MAÑANA TE TOCA" : "HOY YA ESTÁ · MAÑANA DESCANSAS"} tono="hecho" />
 
         <View style={{ gap: Spacing[3] }}>
           <View>
             <Text style={h.titulo} numberOfLines={2}>
-              {hoy.hechasHoy[0]?.title ?? 'Entrenado'}
+              {manana ? manana.nombre : (hoy.hechasHoy[0]?.title ?? 'Entrenado')}
             </Text>
+            {manana && (
+              <Text style={h.sub}>
+                {manana.ejercicios} {manana.ejercicios === 1 ? 'ejercicio' : 'ejercicios'} · {manana.series} series
+              </Text>
+            )}
+            {/* Sin sesión anotada, «0 series» sería una mentira fea: se dice
+                lo que de verdad hubo, que son ejercicios marcados a mano. */}
+            {total.series === 0 && marcados > 0 ? (
+              <Text style={h.sub}>
+                Hoy marcaste {marcados} {marcados === 1 ? 'ejercicio' : 'ejercicios'}
+              </Text>
+            ) : (
             <Text style={h.sub}>
+              {manana ? 'Hoy hiciste ' : ''}
               {total.series} {total.series === 1 ? 'serie' : 'series'}
               {total.minutos > 0 ? ` · ${minutosCorto(total.minutos)}` : ''}
               {total.volumen > 0 ? ` · ${kilosCorto(total.volumen)}` : ''}
@@ -585,12 +739,13 @@ function YaEstá({ hoy }: { hoy: Hoy }) {
               {total.kcal > 0 ? ` · ${total.kcal} kcal` : ''}
               {hoy.hechasHoy.length > 1 ? ` · ${hoy.hechasHoy.length} sesiones` : ''}
             </Text>
+            )}
           </View>
 
           <View style={h.acciones}>
             <TouchableOpacity
               style={h.botonSec}
-              onPress={() => router.push('/workout/history')}
+              onPress={() => router.push(modo ? `/workout/history?mode=${modo}` : '/workout/history')}
               activeOpacity={0.85}
             >
               <Ionicons name="time-outline" size={15} color={Colors.neon.w2} />
@@ -619,7 +774,7 @@ function YaEstá({ hoy }: { hoy: Hoy }) {
             ) : (
               <TouchableOpacity
                 style={h.botonSec}
-                onPress={() => router.push('/workout/programs')}
+                onPress={() => router.push(modo ? `/workout/programs?mode=${modo}` : '/workout/programs')}
                 activeOpacity={0.85}
               >
                 <Ionicons name="map-outline" size={15} color={Colors.neon.w2} />
@@ -710,17 +865,28 @@ function FilaDia({ d, ultimo, semana }: { d: DiaDeLaSemana; ultimo: boolean; sem
    */
   const cuando = DIAS_SEMANA[d.diaSemana] ?? ''
 
+  /**
+   * Si es hoy y TÚ lo has cerrado, la fila lo enseña ya — sin esperar a que el
+   * servidor se entere. Marcar los ejercicios y que la semana siga diciendo
+   * «HOY» pendiente era justo la desconexión que rompía la sensación de que la
+   * app lleva el registro.
+   */
+  const cerradoPorMi = useEntrenoRegistro(st => st.dias[hoyClave()]?.cerradoEn) != null
+  const hechoYa = !!d.hecho || (d.esHoy && cerradoPorMi)
+
   return (
     <TouchableOpacity
       style={m.fila}
       onPress={() => {
         void Haptics.selectionAsync()
-        router.push(`/workout/program/day?week=${semana}&day=${d.dia}`)
+        // `esElDeHoy` llega en falso cuando se pide un día por número, así que
+        // el dato viaja desde aquí, que es el único sitio que lo sabe seguro.
+        router.push(`/workout/program/day?week=${semana}&day=${d.dia}${d.esHoy ? '&hoy=1' : ''}`)
       }}
       activeOpacity={0.8}
     >
       <View style={m.rail}>
-        {d.hecho ? (
+        {hechoYa ? (
           <View style={[m.nodo, m.hecho]}>
             <Ionicons name="checkmark" size={12} color={Colors.neon.void} />
           </View>
@@ -733,12 +899,12 @@ function FilaDia({ d, ultimo, semana }: { d: DiaDeLaSemana; ultimo: boolean; sem
         ) : (
           <View style={[m.nodo, m.porHacer]} />
         )}
-        {!ultimo && <View style={[m.hilo, !!d.hecho && m.hiloHecho]} />}
+        {!ultimo && <View style={[m.hilo, hechoYa && m.hiloHecho]} />}
       </View>
 
       <View style={m.cuerpo}>
         <Text style={[m.cuando, d.esHoy && m.cuandoHoy]}>{cuando.toUpperCase()}</Text>
-        <Text style={[m.nombre, !d.esHoy && !d.hecho && { color: Colors.neon.w2 }]}>
+        <Text style={[m.nombre, !d.esHoy && !hechoYa && { color: Colors.neon.w2 }]}>
           {d.nombre}
         </Text>
         <Text style={m.sub}>
@@ -750,7 +916,9 @@ function FilaDia({ d, ultimo, semana }: { d: DiaDeLaSemana; ultimo: boolean; sem
         </Text>
       </View>
 
-      {d.esHoy && !d.hecho && <View style={m.hoyPastilla}><Text style={m.hoyTxt}>HOY</Text></View>}
+      {/* La pastilla «HOY» se apaga en cuanto lo das por hecho: si no, la fila
+          dice a la vez que está hecho y que te toca. */}
+      {d.esHoy && !hechoYa && <View style={m.hoyPastilla}><Text style={m.hoyTxt}>HOY</Text></View>}
       {/* Un día que se quedó atrás NO se marca como fallado: se dice que sigue
           disponible, porque hacerlo mañana cuenta igual. */}
       {d.pendiente && (

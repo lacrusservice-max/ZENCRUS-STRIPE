@@ -215,7 +215,7 @@ export default function Descubre() {
                         <Animated.View key={e.slug} entering={FadeInDown.delay(i * 45).duration(300)}>
                           <TouchableOpacity
                             style={s.fila}
-                            onPress={() => router.push(`/workout/exercise/${e.slug}`)}
+                            onPress={() => router.push(`/workout/exercise/${e.slug}${fijado === 'home' ? '?place=home' : ''}`)}
                             activeOpacity={0.8}
                           >
                             <Text style={s.filaNum}>{i + 1}</Text>
@@ -250,7 +250,7 @@ export default function Descubre() {
             {/* ── El catálogo entero ───────────────────────────────────── */}
             <TouchableOpacity
               style={s.catalogo}
-              onPress={() => router.push('/workout/library')}
+              onPress={() => router.push(fijado ? `/workout/library?place=${fijado}` : '/workout/library')}
               activeOpacity={0.85}
             >
               <Ionicons name="library-outline" size={19} color={Colors.neon.w2} />

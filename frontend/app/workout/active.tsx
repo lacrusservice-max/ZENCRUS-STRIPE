@@ -1250,13 +1250,13 @@ function Resumen({ datos, marcas = [], titulo, modo, posters = [] }: {
             </View>
           )}
 
-          <TouchableOpacity style={r.boton} onPress={() => router.replace('/workout/gym')} activeOpacity={0.88}>
+          <TouchableOpacity style={r.boton} onPress={() => router.replace(modo === 'home' ? '/workout/casa' : '/workout/gym')} activeOpacity={0.88}>
             <Text style={r.botonTxt}>Volver a Entrena</Text>
           </TouchableOpacity>
 
           <TouchableOpacity
             style={r.secundario}
-            onPress={() => router.replace('/workout/history')}
+            onPress={() => router.replace(`/workout/history?mode=${modo}`)}
             activeOpacity={0.8}
           >
             <Text style={r.secundarioTxt}>Ver el historial</Text>

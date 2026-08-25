@@ -156,6 +156,8 @@ export function redondearCarga(kg: number, paso = 2.5): number {
 
 // ── Lo que se propone para un ejercicio ──────────────────────────────────────
 
+import { equipoDe } from '../data/plantillaSemana'
+
 export interface Propuesta {
   slug?: string
   nombre: string
@@ -176,6 +178,12 @@ export interface Propuesta {
   fijadoAMano: boolean
   esDescarga: boolean
   notas?: string
+  /**
+   * Con qué se hace, sacado del catálogo por su slug. Viaja para que la app
+   * pueda saber si un ejercicio dejó de encajar al cambiar el material de casa
+   * —sin tener que pedir la ficha de cada uno—. `null` en los anotados a mano.
+   */
+  equipment?: string | null
 }
 
 /** Lo último que se hizo de un ejercicio, para la doble progresión. */
@@ -237,6 +245,7 @@ export function proponer(
     slug: e.slug, nombre: e.nombre, series,
     reps: e.reps, duracion: e.duracion, descanso: e.descanso,
     carga, esDescarga: descarga, notas: e.notas,
+    equipment: equipoDe(e.slug),
   }
 
   // Lo que fijó la persona gana sobre todo lo demás, descarga incluida: si

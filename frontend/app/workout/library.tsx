@@ -30,6 +30,7 @@ import { Screen, ScreenHeader } from '@/components/ui/Screen'
 import { useAppTheme } from '@/context/ThemeContext'
 import { Empty, Skeleton } from '@/components/social/Bits'
 import * as E from '@/services/exerciseService'
+import { useCasaMaterial, puedoHacerlo } from '@/store/casaMaterialStore'
 import { errorText } from '@/services/socialService'
 
 // ── Selector de sitio ────────────────────────────────────────────────────────
@@ -150,11 +151,35 @@ export default function LibraryScreen() {
      Igual que `muscle`, se usa como valor de ARRANQUE y nunca se reimpone: si
      se reimpusiera, quitar el filtro a mano lo devolvería solo. */
   const [lugar, setLugar] = useState<'todo' | 'home'>(place === 'home' ? 'home' : 'todo')
+
+  /**
+   * ENTRANDO POR «EN CASA», NO SE SALE DE CASA
+   * ──────────────────────────────────────────
+   * El filtro estaba bien puesto como valor INICIAL, pero el interruptor de
+   * arriba dejaba volver a «Todo» y entonces la biblioteca de casa enseñaba
+   * prensa, poleas y jaula. Quien entra por En casa entra a ver lo que puede
+   * hacer en casa, punto.
+   *
+   * Al revés no aplica y por eso no se bloquea: en un gimnasio se puede hacer
+   * todo el catálogo, así que ahí ver ejercicios de casa no estorba a nadie.
+   */
+  const soloCasa = place === 'home'
   const [grupo, setGrupo] = useState<string | null>(muscle ?? null)
   const [material, setMaterial] = useState<string | null>(null)
   const [texto, setTexto] = useState('')
 
   const [lista, setLista] = useState<E.ExerciseCard[]>([])
+
+  /**
+   * «Sin gimnasio» no es «en MI casa». El servidor deja 125 con `place=home`,
+   * pero 56 son de mancuernas y 23 de pesa rusa: sin ellas no se pueden hacer.
+   * Se filtra por lo que el usuario ha dicho que tiene.
+   *
+   * Mientras no haya contestado, `puedoHacerlo` deja pasar todo — esconderle
+   * medio catálogo antes de preguntarle sería peor que no filtrar.
+   */
+  const tengo = useCasaMaterial(st => st.tengo)
+  const preguntado = useCasaMaterial(st => st.preguntado)
   const [total, setTotal] = useState(0)
   const [cargando, setCargando] = useState(true)
   const [cargandoMas, setCargandoMas] = useState(false)
@@ -170,8 +195,12 @@ export default function LibraryScreen() {
     muscle: grupo ?? undefined,
     equipment: material ?? undefined,
     place: lugar === 'home' ? 'home' : undefined,
+    /* En casa el filtro fino es del cliente, así que se piden páginas grandes:
+       con 40 por página, filtrar por material podía dejar tres tarjetas y un
+       scroll que no llegaba nunca a pedir más. Los 125 de casa caben en dos. */
+    limit: soloCasa ? 100 : undefined,
     offset,
-  }), [texto, grupo, material, lugar])
+  }), [texto, grupo, material, lugar, soloCasa])
 
   // Se espera a que pare de escribir, como en la búsqueda de la comunidad: una
   // petición por letra agota la cuota del servidor en tres palabras.
@@ -203,12 +232,16 @@ export default function LibraryScreen() {
     finally { setCargandoMas(false) }
   }
 
-  const limpiar = () => { setGrupo(null); setMaterial(null); setTexto(''); setLugar('todo') }
+  const limpiar = () => { setGrupo(null); setMaterial(null); setTexto(''); if (!soloCasa) setLugar('todo') }
   const hayFiltro = !!grupo || !!material || !!texto || lugar === 'home'
 
   const COLS = 3
   const ancho = (width - 40 - (COLS - 1) * 10) / COLS
 
+
+  const visibles = soloCasa
+    ? lista.filter(e => puedoHacerlo(e, tengo, preguntado))
+    : lista
   return (
     <Screen>
       <ScreenHeader
@@ -238,12 +271,14 @@ export default function LibraryScreen() {
         )}
       </View>
 
-      <DondeEntrenas
-        value={lugar}
-        onChange={setLugar}
-        casa={filtros?.home ?? 0}
-        total={filtros?.total ?? 0}
-      />
+      {!soloCasa && (
+        <DondeEntrenas
+          value={lugar}
+          onChange={setLugar}
+          casa={filtros?.home ?? 0}
+          total={filtros?.total ?? 0}
+        />
+      )}
 
       {/* Grupos musculares: cada uno con su color, el mismo en toda la app */}
       <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.chipsScroll} contentContainerStyle={s.chips}>
@@ -292,7 +327,11 @@ export default function LibraryScreen() {
 
       <View style={s.resumen}>
         <Text style={[s.cuenta, { color: T.ink3 }]}>
-          {cargando ? 'Buscando…' : `${total} ${total === 1 ? 'ejercicio' : 'ejercicios'}`}
+          {cargando
+            ? 'Buscando…'
+            /* Con el filtro de casa, `total` es lo que trajo el servidor y no lo
+               que se puede hacer: enseñar 125 y pintar 34 sería mentir. */
+            : `${soloCasa ? visibles.length : total} ${(soloCasa ? visibles.length : total) === 1 ? 'ejercicio' : 'ejercicios'}`}
         </Text>
         {hayFiltro && (
           <TouchableOpacity onPress={limpiar} hitSlop={8}>
@@ -302,13 +341,13 @@ export default function LibraryScreen() {
       </View>
 
       <FlatList
-        data={lista}
+        data={visibles}
         keyExtractor={e => e.slug}
         numColumns={COLS}
         columnWrapperStyle={{ gap: 10, paddingHorizontal: 20 }}
         contentContainerStyle={{ gap: 10, paddingBottom: 120 }}
         renderItem={({ item }) => (
-          <Tarjeta ex={item} ancho={ancho} onPress={() => router.push(`/workout/exercise/${item.slug}`)} />
+          <Tarjeta ex={item} ancho={ancho} onPress={() => router.push(`/workout/exercise/${item.slug}${soloCasa ? '?place=home' : ''}`)} />
         )}
         onEndReached={cargarMas}
         onEndReachedThreshold={0.6}

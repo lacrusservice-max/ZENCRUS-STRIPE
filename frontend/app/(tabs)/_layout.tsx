@@ -326,52 +326,39 @@ function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
             {(() => {
               const es = entradasDeMenu(conMenu.menu, { user: usuario, lugar: conMenu.lugar ?? 'gym' })
               /*
-               * DOS MITADES DE IGUAL PESO, CON EL HUECO DE ZENA EN MEDIO
-               * ────────────────────────────────────────────────────────
-               * Antes las entradas ocupaban el ancho entero porque aquí ZENA
-               * se escondía. Ahora ZENA no se esconde nunca, así que hay que
-               * guardarle su sitio también en este menú o el círculo cae encima
-               * de las entradas centrales y deja de poder tocarse.
+               * EL ANCHO ENTERO: AQUÍ ZENA NO SE VE
+               * ───────────────────────────────────
+               * Dentro del menú de una sección ZENA se apaga, así que no hay
+               * sitio que guardarle: las entradas ocupan la píldora entera y
+               * todas miden lo mismo.
                *
-               * Las mitades llevan `flex: 1` cada una —y no las entradas
-               * sueltas— porque `zenaFila` centra a ZENA sobre la píldora
-               * entera. Con dos bloques de igual peso el hueco cae en el centro
-               * exacto sea cual sea el número de entradas; repartiendo el flex
-               * entrada a entrada, un menú impar (Nutrición tiene cinco) dejaba
-               * el hueco descentrado y ZENA volvía a tapar una entrada.
-               *
-               * La de más va a la izquierda. Con fuente de 9 puntos, tres
-               * entradas en media píldora siguen sobrándoles ancho.
+               * Aquí hubo dos mitades con el hueco de ZENA en medio, y era lo
+               * correcto MIENTRAS ella seguía encendida en este menú. Al
+               * apagarla, ese hueco se quedó sin motivo: un agujero en el
+               * centro y las entradas apretadas a los lados. La barra flotante
+               * nunca tuvo el problema porque siempre hizo esto mismo.
                */
-              const corte = Math.ceil(es.length / 2)
-              return [es.slice(0, corte), es.slice(corte)].map((mitad, i) => (
-                <React.Fragment key={i}>
-                  <View style={tb.mitad}>
-                  {mitad.map(d => {
-                    const on = d.id === conMenu.activo
-                    const tinte = on ? (isDark ? T.accent : LIGHT_TAB.accent) : (isDark ? T.ink3 : LIGHT_TAB.idle)
-                    return (
-                      <TouchableOpacity
-                        key={d.id}
-                        style={tb.tab}
-                        onPress={() => irASeccion(d)}
-                        activeOpacity={0.72}
-                        hitSlop={{ top: 10, bottom: 10 }}
-                      >
-                        <View>
-                          <Ionicons name={d.icono} size={22} color={tinte} />
-                          <View style={tb.contador} pointerEvents="none"><Badge count={contadorDe(d)} /></View>
-                        </View>
-                        <Text style={[tb.label, { color: tinte }, on && { fontWeight: '700' }]} numberOfLines={1}>
-                          {d.label}
-                        </Text>
-                      </TouchableOpacity>
-                    )
-                  })}
-                  </View>
-                  {i === 0 && <View style={tb.hueco} pointerEvents="none" />}
-                </React.Fragment>
-              ))
+              return es.map(d => {
+                const on = d.id === conMenu.activo
+                const tinte = on ? (isDark ? T.accent : LIGHT_TAB.accent) : (isDark ? T.ink3 : LIGHT_TAB.idle)
+                return (
+                  <TouchableOpacity
+                    key={d.id}
+                    style={tb.tab}
+                    onPress={() => irASeccion(d)}
+                    activeOpacity={0.72}
+                    hitSlop={{ top: 10, bottom: 10 }}
+                  >
+                    <View>
+                      <Ionicons name={d.icono} size={22} color={tinte} />
+                      <View style={tb.contador} pointerEvents="none"><Badge count={contadorDe(d)} /></View>
+                    </View>
+                    <Text style={[tb.label, { color: tinte }, on && { fontWeight: '700' }]} numberOfLines={1}>
+                      {d.label}
+                    </Text>
+                  </TouchableOpacity>
+                )
+              })
             })()}
           </FundidoAlEntrar>
         ) : (
@@ -440,18 +427,31 @@ function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         círculo alrededor del suyo.
       */}
       {/*
-        ZENA NO SE DESMONTA NUNCA.
-        ─────────────────────────
-        Antes iba tras `{!enSeccion && ...}`: al abrir el menú de una sección
-        se desmontaba entera y volvía a montarse al cerrarlo. Cada montaje es
-        un `require` que en desarrollo Metro tiene que servir otra vez, y por
-        eso parpadeaba y a veces tardaba en volver.
+        ZENA SOLO ESTÁ EN EL MENÚ DE LA APP. Y NO SE DESMONTA NUNCA.
+        ───────────────────────────────────────────────────────────
+        Las dos cosas a la vez, que es lo que costaba: dentro del menú de una
+        sección no pinta nada y no debe verse, pero desmontarla la rompía.
 
-        Ahora vive fuera de las dos ramas y su hueco está reservado en las dos,
-        así que es lo único de la barra que no cambia jamás: ni se va, ni se
-        recarga, ni depende de en qué menú estés.
+        Antes iba tras `{!enSeccion && ...}` y se desmontaba al abrir el menú:
+        cada montaje es un `require` que en desarrollo Metro tiene que servir
+        otra vez, y por eso parpadeaba y a veces tardaba en volver. Se arregló
+        dejándola siempre montada — pero eso la dejó VISIBLE también en los
+        menús de sección, con un hueco reservado para ella en medio de las
+        entradas.
+
+        La salida es apagarla sin quitarla: sigue montada —no hay `require`
+        que rehacer, no parpadea— y se va a opacidad cero con los toques
+        desactivados, así que no tapa la entrada que tenga debajo.
+
+        Lo que NO puede pasar es que se quede invisible sin menú abierto. Por
+        eso se mira `enSeccion`, que se calcula contra el destino de ESTA
+        pantalla: al saltar a una pestaña sin galón —Entrena, Salud— deja de
+        coincidir, y ella vuelve sola.
       */}
-      <View style={tb.zenaFila} pointerEvents="box-none">
+      <View
+        style={[tb.zenaFila, enSeccion && { opacity: 0 }]}
+        pointerEvents={enSeccion ? 'none' : 'box-none'}
+      >
         <TouchableOpacity
           onPress={() => router.push('/(tabs)/chat')}
           activeOpacity={0.85}

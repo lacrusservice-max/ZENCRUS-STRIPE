@@ -62,9 +62,23 @@ export default function Programas() {
 
   /* Los planes traen su lugar (`mode`). En la portada de casa, ofrecer uno que
      pide jaula y prensa es ofrecer lo que no se puede hacer; y al revés, en el
-     gimnasio sobra el de suelo. El que YA sigues no se filtra nunca: si lo
-     escondiéramos, «Cambiar de plan» dejaría de enseñar el que quieres cambiar. */
+     gimnasio sobra el de suelo. */
   const { mode } = useLocalSearchParams<{ mode?: string }>()
+
+  /**
+   * EL QUE SIGUES TAMPOCO CRUZA DE SECCIÓN
+   * ──────────────────────────────────────
+   * Antes la cabecera enseñaba SIEMPRE el plan que sigues, viniera de donde
+   * viniera, con este razonamiento: si lo escondes, «Cambiar de plan» deja de
+   * enseñar el que quieres cambiar. Era cierto cuando esta pantalla era común.
+   *
+   * Ya no lo es: desde casa, «Cambiar de plan» ni siquiera aparece —dice
+   * «Planes de varias semanas»— porque no tienes plan de casa. Así que enseñar
+   * aquí «cesar», que es de gimnasio, era la última puerta por la que se colaba
+   * una sección en la otra.
+   */
+  const mioDeAqui = mio && (!mode || mio.program?.mode === mode) ? mio : null
+
   const otros = programas
     .filter(p => p.id !== mio?.program_id)
     .filter(p => !mode || p.mode === mode)
@@ -73,7 +87,7 @@ export default function Programas() {
     <Screen>
       <CabeceraSeccion
         titulo="Programas"
-        subtitulo={mio ? 'Estás siguiendo uno' : 'Planes de varias semanas'}
+        subtitulo={mioDeAqui ? 'Estás siguiendo uno' : 'Planes de varias semanas'}
       />
 
       <ScrollView
@@ -89,7 +103,7 @@ export default function Programas() {
           <View style={s.cargando}><ActivityIndicator color={Colors.neon.red} /></View>
         ) : (
           <>
-            {mio && <EnCurso inscripcion={mio} />}
+            {mioDeAqui && <EnCurso inscripcion={mioDeAqui} />}
 
             {/* Montar el tuyo, ANTES del catálogo.
                 Quien llega aquí sin plan tiene dos caminos igual de válidos, y
@@ -97,7 +111,10 @@ export default function Programas() {
                 creer que solo se puede elegir de una lista. */}
             <TouchableOpacity
               style={s.montar}
-              onPress={() => { void Haptics.selectionAsync(); router.push('/workout/program/nuevo') }}
+              onPress={() => { void Haptics.selectionAsync()
+                // El lugar sigue el camino: si llegaste filtrando por casa,
+                // el plan que montes es de casa y no se vuelve a preguntar.
+                router.push(mode ? `/workout/program/nuevo?modo=${mode}` : '/workout/program/nuevo') }}
               activeOpacity={0.85}
             >
               <View style={s.montarIcono}>
@@ -115,7 +132,7 @@ export default function Programas() {
 
             {otros.length > 0 && (
               <Text style={s.seccion}>
-                {mio ? 'OTROS PROGRAMAS' : 'O ELIGE UNO HECHO'}
+                {mioDeAqui ? 'OTROS PROGRAMAS' : 'O ELIGE UNO HECHO'}
               </Text>
             )}
 

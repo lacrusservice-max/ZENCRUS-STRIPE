@@ -23,7 +23,7 @@
 
 import { useEffect, useState, useCallback } from 'react'
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native'
-import { Stack, router } from 'expo-router'
+import { Stack, router, usePathname } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '@/store/authStore'
 import { usePrivacyStore } from '@/store/privacyStore'
@@ -31,6 +31,7 @@ import { tieneCiclo } from '@/features/salud/acceso'
 import { authenticateWithBiometrics } from '@/services/authService'
 import { base, space, radius, family, type as tipo, PHASES } from '@/theme/salud/tokens'
 import { Screen } from '@/components/ui/Screen'
+import { BarraCiclo } from '@/components/salud/ciclo/BarraCiclo'
 
 const TONO = PHASES.ovulatoria.accent
 
@@ -38,6 +39,7 @@ export default function LayoutCiclo() {
   const user = useAuthStore(s => s.user)
   const cargandoSesion = useAuthStore(s => s.isLoading)
   const bloqueo = usePrivacyStore(s => s.menstrualLockEnabled)
+  const ruta = usePathname()
 
   const [abierto, setAbierto] = useState(!bloqueo)
   const [verificando, setVerificando] = useState(false)
@@ -107,10 +109,30 @@ export default function LayoutCiclo() {
     )
   }
 
-  return <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }} />
+  /* El alta y el registro diario son flujos de pantalla completa con su propio
+     cierre: la barra ahí estorbaría y además invitaría a escaparse a media
+     captura de datos, dejando el registro a medias. */
+  const conBarra = !SIN_BARRA.some(r => ruta.startsWith(r))
+
+  return (
+    <View style={s.flex}>
+      <Stack screenOptions={{ headerShown: false, animation: 'slide_from_right' }}>
+        {/* Las cinco pestañas se sustituyen entre sí; deslizarlas de lado haría
+            parecer que una está «dentro» de otra, y son hermanas. */}
+        {PESTANAS.map(n => (
+          <Stack.Screen key={n} name={n} options={{ animation: 'none' }} />
+        ))}
+      </Stack>
+      {conBarra ? <BarraCiclo /> : null}
+    </View>
+  )
 }
 
+const PESTANAS = ['index', 'calendario', 'ajustes', 'estadisticas', 'comunidad']
+const SIN_BARRA = ['/salud/ciclo/alta', '/salud/ciclo/registrar']
+
 const s = StyleSheet.create({
+  flex: { flex: 1 },
   centro: {
     flex: 1, alignItems: 'center', justifyContent: 'center',
     paddingHorizontal: space.xl, gap: space.sm,

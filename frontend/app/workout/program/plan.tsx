@@ -49,6 +49,12 @@ export default function PlanDelPrograma() {
   const [cargando, setCargando] = useState(true)
   const [refrescando, setRefrescando] = useState(false)
 
+  /**
+   * Volver al catálogo NO puede sacarte de tu sección. El plan que estás viendo
+   * ya sabe de dónde es, así que el lugar se hereda de él en vez de perderse.
+   */
+  const modoDelPlan = ins?.program?.mode ?? null
+
   const cargar = useCallback(async () => {
     try {
       setIns(await miInscripcion())
@@ -89,7 +95,7 @@ export default function PlanDelPrograma() {
           onPress: async () => {
             try {
               await abandonarPrograma()
-              router.replace('/workout/programs')
+              router.replace(modoDelPlan ? `/workout/programs?mode=${modoDelPlan}` : '/workout/programs')
             } catch {
               Alert.alert('No se pudo', 'Inténtalo otra vez en un momento.')
             }
@@ -114,7 +120,7 @@ export default function PlanDelPrograma() {
         <CabeceraSeccion titulo="Tu plan" />
         <View style={{ padding: Spacing[4], gap: Spacing[3] }}>
           <Vacio texto="No estás siguiendo ningún programa ahora mismo." />
-          <TouchableOpacity style={s.verCatalogo} onPress={() => router.replace('/workout/programs')} activeOpacity={0.85}>
+          <TouchableOpacity style={s.verCatalogo} onPress={() => router.replace(modoDelPlan ? `/workout/programs?mode=${modoDelPlan}` : '/workout/programs')} activeOpacity={0.85}>
             <Text style={s.verCatalogoTxt}>Ver los programas</Text>
           </TouchableOpacity>
         </View>

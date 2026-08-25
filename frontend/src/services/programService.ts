@@ -97,6 +97,11 @@ export interface Propuesta {
   original: string | null
   muscle: string | null
   muscleEs: string | null
+  /**
+   * Con qué se hace. Estaba declarado desde siempre pero el servidor no lo
+   * mandaba: ahora se rellena desde el catálogo por su slug, y es lo que
+   * permite saber si un ejercicio dejó de encajar al cambiar el material.
+   */
   equipment: string | null
   equipmentEs: string | null
   pattern: string | null
@@ -107,6 +112,8 @@ export interface Alternativa {
   nombre: string
   muscleEs: string | null
   equipmentEs: string
+  /** La clave en inglés. `equipmentEs` es para leer; esta es para decidir. */
+  equipment: string
   home: boolean
   poster: string | null
 }
@@ -308,14 +315,24 @@ export const getMusculos = async () =>
  * una PROPUESTA: no está guardada en ningún sitio y el usuario la edita antes
  * de que exista nada.
  */
-export const proponerEjercicios = async (musculos: string[], modo: 'gym' | 'home' = 'gym') =>
+export const proponerEjercicios = async (
+  musculos: string[],
+  modo: 'gym' | 'home' = 'gym',
+  /**
+   * Lo que hay en su casa. `null` = todavía no ha contestado y no se filtra;
+   * `[]` = ha dicho que no tiene nada, y entonces solo queda peso corporal.
+   * La diferencia importa: son dos estados distintos, no el mismo vacío.
+   */
+  aparejos: string[] | null = null,
+) =>
   unwrap<{
     nombre: string
     ejercicios: (EjercicioPlan & { musculo: string })[]
     posters?: Record<string, string>
     motivo?: string
   }>(await apiGet(
-    `/workout/plan/propuesta?musculos=${encodeURIComponent(musculos.join(','))}&modo=${modo}`,
+    `/workout/plan/propuesta?musculos=${encodeURIComponent(musculos.join(','))}&modo=${modo}`
+    + (modo === 'home' && aparejos !== null ? `&equipment=${encodeURIComponent(aparejos.join(','))}` : ''),
   ))
 
 /** Lunes a domingo, como los cuenta el servidor: 0 = lunes. */

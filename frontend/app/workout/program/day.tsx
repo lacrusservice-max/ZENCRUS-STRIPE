@@ -30,7 +30,7 @@
  * buscar, que es la lista de ejercicios.
  */
 
-import { useState, useCallback, useMemo } from 'react'
+import { useState, useCallback, useMemo, useEffect } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
   Modal, TextInput, Alert, KeyboardAvoidingView, Platform,
@@ -44,6 +44,10 @@ import * as Haptics from 'expo-haptics'
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
 import { Screen } from '@/components/ui/Screen'
 import { useSessionStore } from '@/store/sessionStore'
+import { useEntrenoRegistro, claveEjercicio, hoyClave } from '@/store/entrenoRegistroStore'
+import { useNombre, useNombreOriginal, useNombresPropios } from '@/store/nombresPropiosStore'
+import { AnadirEjercicio } from '@/components/workout/AnadirEjercicio'
+import { useEspacioBarra } from '@/components/ui/BarraDeSeccion'
 import { CabeceraSeccion } from '@/components/workout/MenuSeccion'
 import { Vacio } from '@/components/workout/Charts'
 import { Miniatura } from '@/components/workout/Miniatura'
@@ -57,7 +61,26 @@ import { fotoDePrograma } from '@/constants/imagenes'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 
 export default function DiaDelPrograma() {
-  const { week, day } = useLocalSearchParams<{ week?: string; day?: string }>()
+  /**
+   * El día se cierra SOLO cuando están marcados todos sus ejercicios, y también
+   * a mano. Cerrarlo con cuatro de seis es legítimo: hay tardes así, y obligar
+   * a marcarlos todos para poder cerrarlo empuja a mentir.
+   */
+  const fechaHoy = hoyClave()
+  const registroHoy = useEntrenoRegistro(st => st.dias[fechaHoy])
+  const cerrarDia = useEntrenoRegistro(st => st.cerrarDia)
+  const anadirExtra = useEntrenoRegistro(st => st.anadirExtra)
+  const reabrirDia = useEntrenoRegistro(st => st.reabrirDia)
+  const limpiarDia = useEntrenoRegistro(st => st.limpiarDia)
+  const quitarExtra = useEntrenoRegistro(st => st.quitarExtra)
+  const alternarReg = useEntrenoRegistro(st => st.alternar)
+  const extras = useEntrenoRegistro(st => st.dias[hoyClave()]?.extra) ?? []
+  const hechosHoy = useEntrenoRegistro(st => st.dias[hoyClave()]?.hechos) ?? []
+  /** Qué grupo muscular está añadiendo, si alguno. */
+  const [anadiendo, setAnadiendo] = useState<{ id: string | null; nombre: string | null } | null>(null)
+  /** La barra flota encima: sin esto el botón de abajo queda debajo de ella. */
+  const espacioBarra = useEspacioBarra()
+  const { week, day, hoy: hoyParam } = useLocalSearchParams<{ week?: string; day?: string; hoy?: string }>()
   const [d, setD] = useState<DiaPropuesto | null>(null)
   const [cargando, setCargando] = useState(true)
   const [cambiando, setCambiando] = useState<Propuesta | null>(null)
@@ -77,6 +100,52 @@ export default function DiaDelPrograma() {
   }, [week, day])
 
   useFocusEffect(useCallback(() => { void cargar() }, [cargar]))
+
+  /**
+   * ¿Está hecho lo de hoy? Manda el registro del usuario por encima de lo que
+   * diga el programa: `d.hecho` viene del plan y no sabe que acabas de marcar
+   * el último ejercicio hace diez segundos.
+   */
+  const totalEjercicios = d?.ejercicios?.length ?? 0
+  const marcadosHoy = (registroHoy?.hechos ?? []).length
+  const cerradoHoy = registroHoy?.cerradoEn != null
+
+  /**
+   * `d.hecho` NO quiere decir «hecho hoy»: quiere decir «este día del plan se
+   * hizo alguna vez», y trae la fecha. Usarlo tal cual era el fallo: la portada
+   * decía «TE TOCA HOY» y el detalle «YA LO HICISTE» a la vez, porque el martes
+   * de la semana pasada sí se había hecho.
+   *
+   * La pastilla habla de HOY, así que se compara contra hoy.
+   */
+  /**
+   * MANDA TU MARCA, NO LA DEL SERVIDOR
+   * ──────────────────────────────────
+   * `d.hecho` se pone en cuanto hay una sesión atribuida a este día del plan, y
+   * eso incluye sesiones empezadas y abandonadas: por eso decía «YA LO HICISTE»
+   * con la rutina a medias, mientras la portada seguía diciendo «TE TOCA HOY».
+   *
+   * Un día está hecho cuando TÚ lo das por hecho —marcando los ejercicios o
+   * cerrándolo—, y solo entonces. Si el servidor cree otra cosa, se enseña
+   * aparte como lo que es: que hay actividad registrada, no que hayas acabado.
+   */
+  const haySesionHoy = d?.hecho?.fecha ? String(d.hecho.fecha).slice(0, 10) === fechaHoy : false
+  /**
+   * Si es hoy manda el parámetro que trae la lista de la semana: al pedir un
+   * día por número, el servicio devuelve `esElDeHoy` en falso y la pastilla
+   * decía «MÁS ADELANTE» estando en el día de hoy.
+   */
+  const esHoyDeVerdad = hoyParam === '1' || !!d?.esElDeHoy
+  const hechoHoy = esHoyDeVerdad && cerradoHoy
+
+  /** Marcado el último, el día se cierra sin preguntar. */
+  useEffect(() => {
+    if (!esHoyDeVerdad || cerradoHoy) return
+    if (totalEjercicios > 0 && marcadosHoy >= totalEjercicios) {
+      void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
+      cerrarDia(fechaHoy, { programaId: d?.programa?.id ?? null, semana: d?.semana ?? null, dia: d?.dia ?? null })
+    }
+  }, [marcadosHoy, totalEjercicios, cerradoHoy, esHoyDeVerdad])
 
   /**
    * Los músculos y el material del día, sin repetir.
@@ -163,6 +232,17 @@ export default function DiaDelPrograma() {
       <Screen>
         <CabeceraSeccion titulo="Hoy" />
         <View style={s.cargando}><ActivityIndicator color={Colors.neon.red} /></View>
+      <AnadirEjercicio
+        abierto={!!anadiendo}
+        musculoId={anadiendo?.id ?? null}
+        musculoNombre={anadiendo?.nombre ?? null}
+        onCerrar={() => setAnadiendo(null)}
+        onElegir={(nombre, slug, musculo) => {
+          anadirExtra(hoyClave(), nombre, musculo, slug)
+          setAnadiendo(null)
+        }}
+      />
+
       </Screen>
     )
   }
@@ -187,7 +267,7 @@ export default function DiaDelPrograma() {
 
       <ScrollView
         showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 140 }}
+        contentContainerStyle={{ paddingBottom: espacioBarra + 96 }}
       >
         {/* ── Héroe ─────────────────────────────────────────────────────── */}
         <Animated.View entering={FadeIn.duration(400)} style={s.zonaHero}>
@@ -207,15 +287,43 @@ export default function DiaDelPrograma() {
 
             <View style={s.heroDentro}>
               <View style={s.pastillas}>
-                {d.hecho ? (
-                  <View style={[s.pastilla, s.pastillaHecho]}>
+                {hechoHoy ? (
+                  /* Se toca para reabrirlo: cerrar un día por error no puede
+                     dejarte atascado en «ya lo hiciste» hasta mañana. */
+                  <TouchableOpacity
+                    style={[s.pastilla, s.pastillaHecho]}
+                    onPress={() => {
+                      void Haptics.selectionAsync()
+                      const todosMarcados = totalEjercicios > 0 && marcadosHoy >= totalEjercicios
+                      Alert.alert(
+                        'Reabrir el día',
+                        todosMarcados
+                          ? 'Están marcados los ' + totalEjercicios + ' ejercicios, así que hay que desmarcarlos: si no, el día se cierra solo otra vez.'
+                          : 'Vuelve a quedar pendiente. Los ejercicios que marcaste siguen marcados.',
+                        [
+                          { text: 'Cancelar', style: 'cancel' },
+                          todosMarcados
+                            ? { text: 'Desmarcar todo y reabrir', style: 'destructive' as const, onPress: () => limpiarDia(fechaHoy) }
+                            : { text: 'Reabrir', onPress: () => reabrirDia(fechaHoy) },
+                        ],
+                      )
+                    }}
+                  >
                     <Ionicons name="checkmark" size={11} color={Colors.neon.void} />
                     <Text style={[s.pastillaTxt, { color: Colors.neon.void }]}>YA LO HICISTE</Text>
-                  </View>
-                ) : d.esElDeHoy ? (
-                  <View style={[s.pastilla, s.pastillaHoy]}>
-                    <Text style={[s.pastillaTxt, { color: '#fff' }]}>TE TOCA HOY</Text>
-                  </View>
+                  </TouchableOpacity>
+                ) : esHoyDeVerdad ? (
+                  <>
+                    <View style={[s.pastilla, s.pastillaHoy]}>
+                      <Text style={[s.pastillaTxt, { color: '#fff' }]}>TE TOCA HOY</Text>
+                    </View>
+                    {haySesionHoy && (
+                      <View style={s.pastilla}>
+                        <Ionicons name="time-outline" size={11} color={Colors.neon.w3} />
+                        <Text style={s.pastillaTxt}>SESIÓN EMPEZADA</Text>
+                      </View>
+                    )}
+                  </>
                 ) : (
                   <View style={s.pastilla}>
                     <Text style={s.pastillaTxt}>MÁS ADELANTE</Text>
@@ -273,6 +381,42 @@ export default function DiaDelPrograma() {
                   />
                 </Animated.View>
               ))}
+
+              {/* Lo que TÚ añadiste a este grupo hoy. No toca el programa. */}
+              {extras.filter(x => x.musculo === g.id).map(x => (
+                <View key={x.clave} style={fx.extra}>
+                  <TouchableOpacity
+                    onPress={() => {
+                      void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+                      alternarReg(hoyClave(), x.clave)
+                    }}
+                    hitSlop={10}
+                    style={[fx.marca, hechosHoy.includes(x.clave) && fx.marcaHecha]}
+                  >
+                    {hechosHoy.includes(x.clave) && (
+                      <Ionicons name="checkmark" size={13} color={Colors.neon.void} />
+                    )}
+                  </TouchableOpacity>
+                  <View style={{ flex: 1 }}>
+                    <Text style={fx.extraNombre} numberOfLines={1}>{x.nombre}</Text>
+                    <Text style={fx.extraPista}>Añadido por ti, solo hoy</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => quitarExtra(hoyClave(), x.clave)} hitSlop={10}>
+                    <Ionicons name="close" size={16} color={Colors.neon.w4} />
+                  </TouchableOpacity>
+                </View>
+              ))}
+
+              <TouchableOpacity
+                style={fx.anadir}
+                onPress={() => {
+                  void Haptics.selectionAsync()
+                  setAnadiendo({ id: g.id, nombre: NOMBRE_GRUPO[g.id] ?? g.nombre })
+                }}
+              >
+                <Ionicons name="add" size={15} color={Colors.neon.w3} />
+                <Text style={fx.anadirTxt}>Añadir a {(NOMBRE_GRUPO[g.id] ?? g.nombre).toLowerCase()}</Text>
+              </TouchableOpacity>
             </View>
           ))}
 
@@ -322,7 +466,7 @@ export default function DiaDelPrograma() {
       </ScrollView>
 
       {/* ── Empezar ────────────────────────────────────────────────────── */}
-      <View style={s.pieFijo}>
+      <View style={[s.pieFijo, { paddingBottom: espacioBarra }]}>
         {/* Con la sesión de ESTE día ya abierta, el botón deja de invitar a
             empezar —ya empezaste— y recuerda lo único que queda por hacer:
             tocar un ejercicio. */}
@@ -333,7 +477,7 @@ export default function DiaDelPrograma() {
           </View>
         ) : (
           <TouchableOpacity
-            style={[s.boton, d.hecho && s.botonHecho]}
+            style={[s.boton, hechoHoy && s.botonHecho]}
             onPress={() => void empezar()}
             disabled={abriendo}
             activeOpacity={0.88}
@@ -343,7 +487,7 @@ export default function DiaDelPrograma() {
               : <>
                   <Ionicons name="play" size={17} color="#fff" />
                   <Text style={s.botonTxt}>
-                    {d.hecho ? 'Repetir este día' : d.esElDeHoy ? 'Empezar' : 'Entrenar este día'}
+                    {hechoHoy ? 'Repetir este día' : esHoyDeVerdad ? 'Empezar' : 'Entrenar este día'}
                   </Text>
                 </>}
           </TouchableOpacity>
@@ -369,9 +513,49 @@ function FichaEjercicio({ e, n, poster, contexto, onCambiar }: {
   contexto: { programId: string; semana: number; dia: number; titulo: string }
   onCambiar: () => void
 }) {
+  /**
+   * La palomita. Se guarda por FECHA REAL, no por «día 2 del programa»: mover
+   * la sesión del martes al miércoles es lo normal, y con el índice del plan
+   * el martes quedaría pendiente para siempre.
+   */
+  const fecha = hoyClave()
+  const clave = claveEjercicio({ slug: e.slug, nombre: e.nombre })
+  const hechos = useEntrenoRegistro(st => st.dias[fecha]?.hechos)
+  const alternar = useEntrenoRegistro(st => st.alternar)
+  const hecho = (hechos ?? []).includes(clave)
+
+  /** El nombre con el que TÚ lo llamas. Solo aquí: el catálogo no se toca. */
+  const nombreVisible = useNombre({ slug: e.slug, nombre: e.nombre })
+  const nombreCatalogo = useNombreOriginal({ slug: e.slug, nombre: e.nombre })
+  const ponerNombre = useNombresPropios(st => st.poner)
+  const quitarNombre = useNombresPropios(st => st.quitar)
+
+  /**
+   * Pulsación larga sobre el nombre para llamarlo como tú quieras. Se queda en
+   * este teléfono: el catálogo lo usan los programas, los récords y las otras
+   * cuentas, y renombrarlo de verdad se lo cambiaría a todo el mundo.
+   */
+  const renombrar = () => {
+    void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium)
+    Alert.prompt(
+      'Tu nombre para este ejercicio',
+      `En el catálogo es «${e.nombre}». Lo que pongas aquí solo lo ves tú: no cambia el catálogo ni tus estadísticas.`,
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        ...(nombreCatalogo
+          ? [{ text: 'Quitar el mío', style: 'destructive' as const,
+               onPress: () => quitarNombre({ slug: e.slug, nombre: e.nombre }) }]
+          : []),
+        { text: 'Guardar',
+          onPress: (t?: string) => ponerNombre({ slug: e.slug, nombre: e.nombre }, t ?? '') },
+      ],
+      'plain-text',
+      nombreVisible,
+    )
+  }
 
   return (
-    <View style={f.wrap}>
+    <View style={[f.wrap, hecho && f.wrapHecho]}>
       {/**
         * Tocar el ejercicio lleva a HACERLO: su vídeo, su contador de series,
         * su descanso y el botón de anotar.
@@ -408,10 +592,21 @@ function FichaEjercicio({ e, n, poster, contexto, onCambiar }: {
         }}
         activeOpacity={0.85}
       >
-        <Text style={f.num}>{n}</Text>
+        <TouchableOpacity
+          onPress={() => {
+            void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+            alternar(fecha, clave, { programaId: contexto.programId, semana: contexto.semana, dia: contexto.dia })
+          }}
+          hitSlop={10}
+          style={[f.marca, hecho && f.marcaHecha]}
+        >
+          {hecho
+            ? <Ionicons name="checkmark" size={14} color={Colors.neon.void} />
+            : <Text style={f.numEnMarca}>{n}</Text>}
+        </TouchableOpacity>
         <Miniatura poster={poster} tam={48} />
         <View style={{ flex: 1 }}>
-          <Text style={f.nombre} numberOfLines={2}>{e.nombre}</Text>
+          <Text style={f.nombre} numberOfLines={2} onLongPress={renombrar} suppressHighlighting>{nombreVisible}</Text>
           <Text style={f.sub}>
             {prescripcion(e)} · {e.descanso}s
             {/* El peso SE VE aquí aunque ya no se edite aquí: recorrer el día y
@@ -420,6 +615,9 @@ function FichaEjercicio({ e, n, poster, contexto, onCambiar }: {
           </Text>
           {e.cambiado && e.original ? (
             <Text style={f.cambiado}>Cambiado — en el plan era «{e.original}»</Text>
+          ) : null}
+          {nombreCatalogo ? (
+            <Text style={f.cambiado}>Tu nombre — en el catálogo es «{nombreCatalogo}»</Text>
           ) : null}
         </View>
         <Ionicons name="chevron-forward" size={15} color={Colors.neon.w4} />
@@ -591,7 +789,8 @@ const s = StyleSheet.create({
 
   pieFijo: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
-    padding: Spacing[4], paddingBottom: Spacing[6],
+    // `paddingBottom` lo pone `useEspacioBarra` en el propio componente.
+    padding: Spacing[4],
     backgroundColor: 'rgba(5,5,6,0.96)',
     borderTopWidth: 1, borderTopColor: Colors.neon.edge,
   },
@@ -605,7 +804,41 @@ const s = StyleSheet.create({
   botonTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
 })
 
+const fx = StyleSheet.create({
+  extra: {
+    flexDirection: 'row', alignItems: 'center', gap: 11,
+    paddingVertical: 10, paddingHorizontal: 4,
+  },
+  marca: {
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.24)',
+    alignSelf: 'center', marginRight: 2,
+  },
+  marcaHecha: { backgroundColor: Colors.neon.red, borderColor: Colors.neon.red },
+  extraNombre: { fontSize: 13, fontWeight: '600', color: '#fff', letterSpacing: -0.2 },
+  extraPista: { fontSize: 10, color: Colors.neon.w4, marginTop: 1 },
+  anadir: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6,
+    paddingVertical: 11, marginTop: 4, borderRadius: 12,
+    borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.14)',
+    borderStyle: 'dashed',
+  },
+  anadirTxt: { fontSize: 12.5, fontWeight: '600', color: Colors.neon.w3 },
+})
+
 const f = StyleSheet.create({
+  wrapHecho: { opacity: 0.55 },
+  marca: {
+    width: 26, height: 26, borderRadius: 13,
+    alignItems: 'center', justifyContent: 'center',
+    borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.24)',
+    // El círculo mide 26 y la miniatura 48: sin esto quedaría flotando a media
+    // altura del nombre en las filas de dos líneas.
+    alignSelf: 'center',
+    marginRight: 2,
+  },
+  marcaHecha: { backgroundColor: Colors.neon.red, borderColor: Colors.neon.red },
   wrap: {
     gap: Spacing[3], padding: Spacing[3] + 2,
     backgroundColor: Colors.neon.pane,
@@ -614,6 +847,12 @@ const f = StyleSheet.create({
   },
   cabecera: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
   num: { width: 12, fontSize: 11, fontWeight: '800', color: Colors.neon.w4 },
+  /** El mismo número, pero centrado dentro del círculo de marcar. */
+  numEnMarca: {
+    fontSize: 11.5, fontWeight: '800', color: Colors.neon.w3,
+    textAlign: 'center', includeFontPadding: false,
+    lineHeight: 13,
+  },
   nombre: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: Colors.neon.white, lineHeight: 19 },
   sub: { fontSize: 11, color: Colors.neon.w3, marginTop: 2 },
   cambiado: { fontSize: 10, color: Colors.neon.redCore, marginTop: 3, fontStyle: 'italic' },

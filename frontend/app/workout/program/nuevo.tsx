@@ -28,12 +28,15 @@
  * pasar otra vez por esa pregunta sería el defecto clásico de los asistentes.
  */
 
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
   Modal, Alert, ActivityIndicator, Platform, Pressable,
 } from 'react-native'
 import { Image } from '@/components/ui/Imagen'
+import { useEspacioBarra } from '@/components/ui/BarraDeSeccion'
+import { useCasaMaterial } from '@/store/casaMaterialStore'
+import { ListaAparejos, cuantosCon, EJERCICIOS_SIN_MATERIAL } from '@/components/workout/MaterialCasa'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -68,13 +71,54 @@ interface DiaEnMontaje {
 }
 
 export default function TuSemana() {
-  const { id } = useLocalSearchParams<{ id?: string }>()
+  // El hueco de la barra flotante: sin esto el pie queda debajo y no se toca.
+  const espacioBarra = useEspacioBarra()
+  const { tengo, preguntado, marcarPreguntado } = useCasaMaterial()
+  const { id, modo: modoParam } = useLocalSearchParams<{ id?: string; modo?: string }>()
 
-  const [paso, setPaso] = useState(0)
+  /**
+   * Se arranca en el primer paso de VERDAD. En casa ese es el material, y con
+   * `useState(0)` el asistente abría en «cuántos días» diciendo «paso 2 de 5»,
+   * que es el mismo defecto que ya tenía al editar: un paso 1 que nadie vio.
+   *
+   * Editar lo pisa luego con `setPaso(1)` al cargar el plan, que es lo que se
+   * quiere: quien ya contestó no repite.
+   */
+  const [paso, setPaso] = useState(() => (modoParam === 'home' ? -1 : 0))
+  /**
+   * Editar salta la pregunta de cuántos días —ya la contestaste—, así que el
+   * asistente pasa a tener TRES pasos y hay que contarlos como tres. Antes
+   * entraba directo en «PASO 2 DE 4» sin haber visto el 1, que se lee como que
+   * algo se saltó solo.
+   */
+  const esEdicion = !!id
+  /**
+   * LOS PASOS DE VERDAD, NO SIEMPRE LOS MISMOS
+   * ──────────────────────────────────────────
+   * · Editar salta «cuántos días»: ya lo contestaste.
+   * · En casa se antepone «qué tienes», porque de esa respuesta depende TODO lo
+   *   que se propone después. Preguntarla en un modal suelto, como estaba, era
+   *   el error: aparecía una vez, no alimentaba nada y no volvía. Aquí es el
+   *   primer eslabón de la cadena y se ve que lo es.
+   *
+   * En gimnasio no se pregunta: hay de todo y sería un trámite sin premio.
+   */
   const [cuantos, setCuantos] = useState<number | null>(null)
   const [elegidos, setElegidos] = useState<number[]>([])
   const [dias, setDias] = useState<Record<number, DiaEnMontaje>>({})
-  const [sitio, setSitio] = useState<'gym' | 'home'>('gym')
+  /**
+   * EL LUGAR NO SE PREGUNTA DENTRO DE UNA SECCIÓN
+   * ─────────────────────────────────────────────
+   * Si entraste por Gimnasio, el plan es de gimnasio. Enseñar ahí un botón de
+   * «En casa» no es solo ruido: es ofrecer salir de la sección desde dentro, y
+   * quien lo toca acaba con un plan de casa colgando de la portada del gimnasio.
+   *
+   * Solo se pregunta cuando nadie ha dicho de dónde viene.
+   */
+  const lugarFijado = modoParam === 'gym' || modoParam === 'home'
+  const [sitio, setSitio] = useState<'gym' | 'home'>(
+    modoParam === 'home' ? 'home' : 'gym'
+  )
   const [semanas, setSemanas] = useState(8)
   const [nombre, setNombre] = useState('')
 
@@ -83,6 +127,13 @@ export default function TuSemana() {
   const [editando, setEditando] = useState<number | null>(null)
   const [guardando, setGuardando] = useState(false)
   const [cargando, setCargando] = useState(true)
+
+  const PASO_MATERIAL = -1
+  const base = esEdicion ? [1, 2, 3] : [0, 1, 2, 3]
+  const visibles = sitio === 'home' ? [PASO_MATERIAL, ...base] : base
+
+
+  const indice = Math.max(0, visibles.indexOf(paso))
 
   useEffect(() => {
     void (async () => {
@@ -152,7 +203,7 @@ export default function TuSemana() {
       return
     }
     try {
-      const p = await proponerEjercicios(ms, sitio)
+      const p = await proponerEjercicios(ms, sitio, sitio === 'home' ? (preguntado ? tengo : null) : null)
       setDias(prev => ({
         ...prev,
         [diaSemana]: { diaSemana, musculos: ms, nombre: p.nombre, ejercicios: p.ejercicios, posters: p.posters ?? {} },
@@ -161,7 +212,7 @@ export default function TuSemana() {
     } catch {
       Alert.alert('No se pudo proponer', 'Revisa la conexión. Puedes elegir los músculos otra vez.')
     }
-  }, [sitio])
+  }, [sitio, tengo, preguntado])
 
   const quitarEjercicio = useCallback((ds: number, i: number) => {
     void Haptics.selectionAsync()
@@ -172,7 +223,8 @@ export default function TuSemana() {
   const completo = listos.length > 0 && listos.length === elegidos.length
 
   /** Qué hace falta para poder pasar de cada paso. */
-  const puedeSeguir = paso === 0 ? cuantos !== null
+  const puedeSeguir = paso === PASO_MATERIAL ? true
+    : paso === 0 ? cuantos !== null
     : paso === 1 ? elegidos.length > 0
     : paso === 2 ? completo
     : true
@@ -195,7 +247,9 @@ export default function TuSemana() {
       const guardado = await guardarPlan(plan, id)
       if (!id) await inscribirse(guardado.id).catch(() => {})
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-      router.replace('/workout/gym')
+      // Al lugar del plan que acabas de montar, no siempre al gimnasio: quien
+      // monta uno de casa acababa mirando la portada del gimnasio.
+      router.replace(sitio === 'home' ? '/workout/casa' : '/workout/gym')
     } catch (e) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
       Alert.alert('No se pudo guardar', msg ?? 'Revisa la conexión y vuelve a intentarlo.')
@@ -204,15 +258,22 @@ export default function TuSemana() {
 
   const atras = () => {
     void Haptics.selectionAsync()
-    if (paso === 0) router.back()
-    else setPaso(p => p - 1)
+    // Se retrocede por la lista de pasos visibles, no restando uno: con el
+    // paso del material en -1 y editando saltándose el 0, restar caía en huecos.
+    const i = visibles.indexOf(paso)
+    if (i <= 0) router.back()
+    else setPaso(visibles[i - 1])
   }
 
   const siguiente = () => {
     if (!puedeSeguir) return
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light)
+    if (paso === PASO_MATERIAL) marcarPreguntado()
     if (paso === 3) void guardar()
-    else setPaso(p => p + 1)
+    else {
+      const i = visibles.indexOf(paso)
+      setPaso(visibles[Math.min(i + 1, visibles.length - 1)])
+    }
   }
 
   if (cargando) {
@@ -237,12 +298,12 @@ export default function TuSemana() {
         />
       </Animated.View>
 
-      <View style={s.contenido}>
+      <View style={[s.contenido, { paddingBottom: espacioBarra }]}>
         <View style={s.arriba}>
           <View style={s.progreso}>
-            {[0, 1, 2, 3].map(i => <Barra key={i} activa={i <= paso} />)}
+            {visibles.map((v, i) => <Barra key={v} activa={i <= indice} />)}
           </View>
-          <Text style={s.pasoTxt}>PASO {paso + 1} DE 4</Text>
+          <Text style={s.pasoTxt}>PASO {indice + 1} DE {visibles.length}</Text>
 
           {(cuantos !== null || elegidos.length > 0) && (
             <Animated.View entering={FadeIn.duration(320)} style={s.resumen}>
@@ -260,7 +321,10 @@ export default function TuSemana() {
           exiting={SlideOutLeft.duration(200)}
           style={s.pregunta}
         >
-          {paso === 0 && <Paso0 cuantos={cuantos} onElegir={elegirCuantos} sitio={sitio} onSitio={setSitio} />}
+          {paso === PASO_MATERIAL && <PasoMaterial />}
+          {paso === 0 && <Paso0 cuantos={cuantos} onElegir={elegirCuantos} sitio={sitio} onSitio={setSitio}
+              lugarFijado={lugarFijado}
+            />}
           {paso === 1 && <Paso1 elegidos={elegidos} onAlternar={alternarDia} />}
           {paso === 2 && <Paso2 elegidos={elegidos} dias={dias} onEditar={setEditando} onQuitar={quitarEjercicio} />}
           {paso === 3 && (
@@ -310,9 +374,40 @@ export default function TuSemana() {
 
 // ── Los cuatro pasos ─────────────────────────────────────────────────────────
 
-function Paso0({ cuantos, onElegir, sitio, onSitio }: {
+
+/**
+ * PASO · ¿QUÉ TIENES EN CASA?
+ * ═══════════════════════════
+ * El primer eslabón: de esta respuesta salen los ejercicios que se proponen en
+ * los pasos siguientes, así que va antes que nada. No bloquea nunca —«no tengo
+ * nada» es una respuesta válida y deja 34 ejercicios de peso corporal— porque
+ * un paso que obliga a marcar algo se contesta mintiendo.
+ */
+function PasoMaterial() {
+  const tengo = useCasaMaterial(st => st.tengo)
+  return (
+    <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing[3] }}>
+      <Text style={s.h}>¿Qué tienes en casa?</Text>
+      <Text style={s.p}>
+        Marca solo lo que de verdad tengas a mano. Con esto monto tu semana con ejercicios
+        que puedes hacer hoy, no con una lista bonita que no sirve.
+      </Text>
+      <View style={{ height: Spacing[3] }} />
+      <ListaAparejos />
+      <Text style={s.pMini}>
+        {tengo.length === 0
+          ? `Sin material te quedan ${EJERCICIOS_SIN_MATERIAL} ejercicios de peso corporal. Sobra para entrenar.`
+          : `Podré elegir entre ${cuantosCon(tengo)} ejercicios, contando los ${EJERCICIOS_SIN_MATERIAL} de peso corporal.`}
+      </Text>
+    </ScrollView>
+  )
+}
+
+function Paso0({ cuantos, onElegir, sitio, onSitio, lugarFijado }: {
   cuantos: number | null; onElegir: (n: number) => void
   sitio: 'gym' | 'home'; onSitio: (s: 'gym' | 'home') => void
+  /** Si entraste por una sección, el lugar ya está decidido y no se pregunta. */
+  lugarFijado?: boolean
 }) {
   return (
     <>
@@ -323,6 +418,7 @@ function Paso0({ cuantos, onElegir, sitio, onSitio }: {
           <Numero key={n} n={n} activo={cuantos === n} onPress={() => onElegir(n)} />
         ))}
       </View>
+      {!lugarFijado && (
       <View style={s.sitios}>
         {([
           { id: 'gym' as const, label: 'Gimnasio', icono: 'barbell-outline' as const },
@@ -339,6 +435,7 @@ function Paso0({ cuantos, onElegir, sitio, onSitio }: {
           </TouchableOpacity>
         ))}
       </View>
+      )}
     </>
   )
 }
@@ -602,7 +699,8 @@ const s = StyleSheet.create({
     flex: 1,
     paddingTop: Platform.OS === 'ios' ? 58 : 34,
     paddingHorizontal: Spacing[4],
-    paddingBottom: Platform.OS === 'ios' ? 34 : Spacing[4],
+    // El hueco de abajo lo pone `useEspacioBarra`, no un número a ojo:
+    // la barra flota encima y aquí el pie dejaba de poderse tocar.
   },
 
   arriba: { gap: Spacing[2] },
