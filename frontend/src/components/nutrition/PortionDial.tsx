@@ -92,10 +92,45 @@ export function PortionDial({
   const stateRef = useRef({ value, safeMax, step, onChange })
   stateRef.current = { value, safeMax, step, onChange }
 
+  /**
+   * EL DIAL GANA LA PUJA, Y NO LA SUELTA
+   * ════════════════════════════════════
+   * Arrastrar el knob movía la pantalla entera: el dedo giraba el arco y la
+   * lista de debajo se desplazaba a la vez, así que ajustar una porción era
+   * perseguir un control que se te iba de sitio.
+   *
+   * La causa es en qué fase se pide el gesto. `onStartShouldSetPanResponder` y
+   * `onMoveShouldSetPanResponder` son la fase de BURBUJEO: se preguntan de
+   * dentro hacia fuera, y para cuando le toca el turno al dial, el `ScrollView`
+   * nativo que lo contiene ya ha decidido que ese movimiento es un
+   * desplazamiento suyo. La puja se pierde antes de empezar.
+   *
+   * Las versiones `...Capture` van al revés —de fuera hacia dentro, antes de
+   * que nadie más mire el gesto— y ahí el dial llega primero. Es exactamente lo
+   * que ya hacía `AnilloSueno` en Salud: el arreglo estaba escrito en el
+   * proyecto y nunca llegó hasta aquí.
+   *
+   * Con eso solo no basta: una vez concedido, el `ScrollView` puede PEDIR el
+   * responder a mitad del arrastre, y por defecto se le concede. `false` en
+   * `onPanResponderTerminationRequest` es lo que dice que no. Sin esa línea el
+   * tirón vuelve a mitad de gesto, que es peor que no arreglarlo — se va justo
+   * cuando ya te habías fiado.
+   *
+   * ── Lo que se pierde a cambio, y por qué compensa ───────────────────────────
+   * Poner el dedo sobre el dial deja de servir para desplazar la lista. Es
+   * deliberado: el dial ocupa 212×126 px en mitad de una ficha larga, y quien
+   * lo toca lo toca para girarlo. Para desplazar queda todo lo demás de la
+   * pantalla, que es casi toda.
+   */
   const responder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => true,
+      onMoveShouldSetPanResponderCapture: () => true,
+      /* Ni el ScrollView ni la FlatList pueden arrebatarlo a media vuelta. */
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
       onPanResponderGrant: e => applyTouch(e.nativeEvent.locationX, e.nativeEvent.locationY),
       onPanResponderMove: e => applyTouch(e.nativeEvent.locationX, e.nativeEvent.locationY),
     }),
