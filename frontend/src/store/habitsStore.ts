@@ -171,12 +171,16 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
 
     // Los desactivados no se pintan. Siguen existiendo en la tabla para que su
     // histórico de cumplimiento tenga nombre.
+    /* Se copia TODO lo que manda el servidor, no una lista de campos escrita a
+       mano. Esa lista se quedó atrás al añadir el horario de sueño y las
+       alarmas: llegaban del servidor y se tiraban aquí, y `completar()` los
+       rellenaba con valores por defecto sin que saltara ningún error. El
+       resultado era un hábito de sueño que se abría como si no lo fuera. */
     const habits = delServidor.habits
       .filter(h => h.activo)
-      .map(h => completar({
-        id: h.habitKey, label: h.label, icon: h.icon,
-        momento: h.momento, hora: h.hora, tipo: h.tipo, metaSegundos: h.metaSegundos,
-      }))
+      // `habitKey` pasa a ser `id`; el resto de metadatos del servidor no se guardan.
+      .map(({ habitKey, activo, esDefault, orden, ...resto }) =>
+        completar({ ...resto, id: habitKey }))
 
     const segundos = delServidor.segundos ?? {}
     set({ habits, logs: delServidor.logs, segundos })
@@ -192,13 +196,13 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     await AsyncStorage.setItem(HABITS_KEY, JSON.stringify(habits))
     // La llave la pone la app: se puede marcar como cumplido antes de que el
     // servidor conteste.
-    void crearHabito(habit.id, label, icon, {
-      orden: habits.length,
-      momento: habit.momento,
-      hora: habit.hora,
-      tipo: habit.tipo,
-      metaSegundos: habit.metaSegundos,
-    }).catch(() => {})
+    /* Se manda TODO lo del hábito ya completado, no una lista escrita a mano.
+       Con la lista se quedaban fuera `horaFin` y las seis de alarma: el hábito
+       nacía bien en el móvil y llegaba mutilado al servidor, así que a la
+       siguiente lectura volvía sin su ventana de sueño ni sus alarmas. */
+    const { id: _llave, label: _et, icon: _ic, ...resto } = habit
+    void crearHabito(habit.id, label, icon, { orden: habits.length, ...resto })
+      .catch(() => {})
   },
 
   editarHabito: async (id, cambios) => {

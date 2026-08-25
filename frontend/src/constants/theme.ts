@@ -119,6 +119,19 @@ export const Typography = {
     medium: 'Inter_500Medium',
     semiBold: 'Inter_600SemiBold',
     bold: 'Inter_700Bold',
+
+    // ZENCRUS, la tipografía propia. Dibujada a partir del logotipo: esqueleto
+    // geométrico, esquinas cortadas a 45° y remates en sesgo. Está registrada
+    // en app/_layout.tsx y vive en assets/fonts.
+    //
+    // Ninguna pantalla la usa todavía: cambiar la voz de la app es una
+    // decisión aparte. Estas claves existen para poder hacerlo por partes.
+    zencrusLight: 'Zencrus-Light',
+    zencrus: 'Zencrus-Regular',
+    zencrusMedium: 'Zencrus-Medium',
+    zencrusSemiBold: 'Zencrus-SemiBold',
+    zencrusBold: 'Zencrus-Bold',
+    zencrusBlack: 'Zencrus-Black',
   },
 
   fontSize: {

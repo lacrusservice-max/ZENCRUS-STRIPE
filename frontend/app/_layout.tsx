@@ -115,7 +115,17 @@ export default function RootLayout() {
   useFonts({
     Michroma_400Regular,
     GeistMono_400Regular, GeistMono_500Medium, GeistMono_700Bold,
-    Fraunces_400Regular, Fraunces_600SemiBold })
+    Fraunces_400Regular, Fraunces_600SemiBold,
+    // ZENCRUS: la tipografía propia de la marca, dibujada a partir del
+    // logotipo. Vive en assets/fonts, no en Google Fonts, así que carga de
+    // disco y no de red. Va en el grupo diferido por la misma razón que las
+    // demás: no debe retrasar el primer pintado.
+    'Zencrus-Light': require('../assets/fonts/Zencrus-Light.ttf'),
+    'Zencrus-Regular': require('../assets/fonts/Zencrus-Regular.ttf'),
+    'Zencrus-Medium': require('../assets/fonts/Zencrus-Medium.ttf'),
+    'Zencrus-SemiBold': require('../assets/fonts/Zencrus-SemiBold.ttf'),
+    'Zencrus-Bold': require('../assets/fonts/Zencrus-Bold.ttf'),
+    'Zencrus-Black': require('../assets/fonts/Zencrus-Black.ttf') })
 
   const fontsLoaded = fuentesBase
 
