@@ -140,11 +140,32 @@ function FoodRow({ food, expanded, onToggle, consumed, budget, onCommit }: {
   const step = stepFor(unit)
 
   /**
-   * Tope del dial. Sale del atajo más alto de la unidad, duplicado, para que el
-   * recorrido deje margen por encima de la porción habitual sin volverse
-   * inmanejable: con 100 g de referencia el arco llega a 300 g, no a 5 kg.
+   * TOPE DEL DIAL — Y POR QUÉ NO SALE DE `amount`
+   * ═════════════════════════════════════════════
+   * Sale del atajo más alto de la unidad, duplicado, para que el recorrido deje
+   * margen por encima de la porción habitual sin volverse inmanejable: con
+   * 100 g de referencia el arco llega a 300 g, no a 5 kg.
+   *
+   * ── La cifra que se escapaba sola ───────────────────────────────────────────
+   * Aquí ponía `Math.max(...presetsFor(unit), amount)`, con la cantidad EN VIVO
+   * dentro. Eso es una pescadilla que se muerde la cola: al llevar el dial al
+   * tope, `amount` iguala a `dialMax`; en el siguiente fotograma `dialMax` pasa
+   * a valer `amount * 1.5`, o sea más; y como el dedo sigue apoyado en el
+   * extremo, el siguiente evento del MISMO arrastre vuelve a marcar el 100 % —
+   * del tope nuevo. Medido en el simulador: 280 g → 420 → 630 en un solo gesto,
+   * con el knob quieto en el sitio y el número disparándose.
+   *
+   * Se veía poco porque llegar al extremo pedía un arrastre casi vertical, y
+   * esos se los quedaba el scroll (ver `PortionDial`). Arreglado aquello, esto
+   * quedó a un dedo de distancia.
+   *
+   * El anclaje es la porción POR DEFECTO del alimento, que no cambia mientras
+   * se arrastra. Y solo cuenta si la unidad sigue siendo la suya: `defaultAmount`
+   * está expresado en `defaultUnit`, así que colarlo al pasar a kilos pondría el
+   * tope en 280 kg.
    */
-  const dialMax = Math.max(...presetsFor(unit), amount) * 1.5
+  const anclaje = unit === food.defaultUnit ? food.defaultAmount : 0
+  const dialMax = Math.max(...presetsFor(unit), anclaje) * 1.5
 
   /** Al cambiar de unidad se reencuadra la cantidad: 250 g no son 250 lb. */
   const switchUnit = (next: string) => {
