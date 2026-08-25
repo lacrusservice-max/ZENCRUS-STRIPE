@@ -96,7 +96,13 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
        Formato: .wav, .aiff o .caf, PCM o IMA4, y menos de 30 segundos. iOS
        ignora el que se pase y pone el de por defecto en su lugar. */
     ['expo-notifications', {
-      sounds: [] as string[],
+      sounds: [
+        './src/assets/sounds/amanecer.wav',
+        './src/assets/sounds/campanas.wav',
+        './src/assets/sounds/cuerdas.wav',
+        './src/assets/sounds/goteo.wav',
+        './src/assets/sounds/pulso.wav',
+      ],
     }],
     'expo-secure-store',
     ['expo-local-authentication', {

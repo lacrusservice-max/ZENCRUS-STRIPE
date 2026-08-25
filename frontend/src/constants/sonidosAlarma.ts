@@ -11,6 +11,11 @@
  * una notificación. Lo que sí puede hacer cualquier app —y hacen todas las de
  * despertador— es traer sus propios sonidos dentro del paquete. Eso es esto.
  *
+ * ── De dónde salen ─────────────────────────────────────────────────────────
+ * Los cinco se sintetizan con `scripts/sonidos-alarma.py`: son nuestros, no
+ * traen licencia detrás y se retocan cambiando cuatro números. Van de `goteo`,
+ * que casi no interrumpe, a `pulso`, que no se puede ignorar.
+ *
  * ── Cómo añadir uno ────────────────────────────────────────────────────────
  *   1. Deja el fichero en `src/assets/sounds/`.
  *      Formato: `.wav`, `.aiff` o `.caf`. Máximo 30 segundos —iOS corta a los
@@ -34,9 +39,12 @@ export interface SonidoAlarma {
 }
 
 export const SONIDOS: SonidoAlarma[] = [
-  { id: null, etiqueta: 'Por defecto' },
-  // { id: 'amanecer.wav', etiqueta: 'Amanecer' },
-  // { id: 'cuerda.wav',   etiqueta: 'Cuerda' },
+  { id: null,            etiqueta: 'Por defecto' },
+  { id: 'amanecer.wav',  etiqueta: 'Amanecer' },
+  { id: 'campanas.wav',  etiqueta: 'Campanas' },
+  { id: 'cuerdas.wav',   etiqueta: 'Cuerdas' },
+  { id: 'goteo.wav',     etiqueta: 'Goteo' },
+  { id: 'pulso.wav',     etiqueta: 'Pulso' },
 ]
 
 /** Cómo se llama el sonido guardado, para enseñarlo sin recorrer la lista fuera. */

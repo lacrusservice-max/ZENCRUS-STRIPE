@@ -23,10 +23,10 @@
  * acabar en la misma cifra es trabajo sin premio.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   View, Text, StyleSheet, Pressable, TextInput, KeyboardAvoidingView,
-  Platform, FlatList,
+  Platform, FlatList, ScrollView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { router, useLocalSearchParams } from 'expo-router'
@@ -42,6 +42,9 @@ import {
   diaActivo, alternarDia, TODOS as TODOS_LOS_DIAS,
 } from '@/features/salud/recordatorios'
 import { SONIDOS, nombreDeSonido, HAY_DONDE_ELEGIR } from '@/constants/sonidosAlarma'
+import { RuedaHora } from '@/components/salud/RuedaHora'
+import { CATEGORIAS, categoriaDe, iconosVisibles } from '@/features/salud/iconos'
+import { PLANTILLAS, type Plantilla } from '@/features/salud/plantillas'
 
 type IconName = React.ComponentProps<typeof Ionicons>['name']
 
@@ -86,11 +89,23 @@ export default function Habito() {
   const [icono, setIcono] = useState<IconName>((existente?.icon as IconName) ?? 'leaf')
   const [tipo, setTipo] = useState<TipoHabito>(existente?.tipo ?? 'hacer')
   const [momento, setMomento] = useState<Momento>(existente?.momento ?? 'manana')
-  const [hh, setHh] = useState(existente?.hora?.slice(0, 2) ?? '')
-  const [mm, setMm] = useState(existente?.hora?.slice(3, 5) ?? '')
+  /* En minutos desde medianoche, no en dos cadenas: la rueda trabaja con
+     índices y el anillo ya usaba minutos. Una sola forma evita convertir en
+     cada sitio. */
+  const [horaMin, setHoraMin] = useState<number | null>(
+    existente?.hora ? aMinutos(existente.hora, 0) : null)
   const [min, setMin] = useState(
     existente?.metaSegundos && !existente.horaFin ? String(Math.round(existente.metaSegundos / 60)) : '')
   const [buscaIcono, setBuscaIcono] = useState('')
+  const [categoria, setCategoria] = useState(() => categoriaDe(existente?.icon ?? 'leaf'))
+  const [verTodos, setVerTodos] = useState(false)
+
+  /* Crear es un asistente que empieza por plantillas; editar es una página
+     única. Al editar vas directo a lo que cambias, y hacerte recorrer cuatro
+     pasos para mover una hora sería peor que la lista de antes. */
+  const [enPlantillas, setEnPlantillas] = useState(!existente)
+  const [desdeCero, setDesdeCero] = useState(false)
+  const [paso, setPaso] = useState(0)
   /* Mientras un dedo mueve el anillo, la lista NO se desplaza. */
   const [moviendoAnillo, setMoviendoAnillo] = useState(false)
 
@@ -130,16 +145,32 @@ export default function Habito() {
     setNombre(existente.label)
   }, [existente, nombre])
 
-  const h = Number(hh), m = Number(mm)
-  const horaValida = hh !== '' && mm !== '' && h >= 0 && h <= 23 && m >= 0 && m <= 59
-  const hora = horaValida ? `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}` : null
+  const hora = horaMin === null ? null : comoHora(horaMin)
   const minutos = Math.min(MINUTOS_MAX, Number(min) || 0)
-  const puedeCrear = nombre.trim().length > 0
+  /* Con plantilla el nombre ya viene dado, así que sobra preguntarlo: son tres
+     pasos en vez de cuatro. */
+  const pasos: readonly ('nombre' | 'cuando' | 'hora' | 'icono')[] =
+    desdeCero ? ['nombre', 'cuando', 'hora', 'icono'] : ['cuando', 'hora', 'icono']
+  const claveActual = pasos[Math.min(paso, pasos.length - 1)]
+  const ultimoPaso = paso >= pasos.length - 1
 
-  const iconos = useMemo(() => {
-    const q = buscaIcono.trim().toLowerCase()
-    return q ? TODOS_LOS_ICONOS.filter(n => n.includes(q)) : TODOS_LOS_ICONOS
-  }, [buscaIcono])
+  /** Editando se ve todo a la vez; creando, solo el paso en curso. */
+  const ver = (clave: typeof pasos[number]) => editando || claveActual === clave
+
+  const puedeCrear = nombre.trim().length > 0
+  const puedeSeguir = claveActual !== 'nombre' || puedeCrear
+
+  /* Mil trescientos iconos de golpe no son libertad, son un muro. Se enseña
+     una categoría cada vez; el buscador los atraviesa todos y «ver todos»
+     despliega la rejilla entera, así que nada queda fuera. */
+  const iconos = useMemo(
+    () => iconosVisibles(buscaIcono, categoria, verTodos),
+    [buscaIcono, categoria, verTodos])
+
+  const lista = useRef<FlatList<IconName>>(null)
+  useEffect(() => {
+    lista.current?.scrollToOffset({ offset: 0, animated: false })
+  }, [paso, enPlantillas])
 
   /* Un horario de sueño manda sobre la hora suelta: la de acostarse ES la hora
      del hábito, y el objetivo ocupa el sitio del cronómetro. */
@@ -171,6 +202,94 @@ export default function Habito() {
     router.back()
   }
 
+  /**
+   * Dejar el formulario como recién abierto.
+   *
+   * Lo usan las dos entradas del asistente. Antes cada una tocaba solo los
+   * campos que le interesaban y el resto se arrastraba: elegir DORMIR, volver
+   * atrás y elegir LEER dejaba LEER con las dos alarmas del horario de sueño
+   * encendidas. Se limpia todo y luego se pone encima lo que toque.
+   */
+  const restablecer = () => {
+    setNombre('')
+    setIcono('leaf')
+    setCategoria(categoriaDe('leaf'))
+    setTipo('hacer')
+    setMomento('manana')
+    setHoraMin(null)
+    setMin('')
+    setBuscaIcono('')
+    setVerTodos(false)
+    setEsSueno(false)
+    setTocadoSueno(false)
+    setAcostar(23 * 60)
+    setDespertar(7 * 60)
+    setObjetivoH(8)
+    setAlarma(false)
+    setAlarmaFin(false)
+    setDias(TODOS_LOS_DIAS)
+    setDiasFin(TODOS_LOS_DIAS)
+    setPosponer(true)
+    setSonido(null)
+  }
+
+  /**
+   * Arrancar desde una plantilla.
+   *
+   * Se rellena todo —nombre, icono, momento, hora y cronómetro— y el asistente
+   * se salta el paso del nombre: ya lo tiene. `tocadoSueno` se marca a mano
+   * para que el detector automático no vuelva a encender el horario de sueño
+   * en una plantilla que no lo es.
+   */
+  const aplicarPlantilla = (pl: Plantilla) => {
+    confirmar()
+    restablecer()
+    setNombre(pl.nombre)
+    setIcono(pl.icono as IconName)
+    setCategoria(categoriaDe(pl.icono))
+    setMomento(pl.momento)
+    setTipo(pl.tipo)
+    setTocadoSueno(true)
+    if (pl.despertar !== undefined) {
+      // Quien pone un horario de sueño quiere despertador: las dos alarmas
+      // nacen encendidas y se apagan si sobran, no al revés.
+      setEsSueno(true)
+      setAcostar(pl.hora ?? 23 * 60)
+      setDespertar(pl.despertar)
+      setAlarma(true)
+      setAlarmaFin(true)
+    } else {
+      setHoraMin(pl.hora)
+      setMin(pl.minutos > 0 ? String(pl.minutos) : '')
+    }
+    setDesdeCero(false)
+    setPaso(0)
+    setEnPlantillas(false)
+  }
+
+  const empezarDeCero = () => {
+    confirmar()
+    restablecer()
+    setDesdeCero(true)
+    setPaso(0)
+    setEnPlantillas(false)
+  }
+
+  /* Desde el primer paso, «atrás» devuelve a las plantillas en vez de cerrar:
+     equivocarse de plantilla no debería costar salir y volver a entrar. */
+  const atras = () => {
+    elegir()
+    if (paso === 0) setEnPlantillas(true)
+    else setPaso(n => n - 1)
+  }
+
+  const siguiente = () => {
+    if (!puedeSeguir) return
+    if (ultimoPaso) { guardar(); return }
+    elegir()
+    setPaso(n => n + 1)
+  }
+
   const borrar = () => {
     if (!existente) return
     confirmar()
@@ -193,9 +312,60 @@ export default function Habito() {
                        accessibilityLabel="Cerrar sin crear">
               <Ionicons name="close" size={19} color="rgba(255,255,255,0.55)" />
             </Pressable>
-            <Text style={s.cabTxt}>{editando ? 'EDITAR' : 'NUEVO HÁBITO'}</Text>
+            <Text style={s.cabTxt}>
+              {editando || enPlantillas
+                ? (editando ? 'EDITAR' : 'NUEVO HÁBITO')
+                : `PASO ${paso + 1} DE ${pasos.length}`}
+            </Text>
             <View style={{ width: 40 }} />
           </View>
+
+          {/* La barra de progreso: cuántos pasos hay y por cuál vas. Sin ella
+              el asistente parece un formulario que no se acaba nunca. */}
+          {!editando && !enPlantillas && (
+            <View style={s.pasos}>
+              {pasos.map((clave, i) => (
+                <View key={clave} style={[s.pasoBarra, i <= paso && s.pasoBarraOn]} />
+              ))}
+            </View>
+          )}
+
+          {/* ── PRIMERA PANTALLA: las plantillas ───────────────────────────
+              Nadie llega sabiendo a qué hora quiere leer. Pedir el nombre en
+              blanco obliga a decidirlo todo de cero; una plantilla trae su
+              hora, su momento y su cronómetro puestos, y solo se corrige lo
+              que no encaje. «Créalo desde cero» sigue ahí para quien lo
+              quiera, pero deja de ser el único camino. */}
+          {enPlantillas ? (
+            <ScrollView style={s.flex} contentContainerStyle={s.scrollPlant}
+                        showsVerticalScrollIndicator={false}>
+              <Text style={s.pasoTitulo}>¿Cuál de estos?</Text>
+              <Text style={s.pasoPie}>
+                Vienen con su hora y su cronómetro puestos. Podrás cambiarlo todo.
+              </Text>
+
+              <View style={s.rejPlant}>
+                {PLANTILLAS.map(pl => (
+                  <Pressable key={pl.id} onPress={() => aplicarPlantilla(pl)}
+                             style={({ pressed }) => [s.plant, pressed && s.pulsado]}
+                             accessibilityLabel={`Empezar desde ${pl.nombre}`}>
+                    <View style={s.plantIc}>
+                      <Ionicons name={pl.icono as IconName} size={23} color="#fff" />
+                    </View>
+                    <Text style={s.plantNm} numberOfLines={1}>{pl.etiqueta}</Text>
+                    <Text style={s.plantPie} numberOfLines={1}>{pl.resumen}</Text>
+                  </Pressable>
+                ))}
+              </View>
+
+              <Pressable onPress={empezarDeCero}
+                         style={({ pressed }) => [s.cero, pressed && s.pulsado]}>
+                <Ionicons name="add" size={19} color="#fff" />
+                <Text style={s.ceroTxt}>CRÉALO DESDE CERO</Text>
+              </Pressable>
+            </ScrollView>
+          ) : (
+          <>
 
           {/* La pantalla ES la rejilla de iconos, y todo lo demás va como su
               cabecera. Antes la rejilla era una `FlatList` dentro de un
@@ -205,8 +375,9 @@ export default function Habito() {
               no una función: una función cambia de identidad en cada pintada y
               los campos de texto perderían el foco al escribir. */}
           <FlatList
+            ref={lista}
             style={s.flex}
-            data={iconos}
+            data={ver('icono') ? iconos : []}
             keyExtractor={n => n}
             numColumns={6}
             initialNumToRender={42}
@@ -216,7 +387,9 @@ export default function Habito() {
             keyboardShouldPersistTaps="handled"
             columnWrapperStyle={s.rejillaFila}
             contentContainerStyle={s.scroll}
-            ListEmptyComponent={<Text style={s.sinIconos}>Ninguno se llama así</Text>}
+            ListEmptyComponent={ver('icono')
+              ? <Text style={s.sinIconos}>Ninguno se llama así</Text>
+              : null}
             renderItem={({ item }) => {
               const on = icono === item
               return (
@@ -230,15 +403,31 @@ export default function Habito() {
             ListHeaderComponent={
               <View style={s.cabecera}>
 
+            {!editando && (
+              <>
+                <Text style={s.pasoTitulo}>
+                  {claveActual === 'hora' && esSueno
+                    ? '¿Cuándo duermes?'
+                    : TITULOS[claveActual][0]}
+                </Text>
+                <Text style={s.pasoPie}>
+                  {claveActual === 'hora' && esSueno
+                    ? 'A qué hora te acuestas y a qué hora te levantas.'
+                    : TITULOS[claveActual][1]}
+                </Text>
+              </>
+            )}
+
+            {ver('nombre') && <>
             {/* ── El nombre, como un título ─────────────────────────────── */}
             <TextInput
               value={nombre}
               onChangeText={setNombre}
-              placeholder="¿Qué quieres hacer?"
+              placeholder="Leer, correr, meditar…"
               placeholderTextColor="rgba(255,255,255,0.22)"
               style={s.nombre}
               maxLength={60}
-              autoFocus
+              autoFocus={!editando}
               returnKeyType="done"
             />
             <View style={[s.subrayado, puedeCrear && s.subrayadoOn]} />
@@ -266,6 +455,9 @@ export default function Habito() {
               })}
             </View>
 
+            </>}
+
+            {ver('cuando') && <>
             {/* ── Momento del día ───────────────────────────────────────── */}
             <Text style={s.rot}>CUÁNDO</Text>
             <View style={s.trio}>
@@ -284,6 +476,9 @@ export default function Habito() {
               })}
             </View>
 
+            </>}
+
+            {ver('hora') && <>
             {/* ── ¿Es un horario de sueño? ──────────────────────────────── */}
             <Text style={s.rot}>HORARIO DE SUEÑO</Text>
             <Pressable onPress={() => { elegir(); setTocadoSueno(true); setEsSueno(v => !v) }}
@@ -350,28 +545,19 @@ export default function Habito() {
             {/* ── La hora suelta: solo cuando NO es un horario de sueño ─── */}
             {!esSueno && <>
             <Text style={s.rot}>A QUÉ HORA</Text>
-            <View style={s.reloj}>
-              <View style={s.relojCifras}>
-                <TextInput value={hh} onChangeText={t => setHh(t.replace(/\D/g, ''))}
-                           placeholder="--" placeholderTextColor="rgba(255,255,255,0.18)"
-                           style={s.relojTxt} keyboardType="number-pad" maxLength={2}
-                           accessibilityLabel="Hora" />
-                <Text style={s.relojDosPuntos}>:</Text>
-                <TextInput value={mm} onChangeText={t => setMm(t.replace(/\D/g, ''))}
-                           placeholder="--" placeholderTextColor="rgba(255,255,255,0.18)"
-                           style={s.relojTxt} keyboardType="number-pad" maxLength={2}
-                           accessibilityLabel="Minutos" />
-              </View>
-              {hora
-                ? (
-                  <Pressable onPress={() => { elegir(); setHh(''); setMm('') }} hitSlop={10}
-                             style={s.quitar}>
-                    <Ionicons name="close" size={13} color="rgba(255,255,255,0.6)" />
-                    <Text style={s.quitarTxt}>QUITAR</Text>
-                  </Pressable>
-                )
-                : <Text style={s.relojPie}>Sin hora no hay recordatorio</Text>}
-            </View>
+            <RuedaHora
+              hora={Math.floor((horaMin ?? 7 * 60) / 60)}
+              minuto={(horaMin ?? 7 * 60) % 60}
+              onCambio={(hh, mm) => setHoraMin(hh * 60 + mm)}
+              pie={hora ? `Te avisará a las ${hora}` : 'Gira para poner la hora'}
+            />
+            {!!hora && (
+              <Pressable onPress={() => { elegir(); setHoraMin(null) }}
+                         style={({ pressed }) => [s.quitarHora, pressed && s.pulsado]}>
+                <Ionicons name="close" size={15} color="rgba(255,255,255,0.55)" />
+                <Text style={s.quitarTxt}>QUITAR LA HORA</Text>
+              </Pressable>
+            )}
 
             </>}
 
@@ -487,12 +673,15 @@ export default function Habito() {
               </>
             )}
 
+            </>}
+
+            {ver('icono') && <>
             {/* ── El icono: los 1 300 de Ionicons, con buscador ─────────── */}
             <Text style={s.rot}>ICONO</Text>
             <View style={s.buscador}>
               <Ionicons name="search" size={17} color="rgba(255,255,255,0.35)" />
               <TextInput value={buscaIcono} onChangeText={setBuscaIcono}
-                         placeholder={`Buscar entre ${TODOS_LOS_ICONOS.length} iconos`}
+                         placeholder="Buscar"
                          placeholderTextColor="rgba(255,255,255,0.3)"
                          style={s.buscadorTxt} autoCapitalize="none" autoCorrect={false} />
               {!!buscaIcono && (
@@ -501,30 +690,85 @@ export default function Habito() {
                 </Pressable>
               )}
             </View>
+            {!buscaIcono && (
+              <>
+                <View style={[s.fichas, { marginTop: 12 }]}>
+                  {CATEGORIAS.map(c => {
+                    const on = !verTodos && categoria === c.id
+                    return (
+                      <Pressable key={c.id}
+                                 onPress={() => { elegir(); setCategoria(c.id); setVerTodos(false) }}
+                                 style={({ pressed }) => [s.cat, on && s.catOn, pressed && s.pulsado]}>
+                        <Text style={[s.catTxt, on && s.blancoFuerte]}>{c.etiqueta}</Text>
+                      </Pressable>
+                    )
+                  })}
+                </View>
+                <Pressable onPress={() => { elegir(); setVerTodos(v => !v) }}
+                           style={({ pressed }) => [s.verTodos, pressed && s.pulsado]}>
+                  <Ionicons name={verTodos ? 'chevron-up' : 'chevron-down'} size={15}
+                            color="rgba(255,255,255,0.55)" />
+                  <Text style={s.verTodosTxt}>
+                    {verTodos ? 'VER SOLO LA CATEGORÍA' : `VER LOS ${TODOS_LOS_ICONOS.length}`}
+                  </Text>
+                </Pressable>
+              </>
+            )}
+            </>}
               </View>
             }
           />
 
           <View style={s.pie}>
-            {editando && (
-              <Pressable onPress={borrar}
-                         style={({ pressed }) => [s.borrar, pressed && s.pulsado]}>
-                <Ionicons name="trash-outline" size={17} color={ROJO} />
-                <Text style={s.borrarTxt}>ELIMINAR HÁBITO</Text>
-              </Pressable>
+            {editando ? (
+              <>
+                <Pressable onPress={borrar}
+                           style={({ pressed }) => [s.borrar, pressed && s.pulsado]}>
+                  <Ionicons name="trash-outline" size={17} color={ROJO} />
+                  <Text style={s.borrarTxt}>ELIMINAR HÁBITO</Text>
+                </Pressable>
+                <Pressable onPress={guardar} disabled={!puedeCrear}
+                           style={({ pressed }) => [s.crear, !puedeCrear && s.crearOff, pressed && s.pulsado]}>
+                  <Ionicons name="checkmark" size={21} color="#fff" />
+                  <Text style={s.crearTxt}>GUARDAR</Text>
+                </Pressable>
+              </>
+            ) : (
+              /* Dos botones en fila. «Atrás» no ocupa lo mismo que «siguiente»:
+                 el que hace avanzar manda, y el de volver no debería competir
+                 por el pulgar con él. */
+              <View style={s.fila}>
+                <Pressable onPress={atras}
+                           style={({ pressed }) => [s.atras, pressed && s.pulsado]}
+                           accessibilityLabel={paso === 0 ? 'Volver a las plantillas' : 'Paso anterior'}>
+                  <Ionicons name="chevron-back" size={19} color="rgba(255,255,255,0.6)" />
+                  <Text style={s.atrasTxt}>ATRÁS</Text>
+                </Pressable>
+                <Pressable onPress={siguiente} disabled={!puedeSeguir}
+                           style={({ pressed }) => [s.crear, s.flex, !puedeSeguir && s.crearOff, pressed && s.pulsado]}>
+                  <Ionicons name={ultimoPaso ? 'add' : 'chevron-forward'} size={21} color="#fff" />
+                  <Text style={s.crearTxt}>{ultimoPaso ? 'CREAR HÁBITO' : 'SIGUIENTE'}</Text>
+                </Pressable>
+              </View>
             )}
-            <Pressable onPress={guardar} disabled={!puedeCrear}
-                       style={({ pressed }) => [s.crear, !puedeCrear && s.crearOff, pressed && s.pulsado]}>
-              <Ionicons name={editando ? "checkmark" : "add"} size={21} color="#fff" />
-              <Text style={s.crearTxt}>{editando ? 'GUARDAR' : 'CREAR HÁBITO'}</Text>
-            </Pressable>
           </View>
+
+          </>
+          )}
 
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
   )
 }
+
+/** El encabezado de cada paso del asistente. */
+const TITULOS = {
+  nombre: ['¿Qué quieres hacer?', 'Ponle el nombre con el que lo reconocerás.'],
+  cuando: ['¿Cuándo lo harás?', 'Sirve para agruparlo en la lista del día.'],
+  hora:   ['¿A qué hora?', 'Puedes dejarlo sin hora y hacerlo cuando puedas.'],
+  icono:  ['Elige un icono', 'Es lo que verás en la tarjeta.'],
+} as const
 
 const DIAS_ET = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const
 
@@ -686,6 +930,33 @@ const s = StyleSheet.create({
     color: 'rgba(255,255,255,0.32)', paddingTop: 14,
   },
   fichas: { flexDirection: 'row', flexWrap: 'wrap', gap: 9 },
+  cat: {
+    height: 34, paddingHorizontal: 13, borderRadius: 12,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)',
+  },
+  catOn: { backgroundColor: ROJO, borderColor: 'transparent' },
+  catTxt: {
+    fontFamily: 'Rajdhani_700Bold', fontSize: 12.5, letterSpacing: 1,
+    color: 'rgba(255,255,255,0.6)',
+  },
+  verTodos: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 46, borderRadius: 15, marginTop: 11,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)',
+  },
+  verTodosTxt: {
+    fontFamily: 'Rajdhani_700Bold', fontSize: 13.5, letterSpacing: 1.6,
+    color: 'rgba(255,255,255,0.55)',
+  },
+  quitarHora: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
+    height: 46, borderRadius: 15, marginTop: 11,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)',
+  },
   ficha: {
     minWidth: 58, height: 46, borderRadius: 15, paddingHorizontal: 14,
     alignItems: 'center', justifyContent: 'center',
@@ -793,7 +1064,64 @@ const s = StyleSheet.create({
   },
   todosOff: { opacity: 0.5 },
 
+  /* ── El asistente ─────────────────────────────────────────────────── */
+  pasos: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, paddingBottom: 16 },
+  pasoBarra: {
+    flex: 1, height: 3, borderRadius: 2,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+  },
+  pasoBarraOn: { backgroundColor: ROJO },
+  pasoTitulo: {
+    fontFamily: 'Inter_800ExtraBold', fontSize: 27, color: '#fff',
+    letterSpacing: -0.7, lineHeight: 32, marginTop: 16,
+  },
+  pasoPie: {
+    fontFamily: 'Inter_400Regular', fontSize: 14, lineHeight: 20,
+    color: 'rgba(255,255,255,0.42)', marginTop: 6,
+  },
+
+  /* ── Las plantillas ───────────────────────────────────────────────── */
+  scrollPlant: { paddingHorizontal: 20, paddingBottom: 30 },
+  rejPlant: { flexDirection: 'row', flexWrap: 'wrap', gap: 11, marginTop: 26 },
+  plant: {
+    width: '47.6%', flexGrow: 1, borderRadius: 20, padding: 15, gap: 3,
+    backgroundColor: 'rgba(255,255,255,0.05)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)',
+  },
+  plantIc: {
+    width: 44, height: 44, borderRadius: 15, marginBottom: 9,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(255,31,61,0.14)',
+    borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+  },
+  plantNm: {
+    fontFamily: 'Rajdhani_700Bold', fontSize: 17, letterSpacing: 1.6, color: '#fff',
+  },
+  plantPie: {
+    fontFamily: 'Inter_400Regular', fontSize: 12.5, color: 'rgba(255,255,255,0.4)',
+  },
+  cero: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 9,
+    height: 56, borderRadius: 19, marginTop: 14,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.13)',
+  },
+  ceroTxt: {
+    fontFamily: 'Rajdhani_700Bold', fontSize: 15.5, letterSpacing: 2.2, color: '#fff',
+  },
+
   pie: { paddingHorizontal: 20, paddingBottom: 14, paddingTop: 8, gap: 10 },
+  fila: { flexDirection: 'row', gap: 10 },
+  atras: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 4,
+    height: 62, paddingHorizontal: 21, borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.06)',
+    borderWidth: 1, borderColor: 'rgba(255,255,255,0.11)',
+  },
+  atrasTxt: {
+    fontFamily: 'Rajdhani_700Bold', fontSize: 14.5, letterSpacing: 2,
+    color: 'rgba(255,255,255,0.6)',
+  },
   borrar: {
     height: 48, borderRadius: 16, flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center', gap: 8,
