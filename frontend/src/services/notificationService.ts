@@ -108,7 +108,7 @@ export async function scheduleWorkoutReminder(hour: number, minute: number): Pro
       content: {
         title: '🏋️ Hora de entrenar',
         body: 'Tu rutina te espera. 30 min de trabajo hoy son 10 años de salud mañana.',
-        data: { type: 'workout', screen: '/(tabs)/workout' },
+        data: { type: 'workout', screen: '/workout/gym' },
       },
       trigger: {
         type: Notifications.SchedulableTriggerInputTypes.CALENDAR,

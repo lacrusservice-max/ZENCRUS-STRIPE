@@ -4,6 +4,10 @@
  * Las dos listas en una pantalla, con la pestaña que llega por parámetro para
  * que tocar «Seguidores» abra directamente esa y no la otra.
  *
+ * La cabecera lleva el usuario de quien la abrió. Desde un perfil ajeno se
+ * llega tras varios toques, y «Conexiones» a secas no dice de quién son: con
+ * dos listas idénticas de caras, no había forma de saber en cuál estabas.
+ *
  * Si la cuenta es privada y no se sigue, el servidor responde 403 y aquí se
  * enseña el candado: saber a quién sigue alguien también es información sobre
  * esa persona.
@@ -16,12 +20,17 @@ import { Screen, ScreenHeader } from '@/components/ui/Screen'
 import { useAppTheme } from '@/context/ThemeContext'
 import { Avatar, NameBlock, Empty, LockedWall, Skeleton } from '@/components/social/Bits'
 import * as S from '@/services/socialService'
+import { TabBar } from '@/constants/layout'
 
 type Pestana = 'followers' | 'following'
 
 export default function FollowersScreen() {
   const T = useAppTheme()
-  const { id, tab } = useLocalSearchParams<{ id: string; tab?: string }>()
+  const { id, tab, nombre } = useLocalSearchParams<{
+    id: string; tab?: string
+    /** De quién es la lista, para poder decirlo en la cabecera. */
+    nombre?: string
+  }>()
   const [pestana, setPestana] = useState<Pestana>(tab === 'following' ? 'following' : 'followers')
   const [lista, setLista] = useState<S.Profile[]>([])
   const [cargando, setCargando] = useState(true)
@@ -51,7 +60,13 @@ export default function FollowersScreen() {
 
   return (
     <Screen>
-      <ScreenHeader back eyebrow="COMUNIDAD" title="Conexiones" icon="people" />
+      <ScreenHeader
+        back
+        eyebrow="COMUNIDAD"
+        title="Conexiones"
+        subtitle={nombre ? `@${nombre}` : undefined}
+        icon="people"
+      />
 
       <View style={[t.wrap, { backgroundColor: T.glass, borderColor: T.glassBorder }]}>
         {([
@@ -78,7 +93,7 @@ export default function FollowersScreen() {
         <FlatList
           data={lista}
           keyExtractor={u => u.id}
-          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+          contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: TabBar.scrollInset }}
           refreshControl={
             <RefreshControl refreshing={refrescando} onRefresh={() => cargar(true)} tintColor={T.accent} />
           }

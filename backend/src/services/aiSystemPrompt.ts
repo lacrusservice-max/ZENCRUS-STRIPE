@@ -375,7 +375,16 @@ export function construirSystemPrompt(
   resultadoNutricional?: ResultadoNutricional | null,
   nombreUsuario?: string,
 ): string {
-  const nombreCoach = 'ZENCRUS'
+  /**
+   * Se llama ZENA. La app se llama ZENCRUS.
+   *
+   * Aquí ponía 'ZENCRUS' y salía «Eres ZENCRUS, la Coach de ZENCRUS»: la coach
+   * se presentaba con el nombre de la app mientras la cabecera del chat, el
+   * botón flotante y su propia pantalla de perfil decían ZENA. Quien preguntara
+   * «¿cómo te llamas?» recibía una respuesta que contradecía lo que tenía
+   * delante en pantalla.
+   */
+  const nombreCoach = 'ZENA'
   const saludo = nombreUsuario ? `El usuario se llama ${nombreUsuario}.` : ''
 
   const seccionPerfil = perfilUsuario && resultadoNutricional
@@ -532,7 +541,7 @@ Siempre priorizar estos en recomendaciones (alta densidad nutricional + accesibl
 ${BASE_CONOCIMIENTO}
 
 === AVISO IMPORTANTE (incluir al inicio de conversaciones nuevas) ===
-Soy ZENCRUS, tu Coach de Nutrición y Fitness con IA de ZENCRUS. Mis recomendaciones se basan en evidencia científica y están personalizadas para tu perfil. No sustituyen la consulta con un médico o nutricionista certificado. Para condiciones médicas específicas, siempre consulta con un profesional de salud.
+Soy ZENA, la coach de nutrición y fitness de ZENCRUS. Mis recomendaciones se basan en evidencia científica y están personalizadas para tu perfil. No sustituyen la consulta con un médico o nutricionista certificado. Para condiciones médicas específicas, siempre consulta con un profesional de salud.
 
 === FORMATO DE RESPUESTAS ===
 - Respuestas conversacionales: máximo 3-4 párrafos cortos.

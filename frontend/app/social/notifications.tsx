@@ -6,20 +6,34 @@
  * Abrir la pantalla NO marca todo como leído: abrir y leer son cosas distintas,
  * y mezclarlas hace que un aviso desaparezca sin que nadie lo haya mirado. Se
  * marca al tocar cada uno, y hay un botón para marcarlos todos a la vez.
+ *
+ * ── Se agrupan por tiempo y se juntan los repetidos ─────────────────────────
+ * «Hoy», «Esta semana», «Antes». Y varios me gusta sobre la MISMA publicación
+ * salen en una línea —«ana y luis le dieron me gusta»— en vez de tres filas
+ * idénticas: con quince me gusta, la lista dejaba de servir para ver lo demás.
+ *
+ * Un aviso de «empezó a seguirte» NO trae botón de seguir de vuelta. El aviso no
+ * dice si ya sigues a esa persona, y pintar «Seguir» sobre alguien a quien ya
+ * sigues es peor que no ofrecerlo. Se toca la fila y se decide en su perfil.
+ *
+ * Mantener pulsado un aviso lo descarta. El subtítulo de la cabecera lo dice,
+ * porque un gesto que no se ve en ninguna parte no lo encuentra nadie.
  */
 
 import { useCallback, useState } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
+import * as Haptics from 'expo-haptics'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
 import { useAppTheme } from '@/context/ThemeContext'
 import { useSocialStore } from '@/store/socialStore'
 import { Avatar, Btn, Empty, Skeleton, timeAgo } from '@/components/social/Bits'
 import * as S from '@/services/socialService'
+import { TabBar } from '@/constants/layout'
 
 /** Qué dice cada tipo de aviso y con qué icono. */
 const TEXTO: Record<S.NotificationType, { verbo: string; icon: any; color: string }> = {
@@ -74,14 +88,95 @@ export default function NotificationsScreen() {
       S.markNotificationRead(n.id).then(loadBadges).catch(() => {})
     }
     if (n.type === 'follow_request') router.push('/social/requests')
-    else if (n.post) router.push(`/social/comments/${n.post.id}`)
+    else if (n.post) router.push(`/social/post/${n.post.id}`)
     else if (n.actor) router.push(`/social/profile/${n.actor.id}`)
   }
 
   const marcarTodas = async () => {
+    // Se guarda el estado anterior para poder devolverlo. Sin esto, un fallo
+    // del servidor dejaba los avisos marcados EN PANTALLA y sin marcar en el
+    // servidor: al volver a entrar reaparecían todos sin leer, que se lee como
+    // que la app perdió lo que hiciste.
+    const copia = items
     setItems(i => i.map(x => ({ ...x, isRead: true })))
-    try { await S.markAllNotificationsRead(); loadBadges() }
-    catch (e) { Alert.alert('No pudimos marcarlas', S.errorText(e)) }
+    try {
+      await S.markAllNotificationsRead()
+      loadBadges()
+    } catch (e) {
+      setItems(copia)
+      Alert.alert('No pudimos marcarlas', S.errorText(e))
+    }
+  }
+
+  /**
+   * Descarta un aviso.
+   *
+   * Mantener pulsado, no deslizar: en esta app ninguna lista se desliza, y
+   * meter aquí el único gesto de ese tipo obligaría a descubrirlo por accidente.
+   *
+   * Solo desaparece de MI bandeja — no deshace el me gusta ni avisa a nadie—,
+   * y por eso la palabra es «descartar» y no «eliminar».
+   */
+  const descartar = (n: S.SocialNotification) => {
+    Alert.alert(
+      'Descartar aviso',
+      'Desaparecerá de tu lista. Quien lo provocó no se entera de nada.',
+      [
+        { text: 'Cancelar', style: 'cancel' },
+        {
+          text: 'Descartar',
+          style: 'destructive',
+          onPress: async () => {
+            const copia = items
+            setItems(i => i.filter(x => x.id !== n.id))
+            try {
+              await S.deleteNotification(n.id)
+              // Si estaba sin leer, su contador acaba de bajar.
+              if (!n.isRead) loadBadges()
+            } catch (e) {
+              setItems(copia)
+              Alert.alert('No pudimos descartarlo', S.errorText(e))
+            }
+          },
+        },
+      ],
+    )
+  }
+
+  /**
+   * La lista tal y como se pinta: separadores de tiempo y avisos ya agrupados.
+   *
+   * Se recorre una sola vez y en orden, que ya viene del más nuevo al más
+   * viejo. Solo se juntan me gusta CONSECUTIVOS de la misma publicación: si
+   * entre medias hay un comentario, la conversación se rompería.
+   */
+  const filas = (() => {
+    const out: ({ sep: string } | { avisos: S.SocialNotification[] })[] = []
+    const ahora = Date.now()
+    let tramoActual = ''
+
+    for (const n of items) {
+      const horas = (ahora - new Date(n.createdAt).getTime()) / 3600_000
+      const tramo = horas < 24 ? 'HOY' : horas < 168 ? 'ESTA SEMANA' : 'ANTES'
+      if (tramo !== tramoActual) { out.push({ sep: tramo }); tramoActual = tramo }
+
+      const ultima = out[out.length - 1]
+      const juntable =
+        ultima && 'avisos' in ultima &&
+        n.type === 'like' && ultima.avisos[0].type === 'like' &&
+        !!n.post && ultima.avisos[0].post?.id === n.post.id
+      if (juntable) (ultima as { avisos: S.SocialNotification[] }).avisos.push(n)
+      else out.push({ avisos: [n] })
+    }
+    return out
+  })()
+
+  /** «ana», «ana y luis», «ana y 4 más». */
+  const quienes = (grupo: S.SocialNotification[]) => {
+    const nombres = grupo.map(n => n.actor?.username ?? n.actor?.fullName ?? 'Alguien')
+    if (nombres.length === 1) return nombres[0]
+    if (nombres.length === 2) return `${nombres[0]} y ${nombres[1]}`
+    return `${nombres[0]} y ${nombres.length - 1} más`
   }
 
   return (
@@ -90,6 +185,7 @@ export default function NotificationsScreen() {
         back
         eyebrow="COMUNIDAD"
         title="Avisos"
+        subtitle={items.length ? 'Mantén pulsado uno para descartarlo' : undefined}
         icon="notifications"
         right={items.some(i => !i.isRead)
           ? <Btn label="Marcar leídas" onPress={marcarTodas} tone="soft" small />
@@ -113,36 +209,46 @@ export default function NotificationsScreen() {
       )}
 
       <FlatList
-        data={items}
-        keyExtractor={n => n.id}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+        data={filas}
+        keyExtractor={(f, i) => ('sep' in f ? `sep-${f.sep}-${i}` : f.avisos[0].id)}
+        contentContainerStyle={{ paddingHorizontal: 16, paddingBottom: TabBar.scrollInset }}
         refreshControl={
           <RefreshControl refreshing={refrescando} onRefresh={() => cargar(true)} tintColor={T.accent} />
         }
         onEndReached={cargarMas}
         onEndReachedThreshold={0.6}
-        renderItem={({ item }) => {
+        renderItem={({ item: fila }) => {
+          if ('sep' in fila) {
+            return <Text style={[s.tramo, { color: T.ink3 }]}>{fila.sep}</Text>
+          }
+          const grupo = fila.avisos
+          const item = grupo[0]
           const d = TEXTO[item.type] ?? TEXTO.follow
+          const sinLeer = grupo.some(n => !n.isRead)
+
           return (
             <TouchableOpacity
-              style={[s.fila, !item.isRead && { backgroundColor: `${T.accent}0C` }]}
+              style={s.fila}
               onPress={() => abrir(item)}
+              onLongPress={() => {
+                Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Medium).catch(() => {})
+                descartar(item)
+              }}
+              delayLongPress={320}
               activeOpacity={0.75}
             >
               <View>
-                <Avatar profile={item.actor} size={44} />
+                <Avatar profile={item.actor} size={38} />
                 <View style={[s.tipo, { backgroundColor: d.color, borderColor: T.bg }]}>
-                  <Ionicons name={d.icon} size={10} color="#fff" />
+                  <Ionicons name={d.icon} size={9} color="#fff" />
                 </View>
               </View>
 
               <View style={{ flex: 1 }}>
                 <Text style={[s.texto, { color: T.ink }]} numberOfLines={2}>
-                  <Text style={{ fontWeight: '800' }}>
-                    {item.actor?.username ?? item.actor?.fullName ?? 'Alguien'}
-                  </Text>
-                  {' '}{d.verbo}
-                  {item.comment?.content ? `: «${item.comment.content}»` : ''}
+                  <Text style={{ fontWeight: '800' }}>{quienes(grupo)}</Text>
+                  {' '}{grupo.length > 1 ? 'le dieron me gusta' : d.verbo}
+                  {grupo.length === 1 && item.comment?.content ? `: «${item.comment.content}»` : ''}
                 </Text>
                 <Text style={[s.hora, { color: T.ink3 }]}>{timeAgo(item.createdAt)}</Text>
               </View>
@@ -150,7 +256,7 @@ export default function NotificationsScreen() {
               {item.post?.preview?.url && (
                 <Image source={{ uri: item.post.preview.url }} style={s.portada} contentFit="cover" />
               )}
-              {!item.isRead && <View style={[s.punto, { backgroundColor: T.accent }]} />}
+              {sinLeer && <View style={[s.punto, { backgroundColor: T.accent }]} />}
             </TouchableOpacity>
           )
         }}
@@ -186,17 +292,19 @@ const s = StyleSheet.create({
     padding: 14, borderRadius: 16, borderWidth: 1,
   },
   solicitudesTxt: { flex: 1, fontSize: 13.5, fontWeight: '600' },
-  fila: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingVertical: 12, paddingHorizontal: 10, marginHorizontal: -10, borderRadius: 14,
+  tramo: {
+    fontSize: 10, fontWeight: '900', letterSpacing: 2,
+    marginTop: 18, marginBottom: 10,
   },
+  fila: { flexDirection: 'row', alignItems: 'center', gap: 12, paddingVertical: 11 },
   tipo: {
     position: 'absolute', bottom: -2, right: -3,
-    width: 19, height: 19, borderRadius: 10, borderWidth: 2,
+    width: 17, height: 17, borderRadius: 9, borderWidth: 2,
     alignItems: 'center', justifyContent: 'center',
   },
   texto: { fontSize: 13.5, lineHeight: 19 },
   hora: { fontSize: 11, marginTop: 3 },
-  portada: { width: 42, height: 42, borderRadius: 9 },
+  // Más grande que antes: es lo que dice de QUÉ publicación te hablan.
+  portada: { width: 46, height: 46, borderRadius: 8 },
   punto: { width: 7, height: 7, borderRadius: 4 },
 })

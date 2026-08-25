@@ -11,14 +11,16 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import {
-  View, ScrollView, RefreshControl, Alert,
+  View, ScrollView, RefreshControl, Alert, TouchableOpacity,
 } from 'react-native'
+import { Ionicons } from '@expo/vector-icons'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
 import { useAppTheme } from '@/context/ThemeContext'
-import { Btn, Empty, Skeleton } from '@/components/social/Bits'
+import { Btn, Empty, Skeleton, confirmarBloqueo } from '@/components/social/Bits'
 import { ProfileHeader, ProfileBody } from '@/components/social/ProfileView'
 import * as S from '@/services/socialService'
+import { TabBar } from '@/constants/layout'
 
 export default function ProfileScreen() {
   const T = useAppTheme()
@@ -94,6 +96,44 @@ export default function ProfileScreen() {
     }
   }
 
+  /**
+   * El menú de los tres puntos del perfil ajeno.
+   *
+   * Al bloquear se vuelve atrás en vez de recargar: esta pantalla dejaría de
+   * poder existir —el servidor responde como si la cuenta no estuviera— y
+   * quedarse en ella solo enseñaría un «no encontramos esta cuenta» que parece
+   * un error y no el resultado de lo que se acaba de pedir.
+   */
+  const opciones = () => {
+    if (!perfil) return
+    Alert.alert(
+      perfil.username ? `@${perfil.username}` : 'Esta cuenta',
+      undefined,
+      [
+        {
+          text: 'Denunciar cuenta',
+          onPress: () => router.push({
+            pathname: '/social/report',
+            params: {
+              tipo: 'user', id: perfil.id, nombre: perfil.username ?? '',
+              foto: perfil.avatar ?? '', resumen: perfil.bio ?? '',
+            },
+          }),
+        },
+        {
+          text: 'Bloquear',
+          style: 'destructive',
+          onPress: () => confirmarBloqueo(
+            perfil.id,
+            perfil.username ?? undefined,
+            () => router.back(),
+          ),
+        },
+        { text: 'Cancelar', style: 'cancel' },
+      ],
+    )
+  }
+
   const confirmarDejarDeSeguir = () => {
     if (!perfil) return
     if (perfil.relation === 'following') {
@@ -156,21 +196,29 @@ export default function ProfileScreen() {
         back
         eyebrow="COMUNIDAD"
         title={perfil.username ? `@${perfil.username}` : 'Perfil'}
+        right={
+          <TouchableOpacity onPress={opciones} hitSlop={10} activeOpacity={0.7}>
+            <Ionicons name="ellipsis-horizontal" size={20} color={T.ink3} />
+          </TouchableOpacity>
+        }
       />
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 60 }}
+        contentContainerStyle={{ paddingBottom: TabBar.scrollInset }}
         refreshControl={
           <RefreshControl refreshing={refrescando} onRefresh={() => cargar(true)} tintColor={T.accent} />
         }
         showsVerticalScrollIndicator={false}
       >
         <ProfileHeader
+          // La elegida manda; si no hay, se cae a la última publicación,
+          // que es como funcionaba antes de que se pudiera elegir.
+          portada={perfil.coverImage ?? posts.find(p => p.media[0]?.url)?.media[0]?.url ?? null}
           profile={perfil}
           stats={perfil.stats}
           canViewContent={perfil.canViewContent}
           relation={perfil.relation}
-          onFollowersPress={() => router.push(`/social/followers/${perfil.id}?tab=followers`)}
-          onFollowingPress={() => router.push(`/social/followers/${perfil.id}?tab=following`)}
+          onFollowersPress={() => router.push(`/social/followers/${perfil.id}?tab=followers&nombre=${perfil.username ?? ''}`)}
+          onFollowingPress={() => router.push(`/social/followers/${perfil.id}?tab=following&nombre=${perfil.username ?? ''}`)}
           action={
             <>
               <Btn
@@ -187,7 +235,7 @@ export default function ProfileScreen() {
           }
         />
 
-        <ProfileBody profile={perfil} posts={posts} onPost={p => router.push(`/social/comments/${p.id}`)} />
+        <ProfileBody profile={perfil} posts={posts} onPost={p => router.push(`/social/post/${p.id}`)} />
       </ScrollView>
     </Screen>
   )

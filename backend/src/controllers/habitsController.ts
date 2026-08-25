@@ -41,7 +41,7 @@ const FECHA = z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'La fecha debe ser YYYY-MM
  * registros viejos seguirían diciendo `sleep` y nadie los reclamaría.
  */
 const POR_DEFECTO = [
-  { habit_key: 'sleep', label: 'Dormir 7h o más', icon: 'moon', momento: 'noche', hora: '23:00', tipo: 'hacer', meta_segundos: null },
+  { habit_key: 'sleep', label: 'Dormir 7h o más', icon: 'moon', momento: 'noche', hora: '23:00', tipo: 'hacer', meta_segundos: null, hora_fin: '06:00' },
   { habit_key: 'water', label: '8 vasos de agua', icon: 'water', momento: 'manana', hora: null, tipo: 'hacer', meta_segundos: null },
   { habit_key: 'workout', label: 'Entrenar', icon: 'barbell', momento: 'tarde', hora: null, tipo: 'hacer', meta_segundos: null },
   { habit_key: 'protein', label: 'Proteína objetivo', icon: 'restaurant', momento: 'manana', hora: null, tipo: 'hacer', meta_segundos: null },
@@ -58,6 +58,8 @@ const TIPO = z.enum(['hacer', 'evitar'])
 const HORA = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'La hora va como HH:MM')
 /** Hasta 24 h. `null` significa «este hábito no lleva cronómetro». */
 const META = z.number().int().min(1).max(86400)
+/** Máscara de días: bit 0 = lunes … bit 6 = domingo. 127 son los siete. */
+const DIAS = z.number().int().min(1).max(127)
 
 export const listarHabitosSchema = z.object({
   query: z.object({
@@ -82,6 +84,13 @@ export const crearHabitoSchema = z.object({
     hora: HORA.nullish(),
     tipo: TIPO.default('hacer'),
     metaSegundos: META.nullish(),
+    alarma: z.boolean().default(false),
+    alarmaDias: DIAS.default(127),
+    alarmaFin: z.boolean().default(false),
+    alarmaFinDias: DIAS.default(127),
+    alarmaSonido: z.string().min(1).max(60).nullish(),
+    alarmaPosponer: z.boolean().default(true),
+    horaFin: HORA.nullish(),
   }),
 })
 
@@ -96,6 +105,13 @@ export const actualizarHabitoSchema = z.object({
     hora: HORA.nullish(),
     tipo: TIPO.optional(),
     metaSegundos: META.nullish(),
+    alarma: z.boolean().optional(),
+    alarmaDias: DIAS.optional(),
+    alarmaFin: z.boolean().optional(),
+    alarmaFinDias: DIAS.optional(),
+    alarmaSonido: z.string().min(1).max(60).nullish(),
+    alarmaPosponer: z.boolean().optional(),
+    horaFin: HORA.nullish(),
   }).refine(b => Object.keys(b).length > 0, 'Nada que actualizar'),
 })
 
@@ -136,6 +152,14 @@ function aHabito(f: any) {
     hora: f.hora ? String(f.hora).slice(0, 5) : null,
     tipo: f.tipo,
     metaSegundos: f.meta_segundos,
+    alarma: f.alarma,
+    alarmaDias: f.alarma_dias,
+    alarmaFin: f.alarma_fin,
+    alarmaFinDias: f.alarma_fin_dias,
+    alarmaSonido: f.alarma_sonido,
+    alarmaPosponer: f.alarma_posponer,
+    // Igual que `hora`: Postgres la da como «06:00:00» y sobra el resto.
+    horaFin: f.hora_fin ? String(f.hora_fin).slice(0, 5) : null,
   }
 }
 
@@ -247,7 +271,11 @@ export async function listarHabitos(req: Request, res: Response): Promise<void> 
 /** POST /tracking/habits — un hábito propio. */
 export async function crearHabito(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
-  const { habitKey, label, icon, orden, momento, hora, tipo, metaSegundos } = req.body
+  const {
+    habitKey, label, icon, orden, momento, hora, tipo, metaSegundos,
+    alarma, alarmaDias, alarmaFin, alarmaFinDias,
+    alarmaSonido, alarmaPosponer, horaFin,
+  } = req.body
 
   const { data, error } = await supabase
     .from('habit_definitions')
@@ -263,6 +291,13 @@ export async function crearHabito(req: Request, res: Response): Promise<void> {
       hora: hora ?? null,
       tipo,
       meta_segundos: metaSegundos ?? null,
+      alarma,
+      alarma_dias: alarmaDias,
+      alarma_fin: alarmaFin,
+      alarma_fin_dias: alarmaFinDias,
+      alarma_sonido: alarmaSonido ?? null,
+      alarma_posponer: alarmaPosponer,
+      hora_fin: horaFin ?? null,
     }, { onConflict: 'user_id,habit_key' })
     .select()
     .single()
@@ -292,6 +327,14 @@ export async function actualizarHabito(req: Request, res: Response): Promise<voi
   // `null` es un valor válido aquí: significa «quítale la hora» / «sin cronómetro».
   if (b.hora !== undefined) cambios.hora = b.hora
   if (b.metaSegundos !== undefined) cambios.meta_segundos = b.metaSegundos
+  if (b.alarma !== undefined) cambios.alarma = b.alarma
+  if (b.alarmaDias !== undefined) cambios.alarma_dias = b.alarmaDias
+  if (b.alarmaFin !== undefined) cambios.alarma_fin = b.alarmaFin
+  if (b.alarmaFinDias !== undefined) cambios.alarma_fin_dias = b.alarmaFinDias
+  if (b.alarmaPosponer !== undefined) cambios.alarma_posponer = b.alarmaPosponer
+  // `null` vale: quitar el sonido propio, dejar de ser horario de sueño.
+  if (b.alarmaSonido !== undefined) cambios.alarma_sonido = b.alarmaSonido
+  if (b.horaFin !== undefined) cambios.hora_fin = b.horaFin
 
   const { data, error } = await supabase
     .from('habit_definitions')

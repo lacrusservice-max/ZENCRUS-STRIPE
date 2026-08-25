@@ -21,7 +21,7 @@
  */
 
 import { View, Text, StyleSheet, Pressable } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import * as Haptics from 'expo-haptics'
 import Animated, {

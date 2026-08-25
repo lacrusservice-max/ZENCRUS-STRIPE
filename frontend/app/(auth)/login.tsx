@@ -47,6 +47,25 @@ export default function LoginScreen() {
          pantalla completa y parece que la app se ha roto cuando lo único que
          pasa es que hay que volver a teclear. */
       console.warn('[login] no se pudo entrar:', JSON.stringify({ status: err?.response?.status, data: err?.response?.data, msg: err?.message, isCircuit: err?.isCircuitOpen, isOffline: err?.isOffline }))
+      /**
+       * Qué se envió, sin enviar QUÉ se envió.
+       *
+       * «Credenciales incorrectas» con la contraseña bien escrita es un
+       * callejón sin salida: el servidor no puede decir en qué se diferencia
+       * y en pantalla no se ve nada raro. Un corrector que añade un espacio,
+       * una mayúscula automática o un carácter que el teclado traduce mal
+       * dejan exactamente este rastro — y todos cambian la LONGITUD o los
+       * bordes, que es lo único que hace falta mirar.
+       *
+       * Solo en desarrollo, y nunca el contenido: número de caracteres y si
+       * sobra espacio a los lados. Con eso se distingue en un vistazo un
+       * «me equivoqué al teclear» de un «la app está tocando lo que escribo».
+       */
+      if (__DEV__) {
+        console.warn('[login] se enviaron', password.length, 'caracteres;',
+          password !== password.trim() ? 'OJO: con espacios en los bordes' : 'sin espacios en los bordes',
+          '| correo:', JSON.stringify(email.trim().toLowerCase()))
+      }
       const msg = err?.response?.data?.message || err?.message || 'Error al iniciar sesión'
       if (err?.response?.data?.data?.requiresVerification) {
         Alert.alert('Verifica tu correo', msg, [
@@ -103,6 +122,13 @@ export default function LoginScreen() {
                   keyboardType="email-address"
                   autoCapitalize="none"
                   autoComplete="email"
+                  textContentType="username"
+                  /* Por lo mismo que abajo: el corrector de iOS también toca los
+                     correos, y un espacio de más aquí es un usuario que no
+                     existe. El `trim()` del envío tapa el espacio, no la
+                     palabra corregida. */
+                  autoCorrect={false}
+                  spellCheck={false}
                   onFocus={() => setFocused('email')}
                   onBlur={() => setFocused(null)}
                 />
@@ -120,6 +146,21 @@ export default function LoginScreen() {
                   placeholderTextColor="rgba(255,255,255,0.22)"
                   secureTextEntry={!showPass}
                   autoComplete="password"
+                  textContentType="password"
+                  /* Los tres van juntos y no sobran.
+                   *
+                   * Mientras la contraseña está oculta, iOS apaga por su cuenta
+                   * el corrector y las mayúsculas: en un campo secreto no tienen
+                   * sentido. Pero el ojo apaga `secureTextEntry`, y en ese
+                   * momento esto pasa a ser un campo de texto corriente — con
+                   * mayúscula automática en la primera letra y con corrector.
+                   * Una contraseña que se escribe MIRÁNDOLA puede salir con la
+                   * inicial cambiada, o con un espacio detrás que el corrector
+                   * añade al aceptar una palabra. Y luego no cuadra el hash,
+                   * sin nada raro que ver en pantalla. */
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  spellCheck={false}
                   onFocus={() => setFocused('pass')}
                   onBlur={() => setFocused(null)}
                 />

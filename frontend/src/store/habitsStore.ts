@@ -20,8 +20,11 @@
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { sincronizarHabito, traerHabitos } from './trackingSync'
-import { crearHabito, borrarHabito } from '@/services/trackingService'
+import { crearHabito, borrarHabito, actualizarHabito } from '@/services/trackingService'
 import { haceDias, hoyLocal } from '@/utils/fechas'
+
+/** Los siete días. Bit 0 = lunes … bit 6 = domingo. */
+export const TODOS_LOS_DIAS = 127
 
 export type Momento = 'manana' | 'tarde' | 'noche'
 /** `evitar` da la vuelta al hábito: cumplir es NO haberlo hecho. */
@@ -35,17 +38,24 @@ export interface Habit {
   hora: string | null          // «07:00»; null si no tiene hora fijada
   tipo: TipoHabito
   metaSegundos: number | null  // null = sin cronómetro
+  alarma: boolean              // suena a la hora de `hora`
+  alarmaDias: number           // máscara: bit 0 = lunes … bit 6 = domingo
+  alarmaFin: boolean           // suena a la hora de `horaFin` (despertar)
+  alarmaFinDias: number
+  alarmaSonido: string | null
+  alarmaPosponer: boolean
+  horaFin: string | null       // horario de SUEÑO: `hora` acuesta, esta despierta
 }
 
 export type DayLog = Record<string, boolean> // habitId -> hecho
 export type DaySecs = Record<string, number> // habitId -> segundos cronometrados
 
 const DEFAULT_HABITS: Habit[] = [
-  { id: 'sleep',   label: 'Dormir 7h o más',          icon: 'moon',       momento: 'noche',  hora: '23:00', tipo: 'hacer', metaSegundos: null },
-  { id: 'water',   label: '8 vasos de agua',          icon: 'water',      momento: 'manana', hora: null,    tipo: 'hacer', metaSegundos: null },
-  { id: 'workout', label: 'Entrenar',                 icon: 'barbell',    momento: 'tarde',  hora: null,    tipo: 'hacer', metaSegundos: null },
-  { id: 'protein', label: 'Proteína objetivo',        icon: 'restaurant', momento: 'manana', hora: null,    tipo: 'hacer', metaSegundos: null },
-  { id: 'mind',    label: 'Respirar / meditar 5 min', icon: 'leaf',       momento: 'manana', hora: '07:00', tipo: 'hacer', metaSegundos: 300 },
+  { id: 'sleep',   label: 'Dormir 7h o más',          icon: 'moon',       momento: 'noche',  hora: '23:00', tipo: 'hacer', metaSegundos: null, alarma: false, alarmaDias: 127, alarmaFin: false, alarmaFinDias: 127, alarmaSonido: null, alarmaPosponer: true, horaFin: '06:00' },
+  { id: 'water',   label: '8 vasos de agua',          icon: 'water',      momento: 'manana', hora: null,    tipo: 'hacer', metaSegundos: null, alarma: false, alarmaDias: 127, alarmaFin: false, alarmaFinDias: 127, alarmaSonido: null, alarmaPosponer: true, horaFin: null },
+  { id: 'workout', label: 'Entrenar',                 icon: 'barbell',    momento: 'tarde',  hora: null,    tipo: 'hacer', metaSegundos: null, alarma: false, alarmaDias: 127, alarmaFin: false, alarmaFinDias: 127, alarmaSonido: null, alarmaPosponer: true, horaFin: null },
+  { id: 'protein', label: 'Proteína objetivo',        icon: 'restaurant', momento: 'manana', hora: null,    tipo: 'hacer', metaSegundos: null, alarma: false, alarmaDias: 127, alarmaFin: false, alarmaFinDias: 127, alarmaSonido: null, alarmaPosponer: true, horaFin: null },
+  { id: 'mind',    label: 'Respirar / meditar 5 min', icon: 'leaf',       momento: 'manana', hora: '07:00', tipo: 'hacer', metaSegundos: 300, alarma: false, alarmaDias: 127, alarmaFin: false, alarmaFinDias: 127, alarmaSonido: null, alarmaPosponer: true, horaFin: null },
 ]
 
 const HABITS_KEY = 'habits_list'
@@ -59,6 +69,13 @@ export interface HabitoExtra {
   hora?: string | null
   tipo?: TipoHabito
   metaSegundos?: number | null
+  alarma?: boolean
+  alarmaDias?: number
+  alarmaFin?: boolean
+  alarmaFinDias?: number
+  alarmaSonido?: string | null
+  alarmaPosponer?: boolean
+  horaFin?: string | null
 }
 
 interface HabitsState {
@@ -68,8 +85,20 @@ interface HabitsState {
 
   load: () => Promise<void>
   addHabit: (label: string, icon: string, extra?: HabitoExtra) => Promise<void>
+  /** Cambia lo que sea de un hábito ya creado. La llave nunca se toca. */
+  editarHabito: (id: string, cambios: Partial<Omit<Habit, 'id'>>) => Promise<void>
   removeHabit: (id: string) => Promise<void>
   toggleToday: (habitId: string) => Promise<void>
+  /**
+   * Deja un hábito de hoy como cumplido. NUNCA lo desmarca.
+   *
+   * Es lo que usa el marcado automático: si terminas dos entrenamientos, o
+   * llegas a la proteína y luego comes más, la comprobación se repite muchas
+   * veces al día y no puede convertirse en un interruptor. Y si lo desmarcaste
+   * a mano, tampoco puede volver a marcarlo… salvo que el hecho vuelva a
+   * ocurrir, que es justo lo que significa.
+   */
+  asegurarHecho: (habitId: string) => Promise<boolean>
   /** Fija el total cronometrado de hoy. Al llegar a la meta marca el hábito. */
   fijarSegundos: (habitId: string, total: number) => Promise<void>
   getTodayStatus: () => DayLog
@@ -93,6 +122,13 @@ function completar(h: Partial<Habit> & { id: string; label: string; icon: string
     hora: h.hora ?? null,
     tipo: h.tipo ?? 'hacer',
     metaSegundos: h.metaSegundos ?? null,
+    alarma: h.alarma ?? false,
+    alarmaDias: h.alarmaDias ?? TODOS_LOS_DIAS,
+    alarmaFin: h.alarmaFin ?? false,
+    alarmaFinDias: h.alarmaFinDias ?? TODOS_LOS_DIAS,
+    alarmaSonido: h.alarmaSonido ?? null,
+    alarmaPosponer: h.alarmaPosponer ?? true,
+    horaFin: h.horaFin ?? null,
   }
 }
 
@@ -165,6 +201,25 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     }).catch(() => {})
   },
 
+  editarHabito: async (id, cambios) => {
+    const habits = get().habits.map(h => (h.id === id ? completar({ ...h, ...cambios }) : h))
+    set({ habits })
+    await AsyncStorage.setItem(HABITS_KEY, JSON.stringify(habits))
+    const h = habits.find(x => x.id === id)
+    if (!h) return
+    // Se manda TODO lo editable y no solo lo que cambió: el servidor distingue
+    // «no lo mandes» de «ponlo a null», y mandar el estado entero evita tener
+    // que acertar cuál de los dos significaba cada hueco.
+    void actualizarHabito(id, {
+      label: h.label, icon: h.icon, momento: h.momento, hora: h.hora,
+      tipo: h.tipo, metaSegundos: h.metaSegundos,
+      alarma: h.alarma, alarmaDias: h.alarmaDias,
+      alarmaFin: h.alarmaFin, alarmaFinDias: h.alarmaFinDias,
+      alarmaSonido: h.alarmaSonido,
+      alarmaPosponer: h.alarmaPosponer, horaFin: h.horaFin,
+    }).catch(() => {})
+  },
+
   removeHabit: async (id) => {
     const habits = get().habits.filter(h => h.id !== id)
     set({ habits })
@@ -210,6 +265,21 @@ export const useHabitsStore = create<HabitsState>((set, get) => ({
     await AsyncStorage.setItem(SECS_KEY, JSON.stringify(segs))
     await AsyncStorage.setItem(LOGS_KEY, JSON.stringify(logs))
     void sincronizarHabito(habitId, date, !!log[habitId], dia[habitId])
+  },
+
+  asegurarHecho: async (habitId) => {
+    const date = today()
+    if (get().logs[date]?.[habitId]) return false
+    // Solo se marca lo que el usuario tiene de verdad: si borró el hábito, la
+    // lista cargada no lo trae y aquí no se inventa nada.
+    if (!get().habits.some(h => h.id === habitId)) return false
+
+    const logs = trimLogs({ ...get().logs })
+    logs[date] = { ...(logs[date] ?? {}), [habitId]: true }
+    set({ logs })
+    await AsyncStorage.setItem(LOGS_KEY, JSON.stringify(logs))
+    void sincronizarHabito(habitId, date, true, get().segundos[date]?.[habitId])
+    return true
   },
 
   getTodayStatus: () => get().logs[today()] ?? {},

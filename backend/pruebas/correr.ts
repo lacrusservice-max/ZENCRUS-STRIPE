@@ -17,6 +17,7 @@ import { pruebasDeCatalogo } from './catalogo'
 import { pruebasDeCuidado } from './cuidado'
 import { pruebasDeDescomposicion } from './descomposicion'
 import { pruebasDeMetas } from './metas'
+import { pruebasDeCiclo } from './ciclo'
 import { resumen, limpiar } from './apoyo'
 
 async function main() {
@@ -33,6 +34,7 @@ async function main() {
   await pruebasDeCuidado()
   await pruebasDeDescomposicion()
   await pruebasDeMetas()
+  await pruebasDeCiclo()
 
   const fallidas = resumen()
   process.exit(fallidas === 0 ? 0 : 1)

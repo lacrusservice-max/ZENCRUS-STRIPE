@@ -11,9 +11,11 @@ import Svg, { Circle } from 'react-native-svg'
 import { LinearGradient } from 'expo-linear-gradient'
 import { ActivityRings, RingsLegend } from '@/components/ui/ActivityRings'
 import { useAuthStore } from '@/store/authStore'
+import { tieneCiclo } from '@/features/salud/acceso'
 import { useNutritionStore } from '@/store/nutritionStore'
 import { useEntrenoResumen } from '@/hooks/useEntreno'
 import { useHealthStore } from '@/store/healthStore'
+import { useRecoveryStore } from '@/store/recoveryStore'
 import { useStreakStore } from '@/store/streakStore'
 import { useProgressStore } from '@/store/progressStore'
 import { useChallengeStore } from '@/store/challengeStore'
@@ -77,16 +79,25 @@ const hr = StyleSheet.create({
 
 // ── Score Pill ─────────────────────────────────────────────────────────────────
 
+/**
+ * `val` puede ser null, y entonces no se pinta un cero.
+ *
+ * El sueño y el bienestar solo puntúan si esa noche se registró y si hoy hay
+ * check-in. Un «0/15» en la columna de sueño no dice «no lo registraste»: dice
+ * «dormiste fatal», y son cosas distintas. El hueco se enseña apagado y sin
+ * barra, como ya se hace en la pestaña de Salud.
+ */
 function ScorePill({ label, val, max, color }: {
-  label: string; val: number; max: number; color: string
+  label: string; val: number | null; max: number; color: string
 }) {
-  const pct = max > 0 ? Math.min(val / max, 1) : 0
+  const hay = val != null
+  const pct = hay && max > 0 ? Math.min(val / max, 1) : 0
   return (
     <View style={sp.wrap}>
-      <Text style={[sp.val, { color }]}>{val}</Text>
+      <Text style={[sp.val, { color: hay ? color : 'rgba(255,255,255,0.28)' }]}>{hay ? val : '—'}</Text>
       <Text style={sp.max}>/{max}</Text>
       <View style={sp.bar}>
-        <View style={[sp.fill, { width: `${pct * 100}%` as any, backgroundColor: color }]} />
+        {hay && <View style={[sp.fill, { width: `${pct * 100}%` as any, backgroundColor: color }]} />}
       </View>
       <Text style={sp.label}>{label}</Text>
     </View>
@@ -154,119 +165,16 @@ const sr = StyleSheet.create({
   dotToday: { borderWidth: 1.5, borderColor: Colors.primary[500] },
   dayLabel: { fontSize: 9, color: 'rgba(255,255,255,0.3)', fontWeight: '700' } })
 
-// ── Daily Check-In Modal ──────────────────────────────────────────────────────
-
-type SliderKey = 'sleep' | 'energy' | 'mood' | 'stress'
-
-function CheckInModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { saveCheckIn } = useHealthStore()
-  const { markActivity } = useStreakStore()
-  const [sleep, setSleep] = useState(7)
-  const [energy, setEnergy] = useState(7)
-  const [mood, setMood] = useState(7)
-  const [stress, setStress] = useState(3)
-  const [intention, setIntention] = useState('')
-
-  const metrics: Array<{
-    key: SliderKey; label: string; val: number; set: (n: number) => void; lo: string; hi: string
-  }> = [
-    { key: 'sleep',  label: 'Calidad de sueño',  val: sleep,  set: setSleep,  lo: 'Malísimo',   hi: 'Perfecto' },
-    { key: 'energy', label: 'Nivel de energía',   val: energy, set: setEnergy, lo: 'Sin energía', hi: 'A tope' },
-    { key: 'mood',   label: 'Estado de ánimo',    val: mood,   set: setMood,   lo: 'Muy bajo',    hi: 'Excelente' },
-    { key: 'stress', label: 'Nivel de estrés',    val: stress, set: setStress, lo: 'Relajado',    hi: 'Alto' },
-  ]
-
-  const handleSave = async () => {
-    const today = hoyLocal()
-    await saveCheckIn({ sleep, energy, mood, stress, intention })
-    await markActivity(today, { checkInDone: true })
-    onClose()
-  }
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <SafeAreaView style={ci.container}>
-        <View style={ci.header}>
-          <View>
-            <Text style={ci.brand}>CHECK-IN</Text>
-            <Text style={ci.title}>¿Cómo estás hoy?</Text>
-          </View>
-          <TouchableOpacity style={ci.closeBtn} onPress={onClose}>
-            <Ionicons name="close" size={20} color="rgba(255,255,255,0.6)" />
-          </TouchableOpacity>
-        </View>
-        <ScrollView contentContainerStyle={ci.body} showsVerticalScrollIndicator={false}>
-          <Text style={ci.intro}>La honestidad aquí es poder. Tu bienestar importa.</Text>
-
-          {metrics.map(item => (
-            <View key={item.key} style={ci.metricWrap}>
-              <View style={ci.metricHeader}>
-                <Text style={ci.metricLabel}>{item.label}</Text>
-                <View style={ci.metricBadge}>
-                  <Text style={ci.metricBadgeTxt}>{item.val}/10</Text>
-                </View>
-              </View>
-              <View style={ci.scaleRow}>
-                <Text style={ci.scaleLo}>{item.lo}</Text>
-                <View style={ci.scaleDots}>
-                  {[1,2,3,4,5,6,7,8,9,10].map(n => (
-                    <TouchableOpacity
-                      key={n}
-                      style={[ci.dot, item.val >= n && ci.dotOn]}
-                      onPress={() => item.set(n)}
-                    />
-                  ))}
-                </View>
-                <Text style={ci.scaleHi}>{item.hi}</Text>
-              </View>
-            </View>
-          ))}
-
-          <View style={ci.metricWrap}>
-            <Text style={ci.metricLabel}>Intención de hoy</Text>
-            <TextInput
-              style={ci.intentInput}
-              value={intention}
-              onChangeText={setIntention}
-              placeholder="Hoy voy a..."
-              placeholderTextColor="rgba(255,255,255,0.2)"
-              multiline
-              numberOfLines={2}
-            />
-          </View>
-
-          <TouchableOpacity style={ci.saveBtn} onPress={handleSave}>
-            <Text style={ci.saveBtnTxt}>Activar mi día</Text>
-            <Ionicons name="arrow-forward" size={16} color="#fff" />
-          </TouchableOpacity>
-        </ScrollView>
-      </SafeAreaView>
-    </Modal>
-  )
-}
-
-const ci = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#0a0a0a' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: Spacing[5], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
-  brand: { fontSize: 9, fontWeight: '900', color: Colors.primary[500], letterSpacing: 2.5, marginBottom: 4 },
-  title: { fontSize: Typography.fontSize.xl, fontWeight: '800', color: '#f4f4f5' },
-  closeBtn: { width: 36, height: 36, borderRadius: 18, backgroundColor: G.card, borderWidth: 1, borderColor: G.border, alignItems: 'center', justifyContent: 'center', marginTop: 2 },
-  body: { padding: Spacing[5], gap: Spacing[5], paddingBottom: 40 },
-  intro: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.45)', lineHeight: 22 },
-  metricWrap: { gap: Spacing[3] },
-  metricHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  metricLabel: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#f4f4f5' },
-  metricBadge: { backgroundColor: `${Colors.primary[500]}20`, borderRadius: 8, paddingHorizontal: 8, paddingVertical: 2, borderWidth: 1, borderColor: `${Colors.primary[500]}35` },
-  metricBadgeTxt: { fontSize: 11, fontWeight: '700', color: Colors.primary[400] },
-  scaleRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[2] },
-  scaleLo: { fontSize: 9, color: 'rgba(255,255,255,0.3)', width: 50, textAlign: 'right' },
-  scaleHi: { fontSize: 9, color: 'rgba(255,255,255,0.3)', width: 50 },
-  scaleDots: { flex: 1, flexDirection: 'row', gap: 3, justifyContent: 'center' },
-  dot: { width: 22, height: 22, borderRadius: 11, backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: Glass.cardBorder },
-  dotOn: { backgroundColor: Colors.primary[500], borderColor: 'transparent' },
-  intentInput: { backgroundColor: G.card, borderWidth: 1, borderColor: G.border, borderRadius: 14, padding: Spacing[4], fontSize: Typography.fontSize.sm, color: '#f4f4f5', lineHeight: 22 },
-  saveBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, backgroundColor: Colors.primary[500], borderRadius: 16, padding: Spacing[4], marginTop: 8 },
-  saveBtnTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' } })
+// ── El check-in ya no vive aquí ───────────────────────────────────────────────
+//
+// Había DOS en la app: este, con escala 1-10, y el de Salud, con escala 1-5.
+// Los dos preguntaban por la energía y el estrés, cada uno alimentaba un
+// marcador distinto y ninguno sabía del otro, así que quien contestaba los dos
+// se contradecía a sí mismo sin llegar a enterarse.
+//
+// Ahora es uno solo y vive en `/salud/recuperacion`, con los cinco ejes:
+// energía, ánimo, estrés, dolor muscular e intención del día. Esta pantalla
+// sigue leyendo el resultado —la intención y el marcador—, pero ya no lo pide.
 
 // ── XP Level Card ─────────────────────────────────────────────────────────────
 
@@ -484,7 +392,7 @@ const QUICK_SECTIONS = [
     items: [
       { id: 'measures', label: 'Medidas',      icon: 'body-outline' as IconName,             route: '/measurements' },
       { id: 'macro',    label: 'Macro Cycling',icon: 'refresh-circle-outline' as IconName,   route: '/macro-cycling' },
-      { id: 'cycle',    label: 'Ciclo',         icon: 'flower-outline' as IconName,           route: '/menstrual' },
+      { id: 'cycle',    label: 'Ciclo',         icon: 'flower-outline' as IconName,           route: '/salud/ciclo', soloCiclo: true },
       { id: 'health',   label: 'Salud',         icon: 'heart-outline' as IconName,            route: '/health-tracker' },
     ] },
   {
@@ -497,14 +405,29 @@ const QUICK_SECTIONS = [
     ] },
 ] as const
 
+/**
+ * Los atajos, filtrados por acceso.
+ *
+ * El atajo al ciclo NO se enseña a quien no tiene el módulo. Es la misma regla
+ * que en la pestaña Salud: si la función no existe para esa cuenta, tampoco
+ * existe su puerta. Un acceso directo que lleva a una pantalla vacía delata la
+ * función igual de bien que enseñarla, y este es exactamente el caso donde eso
+ * importa. Ver features/salud/acceso.ts.
+ */
 function QuickAccessGrid() {
+  const user = useAuthStore(s => s.user)
+  const verCiclo = tieneCiclo(user)
+
   return (
     <View style={qa.container}>
-      {QUICK_SECTIONS.map(section => (
+      {QUICK_SECTIONS.map(section => {
+        const items = section.items.filter(i => !('soloCiclo' in i && i.soloCiclo) || verCiclo)
+        if (!items.length) return null
+        return (
         <View key={section.category} style={qa.section}>
           <SectionLabel>{section.category}</SectionLabel>
           <View style={qa.row}>
-            {section.items.map(item => (
+            {items.map(item => (
               <TouchableOpacity
                 key={item.id}
                 style={qa.tile}
@@ -520,7 +443,8 @@ function QuickAccessGrid() {
             ))}
           </View>
         </View>
-      ))}
+        )
+      })}
     </View>
   )
 }
@@ -569,9 +493,11 @@ export default function ProgressScreen() {
     waterGlasses, meals, loadToday: loadNutrition,
     addWater, removeWater } = useNutritionStore()
   const { datos: entreno } = useEntrenoResumen()
-  const {
-    checkInDone, todayCheckIn, scoreHistory,
-    loadToday: loadHealth, computeAndSaveScore } = useHealthStore()
+  const { scoreHistory, loadToday: loadHealth, computeAndSaveScore } = useHealthStore()
+  /* El check-in se lee de donde ahora se escribe. */
+  const { getToday: getCheckIn, load: loadRecovery } = useRecoveryStore()
+  const checkIn = getCheckIn()
+  const checkInDone = checkIn != null
   const {
     currentStreak, weekActivity,
     load: loadStreak, getStreakMessage } = useStreakStore()
@@ -580,7 +506,6 @@ export default function ProgressScreen() {
   const { getTodayProgress, getRestingHeartRate, getSleepForDate, load: loadHealthTracker } = useHealthTrackerStore()
   const { load: loadDuels } = useDuelStore()
 
-  const [checkInModal, setCheckInModal] = useState(false)
   const [liveScore, setLiveScore] = useState(0)
   const fadeAnim = useRef(new Animated.Value(0)).current
 
@@ -612,6 +537,7 @@ export default function ProgressScreen() {
   useEffect(() => {
     loadNutrition()
     loadHealth()
+    loadRecovery()
     loadStreak()
     loadProgress()
     loadChallenges()
@@ -697,22 +623,25 @@ export default function ProgressScreen() {
         {/* ── Check-in del día ── */}
         <View style={s.sec}>
           {!checkInDone ? (
-            <TouchableOpacity style={[s.primaryBtn, s.primaryBtnFilled]} onPress={() => setCheckInModal(true)} activeOpacity={0.85}>
+            <TouchableOpacity style={[s.primaryBtn, s.primaryBtnFilled]} onPress={() => router.push('/salud/recuperacion')} activeOpacity={0.85}>
               <Ionicons name="sunny" size={16} color="#fff" />
               <Text style={s.primaryBtnTxtFilled}>Check-in del día</Text>
             </TouchableOpacity>
           ) : (
-            <View style={[s.primaryBtn, s.primaryBtnDone]}>
+            /* Hecho no significa cerrado: se puede volver a entrar a cambiarlo,
+               que es lo que uno quiere a las ocho de la tarde cuando el día no
+               ha ido como decía a las siete de la mañana. */
+            <TouchableOpacity style={[s.primaryBtn, s.primaryBtnDone]} onPress={() => router.push('/salud/recuperacion')} activeOpacity={0.85}>
               <Ionicons name="checkmark-circle" size={16} color={Colors.accent.green} />
               <Text style={[s.primaryBtnTxt, { color: Colors.accent.green }]}>Check-in hecho</Text>
-            </View>
+            </TouchableOpacity>
           )}
-          {checkInDone && todayCheckIn.intention && (
+          {checkIn?.intention ? (
             <View style={s.intentRow}>
               <Ionicons name="flag-outline" size={13} color={Colors.primary[400]} />
-              <Text style={s.intentTxt} numberOfLines={1}>"{todayCheckIn.intention}"</Text>
+              <Text style={s.intentTxt} numberOfLines={1}>"{checkIn.intention}"</Text>
             </View>
-          )}
+          ) : null}
         </View>
 
         {/* ── Desglose del score ── */}
@@ -723,8 +652,8 @@ export default function ProgressScreen() {
               <ScorePill label="Nutrición"   val={todayScore?.nutrition  ?? 0} max={25} color={Colors.primary[400]} />
               <ScorePill label="Entreno"     val={todayScore?.workout    ?? 0} max={25} color={Colors.secondary[400]} />
               <ScorePill label="Hidratación" val={todayScore?.hydration  ?? 0} max={20} color="#FF5871" />
-              <ScorePill label="Sueño"       val={todayScore?.sleep      ?? 0} max={15} color={Colors.accent.orange} />
-              <ScorePill label="Bienestar"   val={todayScore?.mood       ?? 0} max={15} color={Colors.accent.green} />
+              <ScorePill label="Sueño"       val={todayScore ? todayScore.sleep : null} max={15} color={Colors.accent.orange} />
+              <ScorePill label="Bienestar"   val={todayScore ? todayScore.mood  : null} max={15} color={Colors.accent.green} />
             </View>
           </GlassCard>
         </View>
@@ -896,7 +825,6 @@ export default function ProgressScreen() {
       </ScrollView>
       </Animated.View>
 
-      <CheckInModal visible={checkInModal} onClose={() => setCheckInModal(false)} />
     </Screen>
   )
 }

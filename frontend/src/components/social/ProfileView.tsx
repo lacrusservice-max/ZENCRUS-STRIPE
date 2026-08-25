@@ -5,6 +5,15 @@
  * juntos porque son la MISMA pantalla con distinto botón: separarlos llevaría a
  * que uno se rediseñe y el otro se quede atrás.
  *
+ * ── La portada sale de lo que esa persona publica ───────────────────────────
+ * La cabecera arranca con la foto de su última publicación, difuminada bajo un
+ * degradado, y el avatar montado sobre el borde inferior. No es adorno: una
+ * ficha con avatar, tres números y una biografía se parece a la de cualquier
+ * otra cuenta, y aquí lo que distingue a una persona es lo que sube.
+ *
+ * Cuando no hay nada que publicar —cuenta nueva, o cerrada y sin acceso— la
+ * portada se cae y queda la ficha sola. No se inventa una imagen de relleno.
+ *
  * ── El candado ──────────────────────────────────────────────────────────────
  * De una cuenta privada siempre se ve la ficha —foto, nombre, biografía— para
  * poder encontrarla y pedirle seguirla. Lo que se cierra es el contenido y los
@@ -16,34 +25,21 @@ import React from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, useWindowDimensions,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { Ionicons } from '@expo/vector-icons'
 
 import { useAppTheme } from '@/context/ThemeContext'
+import { LinearGradient } from 'expo-linear-gradient'
 import { Avatar, LockedWall } from './Bits'
 import type { OtherProfile, MyProfile, Post, Profile, Relation } from '@/services/socialService'
 
 // ── Números ──────────────────────────────────────────────────────────────────
 
-function Stat({ n, label, onPress }: { n: number | null; label: string; onPress?: () => void }) {
-  const T = useAppTheme()
-  return (
-    <TouchableOpacity
-      style={s.stat}
-      onPress={onPress}
-      activeOpacity={onPress ? 0.7 : 1}
-      disabled={!onPress || n === null}
-    >
-      <Text style={[s.statN, { color: T.ink }]}>{n === null ? '—' : n}</Text>
-      <Text style={[s.statL, { color: T.ink3 }]}>{label}</Text>
-    </TouchableOpacity>
-  )
-}
-
 // ── Cabecera ─────────────────────────────────────────────────────────────────
 
 export function ProfileHeader({
-  profile, stats, canViewContent, relation, action, onFollowersPress, onFollowingPress,
+  profile, stats, canViewContent, relation, action, portada,
+  onFollowersPress, onFollowingPress,
 }: {
   profile: Profile
   stats: { followers: number; following: number; posts: number } | null
@@ -51,39 +47,81 @@ export function ProfileHeader({
   relation?: Relation
   /** El botón que cambia según de quién sea el perfil. */
   action: React.ReactNode
+  /** Foto de su última publicación. Sin ella, la cabecera va sin portada. */
+  portada?: string | null
   onFollowersPress?: () => void
   onFollowingPress?: () => void
 }) {
   const T = useAppTheme()
 
   return (
-    <View style={s.wrap}>
-      <View style={s.fila}>
-        <Avatar profile={profile} size={82} />
-        <View style={s.stats}>
-          <Stat n={stats?.posts ?? null} label="Publicaciones" />
-          <Stat n={stats?.followers ?? null} label="Seguidores" onPress={canViewContent ? onFollowersPress : undefined} />
-          <Stat n={stats?.following ?? null} label="Siguiendo" onPress={canViewContent ? onFollowingPress : undefined} />
+    <View>
+      {!!portada && (
+        <View style={s.portadaWrap}>
+          <Image source={{ uri: portada }} style={s.portada} contentFit="cover" transition={220} />
+          {/* Hasta abajo del todo y opaco al final: el avatar y el nombre se
+              apoyan justo ahí y tienen que leerse sobre cualquier foto. */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.35)', 'rgba(8,8,8,0.75)', T.bg]}
+            style={StyleSheet.absoluteFill}
+            pointerEvents="none"
+          />
         </View>
-      </View>
+      )}
 
-      <View style={s.datos}>
-        <View style={s.nombreFila}>
-          <Text style={[s.nombre, { color: T.ink }]} numberOfLines={1}>
-            {profile.fullName ?? profile.username ?? 'Cuenta ZENCRUS'}
-          </Text>
-          {profile.isPrivate && <Ionicons name="lock-closed" size={13} color={T.ink3} />}
+      <View style={[s.wrap, !!portada && s.wrapConPortada]}>
+        <View style={s.fila}>
+          <Avatar profile={profile} size={72} />
+          <View style={{ flex: 1 }}>
+            <View style={s.nombreFila}>
+              <Text style={[s.nombre, { color: T.ink }]} numberOfLines={1}>
+                {profile.fullName ?? profile.username ?? 'Cuenta ZENCRUS'}
+              </Text>
+              {profile.isPrivate && <Ionicons name="lock-closed" size={13} color={T.ink3} />}
+            </View>
+            {profile.username && (
+              <Text style={[s.usuario, { color: T.ink3 }]}>@{profile.username}</Text>
+            )}
+          </View>
         </View>
-        {profile.username && (
-          <Text style={[s.usuario, { color: T.ink3 }]}>@{profile.username}</Text>
-        )}
-        {!!profile.bio && (
-          <Text style={[s.bio, { color: T.ink2 }]}>{profile.bio}</Text>
-        )}
-      </View>
 
-      <View style={s.acciones}>{action}</View>
+        {!!profile.bio && <Text style={[s.bio, { color: T.ink2 }]}>{profile.bio}</Text>}
+
+        {/*
+          Los números en texto corrido, no en tres columnas.
+
+          Tres cifras grandes centradas hacen que un perfil se lea como un
+          marcador y empujan a compararse. Escritos como una frase siguen ahí
+          para quien los busca y dejan de ser lo primero que ve todo el mundo.
+        */}
+        <View style={s.cifras}>
+          <Cifra n={stats?.posts ?? null} palabra="publicaciones" />
+          <Cifra n={stats?.followers ?? null} palabra="seguidores"
+            onPress={canViewContent ? onFollowersPress : undefined} />
+          <Cifra n={stats?.following ?? null} palabra="siguiendo"
+            onPress={canViewContent ? onFollowingPress : undefined} />
+        </View>
+
+        <View style={s.acciones}>{action}</View>
+      </View>
     </View>
+  )
+}
+
+/** Un número y su palabra, en la misma línea. */
+function Cifra({ n, palabra, onPress }: { n: number | null; palabra: string; onPress?: () => void }) {
+  const T = useAppTheme()
+  return (
+    <TouchableOpacity
+      style={s.cifra}
+      onPress={onPress}
+      activeOpacity={onPress ? 0.7 : 1}
+      disabled={!onPress || n === null}
+      hitSlop={6}
+    >
+      <Text style={[s.cifraN, { color: T.ink }]}>{n === null ? '—' : n}</Text>
+      <Text style={[s.cifraP, { color: T.ink3 }]}>{palabra}</Text>
+    </TouchableOpacity>
   )
 }
 
@@ -162,18 +200,21 @@ export function ProfileBody({
 }
 
 const s = StyleSheet.create({
-  wrap: { paddingHorizontal: 20, paddingBottom: 18 },
-  fila: { flexDirection: 'row', alignItems: 'center', gap: 20 },
-  stats: { flex: 1, flexDirection: 'row', justifyContent: 'space-around' },
-  stat: { alignItems: 'center', gap: 3 },
-  statN: { fontSize: 18, fontWeight: '800' },
-  statL: { fontSize: 10.5, fontWeight: '600' },
-  datos: { marginTop: 16 },
+  portadaWrap: { height: 150, width: '100%' },
+  portada: { width: '100%', height: '100%' },
+  wrap: { paddingHorizontal: 16, paddingBottom: 18 },
+  // Con portada, la ficha sube para que el avatar la pise.
+  wrapConPortada: { marginTop: -40 },
+  fila: { flexDirection: 'row', alignItems: 'flex-end', gap: 14 },
   nombreFila: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   nombre: { fontSize: 17, fontWeight: '800', flexShrink: 1 },
   usuario: { fontSize: 13, marginTop: 2 },
-  bio: { fontSize: 13.5, lineHeight: 20, marginTop: 9 },
-  acciones: { flexDirection: 'row', gap: 10, marginTop: 18 },
+  bio: { fontSize: 13.5, lineHeight: 20, marginTop: 12 },
+  cifras: { flexDirection: 'row', gap: 16, marginTop: 12, flexWrap: 'wrap' },
+  cifra: { flexDirection: 'row', alignItems: 'baseline', gap: 4 },
+  cifraN: { fontSize: 14, fontWeight: '800' },
+  cifraP: { fontSize: 12.5 },
+  acciones: { flexDirection: 'row', gap: 10, marginTop: 16 },
   rejilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 2, paddingHorizontal: 20 },
   celda: { borderRadius: 4, overflow: 'hidden', borderWidth: 1 },
   celdaImg: { width: '100%', height: '100%' },

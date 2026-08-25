@@ -29,9 +29,9 @@ import {
   Modal, Alert, KeyboardAvoidingView, Platform, ActivityIndicator, FlatList,
 } from 'react-native'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
-import { router } from 'expo-router'
+import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
@@ -405,9 +405,17 @@ export default function Rutinas() {
    * La última que se creó es casi siempre la que se está usando: quien acaba de
    * montar «Empuje B» va a entrenarla, no a mirar la de hace tres meses.
    */
+  /* Se llega desde la portada de un lugar, y una rutina guarda el suyo en
+     `trainingType` con los MISMOS valores que el modo de sesión. Sin filtrar,
+     la portada de casa ofrecería rutinas de jaula y prensa.
+     Sin parámetro se enseñan todas: a «Mis rutinas» también se llega de otros
+     sitios, y ahí esconder la mitad sin explicación sería peor. */
+  const { mode } = useLocalSearchParams<{ mode?: string }>()
   const ordenadas = useMemo(
-    () => [...routines].sort((a, b) => b.createdAt - a.createdAt),
-    [routines],
+    () => [...routines]
+      .filter(r => !mode || r.trainingType === mode)
+      .sort((a, b) => b.createdAt - a.createdAt),
+    [routines, mode],
   )
   const [destacada, ...resto] = ordenadas
 
@@ -418,8 +426,8 @@ export default function Rutinas() {
     <Screen>
       <CabeceraSeccion
         titulo="Mis rutinas"
-        subtitulo={routines.length > 0
-          ? `${routines.length} ${routines.length === 1 ? 'guardada' : 'guardadas'}`
+        subtitulo={ordenadas.length > 0
+          ? `${ordenadas.length} ${ordenadas.length === 1 ? 'guardada' : 'guardadas'}`
           : 'Sesiones que repites'}
         derecha={
           <TouchableOpacity

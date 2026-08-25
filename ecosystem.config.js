@@ -36,7 +36,24 @@ module.exports = {
       name: 'zencrus-metro',
       cwd: path.join(ROOT, 'frontend'),
       script: 'npx',
-      args: 'expo start --lan --clear',
+      /* LAN para trabajar, TÚNEL para enseñar.
+       *
+       * `--lan` es lo de siempre: rápido, y el simulador y el móvil de casa
+       * conectan directos. El QR que sale así SOLO vale dentro de esta wifi.
+       *
+       * Para que lo abra alguien de fuera hace falta `--tunnel`, que saca la
+       * dirección a internet por ngrok. El subdominio no cambia entre
+       * reinicios —vive en `.expo/settings.json`, «urlRandomness»—, así que un
+       * QR repartido hoy sigue valiendo mañana mientras el túnel esté en pie:
+       *
+       *     exp://z4_yhcq-anonymous-8081.exp.direct
+       *
+       * OJO con cambiarlo: con `--tunnel`, el dev build del simulador se queda
+       * apuntando a la dirección del túnel y NO conecta —probado—, y tampoco
+       * suelta esa dirección al reiniciar la app ni con el enlace profundo de
+       * expo-development-client. Si se activa el túnel, el simulador deja de
+       * funcionar hasta volver a `--lan`. */
+      args: 'expo start --lan',
       watch: false,
       autorestart: true,
       max_restarts: 5,

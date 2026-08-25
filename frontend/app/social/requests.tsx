@@ -16,6 +16,7 @@ import { useAppTheme } from '@/context/ThemeContext'
 import { useSocialStore } from '@/store/socialStore'
 import { Avatar, NameBlock, Btn, Empty, Skeleton, timeAgo } from '@/components/social/Bits'
 import * as S from '@/services/socialService'
+import { TabBar } from '@/constants/layout'
 
 export default function RequestsScreen() {
   const T = useAppTheme()
@@ -68,7 +69,7 @@ export default function RequestsScreen() {
       <FlatList
         data={lista}
         keyExtractor={u => u.id}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: TabBar.scrollInset }}
         refreshControl={
           <RefreshControl refreshing={refrescando} onRefresh={() => cargar(true)} tintColor={T.accent} />
         }

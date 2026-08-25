@@ -29,9 +29,9 @@ import { useState, useCallback, useMemo } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
@@ -92,7 +92,13 @@ const fechaLarga = (iso: string) => {
 export default function Historial() {
   const [sesiones, setSesiones] = useState<Sesion[]>([])
   const [total, setTotal] = useState(0)
-  const [modo, setModo] = useState<Modo | null>(null)
+  /* Se llega desde la portada de un lugar, así que el historial abre ya
+     filtrado por ese lugar. Valor de ARRANQUE y nada más: las pastillas de
+     arriba siguen mandando, y quitar el filtro no lo devuelve solo. */
+  const { mode } = useLocalSearchParams<{ mode?: string }>()
+  const [modo, setModo] = useState<Modo | null>(
+    mode === 'gym' || mode === 'home' || mode === 'outdoor' || mode === 'class' ? mode : null,
+  )
   const [cargando, setCargando] = useState(true)
   const [trayendo, setTrayendo] = useState(false)
   const [refrescando, setRefrescando] = useState(false)

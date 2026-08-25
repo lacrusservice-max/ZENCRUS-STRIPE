@@ -32,6 +32,7 @@ import {
 } from 'react-native'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { LinearGradient } from 'expo-linear-gradient'
+import { volverA } from '@/components/workout/MenuSeccion'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
@@ -288,7 +289,7 @@ export default function HacerEjercicio() {
             pointerEvents="none"
           />
 
-          <TouchableOpacity style={s.atras} onPress={() => router.back()} hitSlop={10} activeOpacity={0.8}>
+          <TouchableOpacity style={s.atras} onPress={volverA('/(tabs)/workout')} hitSlop={10} activeOpacity={0.8}>
             <Ionicons name="chevron-back" size={20} color={C.neon.white} />
           </TouchableOpacity>
         </Animated.View>

@@ -10,12 +10,30 @@ import {
  * Escala 1-5 en las tres, siempre "más alto = mejor" para que promediar
  * sea directo: energy = nivel de energía, soreness = qué tan poco dolor
  * muscular hay, stress = qué tan relajado se siente.
+ *
+ * ── Los dos últimos campos vienen del check-in que había en Progreso ────────
+ * Había DOS check-in preguntando lo mismo: este, y otro en Progreso con escala
+ * 1-10 que además pedía ánimo y una intención para el día. Al usuario se le
+ * preguntaba su energía y su estrés dos veces, en dos pantallas y en dos
+ * escalas distintas, y cada respuesta alimentaba un marcador diferente.
+ *
+ * Ahora el check-in es uno solo y vive aquí. `mood` e `intention` son opcionales
+ * porque las entradas ya guardadas no los tienen, y una entrada vieja sin ánimo
+ * no es una entrada rota: es una de antes de que se preguntara.
+ *
+ * `mood` NO entra en el score de recuperación. La recuperación es si el cuerpo
+ * está listo para entrenar; el ánimo es otra cosa, y mezclarlos haría que un
+ * mal día de humor se leyera como fatiga muscular.
  */
 export interface RecoveryEntry {
   date: string
   energy: number
   soreness: number
   stress: number
+  /** 1-5, más alto = mejor ánimo. Ausente en entradas anteriores a la unión. */
+  mood?: number
+  /** Compromiso del día, en palabras del usuario. */
+  intention?: string
   note?: string
 }
 

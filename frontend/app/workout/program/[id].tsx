@@ -16,7 +16,7 @@ import { useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, Alert,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'

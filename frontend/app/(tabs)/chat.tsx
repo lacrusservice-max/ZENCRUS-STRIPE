@@ -3,23 +3,26 @@ import { useState, useEffect, useRef, useCallback } from 'react'
 import {
   View, Text, ScrollView, StyleSheet, TextInput,
   TouchableOpacity, KeyboardAvoidingView, Platform,
-  ActivityIndicator, Image,
+  ActivityIndicator, Image, Alert,
 } from 'react-native'
 import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { useNutritionStore } from '@/store/nutritionStore'
-import { useEntrenoResumen } from '@/hooks/useEntreno'
+import { useAuthStore } from '@/store/authStore'
+import { limitesDe } from '@/utils/tramoCalorico'
 import { useHealthStore } from '@/store/healthStore'
 import { useStreakStore } from '@/store/streakStore'
 import { usePremiumStore } from '@/store/premiumStore'
 import {
   sendMessage as coachSend,
+  cargarHilo,
+  cerrarConversacion,
   createMessage,
   CoachMessage,
-  CoachContext,
 } from '@/services/aiCoachService'
 import {
-  confirmar, cancelar, deshacer, type Confirmacion,
+  confirmar, cancelar, deshacer,
+  type Confirmacion, type CambioPropuesto,
 } from '@/services/confirmacionesService'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import { Screen } from '@/components/ui/Screen'
@@ -34,6 +37,9 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context'
  * dejó de estar viva. Se enseña su mensaje y ahí acaba.
  */
 type EstadoTarjeta = 'abierta' | 'aplicada' | 'cancelada' | 'deshecha' | 'cerrada'
+
+/** «2,000» y no «2000», que es como se leen las cifras en el resto de la app. */
+const miles = (n: number) => Math.round(n).toLocaleString('es-MX')
 
 const QUICK_QUESTIONS = [
   '¿Qué debería comer hoy para complementar mis macros?',
@@ -156,6 +162,33 @@ function TypingIndicator() {
  * toca antes de leer, y una confirmación que se toca sin leer no confirma
  * nada: solo añade un paso.
  */
+/**
+ * El antes y el después.
+ *
+ * Vive fuera de las dos tarjetas porque las dos lo enseñan: la abierta para que
+ * se pueda juzgar antes de decir que sí, y la ya aplicada para que al volver al
+ * chat se sepa QUÉ se aceptó. Sin esto, una tarjeta resuelta solo decía
+ * «aplicado» y el usuario tenía que fiarse de su memoria para saber de qué.
+ */
+function FilasCambio({ cambios, apagado }: { cambios: CambioPropuesto[]; apagado?: boolean }) {
+  return (
+    <>
+      {cambios.map((c, i) => (
+        <View key={`${c.etiqueta}-${i}`} style={tc.fila}>
+          <Text style={tc.etiqueta}>{c.etiqueta}</Text>
+          <View style={tc.valores}>
+            <Text style={tc.antes}>{c.antes ?? '—'}</Text>
+            <Ionicons name="arrow-forward" size={11} color={Colors.neon.w3} />
+            <Text style={[tc.despues, apagado && { color: Colors.neon.w2, fontWeight: '700' }]}>
+              {c.despues}{c.unidad ? ` ${c.unidad}` : ''}
+            </Text>
+          </View>
+        </View>
+      ))}
+    </>
+  )
+}
+
 function TarjetaConfirmacion({
   confirmacion,
   onResuelta,
@@ -190,18 +223,7 @@ function TarjetaConfirmacion({
           <Text style={tc.titulo}>ZENA propone un cambio</Text>
         </View>
 
-        {confirmacion.cambios.map((c, i) => (
-          <View key={`${c.etiqueta}-${i}`} style={tc.fila}>
-            <Text style={tc.etiqueta}>{c.etiqueta}</Text>
-            <View style={tc.valores}>
-              <Text style={tc.antes}>{c.antes ?? '—'}</Text>
-              <Ionicons name="arrow-forward" size={11} color={Colors.neon.w3} />
-              <Text style={tc.despues}>
-                {c.despues}{c.unidad ? ` ${c.unidad}` : ''}
-              </Text>
-            </View>
-          </View>
-        ))}
+        <FilasCambio cambios={confirmacion.cambios} />
 
         <Text style={tc.nota}>Nada cambia hasta que lo confirmes.</Text>
 
@@ -240,24 +262,28 @@ function TarjetaConfirmacion({
  * usuario tendría que averiguar por su cuenta qué haría ese botón.
  */
 function TarjetaResuelta({
-  estado, mensaje, onDeshacer, deshaciendo,
+  estado, mensaje, cambios, onDeshacer, deshaciendo,
 }: {
   estado: EstadoTarjeta
   mensaje: string
+  /** Qué se aplicó. Solo tiene sentido enseñarlo cuando de verdad se aplicó. */
+  cambios?: CambioPropuesto[]
   onDeshacer: () => void
   deshaciendo: boolean
 }) {
   const icono = estado === 'aplicada' ? 'checkmark-circle' : 'close-circle'
   const color = estado === 'aplicada' ? Colors.neon.white : Colors.neon.w3
+  const detalle = estado === 'aplicada' && !!cambios?.length
 
   return (
     <View style={[b.wrap, b.wrapLeft]}>
       <View style={{ width: 32 }} />
-      <View style={[tc.card, tc.cardApagada]}>
+      <View style={[tc.card, tc.cardApagada, detalle && { gap: Spacing[1] }]}>
         <View style={tc.encabezado}>
           <Ionicons name={icono} size={14} color={color} />
           <Text style={[tc.titulo, { color }]}>{mensaje}</Text>
         </View>
+        {detalle && <FilasCambio cambios={cambios!} apagado />}
         {estado === 'aplicada' && (
           <TouchableOpacity
             style={[tc.btn, tc.btnFantasma, { alignSelf: 'flex-start', marginTop: Spacing[2] }]}
@@ -339,10 +365,13 @@ const pg = StyleSheet.create({
 // ── Main Screen ────────────────────────────────────────────────────────────────
 
 export default function ChatScreen() {
-  const { totalCalories, totalProtein, waterGlasses } = useNutritionStore()
-  const { entrenadoHoy } = useEntrenoResumen()
-  const { checkInDone, todayCheckIn, scoreHistory } = useHealthStore()
+  const { totalCalories, waterGlasses } = useNutritionStore()
+  const { scoreHistory } = useHealthStore()
   const { currentStreak } = useStreakStore()
+  const user = useAuthStore(st => st.user)
+  // La misma fuente y la misma derivación que la pantalla de Nutrición: si las
+  // dos no coinciden, el usuario ve una meta aquí y otra en su anillo.
+  const limites = limitesDe((user as any)?.goals)
   const { incrementAI } = usePremiumStore()
   const insets = useSafeAreaInsets()
 
@@ -353,6 +382,7 @@ export default function ChatScreen() {
   const [messages, setMessages] = useState<CoachMessage[]>([])
   const [input, setInput] = useState('')
   const [sending, setSending] = useState(false)
+  const [cargando, setCargando] = useState(true)
   const [topeAlcanzado, setTopeAlcanzado] = useState(false)
   const scrollRef = useRef<ScrollView>(null)
 
@@ -380,35 +410,98 @@ export default function ChatScreen() {
   }, [])
 
   const today = hoyLocal()
-  const healthScore = scoreHistory.find(s => (s as any).date === today)?.total
-    ?? scoreHistory[0]?.total ?? 0
+  /**
+   * El de HOY, o nada.
+   *
+   * Antes, si hoy no había marcador, se cogía `scoreHistory[0]` —una nota de
+   * cualquier día pasado— y se enseñaba como si fuera la de hoy; y si el
+   * historial estaba vacío, el `?? 0` remataba con un «Score 0» que se lee como
+   * «tienes la salud por los suelos» a alguien de quien no se sabe nada. Los
+   * dos respaldos afirmaban cosas que nadie había medido.
+   */
+  const healthScore = scoreHistory.find(s => s.date === today)?.total ?? null
 
-  const context: CoachContext = {
-    totalCalories,
-    caloriesTarget: 2000,
-    totalProtein,
-    proteinTarget: 150,
-    waterGlasses,
-    currentStreak,
-    healthScore,
-    workedOut: entrenadoHoy,
-    checkInDone,
-    mood: todayCheckIn?.mood,
-    sleep: todayCheckIn?.sleep,
-    intention: todayCheckIn?.intention }
-
-  // Welcome message on first mount
+  /**
+   * Al abrir: se recupera la conversación de verdad.
+   *
+   * Antes aquí se fabricaba un saludo —«hoy llevas 320 kcal»— y la pantalla
+   * nacía con ese único mensaje. Pero el servidor SÍ le manda al modelo los
+   * últimos mensajes guardados, así que ZENA seguía la conversación de ayer
+   * mientras el usuario veía un chat en blanco: contestaba a preguntas que ya
+   * no estaban en pantalla.
+   *
+   * El saludo tampoco se pierde: el primer mensaje de cada hilo lo escribe el
+   * servidor al crear la sesión, y ese sí lo lee también el modelo.
+   */
   useEffect(() => {
-    const welcome = createMessage(
-      'assistant',
-      `¡Hola! Soy ZENA, tu coach de ZENCRUS. Hoy llevas ${totalCalories} kcal, ${waterGlasses} vasos de agua y una racha de ${currentStreak} días. ¿En qué te puedo ayudar?`
-    )
-    setMessages([welcome])
+    let vivo = true
+    ;(async () => {
+      try {
+        const { mensajes, deshacibles } = await cargarHilo()
+        if (!vivo) return
+        setMessages(mensajes)
+        // Un cambio aplicado hace dos horas vuelve con su botón de deshacer:
+        // la ventana de 24 h corre en el servidor y sigue abierta aunque la
+        // app se haya cerrado por medio.
+        setResueltas(Object.fromEntries(deshacibles.map(c => [
+          c.id,
+          { estado: 'aplicada' as EstadoTarjeta, mensaje: 'Cambio aplicado' },
+        ])))
+      } catch {
+        if (!vivo) return
+        // Sin red no hay hilo. Se dice, en vez de enseñar un chat vacío que
+        // parece una conversación que se perdió.
+        setMessages([createMessage(
+          'assistant',
+          'No pude recuperar nuestra conversación. Revisa tu conexión y vuelve a entrar.',
+        )])
+      } finally {
+        if (vivo) setCargando(false)
+      }
+    })()
+    return () => { vivo = false }
   }, [])
 
   useEffect(() => {
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100)
   }, [messages, sending])
+
+  /**
+   * Empezar de cero.
+   *
+   * Hace falta desde que el hilo persiste: sin esto, la conversación crece sin
+   * final y hablar de algo nuevo obliga a arrastrar todo lo anterior. La
+   * anterior se archiva, no se borra — `buscar_en_memoria` sigue llegando a
+   * ella, así que lo que el usuario ya contó no hay que volver a contarlo.
+   */
+  const nuevaConversacion = useCallback(() => {
+    if (sending || cargando) return
+    Alert.alert(
+      'Empezar de cero',
+      'Se guarda lo hablado y se abre una conversación nueva. ZENA sigue recordando lo importante.',
+      [
+        { text: 'Ahora no', style: 'cancel' },
+        {
+          text: 'Empezar',
+          onPress: async () => {
+            setCargando(true)
+            setMessages([])
+            setResueltas({})
+            setTopeAlcanzado(false)
+            await cerrarConversacion()
+            try {
+              const { mensajes } = await cargarHilo()
+              setMessages(mensajes)
+            } catch {
+              setMessages([createMessage('assistant', 'No pude abrir la conversación. Revisa tu conexión.')])
+            } finally {
+              setCargando(false)
+            }
+          },
+        },
+      ],
+    )
+  }, [sending, cargando])
 
   /**
    * El tope lo decide el SERVIDOR, no esta pantalla.
@@ -434,7 +527,7 @@ export default function ChatScreen() {
     await incrementAI()
 
     try {
-      const { texto, confirmaciones } = await coachSend(content, messages, context)
+      const { texto, confirmaciones } = await coachSend(content)
       const assistantMsg = createMessage('assistant', texto, confirmaciones)
       setMessages(prev => [...prev, assistantMsg])
     } catch (err: any) {
@@ -448,7 +541,7 @@ export default function ChatScreen() {
     } finally {
       setSending(false)
     }
-  }, [input, sending, incrementAI, messages, context])
+  }, [input, sending, incrementAI])
 
   // Solo se marca cuando el servidor lo dice, no antes.
   const atLimit = topeAlcanzado
@@ -480,7 +573,28 @@ export default function ChatScreen() {
             </Text>
           </View>
         </TouchableOpacity>
-        <View style={[s.statusDot, { backgroundColor: sending ? Colors.accent.orange : Colors.accent.green }]} />
+        <View style={s.headerRight}>
+          <View style={[s.statusDot, { backgroundColor: sending ? Colors.accent.orange : Colors.accent.green }]} />
+          {/*
+            Va aquí y no dentro de un menú: es la única acción de la pantalla
+            aparte de escribir, y esconder una acción única detrás de tres
+            puntos solo la hace más difícil de encontrar.
+          */}
+          <TouchableOpacity
+            style={s.headerBtn}
+            onPress={nuevaConversacion}
+            disabled={sending || cargando}
+            hitSlop={8}
+            accessibilityRole="button"
+            accessibilityLabel="Empezar una conversación nueva"
+          >
+            <Ionicons
+              name="create-outline"
+              size={19}
+              color={sending || cargando ? Colors.dark.textTertiary : Colors.dark.textSecondary}
+            />
+          </TouchableOpacity>
+        </View>
       </View>
 
       <KeyboardAvoidingView
@@ -488,12 +602,22 @@ export default function ChatScreen() {
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={0}
       >
-        {/* Context bar */}
+        {/*
+          La barra de contexto: lo mismo que ZENA está leyendo.
+
+          Las calorías van CONTRA LA META y no sueltas. «165 kcal» no dice nada
+          por sí solo —¿es poco, es la mitad, se pasó?— y era además el único
+          sitio de la app donde la cifra del día aparecía sin su referencia.
+          La meta sale de donde la saca la pantalla de Nutrición, para que las
+          dos digan lo mismo.
+        */}
         <View style={s.ctxBar}>
-          <CtxChip label={`${totalCalories} kcal`} emoji="🍽️" />
-          <CtxChip label={`${waterGlasses} vasos`} emoji="💧" />
-          <CtxChip label={`${currentStreak}d racha`} emoji="🔥" />
-          <CtxChip label={`Score ${healthScore}`} emoji="⭐" />
+          <CtxChip icono="restaurant-outline" label={`${miles(totalCalories)} / ${miles(limites.meta)} kcal`} />
+          <CtxChip icono="water-outline" label={`${waterGlasses} vasos`} />
+          <CtxChip icono="flame-outline" label={`${currentStreak} d de racha`} />
+          {healthScore != null && (
+            <CtxChip icono="sparkles-outline" label={`Score ${healthScore}`} />
+          )}
         </View>
 
         {/* Messages */}
@@ -503,6 +627,19 @@ export default function ChatScreen() {
           contentContainerStyle={s.scrollContent}
           showsVerticalScrollIndicator={false}
         >
+          {/*
+            Cargando: un punto, no un chat vacío.
+
+            Sin esto, el segundo que tarda en llegar el hilo se ve exactamente
+            igual que una conversación que se perdió — y esa es justo la duda
+            que esta pantalla tiene que dejar de provocar.
+          */}
+          {cargando && (
+            <View style={s.cargando}>
+              <ActivityIndicator size="small" color={Colors.primary[400]} />
+            </View>
+          )}
+
           {messages.map(msg => (
             <View key={msg.id}>
               <MessageBubble msg={msg} />
@@ -519,6 +656,7 @@ export default function ChatScreen() {
                       key={c.id}
                       estado={resuelta.estado}
                       mensaje={resuelta.mensaje}
+                      cambios={c.cambios}
                       deshaciendo={deshaciendo === c.id}
                       onDeshacer={() => manejarDeshacer(c.id)}
                     />
@@ -529,8 +667,13 @@ export default function ChatScreen() {
           ))}
           {sending && <TypingIndicator />}
 
-          {/* Quick questions (show when only welcome msg) */}
-          {messages.length <= 1 && !sending && (
+          {/*
+            Las preguntas de arranque solo salen mientras la conversación no ha
+            empezado: en cuanto hay algo hablado, estorban más de lo que ayudan.
+            Con el hilo recuperado eso ya no es «al abrir la app», es «este hilo
+            todavía solo tiene el saludo».
+          */}
+          {!cargando && messages.length <= 1 && !sending && (
             <View style={s.quickWrap}>
               <Text style={s.quickTitle}>Preguntas frecuentes</Text>
               {QUICK_QUESTIONS.map(q => (
@@ -564,13 +707,17 @@ export default function ChatScreen() {
             placeholder={atLimit ? 'Límite diario alcanzado' : 'Escribe tu pregunta...'}
             placeholderTextColor={Colors.dark.textTertiary}
             multiline
-            maxLength={500}
-            editable={!atLimit}
+            // 2000 es lo que valida el servidor. Con 500 se cortaba en silencio
+            // a mitad de frase un mensaje que habría entrado entero.
+            maxLength={2000}
+            editable={!atLimit && !cargando}
           />
           <TouchableOpacity
-            style={[s.sendBtn, (!input.trim() || sending || atLimit) && s.sendBtnOff]}
+            style={[s.sendBtn, (!input.trim() || sending || atLimit || cargando) && s.sendBtnOff]}
             onPress={() => handleSend()}
-            disabled={!input.trim() || sending || atLimit}
+            // Mientras el hilo se recupera no se manda nada: la respuesta
+            // llegaría a una lista de mensajes que está a punto de sustituirse.
+            disabled={!input.trim() || sending || atLimit || cargando}
           >
             <Text style={s.sendBtnTxt}>↑</Text>
           </TouchableOpacity>
@@ -580,10 +727,17 @@ export default function ChatScreen() {
   )
 }
 
-function CtxChip({ label, emoji }: { label: string; emoji: string }) {
+/**
+ * Un dato del día. Con icono, no con emoji.
+ *
+ * El resto de la app dibuja sus datos con Ionicons; aquí había cuatro emojis
+ * (🍽️💧🔥⭐) que cambian de dibujo según el sistema y no siguen el color del
+ * tema. Es la única pantalla que lo hacía.
+ */
+function CtxChip({ label, icono }: { label: string; icono: React.ComponentProps<typeof Ionicons>['name'] }) {
   return (
     <View style={cc.wrap}>
-      <Text style={cc.emoji}>{emoji}</Text>
+      <Ionicons name={icono} size={12} color={Colors.dark.textSecondary} />
       <Text style={cc.label}>{label}</Text>
     </View>
   )
@@ -591,20 +745,22 @@ function CtxChip({ label, emoji }: { label: string; emoji: string }) {
 
 const cc = StyleSheet.create({
   wrap: { flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.full, paddingHorizontal: Spacing[3], paddingVertical: Spacing[1], borderWidth: 1, borderColor: Colors.dark.border },
-  emoji: { fontSize: 12 },
   label: { fontSize: 10, color: Colors.dark.textSecondary, fontWeight: '600' } })
 
 const s = StyleSheet.create({
   container: { flex: 1, backgroundColor: Colors.dark.background },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing[5], paddingVertical: Spacing[3], borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
   headerNombre: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
+  headerLeft: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], flex: 1 },
+  headerRight: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
+  headerBtn: { padding: Spacing[1] },
   headerIconTxt: { fontSize: 20 },
   headerTitle: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.dark.text },
   headerSub: { fontSize: Typography.fontSize.xs, color: Colors.dark.textSecondary, marginTop: 1 },
   statusDot: { width: 10, height: 10, borderRadius: 5 },
   ctxBar: { flexDirection: 'row', gap: Spacing[2], paddingHorizontal: Spacing[4], paddingVertical: Spacing[3], flexWrap: 'wrap' },
   scroll: { flex: 1 },
+  cargando: { paddingVertical: Spacing[6], alignItems: 'center' },
   scrollContent: { padding: Spacing[4], paddingBottom: Spacing[4] },
   quickWrap: { marginTop: Spacing[4] },
   quickTitle: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: Colors.dark.textTertiary, textTransform: 'uppercase', letterSpacing: 1, marginBottom: Spacing[3] },

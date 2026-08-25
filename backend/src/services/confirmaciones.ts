@@ -136,7 +136,7 @@ const OBJETIVO_EN_PANTALLA: Record<string, string> = {
  * que existe pero no sabemos nombrar NO puede colapsar a `null`: se vería
  * igual que no tener objetivo, y son cosas distintas.
  */
-function nombrarObjetivo(guardado: unknown): string | null {
+export function nombrarObjetivo(guardado: unknown): string | null {
   if (typeof guardado !== 'string' || guardado === '') return null
   return OBJETIVO_EN_PANTALLA[guardado] ?? 'Sin definir'
 }

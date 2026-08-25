@@ -26,6 +26,14 @@ export interface Confirmacion {
   expira_at: string
   /** Solo en las ya aplicadas: desde cuándo corren las 24 h para deshacer. */
   resuelta_at?: string
+  /**
+   * Debajo de qué mensaje de ZENA va la tarjeta.
+   *
+   * Viene vacío en la respuesta al propio mensaje —ahí la app ya sabe dónde
+   * ponerla— y lleno al recuperar el hilo, que es cuando hace falta para
+   * volver a colocarla en su sitio.
+   */
+  message_id?: string | null
 }
 
 export interface Confirmaciones {
@@ -34,16 +42,13 @@ export interface Confirmaciones {
 }
 
 /**
- * ⚠️ NADIE LA LLAMA TODAVÍA, y no es un olvido.
+ * Las tarjetas al volver al chat: lo que sigue abierto y lo que aún se puede
+ * deshacer.
  *
- * Sirve para repintar las tarjetas al volver al chat: las propuestas que
- * siguen abiertas y los cambios que aún se pueden deshacer. Pero la pantalla
- * de chat hoy no recupera su conversación —arranca con un saludo y nada más—,
- * así que no hay mensajes debajo de los cuales colgarlas.
- *
- * Colgarlas de cualquier sitio sería peor que no enseñarlas: una tarjeta suelta
- * sin la frase de ZENA que la explica es un botón que cambia tus calorías sin
- * decir por qué. Se conecta cuando el chat cargue su historial.
+ * Se cuelgan por `message_id`, debajo del mensaje de ZENA que las explica. Una
+ * tarjeta suelta, sin la frase que la justifica, sería un botón que cambia tus
+ * calorías sin decir por qué — por eso las que no traen `message_id` no se
+ * pintan en ningún sitio. La usa `cargarHilo` en `aiCoachService`.
  */
 export async function listarConfirmaciones(): Promise<Confirmaciones> {
   const { data } = await api.get('/confirmaciones')

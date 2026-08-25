@@ -20,7 +20,7 @@ import {
   View, Text, StyleSheet, TouchableWithoutFeedback, Animated, Pressable,
   useWindowDimensions, ActivityIndicator,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { StatusBar } from 'expo-status-bar'

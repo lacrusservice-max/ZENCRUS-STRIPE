@@ -64,6 +64,8 @@ interface SocialState {
   markStorySeen: (groupAuthorId: string) => void
 
   toggleLike: (post: S.Post) => Promise<void>
+  /** Guarda o desguarda. Igual que el corazón: se pinta antes de preguntar. */
+  toggleSave: (post: S.Post) => Promise<void>
   removePost: (id: string) => Promise<void>
   /** Mete una publicación recién creada en lo alto de los muros donde toca. */
   prependPost: (post: S.Post) => void
@@ -221,6 +223,18 @@ export const useSocialStore = create<SocialState>((set, get) => ({
           ...p, likedByMe: daba, likes: p.likes + (daba ? 1 : -1),
         })),
       }))
+    }
+  },
+
+  toggleSave: async (post) => {
+    const tenia = post.savedByMe
+    set(s => ({ feeds: enTodos(s.feeds, post.id, p => ({ ...p, savedByMe: !tenia })) }))
+
+    try {
+      tenia ? await S.unsavePost(post.id) : await S.savePost(post.id)
+    } catch {
+      set(s => ({ feeds: enTodos(s.feeds, post.id, p => ({ ...p, savedByMe: tenia })) }))
+      throw new Error(tenia ? 'No pudimos quitarla de guardados' : 'No pudimos guardarla')
     }
   },
 

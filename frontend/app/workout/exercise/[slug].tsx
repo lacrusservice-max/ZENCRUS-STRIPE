@@ -20,7 +20,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity,
   useWindowDimensions,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { volverAEntrena } from '@/components/workout/MenuSeccion'
@@ -247,7 +247,7 @@ export default function ExerciseScreen() {
           <TouchableOpacity
             style={[s.principal, { backgroundColor: T.accent, shadowColor: T.accent }]}
             activeOpacity={0.88}
-            onPress={() => router.push('/workout')}
+            onPress={() => router.push('/workout/gym')}
           >
             <Ionicons name="add" size={19} color="#fff" />
             <Text style={s.principalTxt}>Añadir a una rutina</Text>

@@ -6,6 +6,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { router } from 'expo-router'
 import { Colors, Typography, Spacing } from '@/constants/theme'
 import { BotonIA } from '@/constants/layout'
+import { useEsquinaOcupada } from '@/components/ui/BotonPerfil'
 import { useAppTheme } from '@/context/ThemeContext'
 
 type IconName = React.ComponentProps<typeof Ionicons>['name']
@@ -103,6 +104,7 @@ export function ScreenHeader({
 }: ScreenHeaderProps) {
   const T = useAppTheme()
   const c = color ?? T.accent
+  const esquinaOcupada = useEsquinaOcupada()
   const volver = onBack ?? (() => {
     if (router.canGoBack()) router.back()
     else router.replace('/')
@@ -131,7 +133,11 @@ export function ScreenHeader({
           </View>
           {subtitle && <Text style={[sh.subtitle, { color: T.ink3 }]}>{subtitle}</Text>}
         </View>
-        {right && <View style={sh.right}>{right}</View>}
+        {right && (
+          <View style={[sh.right, esquinaOcupada && { marginRight: BotonIA.reserva }]}>
+            {right}
+          </View>
+        )}
       </View>
     </View>
   )
@@ -169,5 +175,12 @@ const sh = StyleSheet.create({
    * todo como leído— acaban con dos botones pisados uno encima del otro, y el
    * de abajo deja de poder tocarse.
    */
-  right: { paddingTop: 2, marginRight: BotonIA.reserva },
+  /**
+   * El margen derecho se pone SOLO cuando hay botón flotante en la esquina, y
+   * lo decide `useEsquinaOcupada`. Antes era fijo: sin él, en las doce
+   * pantallas que ponen algo aquí los dos botones se pisaban y el de abajo no
+   * se podía tocar; con él puesto siempre, las pantallas sin botón flotante
+   * —Comunidad entera— dejaban un hueco muerto contra el borde.
+   */
+  right: { paddingTop: 2 },
 })

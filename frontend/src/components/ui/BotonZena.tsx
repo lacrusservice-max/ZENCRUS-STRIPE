@@ -27,6 +27,7 @@ import { Animated, Image, Pressable, StyleSheet, View } from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { router, useSegments } from 'expo-router'
 import { useAuthStore } from '@/store/authStore'
+import { LOGIN_ACTIVO } from '@/constants/acceso'
 import { useAppTheme } from '@/context/ThemeContext'
 import { BotonIA } from '@/constants/layout'
 
@@ -83,7 +84,7 @@ export function BotonZena() {
 
   const ruta = segmentos.join('/')
   const visible =
-    isAuthenticated &&
+    (isAuthenticated || !LOGIN_ACTIVO) &&
     !RUTAS_SIN_BOTON.has(ruta) &&
     !segmentos.some(s => GRUPOS_SIN_BOTON.includes(s))
 

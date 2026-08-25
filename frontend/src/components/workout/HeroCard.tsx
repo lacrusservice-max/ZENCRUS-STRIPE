@@ -29,7 +29,7 @@
  */
 
 import { View, Text, StyleSheet, TouchableOpacity, Pressable } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'

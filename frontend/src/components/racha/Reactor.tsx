@@ -138,7 +138,7 @@ export function Reactor({ dias, onHito }: Props) {
   useEffect(() => {
     hervor.value = withRepeat(withTiming(1, { duration: 2100, easing: Easing.inOut(Easing.quad) }), -1, true)
     testigo.value = withRepeat(
-      withSequence(withTiming(1, { duration: 900 }), withTiming(0.35, { duration: 900 })), -1, false)
+      withSequence(withTiming(1, { duration: 700 }), withTiming(0.12, { duration: 700 })), -1, false)
   }, [])
 
   useEffect(() => {
@@ -151,10 +151,29 @@ export function Reactor({ dias, onHito }: Props) {
     }))
   }, [dias])
 
-  const eNucleo = useAnimatedStyle(() => ({
-    height: Math.max(10, alto.value * (0.04 + nivel.value * 0.92)),
-    transform: [{ scaleY: interpolate(hervor.value, [0, 1], [1, 1.03]) }],
+  /* El hervor mueve la ALTURA, no un `scaleY` del 3 %.
+     Escalar un gradiente lo deforma y, sobre un núcleo pequeño, tres píxeles no
+     los ve nadie: la primera versión animaba de verdad y aun así se leía como
+     una pantalla congelada. El vaivén es una fracción fija del TUBO, así que se
+     escala solo — con la racha a cero el núcleo mide un dedo y respirar ±1,8 %
+     de la columna lo cambia a la mitad de su tamaño, que es justo la señal de
+     «esto está esperando a que lo enciendas»; con la racha llena esos mismos
+     píxeles son un temblor discreto, que es lo que le toca a un reactor
+     a plena carga. */
+  const eNucleo = useAnimatedStyle(() => {
+    const base = 0.04 + nivel.value * 0.92
+    const vaiven = interpolate(hervor.value, [0, 1], [-0.018, 0.018])
+    return { height: Math.max(10, alto.value * Math.max(0.03, base + vaiven)) }
+  })
+
+  /* La lengua de fuego de la superficie: lo que de verdad se lee como arder.
+     Crece y se aclara con el mismo ciclo que el núcleo, medio compás por
+     delante, para que el borde parezca lamer y no subir en bloque. */
+  const eLengua = useAnimatedStyle(() => ({
+    height: interpolate(hervor.value, [0, 1], [9, 27]),
+    opacity: interpolate(hervor.value, [0, 1], [0.3, 1]),
   }))
+
   const eTestigo = useAnimatedStyle(() => ({ opacity: testigo.value }))
   const eMarca = useAnimatedStyle(() => ({
     bottom: Math.max(6, alto.value * (0.02 + nivel.value * 0.92)),
@@ -171,6 +190,12 @@ export function Reactor({ dias, onHito }: Props) {
             locations={[0, 0.3, 0.62, 1]}
             style={StyleSheet.absoluteFill}
           />
+          <Animated.View style={[s.lengua, eLengua]} pointerEvents="none">
+            <LinearGradient
+              colors={['rgba(255,233,196,0)', '#FFE9C4']}
+              style={StyleSheet.absoluteFill}
+            />
+          </Animated.View>
         </Animated.View>
 
         {/* La rejilla de contención, encima del núcleo. */}
@@ -194,8 +219,16 @@ export function Reactor({ dias, onHito }: Props) {
           <Brasa key={i} dato={b} alto={alto} base={nivel} />
         ))}
 
-        <Animated.View style={[s.testigo, eTestigo]} pointerEvents="none">
-          <Text style={s.testigoTxt}>ACTIVO</Text>
+        {/* A cero días el reactor NO está activo, y ponerlo sería mentir sobre
+            lo único que esta pantalla tiene que decir. En espera va en ámbar:
+            no es un error —es un reactor listo para encenderse—. */}
+        <Animated.View
+          style={[s.testigo, dias > 0 ? null : s.testigoEspera, eTestigo]}
+          pointerEvents="none"
+        >
+          <Text style={[s.testigoTxt, dias > 0 ? null : s.testigoTxtEspera]}>
+            {dias > 0 ? 'ACTIVO' : 'EN ESPERA'}
+          </Text>
         </Animated.View>
       </View>
 
@@ -348,6 +381,12 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: 'rgba(255,74,46,0.4)',
   },
   testigoTxt: { fontSize: 6, fontWeight: '900', letterSpacing: 1.4, color: '#FF4A2E' },
+  testigoEspera: { borderColor: 'rgba(255,176,31,0.45)' },
+  testigoTxtEspera: { color: '#FFB01F' },
+
+  /* La superficie del núcleo. Va dentro de él, pegada arriba, y por eso sube
+     con él sin que haya que atarla a nada más. */
+  lengua: { position: 'absolute', left: 0, right: 0, top: 0, overflow: 'hidden' },
 
   escala: { flex: 1, flexDirection: 'column-reverse', justifyContent: 'space-between', paddingVertical: 10 },
   peldano: { position: 'relative' },

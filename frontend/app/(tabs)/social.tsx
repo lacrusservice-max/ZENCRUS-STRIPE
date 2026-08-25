@@ -11,16 +11,17 @@
  * de un muro.
  *
  * ── El menú de la sección ───────────────────────────────────────────────────
- * Buscar, avisos y mensajes viven en la cabecera y no en la barra de abajo: la
- * barra es de la app entera y ya tiene cinco pestañas. Meter ahí lo de la
- * comunidad la convertiría en un cajón de sastre.
+ * En la cabecera solo quedan los avisos, pegados al borde derecho. Buscar,
+ * mensajes y el perfil bajaron a la barra flotante: son sitios donde te
+ * quedas, y ahí caen bajo el pulgar en vez de en la esquina de arriba. Los
+ * avisos se quedan porque son lo único que INTERRUMPE — cuentan algo que acaba
+ * de pasar— y porque el contador tiene que verse sin abrir nada.
  */
 
-import { BotonIA } from '@/constants/layout'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl,
-  ActivityIndicator, Animated, ScrollView, Alert, Pressable,
+  ActivityIndicator, Animated, ScrollView, Alert,
 } from 'react-native'
 import { useFocusEffect, router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -30,7 +31,7 @@ import { useAppTheme } from '@/context/ThemeContext'
 import { useSocialStore } from '@/store/socialStore'
 import { Typography } from '@/constants/theme'
 import {
-  Avatar, Badge, Empty, FeedSkeleton, BrandRing, timeAgo,
+  Avatar, Badge, Empty, FeedSkeleton, BrandRing, timeAgo, confirmarBloqueo,
 } from '@/components/social/Bits'
 import { PostCard } from '@/components/social/PostCard'
 import type { FeedScope, Post, StoryGroup } from '@/services/socialService'
@@ -46,59 +47,41 @@ import { registerForPush, listenToPushTaps } from '@/services/pushService'
  * no existe y en iOS impone su propio aspecto, así que la sección se vería
  * distinta en cada teléfono.
  */
+/**
+ * Los dos muros, como dos palabras.
+ *
+ * Era un segmentado de vidrio a todo el ancho con su pastilla deslizante. Con
+ * las publicaciones ya sin marco, ese control era el único bloque con borde de
+ * la pantalla y tiraba del ojo más que las fotos. Dos palabras y una línea bajo
+ * la activa hacen el mismo trabajo ocupando un tercio del alto.
+ */
 function WallPicker({
   value, onChange,
 }: { value: FeedScope; onChange: (v: FeedScope) => void }) {
   const T = useAppTheme()
-  const pos = useRef(new Animated.Value(value === 'foryou' ? 0 : 1)).current
-  const [ancho, setAncho] = useState(0)
 
-  useEffect(() => {
-    Animated.spring(pos, {
-      toValue: value === 'foryou' ? 0 : 1,
-      useNativeDriver: true, tension: 260, friction: 22,
-    }).start()
-  }, [value])
-
-  const opciones: { key: FeedScope; label: string; icon: any }[] = [
-    { key: 'foryou', label: 'Para ti', icon: 'sparkles' },
-    { key: 'friends', label: 'Amigos', icon: 'people' },
+  const opciones: { key: FeedScope; label: string }[] = [
+    { key: 'foryou', label: 'Para ti' },
+    { key: 'friends', label: 'Amigos' },
   ]
 
   return (
-    <View
-      style={[wp.wrap, { backgroundColor: T.glass, borderColor: T.glassBorder }]}
-      onLayout={e => setAncho(e.nativeEvent.layout.width - 8)}
-    >
-      {ancho > 0 && (
-        <Animated.View
-          style={[
-            wp.pill,
-            {
-              width: ancho / 2,
-              backgroundColor: `${T.accent}22`,
-              borderColor: `${T.accent}3A`,
-              transform: [{ translateX: pos.interpolate({ inputRange: [0, 1], outputRange: [0, ancho / 2] }) }],
-            },
-          ]}
-          pointerEvents="none"
-        />
-      )}
+    <View style={wp.wrap}>
       {opciones.map(o => {
         const activo = value === o.key
         return (
           <TouchableOpacity
             key={o.key}
-            style={wp.opt}
-            activeOpacity={0.8}
+            activeOpacity={0.7}
+            hitSlop={10}
             onPress={() => {
               if (activo) return
               Haptics.selectionAsync().catch(() => {})
               onChange(o.key)
             }}
           >
-            <Ionicons name={o.icon} size={14} color={activo ? T.accent : T.ink3} />
-            <Text style={[wp.txt, { color: activo ? T.accent : T.ink3 }]}>{o.label}</Text>
+            <Text style={[wp.txt, { color: activo ? T.ink : T.ink3 }]}>{o.label}</Text>
+            <View style={[wp.raya, { backgroundColor: activo ? T.accent : 'transparent' }]} />
           </TouchableOpacity>
         )
       })}
@@ -107,13 +90,9 @@ function WallPicker({
 }
 
 const wp = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row', marginHorizontal: 16, marginBottom: 14,
-    padding: 4, borderRadius: 15, borderWidth: 1,
-  },
-  pill: { position: 'absolute', top: 4, bottom: 4, left: 4, borderRadius: 12, borderWidth: 1 },
-  opt: { flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, paddingVertical: 9 },
-  txt: { fontSize: 13, fontWeight: '700' },
+  wrap: { flexDirection: 'row', gap: 18, paddingHorizontal: 16, paddingBottom: 14 },
+  txt: { fontSize: 14, fontWeight: '700' },
+  raya: { height: 2, borderRadius: 1, marginTop: 5 },
 })
 
 // ── Carrusel de historias ────────────────────────────────────────────────────
@@ -142,8 +121,8 @@ function Stories({ groups, loading }: { groups: StoryGroup[]; loading: boolean }
       >
         <View>
           {mias
-            ? <Avatar profile={mias.author} size={58} ring={vistas.has(mias.author.id) ? T.ink4 : T.accent} />
-            : <Avatar profile={me} size={58} />}
+            ? <Avatar profile={mias.author} size={50} ring={vistas.has(mias.author.id) ? T.ink4 : T.accent} />
+            : <Avatar profile={me} size={50} />}
           {!mias && (
             <View style={[st.plus, { backgroundColor: T.accent, borderColor: T.bg }]}>
               <Ionicons name="add" size={14} color="#fff" />
@@ -168,11 +147,11 @@ function Stories({ groups, loading }: { groups: StoryGroup[]; loading: boolean }
           onPress={() => router.push({ pathname: '/social/story', params: { authorId: g.author.id } })}
         >
           {vistas.has(g.author.id) ? (
-            <Avatar profile={g.author} size={58} ring={T.ink4} />
+            <Avatar profile={g.author} size={50} ring={T.ink4} />
           ) : (
-            <BrandRing size={65}>
-              <View style={{ borderRadius: 32, borderWidth: 2.5, borderColor: T.bg }}>
-                <Avatar profile={g.author} size={57} />
+            <BrandRing size={57}>
+              <View style={{ borderRadius: 28, borderWidth: 2.5, borderColor: T.bg }}>
+                <Avatar profile={g.author} size={49} />
               </View>
             </BrandRing>
           )}
@@ -186,15 +165,17 @@ function Stories({ groups, loading }: { groups: StoryGroup[]; loading: boolean }
 }
 
 const st = StyleSheet.create({
-  row: { paddingHorizontal: 16, gap: 14, paddingBottom: 16 },
-  item: { alignItems: 'center', width: 68, gap: 7 },
-  name: { fontSize: 11, fontWeight: '600' },
+  row: { paddingHorizontal: 16, gap: 13, paddingBottom: 14 },
+  item: { alignItems: 'center', width: 60, gap: 6 },
+  // Los nombres se quedan, más pequeños: una fila de caras sin nombre obliga a
+  // tocar para saber de quién es cada historia.
+  name: { fontSize: 10, fontWeight: '600' },
   plus: {
     position: 'absolute', bottom: -2, right: -2,
     width: 21, height: 21, borderRadius: 11, borderWidth: 2.5,
     alignItems: 'center', justifyContent: 'center',
   },
-  fantasma: { width: 58, height: 58, borderRadius: 29 },
+  fantasma: { width: 50, height: 50, borderRadius: 25 },
   fantasmaTxt: { width: 44, height: 9, borderRadius: 5 },
 })
 
@@ -202,7 +183,6 @@ const st = StyleSheet.create({
 
 function Header() {
   const T = useAppTheme()
-  const me = useSocialStore(s => s.me)
   const badges = useSocialStore(s => s.badges)
 
   const boton = (icon: any, onPress: () => void, count = 0) => (
@@ -222,19 +202,18 @@ function Header() {
         <Text style={[hd.eyebrow, { color: T.accent }]}>COMUNIDAD</Text>
         <Text style={[hd.title, { color: T.ink }]}>Social</Text>
       </View>
+      {/*
+        Solo Avisos.
+
+        Buscar, Mensajes y el perfil bajaron a la barra flotante, detrás del
+        galón: son sitios donde te quedas, y en la barra están donde está el
+        pulgar en vez de en la esquina de arriba. Avisos se queda porque no
+        cabía —el menú son cuatro y ninguno de los otros sobra— y porque es lo
+        único de los cuatro que interrumpe: avisa de algo que ha pasado.
+      */}
       <View style={hd.acciones}>
-        {boton('search', () => router.push('/social/search'))}
         {boton('notifications-outline', () => router.push('/social/notifications'),
           badges.notifications + badges.followRequests)}
-        {boton('chatbubble-outline', () => router.push('/social/messages'),
-          badges.messages + badges.messageRequests)}
-        <TouchableOpacity
-          onPress={() => router.push('/social/me')}
-          activeOpacity={0.75}
-          style={{ marginLeft: 2 }}
-        >
-          <Avatar profile={me} size={38} />
-        </TouchableOpacity>
       </View>
     </View>
   )
@@ -247,9 +226,14 @@ const hd = StyleSheet.create({
   },
   eyebrow: { fontSize: 10, fontWeight: '900', letterSpacing: 3, marginBottom: 3 },
   title: { fontFamily: Typography.fontFamily.display, fontSize: 32, letterSpacing: 0.2 },
-  // El margen deja libre la esquina para el botón de ZENA, que si no cae justo
-  // encima de la foto de perfil.
-  acciones: { flexDirection: 'row', alignItems: 'center', gap: 8, marginRight: BotonIA.reserva },
+  // Pegado al borde, sin reserva.
+  //
+  // Llevaba `marginRight: BotonIA.reserva` de cuando la cabecera tenía cuatro
+  // botones y el de ZENA flotaba encima de la esquina. En Social ZENA no se
+  // pinta, así que esos 44 pt eran un hueco vacío que dejaba la campana
+  // colgando a media distancia del borde: ni alineada con el título ni con el
+  // margen de la pantalla.
+  acciones: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   btn: {
     width: 38, height: 38, borderRadius: 13, borderWidth: 1,
     alignItems: 'center', justifyContent: 'center',
@@ -271,16 +255,25 @@ export default function SocialScreen() {
   const loadMe = useSocialStore(s => s.loadMe)
   const loadBadges = useSocialStore(s => s.loadBadges)
   const toggleLike = useSocialStore(s => s.toggleLike)
+  const toggleSave = useSocialStore(s => s.toggleSave)
   const removePost = useSocialStore(s => s.removePost)
 
   const feed = feeds[scope]
 
   // Al entrar en la sección se refresca lo que esté rancio. Cinco minutos es el
   // punto en que volver a pedir deja de ser molesto y empieza a ser útil.
+  //
+  // La fecha se pregunta al store en el momento, no se lee de `feed`: esta
+  // función solo se vuelve a crear cuando cambia el muro elegido, así que
+  // `feed` se quedaba congelado en el del último cambio —con `fetchedAt` a
+  // cero— y la condición se cumplía SIEMPRE. El muro se volvía a pedir entero
+  // cada vez que se entraba en la pestaña, que es justo lo que estas cinco
+  // líneas existían para evitar.
   useFocusEffect(useCallback(() => {
     loadMe()
     loadBadges()
-    if (Date.now() - feed.fetchedAt > 300_000) loadFeed(scope, 'first')
+    const { fetchedAt } = useSocialStore.getState().feeds[scope]
+    if (Date.now() - fetchedAt > 300_000) loadFeed(scope, 'first')
     loadStories()
   }, [scope]))
 
@@ -298,8 +291,21 @@ export default function SocialScreen() {
     if (!feed.posts.length && !feed.loading) loadFeed(scope, 'first')
   }, [scope])
 
+  /**
+   * El menú de los tres puntos.
+   *
+   * Lo de una publicación propia y lo de una ajena no tienen nada que ver: en la
+   * mía la única acción es borrarla; en la de otro, las que sirven para dejar de
+   * verla. Por eso son dos listas distintas y no una con cosas apagadas.
+   */
   const opciones = useCallback((post: Post) => {
-    const acciones: any[] = []
+    const acciones: any[] = [
+      {
+        text: post.savedByMe ? 'Quitar de guardados' : 'Guardar',
+        onPress: () => toggleSave(post).catch(e => Alert.alert('Ups', errorText(e))),
+      },
+    ]
+
     if (post.isMine) {
       acciones.push({
         text: 'Eliminar publicación',
@@ -316,11 +322,40 @@ export default function SocialScreen() {
         },
       })
     } else if (post.author) {
-      acciones.push({ text: 'Ver perfil', onPress: () => router.push(`/social/profile/${post.author!.id}`) })
+      const autor = post.author
+      acciones.push(
+        { text: 'Ver perfil', onPress: () => router.push(`/social/profile/${autor.id}`) },
+        {
+          text: 'Denunciar publicación',
+          onPress: () => router.push({
+            pathname: '/social/report',
+            params: {
+              tipo: 'post', id: post.id,
+              nombre: autor.username ?? '', autorId: autor.id,
+              // Para que se vea QUÉ se está denunciando antes de acusar.
+              foto: post.media[0]?.url ?? '',
+              resumen: post.content ?? '',
+            },
+          }),
+        },
+        {
+          text: `Bloquear a ${autor.username ?? 'esta persona'}`,
+          style: 'destructive',
+          // Al bloquear, el muro entero cambia —sus publicaciones dejan de
+          // existir para mí—, así que se vuelve a pedir en vez de intentar
+          // quitarlas una a una de la lista que ya está en pantalla.
+          onPress: () => confirmarBloqueo(autor.id, autor.username ?? undefined, () => {
+            loadFeed(scope, 'refresh')
+            loadStories()
+            loadBadges()
+          }),
+        },
+      )
     }
+
     acciones.push({ text: 'Cancelar', style: 'cancel' })
     Alert.alert('Publicación', undefined, acciones)
-  }, [removePost])
+  }, [removePost, toggleSave, scope])
 
   return (
     <Screen>
@@ -331,12 +366,15 @@ export default function SocialScreen() {
           <PostCard
             post={item}
             onLike={toggleLike}
-            onComment={p => router.push(`/social/comments/${p.id}`)}
+            onSave={p => toggleSave(p).catch(e => Alert.alert('Ups', errorText(e)))}
+            onComment={p => router.push(`/social/post/${p.id}?comentar=1`)}
             onProfile={id => router.push(`/social/profile/${id}`)}
             onOptions={opciones}
           />
         )}
-        ItemSeparatorComponent={() => <View style={{ height: 14 }} />}
+        // Sin marco que las delimite, lo que separa una publicación de otra es
+        // este hueco. 14 pt bastaban entre tarjetas; a sangre se leían pegadas.
+        ItemSeparatorComponent={() => <View style={{ height: 28 }} />}
         ListHeaderComponent={
           <>
             <Header />
@@ -388,41 +426,21 @@ export default function SocialScreen() {
         maxToRenderPerBatch={6}
       />
 
-      <Compose />
     </Screen>
   )
 }
 
-// ── Botón de publicar ────────────────────────────────────────────────────────
-
-/** Flotante sobre el muro, por encima de la barra de pestañas. */
-function Compose() {
-  const T = useAppTheme()
-  const escala = useRef(new Animated.Value(1)).current
-
-  return (
-    <Animated.View style={[cp.wrap, { transform: [{ scale: escala }] }]}>
-      <Pressable
-        onPress={() => {
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light).catch(() => {})
-          router.push('/social/compose')
-        }}
-        onPressIn={() => Animated.spring(escala, { toValue: 0.9, useNativeDriver: true, tension: 400, friction: 12 }).start()}
-        onPressOut={() => Animated.spring(escala, { toValue: 1, useNativeDriver: true, tension: 300, friction: 10 }).start()}
-        style={[cp.btn, { backgroundColor: T.accent, shadowColor: T.accent }]}
-      >
-        <Ionicons name="add" size={26} color="#FFFFFF" />
-      </Pressable>
-    </Animated.View>
-  )
-}
-
-const cp = StyleSheet.create({
-  wrap: { position: 'absolute', right: 20, bottom: 104 },
-  btn: {
-    width: 56, height: 56, borderRadius: 19,
-    alignItems: 'center', justifyContent: 'center',
-    shadowOffset: { width: 0, height: 8 }, shadowOpacity: 0.45, shadowRadius: 16,
-    elevation: 12,
-  },
-})
+/*
+ * AQUÍ ESTABA EL BOTÓN FLOTANTE DE PUBLICAR
+ * ─────────────────────────────────────────
+ * Un círculo rojo sobre el muro, a la derecha, encima de la barra.
+ *
+ * Se quitó al bajar el menú de Social a la píldora: «Publicar» es una de sus
+ * cuatro entradas, detrás del galón, y tener las dos era ofrecer dos veces lo
+ * mismo a dos dedos de distancia. La que se queda es la del menú, porque está
+ * donde están las otras tres cosas que se pueden hacer aquí.
+ *
+ * Si algún día se echa de menos, lo que se echa de menos es un atajo de UN
+ * toque frente a los dos del menú — y esa es la conversación que hay que
+ * tener, no devolver el botón sin más.
+ */

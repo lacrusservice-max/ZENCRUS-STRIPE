@@ -23,14 +23,14 @@ import { useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated'
 import { Screen } from '@/components/ui/Screen'
-import { MenuSeccion, CabeceraSeccion } from '@/components/workout/MenuSeccion'
+import { CabeceraSeccion } from '@/components/workout/MenuSeccion'
 import { Barras, Curva, Vacio } from '@/components/workout/Charts'
 import { MaterialIcon } from '@/components/workout/Kit'
 import {
@@ -123,7 +123,6 @@ export default function Progreso() {
   return (
     <Screen>
       <CabeceraSeccion titulo="Progreso" subtitulo="Últimas 12 semanas" />
-      <MenuSeccion activo="progreso" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

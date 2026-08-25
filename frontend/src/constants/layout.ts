@@ -43,8 +43,12 @@ export const TabBar = {
 } as const
 
 /**
- * El botón flotante que abre el chat con ZENA, arriba a la derecha en todas
- * las pantallas.
+ * El botón flotante de la esquina superior derecha, en todas las pantallas.
+ *
+ * Se llama `BotonIA` porque durante mucho tiempo ese botón fue ZENA. Desde el
+ * rediseño de la barra, ZENA vive en la píldora de abajo —elevada y en el
+ * eje— y esta esquina la ocupa el acceso al perfil (`BotonPerfil`), que salió
+ * de la barra para hacerle sitio. Las medidas no cambian: es el mismo hueco.
  *
  * `reserva` es lo que cualquier cabecera con acciones propias tiene que dejar
  * libre en esa esquina. Sin ello los dos botones se pisan y el de abajo deja
@@ -58,6 +62,21 @@ export const BotonIA = {
   gap: 16,
   /** Lo que debe reservar una cabecera con acciones a la derecha. */
   reserva: 44,
+  /**
+   * Lo que hay que reservar cuando TAMBIÉN flota el icono de racha.
+   *
+   * `reserva` es de cuando el botón de la esquina era el único elemento
+   * flotante. El icono de
+   * racha se añadió después, a su izquierda (`IconoRacha`: `right = gap + size
+   * + 10`), y se pinta en `_layout.tsx` sobre TODAS las pantallas. Una cabecera
+   * que solo reserve 44 pone su botón justo debajo de la racha o de ZENA, y el
+   * botón deja de poder tocarse aunque se siga viendo — que es exactamente lo
+   * que pasaba con el acceso al historial en la portada de Entrena.
+   *
+   * El ancho de la racha varía con las cifras (1 día vs 365), así que esto
+   * cubre el caso de tres dígitos con aire.
+   */
+  reservaConRacha: 118,
 } as const
 
 /** Ritmo vertical de los bloques de contenido. */

@@ -30,6 +30,12 @@ export interface Profile {
   avatar: string | null
   bio: string | null
   isPrivate: boolean
+  /**
+   * Portada elegida, ya firmada. Llega solo en las dos pantallas de perfil:
+   * en listas de caras y en autores de comentarios viene `null`, porque ahí no
+   * se pinta y firmarla sería gasto por cada fila.
+   */
+  coverImage?: string | null
 }
 
 export type Relation = 'self' | 'following' | 'requested' | 'none'
@@ -80,6 +86,8 @@ export interface Post {
   likes: number
   comments: number
   likedByMe: boolean
+  /** Está en mi lista de guardados. Nadie más lo sabe. */
+  savedByMe: boolean
   isMine: boolean
   expiresAt: string | null
   createdAt: string
@@ -186,6 +194,8 @@ export interface ProfilePatch {
   bio?: string
   /** Clave del bucket, dirección de internet, o `null` para quitarla. */
   avatar?: string | null
+  /** Igual que el avatar, pero de la carpeta `cover/`. */
+  coverImage?: string | null
   isPrivate?: boolean
 }
 
@@ -293,6 +303,96 @@ export const deleteComment = async (id: string): Promise<void> => {
   await apiDelete(`/social/comments/${id}`)
 }
 
+// ── Guardados ────────────────────────────────────────────────────────────────
+
+export const savePost = async (id: string): Promise<void> => {
+  await apiPost(`/social/posts/${id}/save`)
+}
+
+export const unsavePost = async (id: string): Promise<void> => {
+  await apiDelete(`/social/posts/${id}/save`)
+}
+
+/**
+ * Mis guardados, del más reciente al más antiguo POR CUÁNDO LO GUARDÉ.
+ *
+ * El servidor vuelve a comprobar los permisos al leer, así que esta lista puede
+ * devolver menos publicaciones de las que hay guardadas: lo de una cuenta que
+ * se cerró desde entonces deja de salir. No es un fallo de paginación.
+ */
+export const getSaved = async (before?: string | null): Promise<FeedPage> =>
+  unwrap(await apiGet('/social/saved', {
+    params: { before: before ?? undefined, limit: 30 },
+  })) ?? { posts: [], nextBefore: null }
+
+// ── Bloqueos ─────────────────────────────────────────────────────────────────
+
+/**
+ * Bloquear a alguien.
+ *
+ * Deshace el seguimiento en los dos sentidos y borra los avisos que se tenían
+ * el uno del otro. A partir de ahí, cada uno deja de existir para el otro: ni
+ * perfil, ni contenido, ni mensajes, ni búsqueda.
+ *
+ * A la otra persona NO se le dice nada, así que la app tampoco debe insinuarlo
+ * en ningún texto.
+ */
+export const blockUser = async (id: string): Promise<void> => {
+  await apiPost(`/social/users/${id}/block`)
+}
+
+export const unblockUser = async (id: string): Promise<void> => {
+  await apiDelete(`/social/users/${id}/block`)
+}
+
+/**
+ * A quién he bloqueado yo.
+ *
+ * Es el ÚNICO sitio desde el que se puede desbloquear: al perfil de alguien
+ * bloqueado no se llega, porque para la app esa cuenta no existe.
+ */
+export const getBlocked = async (): Promise<Profile[]> =>
+  unwrap(await apiGet('/social/blocked')) ?? []
+
+// ── Denuncias ────────────────────────────────────────────────────────────────
+
+export type ReportTarget = 'post' | 'user' | 'comment' | 'message'
+
+export type ReportReason =
+  | 'spam' | 'acoso' | 'desnudos' | 'violencia'
+  | 'autolesion' | 'suplantacion' | 'desinformacion' | 'otro'
+
+/** Lo que se le enseña a la persona, en su orden. */
+export const REPORT_REASONS: { key: ReportReason; label: string }[] = [
+  { key: 'acoso',          label: 'Acoso o insultos' },
+  { key: 'spam',           label: 'Spam o estafa' },
+  { key: 'desnudos',       label: 'Desnudos o contenido sexual' },
+  { key: 'violencia',      label: 'Violencia' },
+  { key: 'autolesion',     label: 'Autolesión o trastornos alimentarios' },
+  { key: 'suplantacion',   label: 'Se hace pasar por otra persona' },
+  { key: 'desinformacion', label: 'Información falsa sobre salud' },
+  { key: 'otro',           label: 'Otra cosa' },
+]
+
+/**
+ * Denuncia algo para que lo revise una persona.
+ *
+ * No esconde ni borra nada por sí sola: una denuncia que ocultara contenido
+ * sería un botón para silenciar a cualquiera con unas cuantas cuentas. Lo que
+ * quita el problema de delante es bloquear, y por eso las dos cosas se ofrecen
+ * juntas.
+ *
+ * `alreadyReported` viene a `true` si ya la habías denunciado antes: se dice
+ * tal cual en vez de fingir que se ha enviado otra.
+ */
+export const reportContent = async (
+  targetType: ReportTarget,
+  targetId: string,
+  reason: ReportReason,
+  detail?: string,
+): Promise<{ reported: boolean; alreadyReported: boolean }> =>
+  unwrap(await apiPost('/social/reports', { targetType, targetId, reason, detail }))
+
 // ── Mensajes ─────────────────────────────────────────────────────────────────
 
 export interface Inbox {
@@ -377,7 +477,7 @@ export const getBadges = async (): Promise<Badges> =>
 
 // ── Subida de archivos ───────────────────────────────────────────────────────
 
-export type UploadScope = 'post' | 'story' | 'avatar' | 'dm'
+export type UploadScope = 'post' | 'story' | 'avatar' | 'cover' | 'dm'
 
 export interface UploadTicket {
   key: string

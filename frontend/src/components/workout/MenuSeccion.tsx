@@ -21,6 +21,7 @@ import { router } from 'expo-router'
 import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
+import { BotonIA } from '@/constants/layout'
 
 export type Destino = 'hoy' | 'descubre' | 'progreso' | 'records'
 
@@ -36,23 +37,84 @@ export type Destino = 'hoy' | 'descubre' | 'progreso' | 'records'
  * se llegó reemplazando, se sale a la portada de la sección, que es a donde
  * espera ir cualquiera que pulse atrás dentro de Entrena.
  */
-export function volverAEntrena(): void {
-  if (router.canGoBack()) router.back()
-  else router.replace('/(tabs)/workout')
+/**
+ * La elección de Entrena —gimnasio, running o casa—, que es el PADRE de las tres
+ * portadas y de todo lo que cuelga de ellas.
+ *
+ * El respaldo apuntaba a `/workout/gym`, y eso creaba un callejón sin salida:
+ * estando EN la portada de gimnasio sin historial detrás, `replace` la
+ * sustituía por sí misma. Pulsabas volver, no pasaba nada, y no había forma de
+ * salir sin reiniciar la app. Desde casa o running era menos grave pero también
+ * falso: te dejaba en el gimnasio, que no es de donde venías.
+ *
+ * Ninguna pantalla de dentro de Entrena ES la elección, así que apuntando aquí
+ * el reemplazo nunca puede caer sobre sí mismo.
+ */
+const ELECCION_ENTRENA = '/(tabs)/workout'
+
+/**
+ * Un «volver» que nunca se queda mudo, para pantallas con otro padre natural.
+ *
+ * Devuelve el manejador en vez de aceptar el destino como argumento: pasado
+ * directo a `onPress`, un parámetro se comería el evento del toque y acabaría
+ * intentando navegar a un `GestureResponderEvent`.
+ */
+export function volverA(destino: string): () => void {
+  return () => {
+    if (router.canGoBack()) { router.back(); return }
+    router.replace(destino as never)
+  }
 }
 
-const DESTINOS: { id: Destino; label: string; icono: keyof typeof Ionicons.glyphMap; ruta: string }[] = [
-  { id: 'hoy',      label: 'Hoy',      icono: 'today-outline',    ruta: '/(tabs)/workout' },
+export function volverAEntrena(): void {
+  /* Sin argumentos A PROPÓSITO: se pasa tal cual a `onPress`, que le enchufaría
+     el evento del toque como primer parámetro. Un destino configurable aquí
+     acabaría siendo un `GestureResponderEvent` convertido en ruta. */
+  if (router.canGoBack()) { router.back(); return }
+  router.replace(ELECCION_ENTRENA as never)
+}
+
+/**
+ * El menú es el mismo en gimnasio y en casa; lo único que cambia es a dónde
+ * vuelve «Hoy». Sin esto, quien entrena en casa y toca Progreso y luego Hoy
+ * acaba en la portada de gimnasio sin haber pedido cambiar de sitio.
+ */
+export type LugarEntreno = 'gym' | 'home' | 'outdoor'
+
+const RUTA_DEL_LUGAR: Record<LugarEntreno, string> = {
+  gym: '/workout/gym',
+  home: '/workout/casa',
+  // Exterior dejó de ser una portada de Entrena: ahora es su propio módulo,
+  // con cuatro deportes y su propia navegación.
+  outdoor: '/aire-libre',
+}
+
+export type DestinoDeSeccion = { id: Destino; label: string; icono: keyof typeof Ionicons.glyphMap; ruta: string }
+
+/**
+ * Los cuatro sitios de la sección, en un solo lugar.
+ *
+ * Se exporta porque ahora los pinta también `BarraDeSeccion`, la píldora de
+ * abajo. Tenerlos escritos dos veces era garantizar que un día el riel y la
+ * barra llevaran a sitios distintos.
+ */
+export const destinosDeSeccion = (modo: LugarEntreno): DestinoDeSeccion[] => DESTINOS(modo)
+
+const DESTINOS = (modo: LugarEntreno): DestinoDeSeccion[] => [
+  { id: 'hoy',      label: 'Hoy',      icono: 'today-outline',    ruta: RUTA_DEL_LUGAR[modo] },
   // Descubre sustituye a Biblioteca en el menú y la contiene: el camino corto
   // es que te monten la sesión, no recorrer 206 fichas. Los 206 siguen a un
   // toque desde dentro, pero dejan de ser lo primero que se ofrece.
-  { id: 'descubre', label: 'Descubre', icono: 'compass-outline',  ruta: '/workout/descubre' },
+  /* Descubre entra con el lugar puesto: sin él, desde el gimnasio se podía
+     elegir «en casa» y montar una sesión que no es de esta página. */
+  { id: 'descubre', label: 'Descubre', icono: 'compass-outline',  ruta: `/workout/descubre?mode=${modo}` },
   { id: 'progreso', label: 'Progreso', icono: 'trending-up',      ruta: '/workout/stats' },
   { id: 'records',  label: 'Récords',  icono: 'trophy-outline',   ruta: '/workout/records' },
 ]
 
-export function MenuSeccion({ activo }: { activo: Destino }) {
-  const ir = (d: typeof DESTINOS[number]) => {
+export function MenuSeccion({ activo, modo = 'gym' }: { activo: Destino; modo?: LugarEntreno }) {
+  const destinos = DESTINOS(modo)
+  const ir = (d: { id: Destino; ruta: string }) => {
     if (d.id === activo) return
     void Haptics.selectionAsync()
     // `replace` y no `push`: el menú navega entre hermanos, no baja un nivel.
@@ -70,7 +132,7 @@ export function MenuSeccion({ activo }: { activo: Destino }) {
       style={s.scroll}
       contentContainerStyle={s.contenido}
     >
-      {DESTINOS.map(d => {
+      {destinos.map(d => {
         const on = d.id === activo
         return (
           <TouchableOpacity
@@ -91,6 +153,81 @@ export function MenuSeccion({ activo }: { activo: Destino }) {
     </ScrollView>
   )
 }
+
+/**
+ * LA CABECERA DE UNA PORTADA DE LUGAR
+ * ───────────────────────────────────
+ * La comparten Gimnasio, En casa y Running. Vivía dentro de la portada de
+ * fuerza, y mientras solo hubiera una daba igual; con tres, tenerla escrita
+ * tres veces garantiza que dos se queden atrás. Ya pasó con la flecha de
+ * volver: la portada dejó de ser raíz de pestaña y se quedó sin salida.
+ *
+ * El saludo por hora se calcula AQUÍ y no lo pasa cada pantalla: tres copias de
+ * la misma cadena de ternarios es donde acaban apareciendo tres franjas
+ * horarias distintas.
+ */
+export function CabeceraPortada({ titulo, historialHref }: {
+  titulo: string
+  /** A dónde va el reloj. Cada lugar filtra su propio historial. */
+  historialHref: string
+}) {
+  const hora = new Date().getHours()
+  const saludo = hora < 6 ? 'De madrugada' : hora < 13 ? 'Buenos días' : hora < 21 ? 'Buenas tardes' : 'Buenas noches'
+
+  return (
+    <View style={cp.wrap}>
+      {/* Estas portadas se abren desde la elección de Entrena, no son raíz de
+          pestaña: sin barra abajo y sin flecha arriba se quedan sin salida. */}
+      <TouchableOpacity
+        style={cp.atras}
+        onPress={volverAEntrena}
+        activeOpacity={0.7}
+        hitSlop={10}
+        accessibilityRole="button"
+        accessibilityLabel="Volver a Entrena"
+      >
+        <Ionicons name="chevron-back" size={24} color={Colors.neon.w2} />
+      </TouchableOpacity>
+
+      <View style={{ flex: 1 }}>
+        <Text style={cp.saludo}>{saludo.toUpperCase()}</Text>
+        <Text style={cp.titulo}>{titulo}</Text>
+      </View>
+
+      <TouchableOpacity
+        style={cp.historial}
+        onPress={() => router.push(historialHref as never)}
+        activeOpacity={0.8}
+        hitSlop={8}
+        accessibilityRole="button"
+        accessibilityLabel="Ver el historial de entrenamientos"
+      >
+        <Ionicons name="time-outline" size={19} color={Colors.neon.w2} />
+      </TouchableOpacity>
+    </View>
+  )
+}
+
+const cp = StyleSheet.create({
+  wrap: {
+    flexDirection: 'row', alignItems: 'flex-start',
+    paddingHorizontal: Spacing[4], paddingTop: Spacing[2], paddingBottom: Spacing[1],
+  },
+  /* Alineada con el saludo, no con el título: pegada al título queda a la
+     altura de la equis y parece caída. */
+  atras: { marginLeft: -6, marginRight: 2, paddingTop: 1 },
+  saludo: { fontSize: 10, fontWeight: '800', color: Colors.neon.red, letterSpacing: 2 },
+  titulo: { fontSize: 30, fontWeight: '800', color: Colors.neon.white, letterSpacing: -0.8, marginTop: 2 },
+  historial: {
+    width: 38, height: 38, borderRadius: 19,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: Colors.neon.pane,
+    borderWidth: 1, borderColor: Colors.neon.edge,
+    /* ZENA y el icono de racha flotan sobre esta esquina desde `_layout.tsx`.
+       Sin apartarse, este botón se ve pero no se puede tocar. */
+    marginRight: BotonIA.reservaConRacha,
+  },
+})
 
 /** Cabecera corta para las pantallas de dentro de la sección. */
 export function CabeceraSeccion({ titulo, subtitulo, derecha }: {

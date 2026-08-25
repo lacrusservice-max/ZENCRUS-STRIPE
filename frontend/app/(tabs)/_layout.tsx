@@ -1,17 +1,25 @@
-import { useEffect, useRef, useState } from 'react'
-import { View, Text, TouchableOpacity, StyleSheet, Animated, ActivityIndicator } from 'react-native'
-import { Tabs, Redirect } from 'expo-router'
+import React, { useEffect, useRef, useState } from 'react'
+import {
+  View, Text, TouchableOpacity, StyleSheet, Animated, ActivityIndicator, Image, Easing,
+  PanResponder,
+} from 'react-native'
+import { Tabs, Redirect, router, useSegments } from 'expo-router'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { Ionicons } from '@expo/vector-icons'
 import { BlurView } from 'expo-blur'
 import type { BottomTabBarProps } from '@react-navigation/bottom-tabs'
-import { COBRO_ACTIVO } from '@/constants/acceso'
+import { COBRO_ACTIVO, LOGIN_ACTIVO } from '@/constants/acceso'
 import { useAuthStore } from '@/store/authStore'
 import { Colors, Glass } from '@/constants/theme'
 import { getCurrentSubscription } from '@/services/stripeService'
 import { useAppTheme } from '@/context/ThemeContext'
 import { useThemeStore } from '@/store/themeStore'
+import { useSocialStore } from '@/store/socialStore'
+import { useMenuBarra } from '@/store/menuBarraStore'
+import { Badge } from '@/components/social/Bits'
+import { sitioDe, entradasDeMenu, type EntradaDeMenu, type DestinoApp } from '@/constants/menusDeSeccion'
 import { final } from '@/theme/remap'
+import { tocar } from '@/utils/haptica'
 
 // Colores propios del tema claro para la barra: vidrio esmerilado claro con los
 // iconos en el azul de marca. Van marcados con `final()` porque ya pertenecen al
@@ -34,7 +42,6 @@ const TAB_CONFIG: Record<string, { outline: IconName; filled: IconName; label: s
   workout:   { outline: 'barbell-outline',      filled: 'barbell',      label: 'Entrena' },
   salud:     { outline: 'pulse-outline',        filled: 'pulse',        label: 'Salud' },
   social:    { outline: 'people-outline',       filled: 'people',       label: 'Social' },
-  profile:   { outline: 'person-outline',       filled: 'person',       label: 'Perfil' },
 }
 
 /**
@@ -43,8 +50,29 @@ const TAB_CONFIG: Record<string, { outline: IconName; filled: IconName; label: s
  * Recetas tampoco es pestaña: vive dentro de Nutrición, en la consola de
  * captura. Es donde se decide qué comer, así que es donde tiene que estar —
  * sacarla a la barra la separaría del momento en que se usa.
+ *
+ * ── Y `profile` tampoco, desde el rediseño de la barra ──────────────────────
+ * En la píldora hay que meter seis cosas: cuatro destinos, la coach y el
+ * perfil. Con seis huecos el centro cae ENTRE dos, y ZENA dejaba de estar en
+ * el eje. Sacando el perfil —que es a donde menos se entra— quedan cuatro
+ * destinos, dos a cada lado, y el círculo de ZENA vuelve a caer en el medio.
+ *
+ * El perfil no desaparece: sube a la esquina superior derecha, en
+ * `BotonPerfil`, montado una sola vez sobre todas las pantallas.
  */
-const VISIBLE = new Set(['nutrition', 'workout', 'salud', 'social', 'profile'])
+const VISIBLE = new Set(['nutrition', 'workout', 'salud', 'social'])
+
+/**
+ * El hueco central que se deja libre en la fila para que el círculo de ZENA
+ * —que se dibuja ENCIMA de la píldora, no dentro— no se coma el área táctil
+ * de las pestañas que tiene al lado.
+ *
+ * Va aquí y no en el estilo del círculo porque son dos cosas distintas: esto
+ * es lo que se reserva en la fila, y el círculo puede ser mayor porque
+ * sobresale por arriba.
+ */
+const HUECO_ZENA = 64
+const CARA_ZENA = 56
 
 // ── Animated Icon ──────────────────────────────────────────────────────────────
 
@@ -100,14 +128,128 @@ function AnimatedTabIcon({ name, focused }: { name: string; focused: boolean }) 
 
 // ── Glass Tab Bar ──────────────────────────────────────────────────────────────
 
+/**
+ * Cuánto hay que arrastrar para que el deslizamiento cuente, en puntos. El
+ * mismo número que usa `BarraDeSeccion`: las dos píldoras son la misma barra
+ * para quien la usa, y un gesto que pide distinto esfuerzo en cada pantalla se
+ * siente roto.
+ */
+const UMBRAL_GESTO = 18
+
 function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const T = useAppTheme()
   const isDark = useThemeStore(s => s.isDark)
   const insets = useSafeAreaInsets()
+  const segmentos = useSegments()
+  const badges = useSocialStore(s => s.badges)
+  /* Hace falta para el registro: el menú de Salud filtra Ciclo con la llave
+     del usuario. Hoy solo Social se pinta aquí y daría igual, pero pasar
+     `null` era dejar una trampa para el día que Salud use este mismo camino. */
+  const usuario = useAuthStore(s => s.user)
+
+  /**
+   * El galón, también aquí.
+   *
+   * Social no tiene portada con tarjetas que enseñen sus secciones —tiene un
+   * muro—, así que su menú tiene que estar disponible desde el primer momento,
+   * y el primer momento es una raíz de pestaña. La tabla es la misma que usa
+   * `BarraDeSeccion`; lo único que dice `enPestana` es quién de las dos lo
+   * dibuja, para que no salgan las dos píldoras a la vez.
+   */
+  const aqui = sitioDe(segmentos.join('/'))
+  const conMenu = aqui?.enPestana ? aqui : undefined
+  /* El mismo estado que usa la barra flotante: si cada una guardara el suyo,
+     tocar una entrada que lleva a una ruta del stack cerraría el menú solo. */
+  const abiertoEn = useMenuBarra(s => s.abiertoEn)
+  const alternarMenu = useMenuBarra(s => s.alternar)
+  const cerrarMenu = useMenuBarra(s => s.cerrar)
+
+  /**
+   * El menú de sección solo está abierto si además HAY menú que enseñar.
+   *
+   * Sin esta condición, quedarse en modo sección y saltar a una pestaña sin
+   * galón —Entrena o Salud— dejaba a ZENA con opacidad cero y sin ninguna
+   * flecha con la que volver a encenderla: invisible y sin arreglo posible.
+   */
+
+  const fundido = useRef(new Animated.Value(1)).current
+  const estrenando = useRef(true)
+
+  /* No hace falta reiniciar nada al cambiar de pestaña: el estado guarda en
+     qué destino está abierto el menú, y en otra pestaña deja de coincidir. */
+
+  useEffect(() => {
+    if (estrenando.current) { estrenando.current = false; return }
+    fundido.setValue(0)
+    Animated.timing(fundido, {
+      toValue: 1, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+    }).start()
+  }, [abiertoEn])
+
+  /**
+   * DESLIZAR DE LADO, EL ATAJO DEL GALÓN
+   * ────────────────────────────────────
+   * Gemelo del de `BarraDeSeccion`, y por el mismo motivo: el galón se queda
+   * para quien lo descubre, esto es para quien ya lo sabe. Izquierda entra en
+   * el menú de la sección, derecha vuelve al de la app — la misma dirección a
+   * la que apunta el galón y en la que ya entraba la fila al cambiar.
+   *
+   * Va en captura porque la píldora está llena de `TouchableOpacity` y el
+   * primero que toca el dedo se queda de responsable: sin la fase de captura
+   * el padre no vuelve a pedir el gesto y el arrastre muere encima de la
+   * pestaña. Y lee de un ref y de `getState()` porque el `PanResponder` se
+   * crea una sola vez y lo que capturase al nacer se le quedaría congelado.
+   *
+   * En las pestañas sin menú —Entrena, Salud— `destino` es `null` y el gesto
+   * no hace nada: ahí tampoco hay galón que imitar.
+   */
+  const gesto = useRef<{ enSeccion: boolean; destino: DestinoApp | null }>({
+    enSeccion: false, destino: null,
+  })
+  const deslizar = React.useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => false,
+    onMoveShouldSetPanResponderCapture: (_e, g) =>
+      Math.abs(g.dx) > UMBRAL_GESTO && Math.abs(g.dx) > Math.abs(g.dy) * 1.5,
+    onPanResponderTerminationRequest: () => false,
+    onPanResponderRelease: (_e, g) => {
+      const { enSeccion, destino } = gesto.current
+      if (!destino) return
+      if (g.dx < 0 && !enSeccion) { tocar(); useMenuBarra.getState().alternar(destino) }
+      if (g.dx > 0 && enSeccion)  { tocar(); useMenuBarra.getState().cerrar() }
+    },
+  }), [])
+
+  const alternar = () => { if (conMenu) { tocar(); alternarMenu(conMenu.destino) } }
+
+  const enSeccion = !!conMenu && abiertoEn === conMenu.destino
+
+  /* Lo que el gesto necesita saber, refrescado en cada pintada. */
+  gesto.current = { enSeccion, destino: conMenu?.destino ?? null }
+
+  const contadorDe = (d: EntradaDeMenu) => {
+    if (d.contador === 'avisos')   return badges.notifications + badges.followRequests
+    if (d.contador === 'mensajes') return badges.messages + badges.messageRequests
+    return 0
+  }
+
+  const irASeccion = (d: EntradaDeMenu) => {
+    tocar()
+    /* Sin `setModo('app')`: el menú se queda abierto para poder seguir saltando
+       entre hermanas. Se cierra con el galón, o tocando la que ya está. */
+    if (d.id === conMenu?.activo) { cerrarMenu(); return }
+    /* `navigate` y nunca `replace` ni `push`: si la pantalla ya está en la
+       pila vuelve a ella, y si no, la abre. `replace` sustituía la pantalla de
+       encima —y con la barra visible también en pantallas hondas, eso te sacaba
+       de donde estabas y dejaba el botón de atrás llevando a cualquier sitio. */
+    router.navigate(d.ruta as never)
+  }
 
   return (
     <View style={[tb.wrapper, { bottom: Math.max(insets.bottom, 14) + 6 }]}>
-      <View style={[tb.pill, { borderColor: isDark ? T.tabBorder : LIGHT_TAB.border }]}>
+      <View
+        style={[tb.pill, { borderColor: isDark ? T.tabBorder : LIGHT_TAB.border }]}
+        {...deslizar.panHandlers}
+      >
         <BlurView
           intensity={isDark ? 80 : 55}
           tint={isDark ? 'dark' : 'light'}
@@ -122,11 +264,88 @@ function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           pointerEvents="none"
         />
 
-        {state.routes.map((route, index) => {
+        {/* 20 puntos, no 34: un disco con borde le quitaría a las etiquetas el
+            ancho que necesitan para no cortarse. */}
+        {conMenu && (
+          <TouchableOpacity
+            style={tb.galon}
+            onPress={alternar}
+            activeOpacity={0.6}
+            hitSlop={10}
+            accessibilityRole="button"
+            accessibilityLabel={enSeccion ? 'Volver al menú de la app' : 'Abrir el menú de esta sección'}
+          >
+            {/* Siempre en el acento —rojo neón en oscuro—, abierto o cerrado.
+                Cerrado se pintaba con `ink3`, blanco al 35% sobre el desenfoque:
+                invisible para quien abre la app por primera vez y no sabe que
+                ahí hay algo que tocar. El rojo no rompe el sistema, lo aplica:
+                el tema lo reserva para «lo que exige atención». */}
+            <Ionicons
+              name={enSeccion ? 'chevron-back' : 'chevron-forward'}
+              size={19}
+              color={isDark ? T.accent : LIGHT_TAB.accent}
+              style={{
+                /* El halo es lo que lo hace NEÓN y no solo rojo. */
+                textShadowColor: isDark ? T.accent : LIGHT_TAB.accent,
+                textShadowOffset: { width: 0, height: 0 },
+                textShadowRadius: 9,
+              }}
+            />
+          </TouchableOpacity>
+        )}
+
+        {enSeccion ? (
+          <Animated.View
+            style={[
+              tb.fila,
+              { opacity: fundido, transform: [{ translateX: fundido.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] },
+            ]}
+          >
+            {(() => {
+              const es = entradasDeMenu(conMenu.menu, { user: usuario, lugar: conMenu.lugar ?? 'gym' })
+              /* Sin hueco: aquí ZENA no se ve, así que las entradas usan el
+                 ancho entero. */
+              return [es].map((mitad, i) => (
+                <React.Fragment key={i}>
+                  {mitad.map(d => {
+                    const on = d.id === conMenu.activo
+                    const tinte = on ? (isDark ? T.accent : LIGHT_TAB.accent) : (isDark ? T.ink3 : LIGHT_TAB.idle)
+                    return (
+                      <TouchableOpacity
+                        key={d.id}
+                        style={tb.tab}
+                        onPress={() => irASeccion(d)}
+                        activeOpacity={0.72}
+                        hitSlop={{ top: 10, bottom: 10 }}
+                      >
+                        <View>
+                          <Ionicons name={d.icono} size={22} color={tinte} />
+                          <View style={tb.contador} pointerEvents="none"><Badge count={contadorDe(d)} /></View>
+                        </View>
+                        <Text style={[tb.label, { color: tinte }, on && { fontWeight: '700' }]} numberOfLines={1}>
+                          {d.label}
+                        </Text>
+                      </TouchableOpacity>
+                    )
+                  })}
+                </React.Fragment>
+              ))
+            })()}
+          </Animated.View>
+        ) : (
+        state.routes.map((route, index) => {
           if (!VISIBLE.has(route.name)) return null
           const focused = state.index === index
           const config = TAB_CONFIG[route.name]
           if (!config) return null
+
+          /* Cuántas pestañas visibles van antes que esta: es lo que dice si
+             toca abrir el hueco de ZENA después de pintarla. Se cuenta sobre
+             las rutas y no sobre el índice del map porque en medio hay rutas
+             ocultas (`index`, `chat`) que no ocupan sitio en la fila. */
+          const puesto = state.routes
+            .slice(0, index)
+            .filter(r => VISIBLE.has(r.name)).length
 
           const onPress = () => {
             const event = navigation.emit({
@@ -144,25 +363,63 @@ function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           }
 
           return (
-            <TouchableOpacity
-              key={route.key}
-              onPress={onPress}
-              onLongPress={onLongPress}
-              style={tb.tab}
-              activeOpacity={0.72}
-            >
-              <AnimatedTabIcon name={route.name} focused={focused} />
-              <Text style={[
-                tb.label,
-                { color: isDark ? T.ink3 : LIGHT_TAB.idle },
-                focused && { color: isDark ? T.accent : LIGHT_TAB.accent, fontWeight: '700' },
-              ]}>
-                {config.label}
-              </Text>
-            </TouchableOpacity>
+            <React.Fragment key={route.key}>
+              <TouchableOpacity
+                onPress={onPress}
+                onLongPress={onLongPress}
+                style={tb.tab}
+                activeOpacity={0.72}
+              >
+                <AnimatedTabIcon name={route.name} focused={focused} />
+                <Text style={[
+                  tb.label,
+                  { color: isDark ? T.ink3 : LIGHT_TAB.idle },
+                  focused && { color: isDark ? T.accent : LIGHT_TAB.accent, fontWeight: '700' },
+                ]}>
+                  {config.label}
+                </Text>
+              </TouchableOpacity>
+              {puesto === 1 && <View style={tb.hueco} pointerEvents="none" />}
+            </React.Fragment>
           )
-        })}
+        }))}
       </View>
+
+      {/*
+        ZENA, elevada y en el eje.
+
+        Va FUERA de la píldora a propósito: la píldora lleva `overflow:
+        'hidden'` para que el desenfoque no se salga de sus esquinas, y
+        cualquier hijo que sobresaliera por arriba quedaría cortado. Aquí es
+        hermana, así que puede asomar.
+
+        La imagen va sola, sin cristal ni borde: ya trae su propio aro de neón
+        y fondo transparente. Cualquier cosa detrás le dibujaría un segundo
+        círculo alrededor del suyo.
+      */}
+      {/* ZENA solo en el menú de la app: dentro del de la sección desaparece
+          y su hueco se cierra con ella. */}
+      {!enSeccion && (
+      <View style={tb.zenaFila} pointerEvents="box-none">
+        <TouchableOpacity
+          onPress={() => router.push('/(tabs)/chat')}
+          activeOpacity={0.85}
+          hitSlop={6}
+          accessibilityRole="button"
+          accessibilityLabel="Abrir el chat con ZENA"
+          style={[
+            tb.zenaBoton,
+            { shadowColor: isDark ? T.accent : LIGHT_TAB.accent },
+          ]}
+        >
+          <Image
+            source={require('@/assets/images/zena.png')}
+            style={tb.zenaCara}
+            resizeMode="contain"
+          />
+        </TouchableOpacity>
+      </View>
+      )}
     </View>
   )
 }
@@ -201,6 +458,58 @@ const tb = StyleSheet.create({
     alignItems: 'center',
     gap: 3,
     paddingTop: 2,
+  },
+  /* El sitio que se le guarda a ZENA en la fila. Sin él, el círculo cae encima
+     de Entrena y de Salud y esas dos pestañas dejan de poder tocarse en su
+     mitad interior. */
+  hueco: {
+    width: HUECO_ZENA,
+  },
+  galon: {
+    width: 20,
+    height: 44,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  fila: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  contador: {
+    position: 'absolute',
+    top: -7,
+    right: -13,
+    transform: [{ scale: 0.82 }],
+  },
+  zenaFila: {
+    position: 'absolute',
+    left: 0,
+    right: 0,
+    /* Medido desde el suelo de la píldora, que mide 66 de alto (10 de relleno
+       + 32 de icono + 3 + 11 de etiqueta + 10). Con 30, un círculo de 56 asoma
+       unos 20 puntos por encima del borde: un tercio fuera, que es la
+       proporción que lo hace leerse como elevado sin despegarse de la barra.
+
+       Subirlo más lo separa y empieza a parecer un botón suelto encima; menos,
+       y deja de distinguirse de las otras pestañas. */
+    bottom: 30,
+    alignItems: 'center',
+    zIndex: 2,
+  },
+  zenaBoton: {
+    width: CARA_ZENA,
+    height: CARA_ZENA,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.5,
+    shadowRadius: 16,
+    elevation: 24,
+  },
+  zenaCara: {
+    width: '100%',
+    height: '100%',
   },
   iconWrap: {
     width: 44,
@@ -274,7 +583,7 @@ export default function TabsLayout() {
     return () => { cancelled = true }
   }, [isAuthenticated, user?.role])
 
-  if (!isAuthenticated) return <Redirect href="/(auth)/login" />
+  if (LOGIN_ACTIVO && !isAuthenticated) return <Redirect href="/(auth)/login" />
 
   // Sin plan activo no se entra (o con la prueba de 5 días y tarjeta ya
   // registrada) — mientras `EXIGIR_PLAN` esté en `true`. Ahora mismo NO lo está.

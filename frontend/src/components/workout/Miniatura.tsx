@@ -22,8 +22,9 @@
  * acabada y no un agujero.
  */
 
+import { memo } from 'react'
 import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { Ionicons } from '@expo/vector-icons'
 import { Colors, Spacing } from '@/constants/theme'
 
@@ -35,7 +36,17 @@ interface Props {
   estilo?: StyleProp<ViewStyle>
 }
 
-export function Miniatura({ poster, tam = 46, icono = 'barbell-outline', estilo }: Props) {
+/**
+ * Memoizada porque nunca viene sola.
+ *
+ * Se dibuja cuarenta veces en una rejilla y en cada fila de cada rutina. Sus
+ * props son valores sueltos —una dirección, un número, el nombre de un icono—,
+ * así que comparar es barato y acertar es lo normal: cuando el padre se repinta
+ * porque ha llegado otro dato, estas cuarenta se quedan quietas.
+ */
+export const Miniatura = memo(function Miniatura(
+  { poster, tam = 46, icono = 'barbell-outline', estilo }: Props,
+) {
   // Radio proporcional: un 24 % del lado. Fijarlo en 12 px haría que una
   // miniatura de 28 px pareciera un círculo y una de 72 px, un cuadrado.
   const radio = Math.round(tam * 0.24)
@@ -56,7 +67,7 @@ export function Miniatura({ poster, tam = 46, icono = 'barbell-outline', estilo 
       )}
     </View>
   )
-}
+})
 
 /**
  * Varias miniaturas superpuestas, como un mazo de cartas.

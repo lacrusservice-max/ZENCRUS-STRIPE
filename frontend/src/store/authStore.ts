@@ -3,6 +3,7 @@ import * as SecureStore from 'expo-secure-store'
 import api, { alCaducarLaSesion, nuevaGeneracionDeSesion } from '../services/api'
 import { useSocialStore } from './socialStore'
 import { unregisterPush } from '../services/pushService'
+import { olvidarRecordatorios } from '../features/salud/recordatorios'
 
 export interface User {
   id: string
@@ -16,6 +17,16 @@ export interface User {
   height?: number
   age?: number
   gender?: string
+  /**
+   * Llave del módulo de ciclo menstrual.
+   *
+   * Preferencia propia y revocable, ofrecida en el registro a quien declara
+   * género femenino u otro. Es una llave aparte de `gender` a propósito: ese
+   * campo se pide para el cálculo metabólico, y usarlo también como permiso
+   * acoplaría dos cosas que deben poder cambiar por separado.
+   * Ver src/features/salud/acceso.ts
+   */
+  cycleEnabled?: boolean
   activity_level?: string
   fitness_goals?: string[]
   dietary_restrictions?: string[]
@@ -241,6 +252,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // no, este teléfono seguiría recibiendo los avisos —y los nombres— de quien
     // acaba de salir.
     await unregisterPush()
+    // Y los recordatorios de hábitos, por lo mismo: son avisos LOCALES, así que
+    // sobrevivirían al cierre de sesión sonando con los hábitos de otra persona.
+    await olvidarRecordatorios()
     try {
       await api.post('/auth/logout')
     } catch {}

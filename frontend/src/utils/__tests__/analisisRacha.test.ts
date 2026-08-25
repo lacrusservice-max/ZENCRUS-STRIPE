@@ -11,17 +11,28 @@ import {
   tramos, inicioDeRacha, rachasPrevias, patronSemanal, diaFlojo,
   fechaDelHito, enLetra, enCorto, type DiaHistorial,
 } from '../analisisRacha'
-import { hoyLocal } from '@/utils/fechas'
+import { hoyLocal, aFechaLocal } from '@/utils/fechas'
 
-/** Construye historial en el orden real del store: hoy primero. */
+/**
+ * Construye historial en el orden real del store: hoy primero.
+ *
+ * Las fechas se escriben con `aFechaLocal` y NO con `toISOString`. Aquí había
+ * un `toISOString().slice(0, 10)` y estas pruebas fallaban todas las tardes:
+ * el código bajo prueba compara contra `hoyLocal()` —el día del reloj del
+ * usuario— y el ayudante generaba el día en UTC. En México, a partir de las
+ * seis de la tarde, son días distintos y «hoy» dejaba de coincidir consigo
+ * mismo.
+ *
+ * Es literalmente el fallo que `utils/fechas.ts` documenta y existe para
+ * evitar; se había colado en el andamiaje de su propia prueba.
+ */
 function hist(estados: string): DiaHistorial[] {
   const hoy = new Date()
   return estados.split('').map((ch, i) => {
     const f = new Date(hoy)
     f.setDate(hoy.getDate() - i)
-    const iso = f.toISOString().slice(0, 10)
     const status = ch === 'x' ? 'completed' : ch === 'p' ? 'protected' : 'missed'
-    return { date: iso, status } as DiaHistorial
+    return { date: aFechaLocal(f), status } as DiaHistorial
   })
 }
 

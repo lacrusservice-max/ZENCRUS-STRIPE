@@ -54,14 +54,25 @@ export function montar(prefijo: string, router: Router) {
   return app
 }
 
-export function token(userId: string): string {
+/**
+ * Un token firmado de verdad.
+ *
+ * El correo importa: la puerta del módulo de ciclo mira la LISTA DE CORREOS
+ * mientras dure la fase de pruebas, así que un `@zencrus.test` sintético
+ * recibiría un 404 de la rama entera —correctamente— y la suite entera
+ * fallaría sin que nada estuviera roto. Por eso se puede pasar el real.
+ */
+export function token(userId: string, email?: string): string {
   return signAccessToken({
     userId,
-    email: `pruebas-${userId.slice(0, 8)}@zencrus.test`,
+    email: email ?? `pruebas-${userId.slice(0, 8)}@zencrus.test`,
     role: 'user',
     subscriptionTier: 'monthly',
   })
 }
+
+/** El correo real de la cuenta de pruebas. Lo necesita la puerta del ciclo. */
+export const CORREO_USUARIO = 'caleblacrus@gmail.com'
 
 // ── Aserciones ───────────────────────────────────────────────────────────────
 
@@ -186,6 +197,10 @@ export async function limpiar(): Promise<void> {
     supabase.from('audit_logs').delete().eq('user_id', USUARIO).gte('created_at', ARRANQUE)
       .in('action', ['contencion_activada', 'tca_nivel_2', 'tca_nivel_3']),
     supabase.from('senales_tca').delete().eq('user_id', USUARIO).gte('detectada_at', ARRANQUE),
+    // Ciclo. Solo lo de 2098: los registros reales de la usuaria no se tocan.
+    supabase.from('cycle_logs').delete().eq('user_id', USUARIO).gte('log_date', CENTINELA),
+    supabase.from('cycle_periods').delete().eq('user_id', USUARIO).gte('start_date', CENTINELA),
+    supabase.from('cycle_predictions').delete().eq('user_id', USUARIO).gte('next_period_likely', CENTINELA),
   ])
   await restaurarCiclo()
   await restaurarGoals()

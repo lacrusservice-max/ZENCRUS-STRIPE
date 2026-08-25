@@ -10,19 +10,26 @@
  * de veinte megas dejaría el botón girando medio minuto con la pantalla
  * bloqueada.
  *
+ * ── Salir no tira el borrador sin preguntar ─────────────────────────────────
+ * La flecha de atrás está pegada a «Publicar» en la misma cabecera. Con dos mil
+ * caracteres escritos y cinco fotos ya subidas, un roce se lo llevaba todo en
+ * silencio. `usePreventRemove` cubre la flecha, el gesto del borde y el botón
+ * físico de Android.
+ *
  * ── Una historia es distinta ────────────────────────────────────────────────
  * Lleva exactamente un archivo, caduca en 24 horas y no admite texto suelto: lo
  * exige el servidor y aquí se refleja para no dejar mandar algo que va a ser
  * rechazado.
  */
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import {
   View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert,
   KeyboardAvoidingView, Platform, ActivityIndicator, useWindowDimensions,
 } from 'react-native'
-import { Image } from 'expo-image'
-import { router, useLocalSearchParams } from 'expo-router'
+import { Image } from '@/components/ui/Imagen'
+import { router, useLocalSearchParams, useNavigation } from 'expo-router'
+import { usePreventRemove } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import * as Haptics from 'expo-haptics'
@@ -34,6 +41,7 @@ import {
   uploadMedia, createPost, errorText, guessType,
   type NewPostMedia,
 } from '@/services/socialService'
+import { TabBar } from '@/constants/layout'
 
 const MAX_PIEZAS = 5
 const MAX_TEXTO = 2200
@@ -52,6 +60,7 @@ interface Pieza {
 
 export default function ComposeScreen() {
   const T = useAppTheme()
+  const navigation = useNavigation()
   const { width } = useWindowDimensions()
   const params = useLocalSearchParams<{ kind?: string }>()
   const esHistoria = params.kind === 'story'
@@ -60,6 +69,30 @@ export default function ComposeScreen() {
   const [piezas, setPiezas] = useState<Pieza[]>([])
   const [publica, setPublica] = useState(true)
   const [enviando, setEnviando] = useState(false)
+  /** Se enciende al publicar bien; el efecto de abajo es quien cierra. */
+  const [saliendo, setSaliendo] = useState(false)
+
+  const hayBorrador = !!texto.trim() || piezas.length > 0
+
+  usePreventRemove(hayBorrador && !enviando && !saliendo, ({ data }) => {
+    Alert.alert(
+      esHistoria ? '¿Descartar la historia?' : '¿Descartar la publicación?',
+      'Lo escrito y lo que hayas elegido se perderá.',
+      [
+        { text: 'Seguir aquí', style: 'cancel' },
+        {
+          text: 'Descartar',
+          style: 'destructive',
+          // `data.action` es la salida interceptada: repetirla la deja pasar.
+          onPress: () => navigation.dispatch(data.action),
+        },
+      ],
+    )
+  })
+
+  // Cerrar en un efecto y no dentro de `publicar`: así el aviso ya está apagado
+  // cuando se navega, y no salta sobre nuestra propia salida.
+  useEffect(() => { if (saliendo) router.back() }, [saliendo])
 
   const prependPost = useSocialStore(s => s.prependPost)
   const loadStories = useSocialStore(s => s.loadStories)
@@ -144,7 +177,7 @@ export default function ComposeScreen() {
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
       if (esHistoria) loadStories()
       else prependPost(post)
-      router.back()
+      setSaliendo(true)
     } catch (e) {
       Alert.alert('No pudimos publicar', errorText(e))
     } finally {
@@ -182,7 +215,7 @@ export default function ComposeScreen() {
         />
 
         <ScrollView
-          contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: TabBar.scrollInset }}
           keyboardShouldPersistTaps="handled"
         >
           {!esHistoria && (

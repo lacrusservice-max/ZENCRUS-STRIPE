@@ -10,14 +10,17 @@
 
 import React, { useMemo, useRef, useEffect } from 'react'
 import {
-  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, Easing,
+  View, Text, TouchableOpacity, StyleSheet, ActivityIndicator, Animated, Easing, Share,
+  Alert,
   ViewStyle, Pressable,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useAppTheme } from '@/context/ThemeContext'
 
+import * as Haptics from 'expo-haptics'
+import { blockUser, errorText } from '@/services/socialService'
 import type { Profile } from '@/services/socialService'
 
 type IconName = React.ComponentProps<typeof Ionicons>['name']
@@ -446,6 +449,75 @@ export function timeLeft(iso: string): string {
   if (seg <= 0) return 'caducada'
   if (seg < 3600) return `${Math.max(1, Math.floor(seg / 60))} min`
   return `${Math.floor(seg / 3600)} h`
+}
+
+// ── Compartir ────────────────────────────────────────────────────────────────
+
+/**
+ * Abre la hoja de compartir del sistema con una publicación.
+ *
+ * ── Se manda el ENLACE, nunca la foto ───────────────────────────────────────
+ * Las direcciones de los archivos vienen firmadas y caducan en una hora: quien
+ * recibiera una hoy se encontraría un enlace roto mañana. Y aunque no
+ * caducaran, mandar el archivo saca la foto del modelo de privacidad —quien la
+ * recibe la ve aunque la cuenta sea cerrada—. El enlace lo respeta: al abrirlo,
+ * el servidor vuelve a preguntar si esa persona puede ver eso.
+ *
+ * Cancelar la hoja no es un error, así que no se cuenta.
+ */
+export async function compartirPost(post: {
+  id: string
+  content: string | null
+  author: Profile | null
+}): Promise<void> {
+  const quien = post.author?.username ?? post.author?.fullName ?? 'alguien'
+  const enlace = `https://zencrus.com/p/${post.id}`
+  try {
+    await Share.share({
+      message: post.content
+        ? `«${post.content}» — ${quien} en ZENCRUS\n${enlace}`
+        : `Mira lo que ha publicado ${quien} en ZENCRUS\n${enlace}`,
+    })
+  } catch { /* cancelar no es un fallo */ }
+}
+
+// ── Bloquear ─────────────────────────────────────────────────────────────────
+
+/**
+ * El aviso antes de bloquear, con lo que de verdad pasa.
+ *
+ * Vive aquí, y no en cada menú que lo ofrece, para que el texto sea el mismo en
+ * los tres sitios desde los que se llega: es una acción que la gente hace
+ * enfadada y deprisa, y dos redacciones distintas de lo que implica acaban
+ * significando cosas distintas.
+ *
+ * Se dice lo que se deshace (el seguimiento), lo que NO pasa (no se le avisa) y
+ * dónde se deshace — porque al perfil de alguien bloqueado ya no se puede
+ * volver, así que sin esa frase el bloqueo parece definitivo.
+ */
+export function confirmarBloqueo(userId: string, nombre?: string, alHacerlo?: () => void) {
+  Alert.alert(
+    nombre ? `\u00bfBloquear a @${nombre}?` : '\u00bfBloquear a esta persona?',
+    'Dejar\u00e9is de veros: ni perfil, ni publicaciones, ni mensajes, ni en las '
+      + 'b\u00fasquedas. Si os segu\u00edais, se deshace. No se le avisa de nada.\n\n'
+      + 'Podr\u00e1s deshacerlo desde Mi perfil \u203a Cuentas bloqueadas.',
+    [
+      { text: 'Cancelar', style: 'cancel' },
+      {
+        text: 'Bloquear',
+        style: 'destructive',
+        onPress: async () => {
+          try {
+            await blockUser(userId)
+            Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
+            alHacerlo?.()
+          } catch (e) {
+            Alert.alert('No pudimos bloquear', errorText(e))
+          }
+        },
+      },
+    ],
+  )
 }
 
 // ── Degradado de marca ───────────────────────────────────────────────────────

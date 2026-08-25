@@ -4,6 +4,17 @@
  * La pieza que más veces se ve de toda la sección, así que es donde más
  * importa que nada se mueva de golpe ni salte al cargar.
  *
+ * ── Sin tarjeta: la foto va de borde a borde ────────────────────────────────
+ * Antes cada publicación era una tarjeta de vidrio con 16 pt de margen y 1 pt de
+ * borde a cada lado, y la foto se quedaba con 34 pt menos de ancho. En una
+ * pantalla de 402 son casi un 9 %: se nota en cada imagen del muro. Ahora la
+ * foto ocupa la pantalla entera y lo que separa una publicación de otra es el
+ * aire, no un marco.
+ *
+ * Quien publicó viaja ENCIMA de la foto, sobre un degradado que garantiza que el
+ * nombre se lea sea cual sea la imagen debajo. El texto baja al pie, como un
+ * pie de foto.
+ *
  * ── Por qué la imagen reserva su sitio antes de existir ─────────────────────
  * El servidor manda el alto y el ancho de cada archivo. Con eso se calcula la
  * altura EXACTA de la foto antes de descargarla y se deja el hueco hecho. Sin
@@ -22,11 +33,12 @@ import {
   View, Text, StyleSheet, TouchableOpacity, Animated, Pressable,
   useWindowDimensions, ActivityIndicator,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useAppTheme } from '@/context/ThemeContext'
-import { Avatar, NameBlock, timeAgo } from './Bits'
+import { Avatar, timeAgo, compartirPost } from './Bits'
 import { VideoPlayer } from './VideoPlayer'
 import type { Post } from '@/services/socialService'
 
@@ -41,11 +53,17 @@ type IconName = React.ComponentProps<typeof Ionicons>['name']
  * en una con `pagingEnabled` y unos puntos debajo — no una rejilla: recortar
  * fotos ajenas para que cuadren en una cuadrícula es decidir por quien las
  * publicó dónde está lo importante.
+ *
+ * El ancho llega de fuera y no se calcula aquí porque esta pieza sale en dos
+ * sitios con márgenes distintos: dentro de la tarjeta del muro y a sangre en la
+ * pantalla de la publicación. Calcularlo dentro obligaría a tener dos copias
+ * del carrusel, y la segunda se quedaría atrás en cuanto se tocara la primera.
  */
-function Media({ post, onDoubleTap }: { post: Post; onDoubleTap?: () => void }) {
+export function PostMedia({
+  post, ancho, onDoubleTap,
+}: { post: Post; ancho: number; onDoubleTap?: () => void }) {
   const T = useAppTheme()
   const { width } = useWindowDimensions()
-  const ancho = width - 32 - 2   // margen de la tarjeta y su borde
   const [indice, setIndice] = useState(0)
 
   // Los hooks van antes del `return` de la publicación sin fotos.
@@ -243,66 +261,89 @@ const ac = StyleSheet.create({
 // ── Tarjeta ──────────────────────────────────────────────────────────────────
 
 export function PostCard({
-  post, onLike, onComment, onProfile, onOptions,
+  post, onLike, onSave, onComment, onProfile, onOptions,
 }: {
   post: Post
   onLike: (p: Post) => void
+  onSave: (p: Post) => void
   onComment: (p: Post) => void
   onProfile: (id: string) => void
   onOptions: (p: Post) => void
 }) {
   const T = useAppTheme()
+  const { width } = useWindowDimensions()
   const [expandido, setExpandido] = useState(false)
 
   const texto = post.content ?? ''
   const largo = texto.length > 180
+  const conFoto = post.media.length > 0
 
   // Doble toque solo enciende, nunca apaga: quien da dos toques quiere dar me
   // gusta, y quitarlo sin querer por un toque de más es una mala sorpresa.
   const meGustaDoble = () => { if (!post.likedByMe) onLike(post) }
 
-  return (
-    <View style={[c.card, { backgroundColor: T.glass, borderColor: T.glassBorder }]}>
-      <View style={[c.highlight, { backgroundColor: T.glassHighlight }]} pointerEvents="none" />
-
-      <View style={c.head}>
-        <Avatar profile={post.author} size={40} onPress={() => post.author && onProfile(post.author.id)} />
-        <TouchableOpacity
-          style={{ flex: 1 }}
-          activeOpacity={0.7}
-          onPress={() => post.author && onProfile(post.author.id)}
-        >
-          <NameBlock profile={post.author} subtitle={timeAgo(post.createdAt)} />
-        </TouchableOpacity>
-        {post.visibility === 'followers' && (
-          <View style={[c.chip, { backgroundColor: T.glass, borderColor: T.glassBorder }]}>
-            <Ionicons name="people" size={11} color={T.ink3} />
-            <Text style={[c.chipTxt, { color: T.ink3 }]}>Seguidores</Text>
-          </View>
-        )}
-        <TouchableOpacity onPress={() => onOptions(post)} hitSlop={10} activeOpacity={0.7}>
-          <Ionicons name="ellipsis-horizontal" size={18} color={T.ink3} />
-        </TouchableOpacity>
-      </View>
-
-      {!!texto && (
-        <TouchableOpacity
-          activeOpacity={largo ? 0.75 : 1}
-          onPress={() => largo && setExpandido(v => !v)}
-          style={c.textoWrap}
-        >
-          <Text style={[c.texto, { color: T.ink }]} numberOfLines={expandido ? undefined : 4}>
-            {texto}
+  /**
+   * Quién publicó.
+   *
+   * Va encima de la foto cuando la hay, y en su propia fila cuando no. Es el
+   * mismo bloque en los dos casos —cambian los colores— para que una
+   * publicación de solo texto no parezca de otra app.
+   */
+  const autor = (sobreFoto: boolean) => (
+    <View style={[c.head, sobreFoto && c.headOver]}>
+      <Avatar profile={post.author} size={sobreFoto ? 30 : 38}
+        onPress={() => post.author && onProfile(post.author.id)} />
+      <TouchableOpacity
+        style={{ flex: 1 }}
+        activeOpacity={0.7}
+        onPress={() => post.author && onProfile(post.author.id)}
+      >
+        <View style={c.nombreFila}>
+          <Text
+            style={[c.nombre, { color: sobreFoto ? '#FFFFFF' : T.ink }]}
+            numberOfLines={1}
+          >
+            {post.author?.username ?? post.author?.fullName ?? 'Cuenta ZENCRUS'}
           </Text>
-          {largo && (
-            <Text style={[c.mas, { color: T.ink3 }]}>
-              {expandido ? 'Ver menos' : 'Ver más'}
-            </Text>
+          {post.author?.isPrivate && (
+            <Ionicons name="lock-closed" size={11}
+              color={sobreFoto ? 'rgba(255,255,255,0.7)' : T.ink3} />
           )}
-        </TouchableOpacity>
+          <Text style={[c.punto, { color: sobreFoto ? 'rgba(255,255,255,0.6)' : T.ink3 }]}>·</Text>
+          <Text style={[c.cuando, { color: sobreFoto ? 'rgba(255,255,255,0.75)' : T.ink3 }]}>
+            {timeAgo(post.createdAt)}
+          </Text>
+        </View>
+      </TouchableOpacity>
+      {post.visibility === 'followers' && (
+        <Ionicons name="people" size={13}
+          color={sobreFoto ? 'rgba(255,255,255,0.8)' : T.ink3} />
       )}
+      <TouchableOpacity onPress={() => onOptions(post)} hitSlop={10} activeOpacity={0.7}>
+        <Ionicons name="ellipsis-horizontal" size={18}
+          color={sobreFoto ? '#FFFFFF' : T.ink3} />
+      </TouchableOpacity>
+    </View>
+  )
 
-      <Media post={post} onDoubleTap={meGustaDoble} />
+  return (
+    <View>
+      {conFoto ? (
+        <View>
+          <PostMedia post={post} ancho={width} onDoubleTap={meGustaDoble} />
+          {/* El degradado no es decoración: sin él, el nombre desaparece sobre
+              una foto clara. Se queda en el tercio de arriba y no toca la
+              imagen donde suele estar lo que se quiere ver. */}
+          <LinearGradient
+            colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.18)', 'transparent']}
+            style={c.velo}
+            pointerEvents="none"
+          />
+          {autor(true)}
+        </View>
+      ) : (
+        autor(false)
+      )}
 
       <View style={c.acciones}>
         <Accion
@@ -312,32 +353,46 @@ export function PostCard({
           onPress={() => onLike(post)}
         />
         <Accion icon="chatbubble-outline" label={post.comments} onPress={() => onComment(post)} />
+        <Accion icon="paper-plane-outline" onPress={() => compartirPost(post)} />
         <View style={{ flex: 1 }} />
+        <Accion
+          icon={post.savedByMe ? 'bookmark' : 'bookmark-outline'}
+          active={post.savedByMe}
+          onPress={() => onSave(post)}
+        />
       </View>
+
+      {!!texto && (
+        <TouchableOpacity
+          activeOpacity={largo ? 0.75 : 1}
+          onPress={() => largo && setExpandido(v => !v)}
+          style={c.textoWrap}
+        >
+          <Text style={[c.texto, { color: T.ink2 }]} numberOfLines={expandido ? undefined : 3}>
+            {texto}
+          </Text>
+          {largo && (
+            <Text style={[c.mas, { color: T.ink3 }]}>
+              {expandido ? 'Ver menos' : 'Ver más'}
+            </Text>
+          )}
+        </TouchableOpacity>
+      )}
     </View>
   )
 }
 
 const c = StyleSheet.create({
-  card: {
-    marginHorizontal: 16,
-    borderRadius: 22, borderWidth: 1,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 10 },
-    shadowOpacity: 0.34, shadowRadius: 22,
-    elevation: 8,
-  },
-  highlight: { position: 'absolute', top: 0, left: 0, right: 0, height: 1 },
-  head: { flexDirection: 'row', alignItems: 'center', gap: 11, padding: 13 },
-  chip: {
-    flexDirection: 'row', alignItems: 'center', gap: 4,
-    paddingHorizontal: 8, paddingVertical: 3,
-    borderRadius: 9, borderWidth: 1,
-  },
-  chipTxt: { fontSize: 10, fontWeight: '700' },
-  textoWrap: { paddingHorizontal: 14, paddingBottom: 12 },
-  texto: { fontSize: 14.5, lineHeight: 21 },
-  mas: { fontSize: 12.5, fontWeight: '700', marginTop: 5 },
-  acciones: { flexDirection: 'row', alignItems: 'center', gap: 20, padding: 14 },
+  velo: { position: 'absolute', top: 0, left: 0, right: 0, height: 78 },
+  head: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 16, paddingVertical: 12 },
+  // Encima de la foto: pegado arriba y sin fondo propio — lo pone el degradado.
+  headOver: { position: 'absolute', top: 0, left: 0, right: 0, paddingVertical: 10 },
+  nombreFila: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  nombre: { fontSize: 13.5, fontWeight: '700', flexShrink: 1 },
+  punto: { fontSize: 12 },
+  cuando: { fontSize: 11.5 },
+  acciones: { flexDirection: 'row', alignItems: 'center', gap: 20, paddingHorizontal: 16, paddingTop: 12, paddingBottom: 2 },
+  textoWrap: { paddingHorizontal: 16, paddingTop: 8 },
+  texto: { fontSize: 13.5, lineHeight: 19.5 },
+  mas: { fontSize: 12.5, fontWeight: '700', marginTop: 4 },
 })

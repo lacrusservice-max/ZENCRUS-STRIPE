@@ -15,6 +15,11 @@ build/
 .env.test.local
 .env.production.local
 .env.staging
+# Cualquier copia de un .env: una de ellas estuvo a punto de entrar al repo con
+# las claves dentro porque solo se ignoraba «.env» a secas.
+.env.bak*
+.env.*.bak
+*.env.backup
 
 # Logs
 logs/

@@ -10,6 +10,7 @@ import { calcularNutricion, PerfilUsuario } from '../services/nutritionCalculato
 import { AI_TOOLS, executeAiTool } from '../services/aiTools'
 import { ligarAMensaje, type AccionPendiente } from '../services/confirmaciones'
 import { cuidadoDeEsteMensaje, faltanLosRecursos, RECURSOS_MX } from '../services/cuidado'
+import { instantaneaDelDia } from '../services/instantaneaDelDia'
 
 const aiClient = new DeepSeekClient(process.env.DEEPSEEK_API_KEY || '')
 
@@ -92,7 +93,28 @@ export const sendMessageSchema = z.object({
   }),
 })
 
-const DISCLAIMER = '⚕️ **Aviso importante:** Soy un asistente de IA con conocimiento en nutrición y fitness. Mis recomendaciones son informativas y no sustituyen la consulta con un profesional de la salud. Siempre consulta con tu médico o nutriólogo antes de hacer cambios significativos en tu dieta o entrenamiento.\n\n¡Hola! Soy ZENCRUS, tu asistente personal de nutrición y fitness. ¿En qué puedo ayudarte hoy? 😊'
+/**
+ * El primer mensaje de cada conversación.
+ *
+ * Se guarda en la base, así que es lo que el usuario vuelve a leer cada vez que
+ * abre ese hilo — y también lo que el modelo recibe como su propio turno
+ * anterior. Por eso está escrito como habla ella y no como habla un aviso
+ * legal: un párrafo en negritas y con markdown en crudo era lo primero que veía
+ * alguien que acababa de instalar la app, y decía llamarse ZENCRUS.
+ *
+ * El límite se dice aquí en una frase y entero en su perfil (`app/zena.tsx`).
+ * Repetir el prospecto completo en cada conversación nueva no lo hace más leído.
+ */
+const DISCLAIMER = [
+  'Hola, soy ZENA, tu coach de nutrición y fitness en ZENCRUS.',
+  '',
+  'Conozco tu registro, tu entrenamiento y tus metas, así que no hace falta que',
+  'me pongas al día: pregúntame directamente. Lo que te diga es orientación, no',
+  'un diagnóstico — no sustituyo a tu médico ni a tu nutrióloga, y si algo no te',
+  'cuadra con lo que ellos te dijeron, hazles caso a ellos.',
+  '',
+  '¿En qué andas hoy?',
+].join('\n')
 
 export async function createSession(req: Request, res: Response): Promise<void> {
   const userId = req.user!.userId
@@ -198,12 +220,25 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
     .select()
     .single()
 
-  const { data: previousMessages } = await supabase
+  /**
+   * El historial, SIN el mensaje que se acaba de guardar.
+   *
+   * Este `select` corre después del `insert` de arriba, así que la fila recién
+   * escrita entraba en sus diez últimas — y como abajo el mensaje se añade
+   * otra vez al final del array, el modelo recibía dos turnos de usuario
+   * idénticos y seguidos en CADA petición. Se pagaba dos veces y ZENA leía una
+   * insistencia que nadie había escrito.
+   */
+  let consultaHistorial = supabase
     .from('messages')
     .select('sender_type, content')
     .eq('session_id', id)
     .order('created_at', { ascending: false })
     .limit(10)
+
+  if (userMessage?.id) consultaHistorial = consultaHistorial.neq('id', userMessage.id)
+
+  const { data: previousMessages } = await consultaHistorial
 
   // Obtener perfil del usuario y construir system prompt personalizado
   const { perfil, nombre } = await obtenerPerfilParaIA(userId)
@@ -218,6 +253,9 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
   // System prompt + aviso de que ZENA puede ejecutar cambios reales con herramientas.
   const toolsHint = `\n\nPUEDES EJECUTAR CAMBIOS REALES en la app del usuario mediante herramientas: cambiar su objetivo, actualizar su peso/actividad, ajustar sus targets nutricionales (calorías/macros/comidas) y regenerar su plan. Cuando el usuario pida un cambio de este tipo, USA la herramienta correspondiente en lugar de solo describirlo. Después confirma con lenguaje natural y cálido lo que hiciste.`
 
+  /** El día del usuario, no el de Railway: manda la fecha que envía la app. */
+  const hoy = fechaDelUsuario(req)
+
   /**
    * El §12, y por qué va justo aquí y no antes.
    *
@@ -229,11 +267,26 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
    *
    * `toolsHint` va delante suyo por lo mismo, aunque sea fijo: lo que importa
    * es que lo que cambia quede al final, en orden de volatilidad.
+   *
+   * El bloque del día —lo que lleva comido y sus metas guardadas— entra por la
+   * misma puerta y por la misma razón, justo delante: cambia con cada comida
+   * que se apunta, pero no con cada frase que se escribe. Los dos se piden a la
+   * vez porque ninguno depende del otro, y encadenarlos sumaría su espera a un
+   * mensaje que ya tiene que aguantar la del modelo.
    */
-  const cuidado = await cuidadoDeEsteMensaje(userId, String(content), String(id))
+  const [cuidado, hoyEnLaApp] = await Promise.all([
+    cuidadoDeEsteMensaje(userId, String(content), String(id)),
+    instantaneaDelDia(userId, hoy),
+  ])
+
+  const systemFinal = [
+    systemPrompt + toolsHint,
+    hoyEnLaApp,
+    cuidado.bloque,
+  ].filter(Boolean).join('\n\n')
 
   const messages = [
-    { role: 'system', content: systemPrompt + toolsHint + (cuidado.bloque ? `\n\n${cuidado.bloque}` : '') },
+    { role: 'system', content: systemFinal },
     ...history,
     { role: 'user', content },
   ]
@@ -386,7 +439,7 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
         let args: Record<string, any> = {}
         try { args = JSON.parse(call.function?.arguments || '{}') } catch { /* args vacíos */ }
         const result = await executeAiTool(call.function?.name, args, userId, {
-          hoy: fechaDelUsuario(req),
+          hoy,
           pendientes,
         })
         if (call.function?.name) usadas.add(call.function.name)

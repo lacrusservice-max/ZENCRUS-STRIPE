@@ -20,7 +20,7 @@ import {
   View, Text, StyleSheet, FlatList, TextInput, TouchableOpacity,
   ActivityIndicator, useWindowDimensions, ScrollView,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams } from 'expo-router'
 import { volverAEntrena } from '@/components/workout/MenuSeccion'
@@ -142,10 +142,14 @@ export default function LibraryScreen() {
   // (`/workout/library?muscle=chest`). Se lee UNA vez, como valor inicial, y no
   // en un efecto que lo reimponga: si se reimpusiera, quitar el filtro a mano
   // volvería a ponerlo solo y el filtro se quedaría atascado.
-  const { muscle } = useLocalSearchParams<{ muscle?: string }>()
+  const { muscle, place } = useLocalSearchParams<{ muscle?: string; place?: string }>()
 
   const [filtros, setFiltros] = useState<E.Filters | null>(null)
-  const [lugar, setLugar] = useState<'todo' | 'home'>('todo')
+  /* `place` llega de la portada del lugar. Solo «home» acota: en un gimnasio se
+     puede hacer todo el catálogo, así que «gym» equivale a no filtrar.
+     Igual que `muscle`, se usa como valor de ARRANQUE y nunca se reimpone: si
+     se reimpusiera, quitar el filtro a mano lo devolvería solo. */
+  const [lugar, setLugar] = useState<'todo' | 'home'>(place === 'home' ? 'home' : 'todo')
   const [grupo, setGrupo] = useState<string | null>(muscle ?? null)
   const [material, setMaterial] = useState<string | null>(null)
   const [texto, setTexto] = useState('')

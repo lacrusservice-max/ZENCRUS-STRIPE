@@ -1,8 +1,16 @@
 /**
  * COMUNIDAD · MI PERFIL
  * ─────────────────────
- * Mi ficha, mi rejilla y el menú de la sección: solicitudes, privacidad y
- * editar perfil.
+ * Mi ficha y mi rejilla. Nada más.
+ *
+ * ── El menú se fue a ajustes ────────────────────────────────────────────────
+ * Solicitudes, guardados, privacidad y bloqueados vivían aquí, en cuatro cajas
+ * entre la ficha y la rejilla. Separaban tu cara de lo único que se viene a
+ * ver, y hacían que el perfil pareciera una pantalla de ajustes. Ahora cuelgan
+ * de la rueda de la cabecera (`/social/settings`).
+ *
+ * La rueda se enciende cuando hay solicitudes esperando: enterrarlas sin más
+ * señal habría sido esconderlas, porque nadie entra en ajustes a comprobarlo.
  *
  * Aquí no hay candado aunque la cuenta sea privada: uno siempre se ve entero a
  * sí mismo. Lo que sí se enseña es el aviso de que está cerrada, para que nadie
@@ -10,15 +18,16 @@
  */
 
 import { useCallback, useState } from 'react'
-import { View, Text, StyleSheet, ScrollView, RefreshControl } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, RefreshControl, TouchableOpacity } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
 import { useAppTheme } from '@/context/ThemeContext'
 import { useSocialStore } from '@/store/socialStore'
-import { Btn, Row, Empty, Skeleton } from '@/components/social/Bits'
+import { Btn, Empty, Skeleton } from '@/components/social/Bits'
 import { ProfileHeader, PostGrid } from '@/components/social/ProfileView'
 import * as S from '@/services/socialService'
+import { TabBar } from '@/constants/layout'
 
 export default function MyProfileScreen() {
   const T = useAppTheme()
@@ -80,20 +89,38 @@ export default function MyProfileScreen() {
         back
         eyebrow="COMUNIDAD"
         title={me.username ? `@${me.username}` : 'Mi perfil'}
+        right={
+          <TouchableOpacity
+            style={[s.rueda, { backgroundColor: T.glass, borderColor: T.glassBorder }]}
+            onPress={() => router.push('/social/settings')}
+            hitSlop={8}
+            activeOpacity={0.75}
+          >
+            <Ionicons name="settings-outline" size={19} color={T.ink2} />
+            {/* Un punto, no el número: el recuento exacto está dentro, y aquí
+                lo único que hace falta saber es que hay algo. */}
+            {!!badges.followRequests && (
+              <View style={[s.punto, { backgroundColor: T.accent, borderColor: T.bg }]} />
+            )}
+          </TouchableOpacity>
+        }
       />
       <ScrollView
-        contentContainerStyle={{ paddingBottom: 60 }}
+        contentContainerStyle={{ paddingBottom: TabBar.scrollInset }}
         refreshControl={
           <RefreshControl refreshing={refrescando} onRefresh={() => cargar(true)} tintColor={T.accent} />
         }
         showsVerticalScrollIndicator={false}
       >
         <ProfileHeader
+          // La elegida manda; si no hay, se cae a la última publicación,
+          // que es como funcionaba antes de que se pudiera elegir.
+          portada={me.coverImage ?? posts.find(p => p.media[0]?.url)?.media[0]?.url ?? null}
           profile={me}
           stats={me.stats}
           canViewContent
-          onFollowersPress={() => router.push(`/social/followers/${me.id}?tab=followers`)}
-          onFollowingPress={() => router.push(`/social/followers/${me.id}?tab=following`)}
+          onFollowersPress={() => router.push(`/social/followers/${me.id}?tab=followers&nombre=${me.username ?? ''}`)}
+          onFollowingPress={() => router.push(`/social/followers/${me.id}?tab=following&nombre=${me.username ?? ''}`)}
           action={
             <>
               <Btn label="Editar perfil" onPress={() => router.push('/social/edit-profile')}
@@ -113,25 +140,9 @@ export default function MyProfileScreen() {
           </View>
         )}
 
-        <View style={s.menu}>
-          <Row
-            icon="person-add-outline"
-            title="Solicitudes de seguimiento"
-            sub={badges.followRequests ? 'Tienes solicitudes esperando' : 'Nadie esperando ahora mismo'}
-            badge={badges.followRequests}
-            onPress={() => router.push('/social/requests')}
-          />
-          <Row
-            icon="lock-closed-outline"
-            title="Privacidad"
-            sub={me.isPrivate ? 'Cuenta privada' : 'Cuenta pública'}
-            onPress={() => router.push('/social/edit-profile')}
-          />
-        </View>
-
         <Text style={[s.etiqueta, { color: T.ink3 }]}>MIS PUBLICACIONES</Text>
         {posts.length
-          ? <PostGrid posts={posts} onPress={p => router.push(`/social/comments/${p.id}`)} />
+          ? <PostGrid posts={posts} onPress={p => router.push(`/social/post/${p.id}`)} />
           : (
             <Empty
               icon="camera-outline"
@@ -153,6 +164,13 @@ const s = StyleSheet.create({
     marginHorizontal: 20, padding: 13, borderRadius: 15, borderWidth: 1,
   },
   avisoTxt: { flex: 1, fontSize: 12.5, lineHeight: 18 },
-  menu: { paddingHorizontal: 20, gap: 10, marginTop: 16 },
+  rueda: {
+    width: 38, height: 38, borderRadius: 13, borderWidth: 1,
+    alignItems: 'center', justifyContent: 'center',
+  },
+  punto: {
+    position: 'absolute', top: 7, right: 7,
+    width: 9, height: 9, borderRadius: 5, borderWidth: 2,
+  },
   etiqueta: { fontSize: 10, fontWeight: '900', letterSpacing: 2, marginTop: 26, marginBottom: 12, paddingHorizontal: 20 },
 })

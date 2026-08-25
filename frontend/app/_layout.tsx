@@ -22,6 +22,21 @@ import {
 import {
   Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold,
 } from '@expo-google-fonts/inter'
+// Las dos familias de la sección Running: Michroma para los títulos de módulo y
+// el número del Núcleo; Geist Mono para TODO dato medido, que necesita ancho de
+// dígito fijo para no temblar al actualizarse en vivo. Se piden aquí, al
+// arrancar, y no al entrar en la sección: pedirlas allí dejaría el primer render
+// con la tipografía de respaldo.
+import { Michroma_400Regular } from '@expo-google-fonts/michroma'
+import {
+  GeistMono_400Regular, GeistMono_500Medium, GeistMono_700Bold,
+} from '@expo-google-fonts/geist-mono'
+// La voz editorial del módulo de Ciclo. Es la única familia propia de esa
+// sección: para el dato medido reusa GeistMono, la misma que Running, porque
+// dos monoespaciadas distintas en la misma app se leen como dos apps.
+import {
+  Fraunces_400Regular, Fraunces_600SemiBold,
+} from '@expo-google-fonts/fraunces'
 
 SplashScreen.preventAutoHideAsync().catch(() => {})
 import { useAuthStore } from '@/store/authStore'
@@ -41,9 +56,12 @@ import { useHabitsStore } from '@/store/habitsStore'
 import { useRecoveryStore } from '@/store/recoveryStore'
 import { ErrorBoundary } from '@/components/ErrorBoundary'
 import { NetworkBanner } from '@/components/NetworkBanner'
-import { BotonZena } from '@/components/ui/BotonZena'
+import { BotonPerfil } from '@/components/ui/BotonPerfil'
+import { BarraDeSeccion } from '@/components/ui/BarraDeSeccion'
 import { RachaFlotante } from '@/components/racha/RachaFlotante'
 import { migrarSeguimiento, vaciarCola } from '@/store/trackingSync'
+import { vigilarHabitosAutomaticos } from '@/features/salud/autoHabitos'
+import { escucharRecordatorios } from '@/features/salud/recordatorios'
 import { migrarHistorico, vaciarCola as vaciarColaNutricion } from '@/store/nutritionSync'
 
 const STRIPE_PK = Constants.expoConfig?.extra?.stripePublishableKey as string ?? ''
@@ -68,12 +86,52 @@ export default function RootLayout() {
   const loadTheme = useThemeStore(s => s.load)
   const isDark = useThemeStore(s => s.isDark)
 
-  const [fontsLoaded] = useFonts({
+  /**
+   * LAS QUE HACEN FALTA PARA EL PRIMER PÍXEL, Y LAS QUE NO.
+   * ──────────────────────────────────────────────────────
+   * Las trece pesan 2,9 MB y antes se esperaban TODAS antes de enseñar nada: el
+   * splash no se quitaba hasta que la última estuviera montada. Pero solo dos
+   * familias se ven al abrir —Rajdhani en los titulares e Inter en el resto—, y
+   * son 2,4 MB de esos 2,9. Las otras tres (Michroma y Geist Mono en Running,
+   * Fraunces en Ciclo) son 508 KB que nadie mira hasta que navega a una sección
+   * que está a dos toques como mínimo.
+   *
+   * Así que se piden en dos grupos. El primero manda sobre el splash; el
+   * segundo se carga por detrás mientras la persona ya está usando la app.
+   *
+   * ── Y no se cambia lo que costó aprender ────────────────────────────────────
+   * La razón por la que las de sección se piden AQUÍ y no al entrar en Running
+   * sigue en pie: al entrar sería tarde y el primer render saldría con la
+   * tipografía de respaldo. Se siguen pidiendo al arrancar. Lo único que cambia
+   * es que ya no retrasan lo que se ve.
+   */
+  const [fuentesBase] = useFonts({
     Rajdhani_500Medium, Rajdhani_600SemiBold, Rajdhani_700Bold,
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold })
 
+  // Sin leer el resultado a propósito: si se mirara y se usara para decidir
+  // cuándo pintar, volveríamos a bloquear el arranque, que es justo lo que se
+  // está quitando.
+  useFonts({
+    Michroma_400Regular,
+    GeistMono_400Regular, GeistMono_500Medium, GeistMono_700Bold,
+    Fraunces_400Regular, Fraunces_600SemiBold })
+
+  const fontsLoaded = fuentesBase
+
   // La háptica se puede apagar; hay a quien le molesta y hay que respetarlo.
   useEffect(() => { void cargarPreferenciaHaptica() }, [])
+
+  /* Entrenar, la proteína y el agua se marcan solos. Se escucha a Nutrición
+     una vez y para toda la vida de la app: hacerlo en la pantalla de Hábitos
+     solo marcaría los días en que entras a mirarla, y entonces la racha
+     mentiría por no haber abierto una pantalla. */
+  useEffect(() => vigilarHabitosAutomaticos(), [])
+
+  /* Tocar el recordatorio de un hábito con cronómetro abre la sesión, no una
+     lista: avisar a las siete de que tocan cinco minutos solo sirve si al
+     segundo toque ya estás respirando. */
+  useEffect(() => escucharRecordatorios(), [])
 
   useEffect(() => {
     initialize()
@@ -159,10 +217,17 @@ export default function RootLayout() {
               <Stack.Screen name="(onboarding)" />
               <Stack.Screen name="(tabs)" />
             </Stack>
-            {/* Encima del navegador y una sola vez: así el acceso a ZENA está
-                en el mismo sitio en todas las pantallas, también en las que se
-                añadan después. */}
-            <BotonZena />
+            {/* Encima del navegador y una sola vez: así el acceso al perfil
+                está en el mismo sitio en todas las pantallas, también en las
+                que se añadan después.
+
+                Aquí estaba `BotonZena` hasta el rediseño de la barra: ZENA se
+                mudó a la píldora de abajo, elevada y en el eje, y el perfil
+                —que salió de la barra para hacerle sitio— ocupó su esquina. */}
+            <BotonPerfil />
+            {/* La píldora dentro de las secciones de Entrena, que son rutas
+                del Stack y hasta ahora se quedaban sin barra ninguna. */}
+            <BarraDeSeccion />
             <RachaFlotante />
             <NetworkBanner />
           </View>

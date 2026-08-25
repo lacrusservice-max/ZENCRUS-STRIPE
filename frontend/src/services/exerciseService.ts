@@ -4,10 +4,16 @@
  * Única puerta de la app a `/exercises`. Los 206 ejercicios con su vídeo, su
  * póster y sus filtros.
  *
- * ── Las direcciones caducan en una hora ─────────────────────────────────────
- * Vídeos y pósters viven en un bucket privado y llegan firmados. No se guardan
- * en disco ni se cachean entre sesiones: un póster rescatado del disco al día
- * siguiente sería una imagen rota.
+ * ── Las direcciones caducan; las imágenes no ────────────────────────────────
+ * Vídeos y pósters viven en un bucket privado y llegan firmados, y esa firma
+ * muere en una hora. Durante mucho tiempo eso se leyó como «entonces no se
+ * puede cachear nada», y salía carísimo: cada visita a cada pantalla volvía a
+ * descargar las mismas miniaturas.
+ *
+ * Lo que caduca es la DIRECCIÓN, no el archivo. Así que se separan las dos
+ * cosas: la dirección se vuelve a pedir cada 45 minutos (`getPosters`), y la
+ * imagen se guarda en el teléfono para siempre bajo una clave que no depende de
+ * la firma (`components/ui/Imagen.tsx`). Un póster se baja una vez en la vida.
  *
  * Lo que SÍ se cachea en memoria es el listado, porque el catálogo no cambia
  * mientras la app está abierta y volver a pedir 206 fichas cada vez que alguien
@@ -172,6 +178,7 @@ export async function getFilters(): Promise<Filters> {
 
 /** Lo llama el cierre de sesión: la siguiente persona pide lo suyo. */
 export function resetExerciseCache(): void {
+  olvidarPosters()
   cacheFiltros = null
 }
 
@@ -186,24 +193,67 @@ export function resetExerciseCache(): void {
  * posiciones: si un slug no está en el catálogo, sencillamente no viene su
  * clave y quien lo pinta enseña el hueco con su icono.
  *
- * NO se cachea entre pantallas: las direcciones caducan en una hora y una URL
- * rescatada al día siguiente sería una imagen rota.
+ * ── Sí se guardan entre pantallas, y antes no ──────────────────────────────
+ * Aquí ponía que no se podían cachear «porque las direcciones caducan en una
+ * hora». Cierto lo de la hora, falsa la conclusión: lo que había que hacer no
+ * era renunciar a la caché, era ponerle FECHA. Se guardan durante 45 minutos,
+ * con margen de sobra antes de que la firma muera.
+ *
+ * Lo que costaba: abrir una rutina, volver, abrir otra y volver a la primera
+ * eran cuatro viajes al servidor —unos 220 ms cada uno contra producción— para
+ * traer exactamente las mismas direcciones. Y mientras el viaje duraba, la
+ * pantalla enseñaba huecos.
+ *
+ * Ojo con subir los 45 minutos: es tiempo de VIDA de la firma, no de la imagen.
+ * La imagen ya la guarda el teléfono para siempre —lo hace `Imagen.tsx` con su
+ * clave estable—, así que esto solo evita volver a PREGUNTAR la dirección.
  */
+const VIDA_POSTER = 45 * 60 * 1000
+const cachePosters = new Map<string, { url: string; hasta: number }>()
+
+/** Vacía lo guardado. La llama `resetExerciseCache` al cerrar sesión. */
+function olvidarPosters(): void {
+  cachePosters.clear()
+}
+
 export const getPosters = async (slugs: string[]): Promise<Record<string, string>> => {
   const limpios = [...new Set(slugs.filter(Boolean))].slice(0, 60)
   if (limpios.length === 0) return {}
+
+  const ahora = Date.now()
+  const listo: Record<string, string> = {}
+  const faltan: string[] = []
+
+  for (const slug of limpios) {
+    const g = cachePosters.get(slug)
+    if (g && g.hasta > ahora) listo[slug] = g.url
+    else faltan.push(slug)
+  }
+
+  // Todo estaba guardado: ni se toca la red. Es el caso normal al volver a una
+  // pantalla que ya se vio.
+  if (faltan.length === 0) return listo
+
   try {
     const r = unwrap<{ posters: Record<string, string> }>(
-      await apiGet('/exercises/posters', { params: { slugs: limpios.join(',') } }),
+      await apiGet('/exercises/posters', { params: { slugs: faltan.join(',') } }),
     )
-    return r?.posters ?? {}
+    const nuevos = r?.posters ?? {}
+    for (const [slug, url] of Object.entries(nuevos)) {
+      cachePosters.set(slug, { url, hasta: ahora + VIDA_POSTER })
+      listo[slug] = url
+    }
+    return listo
   } catch (e) {
     // Una miniatura que falta no puede tumbar la pantalla que la enseña, pero
     // callarse del todo tampoco vale: un fallo aquí se ve como una rejilla de
     // huecos grises, que es indistinguible de «este ejercicio no tiene foto».
     // Sin este aviso costó encontrar por qué las rutinas salían sin imágenes.
     console.warn('[exercises/posters]', (e as Error)?.message ?? e)
-    return {}
+    // Se devuelve lo que hubiera guardado, no un objeto vacío: si la red falla
+    // a mitad, es mejor enseñar las diez miniaturas que ya se tenían que borrar
+    // también esas y dejar la rejilla entera en huecos.
+    return listo
   }
 }
 

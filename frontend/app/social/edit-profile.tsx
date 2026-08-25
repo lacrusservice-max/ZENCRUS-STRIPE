@@ -1,12 +1,24 @@
 /**
  * COMUNIDAD · EDITAR PERFIL
  * ─────────────────────────
- * Foto, nombre de usuario, nombre visible, biografía y privacidad.
+ * Portada, foto, nombre de usuario, nombre visible, biografía y privacidad.
+ *
+ * ── La portada se elige; antes se heredaba ──────────────────────────────────
+ * La banda de arriba del perfil salía de la foto de tu última publicación. Se
+ * veía bien, pero no había forma de decidirla: subías una foto de la comida y
+ * la cabecera pasaba a ser eso. Ahora se elige aquí, y si no eliges ninguna se
+ * sigue cayendo a la última publicación, que era el comportamiento de antes.
  *
  * ── El interruptor de privacidad avisa antes de abrir ───────────────────────
  * Pasar de privada a pública no pide confirmación: no expone nada que no
  * decidas publicar después. Al revés tampoco, pero se explica qué cambia — la
  * gente cree que cerrar la cuenta echa a quien ya la sigue, y no es así.
+ *
+ * ── Salir no tira lo escrito ────────────────────────────────────────────────
+ * Guardar es un botón de la cabecera, justo al lado de la flecha de atrás. Sin
+ * aviso, escribir la biografía y tocar la flecha —o deslizar desde el borde—
+ * la borraba sin decir nada. `usePreventRemove` intercepta las tres salidas:
+ * flecha, gesto y botón físico de Android.
  *
  * ── El usuario se comprueba al guardar, no al escribir ──────────────────────
  * El servidor devuelve 409 si ya está cogido y ese mensaje se enseña tal cual.
@@ -14,12 +26,13 @@
  * limitador del servidor corta a las cien por cuarto de hora.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   View, Text, StyleSheet, TextInput, ScrollView, TouchableOpacity, Alert,
   KeyboardAvoidingView, Platform, Switch, ActivityIndicator,
 } from 'react-native'
-import { router } from 'expo-router'
+import { router, useNavigation } from 'expo-router'
+import { usePreventRemove } from '@react-navigation/native'
 import { Ionicons } from '@expo/vector-icons'
 import * as ImagePicker from 'expo-image-picker'
 import * as Haptics from 'expo-haptics'
@@ -27,10 +40,13 @@ import { Screen, ScreenHeader } from '@/components/ui/Screen'
 import { useAppTheme } from '@/context/ThemeContext'
 import { useSocialStore } from '@/store/socialStore'
 import { Avatar, Btn } from '@/components/social/Bits'
+import { Image } from '@/components/ui/Imagen'
 import * as S from '@/services/socialService'
+import { TabBar } from '@/constants/layout'
 
 export default function EditProfileScreen() {
   const T = useAppTheme()
+  const navigation = useNavigation()
   const me = useSocialStore(s => s.me)
   const patchMe = useSocialStore(s => s.patchMe)
   const loadMe = useSocialStore(s => s.loadMe)
@@ -41,8 +57,13 @@ export default function EditProfileScreen() {
   const [privada, setPrivada] = useState(false)
   const [avatar, setAvatar] = useState<string | null>(null)   // lo que se ve
   const [claveNueva, setClaveNueva] = useState<string | null>(null)
+  const [portada, setPortada] = useState<string | null>(null)
+  const [clavePortada, setClavePortada] = useState<string | null>(null)
   const [subiendo, setSubiendo] = useState(false)
+  const [subiendoPortada, setSubiendoPortada] = useState(false)
   const [guardando, setGuardando] = useState(false)
+  /** Se enciende al guardar bien; el efecto de abajo es quien cierra. */
+  const [saliendo, setSaliendo] = useState(false)
 
   useEffect(() => {
     if (!me) { loadMe(); return }
@@ -51,7 +72,40 @@ export default function EditProfileScreen() {
     setBio(me.bio ?? '')
     setPrivada(me.isPrivate)
     setAvatar(me.avatar)
+    setPortada(me.coverImage ?? null)
   }, [me?.id])
+
+  /** Qué hay distinto respecto a lo que está guardado. */
+  const sucio = useMemo(() => !!me && (
+    usuario.trim().toLowerCase() !== (me.username ?? '')
+    || nombre.trim() !== (me.fullName ?? '')
+    || bio.trim() !== (me.bio ?? '')
+    || privada !== me.isPrivate
+    || !!claveNueva
+    || (avatar === null && !!me.avatar)
+    || !!clavePortada
+    || (portada === null && !!me.coverImage)
+  ), [me, usuario, nombre, bio, privada, claveNueva, avatar, clavePortada, portada])
+
+  usePreventRemove(sucio && !guardando && !saliendo, ({ data }) => {
+    Alert.alert(
+      '¿Salir sin guardar?',
+      'Lo que has cambiado se perderá.',
+      [
+        { text: 'Seguir editando', style: 'cancel' },
+        {
+          text: 'Salir igualmente',
+          style: 'destructive',
+          // `data.action` es la salida que se interceptó: repetirla la deja pasar.
+          onPress: () => navigation.dispatch(data.action),
+        },
+      ],
+    )
+  })
+
+  // Cerrar en un efecto y no dentro de `guardar`: así el aviso de arriba ya se
+  // ha apagado cuando se navega, y no salta sobre nuestra propia salida.
+  useEffect(() => { if (saliendo) router.back() }, [saliendo])
 
   const cambiarFoto = async () => {
     const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync()
@@ -77,13 +131,44 @@ export default function EditProfileScreen() {
     }
   }
 
+  const cambiarPortada = async () => {
+    const permiso = await ImagePicker.requestMediaLibraryPermissionsAsync()
+    if (!permiso.granted) {
+      Alert.alert('Sin acceso a tus fotos', 'Dale permiso desde los ajustes del teléfono.')
+      return
+    }
+    const res = await ImagePicker.launchImageLibraryAsync({
+      // 16:9 porque es la proporción de la banda del perfil: recortar aquí
+      // evita que la foto se corte sola y por sitios que no elegiste.
+      mediaTypes: ['images'], allowsEditing: true, aspect: [16, 9], quality: 0.9,
+    })
+    if (res.canceled) return
+
+    setPortada(res.assets[0].uri)
+    setSubiendoPortada(true)
+    try {
+      const { key } = await S.uploadMedia(res.assets[0].uri, 'cover')
+      setClavePortada(key)
+    } catch (e) {
+      setPortada(me?.coverImage ?? null)
+      Alert.alert('No pudimos subir la portada', S.errorText(e))
+    } finally {
+      setSubiendoPortada(false)
+    }
+  }
+
+  const quitarPortada = () => {
+    setPortada(null)
+    setClavePortada(null)
+  }
+
   const quitarFoto = () => {
     setAvatar(null)
     setClaveNueva(null)
   }
 
   const guardar = async () => {
-    if (guardando || subiendo) return
+    if (guardando || subiendo || subiendoPortada) return
     const u = usuario.trim().toLowerCase()
 
     if (u && !/^[a-zA-Z0-9._]{3,24}$/.test(u)) {
@@ -107,9 +192,12 @@ export default function EditProfileScreen() {
       if (claveNueva) patch.avatar = claveNueva
       else if (avatar === null && me?.avatar) patch.avatar = null
 
+      if (clavePortada) patch.coverImage = clavePortada
+      else if (portada === null && me?.coverImage) patch.coverImage = null
+
       await patchMe(patch)
       Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success).catch(() => {})
-      router.back()
+      setSaliendo(true)
     } catch (e: any) {
       Alert.alert(
         e?.response?.status === 409 ? 'Ese usuario ya está cogido' : 'No pudimos guardar',
@@ -152,14 +240,46 @@ export default function EditProfileScreen() {
           icon="create"
           right={
             <Btn label="Guardar" onPress={guardar} tone="solid" small
-              loading={guardando} disabled={subiendo} />
+              loading={guardando} disabled={subiendo || subiendoPortada} />
           }
         />
 
         <ScrollView
-          contentContainerStyle={{ padding: 20, paddingBottom: 60 }}
+          contentContainerStyle={{ padding: 20, paddingBottom: TabBar.scrollInset }}
           keyboardShouldPersistTaps="handled"
         >
+          {/* Portada */}
+          <Text style={[s.etiqueta, { color: T.ink3 }]}>PORTADA</Text>
+          <TouchableOpacity
+            style={[s.portadaCaja, { backgroundColor: T.glass, borderColor: T.glassBorder }]}
+            onPress={cambiarPortada}
+            activeOpacity={0.85}
+            disabled={subiendoPortada}
+          >
+            {portada ? (
+              <Image source={{ uri: portada }} style={s.portadaImg} contentFit="cover" transition={180} />
+            ) : (
+              <View style={s.portadaVacia}>
+                <Ionicons name="image-outline" size={22} color={T.ink3} />
+                <Text style={[s.portadaTxt, { color: T.ink3 }]}>
+                  Sin portada: se usa tu última publicación
+                </Text>
+              </View>
+            )}
+            {subiendoPortada && (
+              <View style={s.portadaCargando}>
+                <ActivityIndicator color="#fff" />
+              </View>
+            )}
+          </TouchableOpacity>
+          <View style={s.portadaBotones}>
+            <Btn label={portada ? 'Cambiar portada' : 'Elegir portada'} onPress={cambiarPortada}
+              tone="soft" small icon="image-outline" disabled={subiendoPortada} />
+            {!!portada && (
+              <Btn label="Quitar" onPress={quitarPortada} tone="ghost" small icon="trash-outline" />
+            )}
+          </View>
+
           {/* Foto */}
           <View style={s.foto}>
             <TouchableOpacity onPress={cambiarFoto} activeOpacity={0.8} disabled={subiendo}>
@@ -179,7 +299,9 @@ export default function EditProfileScreen() {
             </View>
           </View>
 
-          {campo('NOMBRE DE USUARIO', usuario, setUsuario, {
+          {/* Se baja a minúsculas al teclear, no al guardar: el servidor lo
+              hace igual, y verlo cambiar después es peor que verlo ya así. */}
+          {campo('NOMBRE DE USUARIO', usuario, v => setUsuario(v.toLowerCase()), {
             placeholder: 'tu.usuario',
             autoCapitalize: 'none',
             autoCorrect: false,
@@ -234,6 +356,18 @@ export default function EditProfileScreen() {
 }
 
 const s = StyleSheet.create({
+  portadaCaja: {
+    height: 132, borderRadius: 17, borderWidth: 1, overflow: 'hidden',
+    alignItems: 'center', justifyContent: 'center',
+  },
+  portadaImg: { width: '100%', height: '100%' },
+  portadaVacia: { alignItems: 'center', gap: 8, paddingHorizontal: 24 },
+  portadaTxt: { fontSize: 12, textAlign: 'center' },
+  portadaCargando: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center',
+  },
+  portadaBotones: { flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 26 },
   foto: { flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 26 },
   camara: {
     position: 'absolute', bottom: -2, right: -2,

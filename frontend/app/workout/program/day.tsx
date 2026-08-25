@@ -36,7 +36,7 @@ import {
   Modal, TextInput, Alert, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { SafeAreaView, SafeAreaProvider } from 'react-native-safe-area-context'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'

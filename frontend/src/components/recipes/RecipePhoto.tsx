@@ -25,7 +25,7 @@
  */
 
 import { View, Text, StyleSheet, DimensionValue } from 'react-native'
-import { Image, ImageSource } from 'expo-image'
+import { Image, type ImageSource } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import Svg, { Path, G } from 'react-native-svg'
 import Animated, {

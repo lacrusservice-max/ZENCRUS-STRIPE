@@ -15,6 +15,7 @@ import nutritionRoutes from './nutrition.routes'
 import trackingRoutes from './tracking.routes'
 import socialRoutes from './social.routes'
 import exerciseRoutes from './exercises.routes'
+import cycleRoutes from './cycle.routes'
 import { getPublicFlags } from '../controllers/adminController'
 import { ApiResponse } from '../models/types'
 import { supabase } from '../config/supabase'
@@ -71,5 +72,10 @@ router.use('/nutrition', nutritionRoutes)
 router.use('/tracking', trackingRoutes)
 router.use('/social', socialRoutes)
 router.use('/exercises', exerciseRoutes)
+/* El ciclo va aparte y no bajo `/tracking` porque tiene su propio cerrojo: para
+   una cuenta sin el módulo, TODA la rama responde 404 como si no existiera.
+   Colgarlo de `/tracking` obligaría a poner ese cerrojo dentro de un router
+   cuyas otras veinte rutas no lo necesitan. Ver cycle.routes.ts. */
+router.use('/cycle', cycleRoutes)
 
 export default router

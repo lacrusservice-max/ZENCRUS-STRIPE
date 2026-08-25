@@ -24,13 +24,13 @@ import { useState, useCallback, useEffect } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator,
 } from 'react-native'
-import { router, useFocusEffect } from 'expo-router'
-import { Image } from 'expo-image'
+import { useLocalSearchParams, router, useFocusEffect } from 'expo-router'
+import { Image } from '@/components/ui/Imagen'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated'
 import { Screen } from '@/components/ui/Screen'
-import { MenuSeccion, CabeceraSeccion } from '@/components/workout/MenuSeccion'
+import { CabeceraSeccion } from '@/components/workout/MenuSeccion'
 import { RegionCards, Zona } from '@/components/workout/RegionCards'
 import { HeroCard } from '@/components/workout/HeroCard'
 import { Vacio } from '@/components/workout/Charts'
@@ -56,7 +56,17 @@ const NOMBRE_REGION: Record<string, string> = {
 
 export default function Descubre() {
   const [opciones, setOpciones] = useState<Opciones | null>(null)
-  const [lugar, setLugar] = useState<Lugar>('todo')
+  /**
+   * EL LUGAR VIENE DECIDIDO, NO SE PREGUNTA.
+   *
+   * Se llega desde la portada de un lugar, así que preguntarlo otra vez es
+   * peor que redundante: dejaba elegir «en casa» desde dentro del gimnasio y
+   * generaba una sesión que no pertenece a la página en la que estás. Con el
+   * parámetro puesto, el paso 1 desaparece y no hay nada que cruzar.
+   */
+  const { mode } = useLocalSearchParams<{ mode?: string }>()
+  const fijado: Lugar | null = mode === 'home' || mode === 'gym' ? mode : null
+  const [lugar, setLugar] = useState<Lugar>(fijado ?? 'todo')
   const [minutos, setMinutos] = useState(20)
   const [region, setRegion] = useState<string | null>(null)
   const [plan, setPlan] = useState<Generado | null>(null)
@@ -96,8 +106,10 @@ export default function Descubre() {
 
   return (
     <Screen>
-      <CabeceraSeccion titulo="Descubre" subtitulo="Dime dónde estás y cuánto tienes" />
-      <MenuSeccion activo="descubre" />
+      <CabeceraSeccion
+        titulo="Descubre"
+        subtitulo={fijado ? 'Dime cuánto tiempo tienes' : 'Dime dónde estás y cuánto tienes'}
+      />
 
       <ScrollView
         showsVerticalScrollIndicator={false}
@@ -109,7 +121,8 @@ export default function Descubre() {
           <Vacio texto="No se pudo cargar el catálogo. Tira hacia abajo para reintentar." />
         ) : (
           <>
-            {/* ── 1 · Dónde ────────────────────────────────────────────── */}
+            {/* ── 1 · Dónde — solo si NO se llegó desde un lugar ────────── */}
+            {!fijado && (
             <Animated.View entering={FadeInDown.duration(340)} style={{ gap: Spacing[3] }}>
               <Paso n={1} titulo="Dónde entrenas" />
               <View style={s.lugares}>
@@ -129,10 +142,11 @@ export default function Descubre() {
                 })}
               </View>
             </Animated.View>
+            )}
 
             {/* ── 2 · Cuánto ───────────────────────────────────────────── */}
             <Animated.View entering={FadeInDown.delay(60).duration(340)} style={{ gap: Spacing[3] }}>
-              <Paso n={2} titulo="Cuánto tiempo tienes" />
+              <Paso n={fijado ? 1 : 2} titulo="Cuánto tiempo tienes" />
               <View style={s.minutos}>
                 {opciones.duraciones.map(m => {
                   const on = minutos === m
@@ -156,7 +170,7 @@ export default function Descubre() {
 
             {/* ── 3 · Qué ──────────────────────────────────────────────── */}
             <Animated.View entering={FadeInDown.delay(120).duration(340)} style={{ gap: Spacing[2] }}>
-              <Paso n={3} titulo="Qué quieres trabajar" />
+              <Paso n={fijado ? 2 : 3} titulo="Qué quieres trabajar" />
               <RegionCards elegida={region} onElegir={elegirRegion} />
             </Animated.View>
 

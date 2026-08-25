@@ -192,12 +192,7 @@ function LogSleepModal({ visible, onClose }: { visible: boolean; onClose: () => 
   const [waketime, setWaketime] = useState('07:00')
 
   const handle = () => {
-    logSleep({
-      date: hoyLocal(),
-      bedtime,
-      wakeTime: waketime,
-      deepSleepHours: 0,
-      remSleepHours: 0 })
+    logSleep({ date: hoyLocal(), bedtime, wakeTime: waketime })
     onClose()
   }
 
@@ -428,9 +423,16 @@ export default function HealthTrackerScreen() {
                   <Text style={[s.qualityTxt, { color: QUALITY_COLORS[todaySleep.quality] }]}>{QUALITY_LABELS[todaySleep.quality]}</Text>
                 </View>
               </View>
+              {/* El sueño profundo y el REM solo se enseñan si alguna vez hay
+                  con qué medirlos. Salían de multiplicar las horas por 0,2 y
+                  por 0,25 —dos constantes— y se leían como fases medidas. */}
               <View style={{ alignItems: 'flex-end', gap: 4 }}>
-                <Text style={s.metaStat}>😴 Sueño profundo: {todaySleep.deepSleepHours}h</Text>
-                <Text style={s.metaStat}>🧠 REM: {todaySleep.remSleepHours}h</Text>
+                {todaySleep.deepSleepHours != null && (
+                  <Text style={s.metaStat}>😴 Sueño profundo: {todaySleep.deepSleepHours}h</Text>
+                )}
+                {todaySleep.remSleepHours != null && (
+                  <Text style={s.metaStat}>🧠 REM: {todaySleep.remSleepHours}h</Text>
+                )}
                 <Text style={s.metaStat}>🌙 {todaySleep.bedtime} → {todaySleep.wakeTime}</Text>
               </View>
             </View>

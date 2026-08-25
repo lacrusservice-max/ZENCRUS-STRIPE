@@ -31,9 +31,10 @@ import {
   Alert, Modal, KeyboardAvoidingView, Platform, ActivityIndicator,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import { useLocalSearchParams, router } from 'expo-router'
+import { volverA } from '@/components/workout/MenuSeccion'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import { useKeepAwake } from 'expo-keep-awake'
@@ -263,7 +264,7 @@ function ElegirModo({ onElegir }: { onElegir: (m: Modo) => void }) {
           ))}
         </View>
 
-        <TouchableOpacity onPress={() => router.back()} style={s.modoVolver}>
+        <TouchableOpacity onPress={volverA('/(tabs)/workout')} style={s.modoVolver}>
           <Text style={s.modoVolverTxt}>Volver</Text>
         </TouchableOpacity>
       </View>
@@ -1249,7 +1250,7 @@ function Resumen({ datos, marcas = [], titulo, modo, posters = [] }: {
             </View>
           )}
 
-          <TouchableOpacity style={r.boton} onPress={() => router.replace('/(tabs)/workout')} activeOpacity={0.88}>
+          <TouchableOpacity style={r.boton} onPress={() => router.replace('/workout/gym')} activeOpacity={0.88}>
             <Text style={r.botonTxt}>Volver a Entrena</Text>
           </TouchableOpacity>
 

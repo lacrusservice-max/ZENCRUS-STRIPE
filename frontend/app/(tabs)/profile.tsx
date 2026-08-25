@@ -8,6 +8,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 import * as ImagePicker from 'expo-image-picker'
 import { Ionicons } from '@expo/vector-icons'
 import { useAuthStore } from '@/store/authStore'
+import { tieneCiclo } from '@/features/salud/acceso'
 import { useAchievementStore } from '@/store/achievementStore'
 import { useRecipesStore } from '@/store/recipesStore'
 import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
@@ -391,15 +392,20 @@ export default function ProfileScreen() {
           </View>
         </CollapsibleSection>
 
-        {/* ── Ciclo menstrual ── */}
-        <TouchableOpacity style={al.navCard} onPress={() => router.push('/menstrual')}>
-          <Text style={al.navEmoji}>🌸</Text>
-          <View style={{ flex: 1 }}>
-            <Text style={al.navTitle}>Ciclo menstrual</Text>
-            <Text style={al.navSub}>Predicciones, síntomas y nutrición por fase</Text>
-          </View>
-          <Text style={al.navArrow}>›</Text>
-        </TouchableOpacity>
+        {/* ── Ciclo menstrual ──
+            Solo para las cuentas que tienen el módulo. Para el resto la tarjeta
+            no existe: no se enseña deshabilitada ni se enseña y luego se niega
+            el paso. Ver features/salud/acceso.ts. */}
+        {tieneCiclo(user) && (
+          <TouchableOpacity style={al.navCard} onPress={() => router.push('/salud/ciclo')}>
+            <Text style={al.navEmoji}>🌸</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={al.navTitle}>Ciclo menstrual</Text>
+              <Text style={al.navSub}>Predicciones, síntomas y nutrición por fase</Text>
+            </View>
+            <Text style={al.navArrow}>›</Text>
+          </TouchableOpacity>
+        )}
 
         {/* ── Accesos rápidos ── */}
         <Text style={[s.sectionTitle, { marginTop: Spacing[5] }]}>Accesos rápidos</Text>

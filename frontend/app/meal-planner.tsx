@@ -14,6 +14,7 @@ import { RecipePhoto } from '@/components/recipes/RecipePhoto'
 import { photoFor, RECIPE_CREDITS } from '@/data/recipePhotos'
 import { Colors, Typography, Spacing, BorderRadius } from '@/constants/theme'
 import { Screen, ScreenHeader } from '@/components/ui/Screen'
+import { TabBar } from '@/constants/layout'
 
 // ── Macro Bar ─────────────────────────────────────────────────────────────────
 
@@ -138,7 +139,7 @@ function AddMealModal({ visible, day, slot, onClose }: {
             ))}
           </View>
 
-          <ScrollView contentContainerStyle={{ padding: Spacing[4], paddingBottom: 60, gap: Spacing[2] }}>
+          <ScrollView contentContainerStyle={{ padding: Spacing[4], paddingBottom: TabBar.scrollInset, gap: Spacing[2] }}>
 
             {tab === 'quick' && filteredQuick.map(meal => (
               <TouchableOpacity key={meal.id} style={am.mealRow} onPress={() => addMeal(meal)}>

@@ -19,9 +19,9 @@ import { useState, useCallback } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
-import { router, useFocusEffect } from 'expo-router'
+import { router, useFocusEffect, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
 import * as Haptics from 'expo-haptics'
 import Animated, { FadeIn, FadeInDown } from 'react-native-reanimated'
@@ -60,7 +60,14 @@ export default function Programas() {
 
   useFocusEffect(useCallback(() => { void cargar() }, [cargar]))
 
-  const otros = programas.filter(p => p.id !== mio?.program_id)
+  /* Los planes traen su lugar (`mode`). En la portada de casa, ofrecer uno que
+     pide jaula y prensa es ofrecer lo que no se puede hacer; y al revés, en el
+     gimnasio sobra el de suelo. El que YA sigues no se filtra nunca: si lo
+     escondiéramos, «Cambiar de plan» dejaría de enseñar el que quieres cambiar. */
+  const { mode } = useLocalSearchParams<{ mode?: string }>()
+  const otros = programas
+    .filter(p => p.id !== mio?.program_id)
+    .filter(p => !mode || p.mode === mode)
 
   return (
     <Screen>

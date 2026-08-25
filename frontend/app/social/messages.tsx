@@ -3,15 +3,24 @@
  * ───────────────────
  * Los chats y, aparte, las solicitudes de quien todavía no puede escribirme.
  *
- * ── Por qué las solicitudes van en otra pestaña ─────────────────────────────
+ * ── Las solicitudes siguen aparte, pero ya no cuestan una pestaña ───────────
  * Mezclarlas con los chats convierte la bandeja en un sitio incómodo: cualquier
- * desconocido aparecería junto a la gente con la que hablas. Separadas, se
- * miran cuando uno quiere y no interrumpen.
+ * desconocido aparecería junto a la gente con la que hablas. Siguen separadas.
+ *
+ * Lo que cambia es cómo se llega: eran dos pestañas a todo el ancho, siempre
+ * presentes aunque no hubiera ninguna solicitud — un control permanente para
+ * algo que casi nunca pasa. Ahora es una fila al final de la lista, y solo
+ * aparece cuando hay alguna.
+ *
+ * ── La fila de caras ────────────────────────────────────────────────────────
+ * Arriba, las conversaciones abiertas como avatares. Abrir un chat es lo que
+ * más se hace aquí y así cuesta un toque sin leer ninguna fila. Las que tienen
+ * sin leer llevan el aro encendido, igual que las historias.
  */
 
 import { useCallback, useState } from 'react'
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert,
+  View, Text, StyleSheet, FlatList, TouchableOpacity, RefreshControl, Alert, ScrollView,
 } from 'react-native'
 import { router, useFocusEffect } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -21,6 +30,7 @@ import { useSocialStore } from '@/store/socialStore'
 import { Avatar, Badge, Empty, Skeleton, timeAgo } from '@/components/social/Bits'
 import * as S from '@/services/socialService'
 import { useLivePoll } from '@/hooks/useLivePoll'
+import { TabBar } from '@/constants/layout'
 
 export default function MessagesScreen() {
   const T = useAppTheme()
@@ -83,31 +93,41 @@ export default function MessagesScreen() {
     <Screen>
       <ScreenHeader back eyebrow="COMUNIDAD" title="Mensajes" icon="chatbubbles" />
 
-      {/* Pestañas */}
-      <View style={[t.wrap, { backgroundColor: T.glass, borderColor: T.glassBorder }]}>
-        {([
-          { k: 'chats' as const, label: 'Chats', n: inbox.unread.chats },
-          { k: 'requests' as const, label: 'Solicitudes', n: inbox.requests.length },
-        ]).map(o => {
-          const activa = pestana === o.k
-          return (
+      {pestana === 'requests' ? (
+        <TouchableOpacity
+          style={sv.volver}
+          onPress={() => setPestana('chats')}
+          activeOpacity={0.75}
+        >
+          <Ionicons name="chevron-back" size={16} color={T.accent} />
+          <Text style={[sv.volverTxt, { color: T.accent }]}>Volver a los chats</Text>
+        </TouchableOpacity>
+      ) : inbox.chats.length > 1 && (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={sv.caras}
+        >
+          {inbox.chats.map(c => (
             <TouchableOpacity
-              key={o.k}
-              style={[t.opt, activa && { backgroundColor: `${T.accent}1E`, borderColor: `${T.accent}38` }]}
-              onPress={() => setPestana(o.k)}
+              key={c.id}
+              style={sv.cara}
               activeOpacity={0.8}
+              onPress={() => router.push(`/social/chat/${c.id}`)}
             >
-              <Text style={[t.txt, { color: activa ? T.accent : T.ink3 }]}>{o.label}</Text>
-              {o.n > 0 && <Badge count={o.n} />}
+              <Avatar profile={c.other} size={46} ring={c.unread > 0 ? T.accent : undefined} />
+              <Text style={[sv.caraN, { color: T.ink3 }]} numberOfLines={1}>
+                {c.other?.username ?? c.other?.fullName ?? '—'}
+              </Text>
             </TouchableOpacity>
-          )
-        })}
-      </View>
+          ))}
+        </ScrollView>
+      )}
 
       <FlatList
         data={lista}
         keyExtractor={c => c.id}
-        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: 40 }}
+        contentContainerStyle={{ paddingHorizontal: 20, paddingBottom: TabBar.scrollInset }}
         refreshControl={
           <RefreshControl refreshing={refrescando} onRefresh={() => cargar(true)} tintColor={T.accent} />
         }
@@ -164,6 +184,23 @@ export default function MessagesScreen() {
             ) : null}
           </TouchableOpacity>
         )}
+        ListFooterComponent={
+          pestana === 'chats' && inbox.requests.length ? (
+            <TouchableOpacity
+              style={[sv.solicitudes, { backgroundColor: T.glass, borderColor: T.glassBorder }]}
+              onPress={() => setPestana('requests')}
+              activeOpacity={0.8}
+            >
+              <Ionicons name="mail-outline" size={16} color={T.ink3} />
+              <Text style={[sv.solicitudesTxt, { color: T.ink2 }]}>
+                {inbox.requests.length === 1
+                  ? '1 solicitud esperando'
+                  : `${inbox.requests.length} solicitudes esperando`}
+              </Text>
+              <Ionicons name="chevron-forward" size={15} color={T.ink3} />
+            </TouchableOpacity>
+          ) : null
+        }
         ListEmptyComponent={
           cargando ? (
             <View style={{ gap: 20, paddingTop: 8 }}>
@@ -198,16 +235,17 @@ export default function MessagesScreen() {
   )
 }
 
-const t = StyleSheet.create({
-  wrap: {
-    flexDirection: 'row', gap: 4, marginHorizontal: 20, marginBottom: 12,
-    padding: 4, borderRadius: 15, borderWidth: 1,
+const sv = StyleSheet.create({
+  caras: { paddingHorizontal: 20, gap: 14, paddingBottom: 16 },
+  cara: { alignItems: 'center', width: 56, gap: 6 },
+  caraN: { fontSize: 10, fontWeight: '600' },
+  volver: { flexDirection: 'row', alignItems: 'center', gap: 4, paddingHorizontal: 18, paddingBottom: 12 },
+  volverTxt: { fontSize: 13, fontWeight: '700' },
+  solicitudes: {
+    flexDirection: 'row', alignItems: 'center', gap: 10,
+    marginTop: 18, padding: 13, borderRadius: 15, borderWidth: 1,
   },
-  opt: {
-    flex: 1, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
-    paddingVertical: 9, borderRadius: 12, borderWidth: 1, borderColor: 'transparent',
-  },
-  txt: { fontSize: 13, fontWeight: '700' },
+  solicitudesTxt: { flex: 1, fontSize: 13 },
 })
 
 const s = StyleSheet.create({

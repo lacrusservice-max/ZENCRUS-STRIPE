@@ -29,7 +29,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, Modal, ScrollView, Pressable } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'

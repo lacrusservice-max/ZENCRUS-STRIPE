@@ -23,13 +23,13 @@ import { useState, useCallback, useMemo } from 'react'
 import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, ActivityIndicator, RefreshControl,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useFocusEffect } from 'expo-router'
 import Animated, { FadeInDown, FadeIn } from 'react-native-reanimated'
 import { Ionicons } from '@expo/vector-icons'
 import { Screen } from '@/components/ui/Screen'
-import { MenuSeccion, CabeceraSeccion } from '@/components/workout/MenuSeccion'
+import { CabeceraSeccion } from '@/components/workout/MenuSeccion'
 import { Vacio } from '@/components/workout/Charts'
 import { misRecords, Marca, Metrica } from '@/services/sessionService'
 import { desdeCuando } from '@/services/statsService'
@@ -112,7 +112,6 @@ export default function Records() {
           ? `${marcas.length} ${marcas.length === 1 ? 'marca' : 'marcas'} en ${porEjercicio.length} ${porEjercicio.length === 1 ? 'ejercicio' : 'ejercicios'}`
           : 'Tus mejores marcas'}
       />
-      <MenuSeccion activo="records" />
 
       <ScrollView
         showsVerticalScrollIndicator={false}

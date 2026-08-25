@@ -33,7 +33,7 @@ import {
   View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput,
   Modal, Alert, ActivityIndicator, Platform, Pressable,
 } from 'react-native'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import { LinearGradient } from 'expo-linear-gradient'
 import { router, useLocalSearchParams } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
@@ -195,7 +195,7 @@ export default function TuSemana() {
       const guardado = await guardarPlan(plan, id)
       if (!id) await inscribirse(guardado.id).catch(() => {})
       void Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success)
-      router.replace('/(tabs)/workout')
+      router.replace('/workout/gym')
     } catch (e) {
       const msg = (e as { response?: { data?: { message?: string } } })?.response?.data?.message
       Alert.alert('No se pudo guardar', msg ?? 'Revisa la conexión y vuelve a intentarlo.')

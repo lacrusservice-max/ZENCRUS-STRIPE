@@ -26,8 +26,29 @@ export interface SleepEntry {
   wakeTime: string
   totalHours: number
   quality: 'poor' | 'fair' | 'good' | 'excellent'
-  deepSleepHours: number
-  remSleepHours: number
+  /**
+   * Si la calidad la dijo quien durmió, o si se dedujo de las horas.
+   *
+   * Importa porque son cosas distintas: ocho horas dando vueltas en la cama no
+   * son un sueño «excelente», y hasta ahora la app lo llamaba así porque solo
+   * miraba el reloj. Lo que se deduce se puede seguir enseñando, pero no puede
+   * presentarse con la misma autoridad que lo que alguien ha declarado.
+   */
+  qualitySource: 'declarada' | 'derivada'
+  /**
+   * null = no se puede saber, que es SIEMPRE mientras no haya un sensor.
+   *
+   * Aquí había `totalHours * 0.2` y `totalHours * 0.25`: dos constantes que se
+   * enseñaban en la pantalla del tracker como «Sueño profundo: 1.6 h» y «REM:
+   * 2 h». No eran una estimación declarada como tal, eran una multiplicación
+   * presentada como medición — el mismo patrón que el pulso de 65 y los pasos
+   * al azar que documenta este archivo más abajo.
+   *
+   * Se quedan en el modelo porque el día que haya de dónde sacarlas se
+   * rellenan; hasta entonces valen null y no se pintan.
+   */
+  deepSleepHours: number | null
+  remSleepHours: number | null
 }
 
 export interface DailyHealthSummary {
@@ -130,7 +151,9 @@ interface HealthTrackerState {
   addSteps: (steps: number) => void
   setTodaySteps: (steps: number) => void
   logHeartRate: (bpm: number, type: HeartRateEntry['type']) => void
-  logSleep: (entry: Omit<SleepEntry, 'totalHours' | 'quality'>) => void
+  /** `quality` opcional: si va, es la percibida y manda; si no, se deduce de las horas. */
+  logSleep: (entry: Omit<SleepEntry, 'totalHours' | 'quality' | 'qualitySource' | 'deepSleepHours' | 'remSleepHours'>
+    & { quality?: SleepEntry['quality'] }) => void
   startStepTracking: () => void
   stopStepTracking: () => void
   getTodaySummary: () => DailyHealthSummary
@@ -198,17 +221,26 @@ export const useHealthTrackerStore = create<HealthTrackerState>()(
         let totalMins = (wakeH * 60 + wakeM) - (bedH * 60 + bedM)
         if (totalMins < 0) totalMins += 1440
         const totalHours = Math.round((totalMins / 60) * 10) / 10
-        const quality: SleepEntry['quality'] =
+
+        /* Manda lo que diga quien durmió. La duración solo decide cuando nadie
+           lo ha dicho, y entonces queda marcada como deducida: ocho horas en
+           blanco mirando el techo no son un sueño excelente, y ese era el
+           veredicto que salía de mirar solo el reloj. */
+        const quality: SleepEntry['quality'] = sleepData.quality ?? (
           totalHours >= 7.5 ? 'excellent' :
           totalHours >= 6.5 ? 'good' :
           totalHours >= 5.5 ? 'fair' : 'poor'
+        )
 
         const entry: SleepEntry = {
-          ...sleepData,
+          date: sleepData.date,
+          bedtime: sleepData.bedtime,
+          wakeTime: sleepData.wakeTime,
           totalHours,
           quality,
-          deepSleepHours: Math.round(totalHours * 0.2 * 10) / 10,
-          remSleepHours: Math.round(totalHours * 0.25 * 10) / 10,
+          qualitySource: sleepData.quality ? 'declarada' : 'derivada',
+          deepSleepHours: null,
+          remSleepHours: null,
         }
         set(s => ({
           sleepHistory: [entry, ...s.sleepHistory.filter(e => e.date !== sleepData.date)].slice(0, 90),

@@ -112,6 +112,13 @@ export interface HabitoServidor {
   hora: string | null          // «07:00», o null si no tiene hora fijada
   tipo: TipoHabito
   metaSegundos: number | null  // null = este hábito no lleva cronómetro
+  alarma: boolean              // suena a la hora de `hora`
+  alarmaDias: number           // máscara: bit 0 = lunes … bit 6 = domingo
+  alarmaFin: boolean           // suena a la hora de `horaFin` (despertar)
+  alarmaFinDias: number
+  alarmaSonido: string | null
+  alarmaPosponer: boolean
+  horaFin: string | null       // horario de SUEÑO: `hora` acuesta, esta despierta
 }
 
 /** fecha → hábito → cumplido. La misma forma que ya guarda `habitsStore`. */
@@ -136,6 +143,13 @@ export interface NuevoHabito {
   hora?: string | null
   tipo?: TipoHabito
   metaSegundos?: number | null
+  alarma?: boolean
+  alarmaDias?: number
+  alarmaFin?: boolean
+  alarmaFinDias?: number
+  alarmaSonido?: string | null
+  alarmaPosponer?: boolean
+  horaFin?: string | null
 }
 
 export async function crearHabito(
@@ -151,6 +165,10 @@ export async function actualizarHabito(
   cambios: {
     label?: string; icon?: string; activo?: boolean; orden?: number
     momento?: Momento; hora?: string | null; tipo?: TipoHabito; metaSegundos?: number | null
+    alarma?: boolean; alarmaDias?: number
+    alarmaFin?: boolean; alarmaFinDias?: number
+    alarmaSonido?: string | null; alarmaPosponer?: boolean
+    horaFin?: string | null
   },
 ): Promise<HabitoServidor> {
   return unwrap(await apiPatch<{ data: HabitoServidor }>(`/tracking/habits/${habitKey}`, cambios))

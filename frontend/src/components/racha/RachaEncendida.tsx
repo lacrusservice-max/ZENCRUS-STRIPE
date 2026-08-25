@@ -32,7 +32,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { View, Text, StyleSheet, Modal, Pressable, Dimensions } from 'react-native'
 import { useVideoPlayer, VideoView } from 'expo-video'
 import { LinearGradient } from 'expo-linear-gradient'
-import { Image } from 'expo-image'
+import { Image } from '@/components/ui/Imagen'
 import Svg, { Defs, RadialGradient, Stop, Rect } from 'react-native-svg'
 import Animated, {
   useSharedValue, useAnimatedStyle, withTiming, withDelay, withSpring, withRepeat,

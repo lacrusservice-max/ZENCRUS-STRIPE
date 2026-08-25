@@ -104,6 +104,12 @@ export async function unregisterPush(): Promise<void> {
  * que mandarlo.
  */
 function abrir(data: Record<string, any>) {
+  /* Los recordatorios de hábitos son avisos LOCALES y comparten esta escucha.
+     Sin esta salida caerían en el `default` de abajo y tocar «Respirar · 07:00»
+     te dejaría en las notificaciones de Comunidad. Los suyos los enruta
+     `features/salud/recordatorios`. */
+  if (data?.tipo === 'habito') return
+
   switch (data?.tipo) {
     case 'message':
       if (data.conversacion) router.push(`/social/chat/${data.conversacion}`)
@@ -115,7 +121,7 @@ function abrir(data: Record<string, any>) {
     case 'like':
     case 'comment':
     case 'mention':
-      if (data.post) router.push(`/social/comments/${data.post}`)
+      if (data.post) router.push(`/social/post/${data.post}`)
       else router.push('/social/notifications')
       break
     case 'follow':

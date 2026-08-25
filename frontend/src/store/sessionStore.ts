@@ -31,6 +31,7 @@ import {
   cerrarSesion, descartarSesion,
   Sesion, Serie, NuevaSerie, MarcaNueva, Cierre, Modo, Origen,
 } from '@/services/sessionService'
+import { alTerminarEntrenamiento } from '@/features/salud/autoHabitos'
 
 const DISCO = 'zencrus_sesion_activa'
 
@@ -433,6 +434,8 @@ export const useSessionStore = create<Estado>((set, get) => ({
         ...c,
       })
       await get().limpiar()
+      // El hábito «Entrenar» ya no hay que marcarlo a mano: acaba de pasar.
+      alTerminarEntrenamiento()
       return r.session
     } catch {
       return null

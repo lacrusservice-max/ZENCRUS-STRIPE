@@ -1,447 +1,292 @@
-import { useState, useEffect } from 'react'
+/**
+ * SALUD — cuatro puertas
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Cuatro bloques y nada más. Es el mismo componente conceptual que el selector
+ * de Entrena: un bloque grande, un nombre enorme y una sola cosa que tocar.
+ *
+ * ── Lo que se quitó, y por qué ─────────────────────────────────────────────
+ * Había siete tarjetas del mismo peso y seis de ellas enseñaban un guion. El
+ * problema no era que faltaran datos: era que la pantalla no tenía nada que
+ * decir mientras no los hubiera, y siete cosas iguales no se leen, se hojean.
+ *
+ *   · Running se fue a Entrena, donde ya vive junto a Gym y Casa. Su tarjeta
+ *     seguía siendo lo primero de esta pestaña y apuntaba a otra sección.
+ *   · Sueño se funde con el check-in: las dos cosas se contestan en el mismo
+ *     momento, al despertar, y preguntarlas por separado era pedir dos veces
+ *     lo mismo.
+ *   · Corazón, peso, ficha médica e historial caben en «Tu cuerpo», que es lo
+ *     que son: lo que se mide de vez en cuando, no cada día.
+ *
+ * ── El icono manda y la cifra acompaña ─────────────────────────────────────
+ * El icono grande de fondo está SIEMPRE, también cuando ya hay dato. La
+ * primera versión lo sustituía por el número en cuanto había algo que enseñar,
+ * y con eso el bloque cambiaba de aspecto según el día: la pantalla dejaba de
+ * ser reconocible de un vistazo. Ahora lo único que cambia es la pastilla.
+ *
+ * ── Nada de adjetivos con género ───────────────────────────────────────────
+ * El veredicto de recuperación dice «buena recuperación», no «recuperada».
+ * Esta pestaña la abre todo el mundo.
+ */
+
+import { useEffect, useMemo } from 'react'
 import {
   View, Text, StyleSheet, TouchableOpacity, ScrollView,
-  Modal, TextInput, KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
+import { router, type Href } from 'expo-router'
 import { Ionicons } from '@expo/vector-icons'
-import { useRouter } from 'expo-router'
+import { LinearGradient } from 'expo-linear-gradient'
 import { useHealthTrackerStore } from '@/store/healthTrackerStore'
-import { useRecoveryStore, type RecoveryEntry } from '@/store/recoveryStore'
-import { elegir, confirmar, logro } from '@/utils/haptica'
+import { useRecoveryStore } from '@/store/recoveryStore'
 import { useHabitsStore } from '@/store/habitsStore'
-import { Colors, Glass, Typography, Spacing, BorderRadius } from '@/constants/theme'
-import { Screen, ScreenHeader } from '@/components/ui/Screen'
-import { GlassCard, GlassProgress } from '@/components/ui/Glass'
-import { WaterWidget } from '@/components/ui/WaterWidget'
-import { NavCard, sharedProgressStyles as s } from '@/components/ui/ProgressWidgets'
+import { useCicloStore } from '@/store/cicloStore'
+import { useAuthStore } from '@/store/authStore'
+import { useCiclo } from '@/features/salud/ciclo/useCiclo'
+import { tieneCiclo } from '@/features/salud/acceso'
+import { haceDias } from '@/utils/fechas'
+import { elegir } from '@/utils/haptica'
+import { Spacing } from '@/constants/theme'
 
-const SLEEP_QUALITY: Record<string, string> = {
-  poor: '😴 Pobre', fair: '🙂 Regular', good: '😊 Bueno', excellent: '🤩 Excelente',
-}
-
-// ── Hoy: pasos + sueño ─────────────────────────────────────────────────────────
+type IconName = React.ComponentProps<typeof Ionicons>['name']
 
 /**
- * Las dos celdas cuentan el mismo vacío de la misma forma.
+ * La escala de rojo, la misma que Entrena y bajando pareja.
  *
- * Antes no: la de sueño distinguía «sin registro» y pintaba «—», y la de pasos
- * de al lado soltaba un «0» enorme en blanco. Dos celdas gemelas, una honesta y
- * otra no, a tres centímetros la una de la otra. Mientras el historial venía
- * relleno de datos inventados nadie lo notaba, porque el cero no aparecía nunca.
- *
- * Y la barra desaparece cuando no hay medición, en las dos. Un carril vacío no
- * es neutro: dice «llevas el 0 % de tu meta», que es una afirmación sobre el día
- * de alguien de quien no sabemos nada todavía.
+ * El tercer color es siempre el casi-negro del fondo: sin él el degradado se
+ * corta en seco contra la pantalla y el bloque parece un recorte pegado.
  */
-function TodaySection() {
-  const { getTodaySummary, getTodayProgress, stepGoal, sleepGoal } = useHealthTrackerStore()
-  const today = getTodaySummary()
-  const pasos = getTodayProgress()
-
-  // Guardas contra meta 0: sin ellas la anchura sale 'NaN%' y el carril se rompe.
-  const stepPct = stepGoal > 0 ? Math.min(pasos.steps / stepGoal, 1) : 0
-  const sleepH = today.sleepHours          // null = esa noche no se registró
-  const durmio = sleepH != null && sleepH > 0
-  const sleepPct = durmio && sleepGoal > 0 ? Math.min(sleepH / sleepGoal, 1) : 0
-
-  return (
-    <View style={s.section}>
-      <View style={ht.grid}>
-        <View style={ht.cell}>
-          <Ionicons name="walk" size={22} color={Colors.primary[400]} style={ht.cellEmoji} />
-          <Text style={[ht.cellVal, !pasos.registrado && ht.cellValVacio]}>
-            {pasos.registrado ? pasos.steps.toLocaleString('es-MX') : '—'}
-          </Text>
-          <Text style={ht.cellLabel}>{pasos.registrado ? 'pasos hoy' : 'sin registro'}</Text>
-          {pasos.registrado && (
-            <View style={ht.miniBarBg}>
-              <View style={[ht.miniBarFill, { width: `${stepPct * 100}%` as any, backgroundColor: Colors.primary[400] }]} />
-            </View>
-          )}
-        </View>
-        <View style={ht.cell}>
-          <Ionicons name="moon" size={22} color={Colors.secondary[400]} style={ht.cellEmoji} />
-          <Text style={[ht.cellVal, !durmio && ht.cellValVacio]}>
-            {durmio ? `${sleepH.toFixed(1)}h` : '—'}
-          </Text>
-          <Text style={ht.cellLabel}>{today.sleepQuality ? SLEEP_QUALITY[today.sleepQuality] : 'sin registro'}</Text>
-          {durmio && (
-            <View style={ht.miniBarBg}>
-              <View style={[ht.miniBarFill, { width: `${sleepPct * 100}%` as any, backgroundColor: Colors.secondary[400] }]} />
-            </View>
-          )}
-        </View>
-      </View>
-    </View>
-  )
+const DEGRADADOS: Record<string, [string, string, string]> = {
+  hoy:    ['#FF1F3D', '#C50E28', '#0D0E12'],
+  habito: ['#A81238', '#560C22', '#0D0E12'],
+  ciclo:  ['#A81460', '#530C31', '#0D0E12'],
+  cuerpo: ['#93123C', '#4A0C1E', '#0D0E12'],
 }
 
-const ht = StyleSheet.create({
-  grid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[3] },
-  cell: { width: '47%', backgroundColor: Glass.card, borderRadius: BorderRadius.lg, padding: Spacing[4], borderWidth: 1, borderColor: Glass.cardBorder },
-  cellEmoji: { fontSize: 20, marginBottom: Spacing[1] },
-  cellVal: { fontSize: Typography.fontSize.xl, fontWeight: '900', color: '#fff' },
-  /* El hueco no compite con el dato: si el «—» pesara lo mismo que un número,
-     seguiría leyéndose como una medición. */
-  cellValVacio: { color: 'rgba(255,255,255,0.28)', fontWeight: '700' },
-  cellLabel: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.6)', marginTop: 2 },
-  miniBarBg: { height: 3, backgroundColor: Glass.cardBorder, borderRadius: 2, marginTop: Spacing[2], overflow: 'hidden' },
-  miniBarFill: { height: 3, borderRadius: 2 },
-})
-
-// ── Recuperación ───────────────────────────────────────────────────────────────
-
-const RECOVERY_LABELS = ['Muy bajo', 'Bajo', 'Normal', 'Bueno', 'Excelente']
-
-/**
- * Sin tocar nada, no hay respuesta.
- *
- * Las tres filas arrancaban en 3 con tres puntos encendidos y el rótulo
- * «Normal»: el formulario venía contestado. Quien abriera el check-in y pulsara
- * «Guardar» sin mirar, persistía un 3/3/3 que nadie había dicho — y ese
- * check-in entra en el score de recuperación con la mitad del peso.
- *
- * Es el mismo pecado que el pulso de 65, solo que en vez de fabricar el dato al
- * leerlo lo fabrica al escribirlo, que es peor: queda guardado.
- */
-function StepperRow({ label, value, onChange }: { label: string; value: number | null; onChange: (v: number) => void }) {
-  return (
-    <View style={rc.stepperRow}>
-      <Text style={rc.stepperLabel}>{label}</Text>
-      <View style={rc.dots}>
-        {[1, 2, 3, 4, 5].map(n => (
-          <TouchableOpacity key={n} onPress={() => onChange(n)} style={[rc.dot, value != null && n <= value && rc.dotOn]} activeOpacity={0.7} />
-        ))}
-      </View>
-      <Text style={[rc.stepperHint, value == null && rc.stepperHintVacio]}>
-        {value != null ? RECOVERY_LABELS[value - 1] : 'sin marcar'}
-      </Text>
-    </View>
-  )
+interface Puerta {
+  id: keyof typeof DEGRADADOS
+  nombre: string
+  lema: string
+  /** El icono grande del fondo. Siempre, haya dato o no. */
+  icono: IconName
+  /** La pastilla. `null` = todavía no hay nada medido, y no se pinta. */
+  cifra: string | null
+  unidad?: string
+  ruta: Href
 }
-
-function RecoveryModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { logToday, getToday } = useRecoveryStore()
-  const existing = getToday()
-  const [energy, setEnergy] = useState<number | null>(existing?.energy ?? null)
-  const [soreness, setSoreness] = useState<number | null>(existing?.soreness ?? null)
-  const [stress, setStress] = useState<number | null>(existing?.stress ?? null)
-  const completo = energy != null && soreness != null && stress != null
-
-  const handleSave = async () => {
-    if (!completo) return
-    await logToday({ energy, soreness, stress })
-    onClose()
-  }
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <SafeAreaView style={rc.container}>
-          <View style={rc.header}>
-            <Text style={rc.title}>¿Cómo te sientes hoy?</Text>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" /></TouchableOpacity>
-          </View>
-          <View style={rc.body}>
-            <StepperRow label="Energía" value={energy} onChange={setEnergy} />
-            <StepperRow label="Dolor muscular (5 = sin dolor)" value={soreness} onChange={setSoreness} />
-            <StepperRow label="Estrés (5 = muy relajado)" value={stress} onChange={setStress} />
-            <TouchableOpacity
-              style={[rc.saveBtn, !completo && rc.saveBtnOff]}
-              onPress={handleSave}
-              disabled={!completo}
-            >
-              <Text style={rc.saveBtnTxt}>
-                {completo ? 'Guardar check-in' : 'Marca las tres para guardar'}
-              </Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-    </Modal>
-  )
-}
-
-/**
- * EL SCORE QUE SALÍA DE LA NADA
- * ─────────────────────────────
- * Esta tarjeta enseñaba un 70 en verde a cualquiera que abriese la app por
- * primera vez. No lo calculaba mal: `getRestingHeartRate()` devolvía 65 cuando
- * no había ni una pulsación medida, y de ese 65 salía un score de 70 exacto,
- * siempre el mismo. Debajo, el texto de ayuda remataba diciendo que el número
- * venía «de sueño y frecuencia cardíaca», que era falso y además le daba
- * procedencia de dato objetivo.
- *
- * Ahora el score puede no existir, y cuando no existe se dice. Y cuando existe
- * a medias, el texto nombra SOLO las señales que de verdad han entrado, en vez
- * de recitar una lista fija.
- */
-function RecoverySection() {
-  const [modal, setModal] = useState(false)
-  const { getRecoveryScore, getRecoverySources, getToday, getWeeklyAverage, getTrend } = useRecoveryStore()
-  const score = getRecoveryScore()
-  const fuentes = getRecoverySources()
-  const todayEntry = getToday()
-  const weekAvg = getWeeklyAverage()
-  const trend = getTrend()
-
-  const scoreColor = score == null
-    ? 'rgba(255,255,255,0.28)'
-    : score >= 70 ? Colors.accent.green : score >= 40 ? Colors.accent.orange : Colors.primary[500]
-
-  /* Nombra lo que hay, no lo que podría haber. Sin esto el texto afirmaba una
-     procedencia que en la mitad de los casos no era la real. */
-  const medido = [fuentes.sueno && 'tu sueño', fuentes.pulso && 'tus pulsaciones'].filter(Boolean) as string[]
-  const listaMedida = medido.length === 2 ? `${medido[0]} y ${medido[1]}` : medido[0]
-
-  return (
-    <View style={s.section}>
-      <View style={s.cardHeader}>
-        <Text style={s.cardTitle}>Recuperación</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setModal(true)}>
-          <Text style={s.addBtnTxt}>{todayEntry ? 'Actualizar' : '+ Registrar'}</Text>
-        </TouchableOpacity>
-      </View>
-      <GlassCard>
-        <View style={rc.scoreRow}>
-          <View>
-            <Text style={[rc.scoreVal, score == null && rc.scoreVacio, { color: scoreColor }]}>
-              {score ?? '—'}
-            </Text>
-            <Text style={rc.scoreSub}>{score == null ? 'Sin datos todavía' : 'Score de hoy'}</Text>
-          </View>
-          {/* `trend` puede valer 'none' —serie sin puntos suficientes— y los
-              ternarios de abajo no lo contemplan: caería al ramal final y
-              pintaría «Estable», afirmando estabilidad de algo que no se ha
-              medido. Hoy lo tapa el guarda de weekAvg, pero depender de eso es
-              frágil, así que se pide explícitamente. */}
-          {weekAvg && trend !== 'none' && (
-            <View style={rc.trendBox}>
-              <Ionicons
-                name={trend === 'up' ? 'trending-up' : trend === 'down' ? 'trending-down' : 'remove'}
-                size={16}
-                color={trend === 'up' ? Colors.accent.green : trend === 'down' ? Colors.primary[400] : 'rgba(255,255,255,0.4)'}
-              />
-              <Text style={rc.trendTxt}>
-                {trend === 'up' ? 'Mejorando' : trend === 'down' ? 'A la baja' : 'Estable'}
-              </Text>
-            </View>
-          )}
-        </View>
-        {/* Sin score no hay barra: una barra al 0 % se lee como «estás a cero»,
-            y de lo que no se ha medido no se puede decir eso. */}
-        {score != null && (
-          <GlassProgress pct={score / 100} color={scoreColor} height={5} style={{ marginTop: Spacing[3] }} />
-        )}
-        {/* Tres estados, y ninguno recita una lista fija de señales. El de en
-            medio nombra lo que de verdad ha entrado; el último existe porque un
-            80 a secas, hecho con una señal de tres, se lee como un veredicto
-            completo. */}
-        {score == null ? (
-          <Text style={rc.hint}>
-            Aún no hay nada con lo que puntuar tu recuperación. Registra cómo te sientes
-            y el score aparece aquí.
-          </Text>
-        ) : !todayEntry ? (
-          <Text style={rc.hint}>
-            {listaMedida
-              ? `Registra cómo te sientes para afinarlo — hoy sale solo de ${listaMedida}.`
-              : 'Registra cómo te sientes para afinarlo.'}
-          </Text>
-        ) : !listaMedida ? (
-          <Text style={rc.hint}>
-            Sale solo de tu check-in. Apunta tu sueño o tus pulsaciones en reposo en el
-            tracker y contarán también.
-          </Text>
-        ) : null}
-      </GlassCard>
-      <RecoveryModal visible={modal} onClose={() => setModal(false)} />
-    </View>
-  )
-}
-
-const rc = StyleSheet.create({
-  scoreRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  scoreVal: { fontSize: 40, fontWeight: '900' },
-  /* Un guión a 40 px con peso 900 no se lee como «no hay dato»: se lee como una
-     barra de carga a medio pintar. Al bajarlo se ve por lo que es —un hueco— y
-     además deja de competir con el titular de la tarjeta. */
-  scoreVacio: { fontSize: 30, fontWeight: '700', lineHeight: 42 },
-  scoreSub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.5)', marginTop: -2 },
-  trendBox: { flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: BorderRadius.base, paddingHorizontal: Spacing[3], paddingVertical: Spacing[2] },
-  trendTxt: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: 'rgba(255,255,255,0.7)' },
-  hint: { fontSize: 11, color: 'rgba(255,255,255,0.4)', marginTop: Spacing[3], lineHeight: 16 },
-  container: { flex: 1, backgroundColor: '#080808' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[5], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
-  title: { fontSize: Typography.fontSize.lg, fontWeight: '800', color: '#fff' },
-  body: { padding: Spacing[5], gap: Spacing[5] },
-  stepperRow: { gap: Spacing[2] },
-  stepperLabel: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#fff' },
-  dots: { flexDirection: 'row', gap: 10 },
-  dot: { width: 36, height: 36, borderRadius: 18, backgroundColor: 'rgba(255,255,255,0.06)', borderWidth: 1, borderColor: Glass.cardBorder },
-  dotOn: { backgroundColor: Colors.primary[500], borderColor: Colors.primary[500] },
-  stepperHint: { fontSize: 11, color: 'rgba(255,255,255,0.4)' },
-  stepperHintVacio: { color: 'rgba(255,255,255,0.28)', fontStyle: 'italic' },
-  saveBtn: { backgroundColor: Colors.primary[500], borderRadius: BorderRadius.lg, padding: Spacing[4], alignItems: 'center', marginTop: Spacing[2] },
-  saveBtnOff: { opacity: 0.4 },
-  saveBtnTxt: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
-})
-
-// ── Hábitos ────────────────────────────────────────────────────────────────────
-
-function AddHabitModal({ visible, onClose }: { visible: boolean; onClose: () => void }) {
-  const { addHabit } = useHabitsStore()
-  const [label, setLabel] = useState('')
-
-  const handleSave = async () => {
-    if (!label.trim()) return
-    await addHabit(label.trim(), 'checkmark-circle-outline')
-    setLabel('')
-    onClose()
-  }
-
-  return (
-    <Modal visible={visible} animationType="slide" presentationStyle="pageSheet" onRequestClose={onClose}>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
-        <SafeAreaView style={rc.container}>
-          <View style={rc.header}>
-            <Text style={rc.title}>Nuevo hábito</Text>
-            <TouchableOpacity onPress={onClose}><Ionicons name="close" size={22} color="rgba(255,255,255,0.6)" /></TouchableOpacity>
-          </View>
-          <View style={rc.body}>
-            <TextInput
-              style={hb.input}
-              value={label}
-              onChangeText={setLabel}
-              placeholder="ej: Estirar 10 minutos"
-              placeholderTextColor="rgba(255,255,255,0.3)"
-              autoFocus
-            />
-            <TouchableOpacity style={rc.saveBtn} onPress={handleSave}>
-              <Text style={rc.saveBtnTxt}>Agregar hábito</Text>
-            </TouchableOpacity>
-          </View>
-        </SafeAreaView>
-      </KeyboardAvoidingView>
-    </Modal>
-  )
-}
-
-function HabitsSection() {
-  const { habits, getTodayStatus, toggleToday, getStreakForHabit } = useHabitsStore()
-  const [addModal, setAddModal] = useState(false)
-  const today = getTodayStatus()
-
-  return (
-    <View style={s.section}>
-      <View style={s.cardHeader}>
-        <Text style={s.cardTitle}>Hábitos de hoy</Text>
-        <TouchableOpacity style={s.addBtn} onPress={() => setAddModal(true)}>
-          <Text style={s.addBtnTxt}>+ Agregar</Text>
-        </TouchableOpacity>
-      </View>
-      <GlassCard noPad>
-        {habits.map((habit, i) => {
-          const done = !!today[habit.id]
-          const streak = getStreakForHabit(habit.id)
-          return (
-            <TouchableOpacity
-              key={habit.id}
-              style={[hb.row, i < habits.length - 1 && hb.rowBorder]}
-              onPress={() => {
-                /* Marcar el último hábito pendiente cierra el día: eso sí es
-                   un logro. Desmarcar no se celebra —solo se acusa recibo—
-                   porque felicitar a alguien por deshacer algo es raro. */
-                toggleToday(habit.id)
-                if (done) { elegir(); return }
-                const faltaban = habits.filter(h => !today[h.id]).length
-                faltaban <= 1 ? logro() : confirmar()
-              }}
-              activeOpacity={0.7}
-            >
-              <View style={[hb.check, done && hb.checkOn]}>
-                {done && <Ionicons name="checkmark" size={16} color="#fff" />}
-              </View>
-              <Ionicons name={habit.icon as any} size={18} color={done ? Colors.primary[400] : 'rgba(255,255,255,0.4)'} />
-              <Text style={[hb.label, done && hb.labelOn]}>{habit.label}</Text>
-              {streak > 0 && (
-                <View style={hb.streakBadge}>
-                  <Text style={hb.streakTxt}>🔥 {streak}</Text>
-                </View>
-              )}
-            </TouchableOpacity>
-          )
-        })}
-      </GlassCard>
-      <AddHabitModal visible={addModal} onClose={() => setAddModal(false)} />
-    </View>
-  )
-}
-
-const hb = StyleSheet.create({
-  row: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], padding: Spacing[4] },
-  rowBorder: { borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
-  check: { width: 26, height: 26, borderRadius: 8, borderWidth: 1.5, borderColor: 'rgba(255,255,255,0.25)', alignItems: 'center', justifyContent: 'center' },
-  checkOn: { backgroundColor: Colors.primary[500], borderColor: Colors.primary[500] },
-  label: { flex: 1, fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.7)', fontWeight: '600' },
-  labelOn: { color: '#fff' },
-  streakBadge: { backgroundColor: 'rgba(255,255,255,0.06)', borderRadius: BorderRadius.base, paddingHorizontal: Spacing[2], paddingVertical: 3 },
-  streakTxt: { fontSize: 11, fontWeight: '700', color: 'rgba(255,255,255,0.6)' },
-  input: { backgroundColor: Glass.card, borderRadius: BorderRadius.md, padding: Spacing[4], fontSize: Typography.fontSize.base, color: '#fff', borderWidth: 1, borderColor: Glass.cardBorder },
-})
-
-// ── Pantalla principal ─────────────────────────────────────────────────────────
 
 export default function SaludScreen() {
-  const router = useRouter()
-  const { load: loadHealthTracker } = useHealthTrackerStore()
-  const { load: loadRecovery } = useRecoveryStore()
-  const { load: loadHabits } = useHabitsStore()
+  const user = useAuthStore(s => s.user)
+  const verCiclo = tieneCiclo(user)
+
+  const cargarSalud = useHealthTrackerStore(s => s.load)
+  const cargarRecuperacion = useRecoveryStore(s => s.load)
+  const cargarHabitos = useHabitsStore(s => s.load)
+  const habits = useHabitsStore(s => s.habits)
+  const logs = useHabitsStore(s => s.logs)
+
+  /**
+   * El cálculo va DENTRO del selector, no en un `getState()` aparte.
+   *
+   * `getState()` devuelve el valor de ese instante y no suscribe a nada: la
+   * pantalla enseñaba el score de cuando se montó y no se enteraba del
+   * check-in recién hecho. Funcionaba solo cuando algo más provocaba un
+   * render, que es la peor clase de fallo — el que aparece a veces.
+   *
+   * Aquí zustand ejecuta el selector en cada cambio del store y compara el
+   * resultado: como es un número, solo se repinta cuando el score cambia de
+   * verdad.
+   */
+  const score = useRecoveryStore(st => st.getRecoveryScore())
+  const pulso = useHealthTrackerStore(st => st.getRestingHeartRate())
+
+  const ciclo = useCiclo()
 
   useEffect(() => {
-    loadHealthTracker()
-    loadRecovery()
-    loadHabits()
-  }, [])
+    void cargarSalud()
+    void cargarRecuperacion()
+    void cargarHabitos()
+    // El ciclo solo se carga para quien lo tiene: para el resto no existe.
+    if (verCiclo) void useCicloStore.getState().load()
+  }, [cargarSalud, cargarRecuperacion, cargarHabitos, verCiclo])
+
+  /**
+   * Los hábitos de los últimos siete días: cumplidos sobre los que tocaban.
+   *
+   * `getWeekGrid()` devuelve una ventana móvil que termina hoy, no de lunes a
+   * domingo. Eso importa para leer la cifra: «31 de 35» no es «llevo 31 esta
+   * semana natural», es «de lo que tocaba en la última semana, hice 31».
+   * La guarda de la fecha se queda por si algún día la ventana cambia.
+   */
+  const semana = useMemo(() => {
+    if (!habits.length) return null
+    let hechos = 0
+    for (let i = 0; i < 7; i++) {
+      const dia = logs[haceDias(i)] ?? {}
+      hechos += habits.filter(h => dia[h.id]).length
+    }
+    return { hechos, tocaban: habits.length * 7 }
+  }, [habits, logs])
+
+  const puertas: Puerta[] = [
+    {
+      id: 'hoy',
+      nombre: 'HOY',
+      icono: 'sunny-outline',
+      cifra: score != null ? String(score) : null,
+      lema: score == null
+        ? 'Check-in de la mañana'
+        : score >= 75 ? 'Buena recuperación'
+          : score >= 50 ? 'Recuperación media'
+            : 'Recuperación baja',
+      ruta: '/salud/recuperacion',
+    },
+    {
+      id: 'habito',
+      nombre: 'HÁBITOS',
+      icono: 'checkmark-done-outline',
+      cifra: semana ? String(semana.hechos) : null,
+      unidad: semana ? `/${semana.tocaban}` : undefined,
+      lema: semana ? 'Esta semana' : 'Sin hábitos creados',
+      ruta: '/salud/habitos',
+    },
+    ...(verCiclo ? [{
+      id: 'ciclo' as const,
+      nombre: 'CICLO',
+      icono: 'contrast-outline' as IconName,
+      cifra: ciclo.prediccion ? String(ciclo.prediccion.diaDeCiclo) : null,
+      lema: ciclo.prediccion ? `Fase ${ciclo.tema.label.toLowerCase()}` : 'Registra tu día',
+      ruta: '/salud/ciclo' as Href,
+    }] : []),
+    {
+      id: 'cuerpo',
+      nombre: 'TU CUERPO',
+      icono: 'body-outline',
+      cifra: pulso != null ? String(pulso) : null,
+      unidad: pulso != null ? 'lpm' : undefined,
+      lema: pulso != null ? 'Pulso en reposo' : 'Pulso, peso y ficha médica',
+      ruta: '/salud/cuerpo',
+    },
+  ]
 
   return (
-    <Screen tint={Colors.primary[500]}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 140 }}>
-        <ScreenHeader
-          eyebrow="Zencrus · Salud"
-          title="Tu salud"
-          subtitle="Pasos, sueño, hidratación, recuperación y hábitos — todo en un lugar"
-          icon="pulse"
-        />
+    <View style={s.root}>
+      <SafeAreaView style={s.safe} edges={['top']}>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={s.scroll}>
+          <View style={s.head}>
+            <Text style={s.eyebrow}>ZENCRUS · SALUD</Text>
+            <Text style={s.titulo}>¿Cómo{'\n'}estás hoy?</Text>
+          </View>
 
-        <TodaySection />
-
-        <View style={s.section}>
-          <Text style={[s.cardTitle, { marginBottom: Spacing[2] }]}>Hidratación</Text>
-          <WaterWidget />
-        </View>
-
-        <RecoverySection />
-        <HabitsSection />
-
-        <View style={s.section}>
-          <NavCard
-            emoji="🌙"
-            title="Ciclo menstrual"
-            subtitle="Predicción, fase y nutrición por ciclo"
-            onPress={() => router.push('/menstrual')}
-            color={Colors.secondary[400]}
-          />
-          <NavCard
-            emoji="📊"
-            title="Tracker de salud completo"
-            subtitle="Historial de pasos, sueño y frecuencia cardíaca"
-            onPress={() => router.push('/health-tracker')}
-            color={Colors.primary[400]}
-          />
-        </View>
-      </ScrollView>
-    </Screen>
+          {puertas.map(p => <Bloque key={p.id} p={p} />)}
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   )
 }
+
+// ── El bloque ────────────────────────────────────────────────────────────────
+
+function Bloque({ p }: { p: Puerta }) {
+  const [a, b, c] = DEGRADADOS[p.id]
+
+  return (
+    <TouchableOpacity
+      style={s.bloque}
+      activeOpacity={0.86}
+      onPress={() => { elegir(); router.push(p.ruta) }}
+      accessibilityRole="button"
+      accessibilityLabel={
+        p.cifra
+          ? `${p.nombre}. ${p.cifra}${p.unidad ?? ''}. ${p.lema}`
+          : `${p.nombre}. ${p.lema}`
+      }
+    >
+      <LinearGradient
+        colors={[a, b, c]}
+        locations={[0, 0.46, 1]}
+        start={{ x: 0, y: 0.12 }}
+        end={{ x: 1, y: 0.88 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* El brillo de arriba a la derecha. Es lo que separa un bloque de color
+          de una mancha de color: le da una fuente de luz. */}
+      <LinearGradient
+        colors={['rgba(255,255,255,0.15)', 'transparent']}
+        start={{ x: 0.92, y: 0 }}
+        end={{ x: 0.35, y: 0.9 }}
+        style={StyleSheet.absoluteFill}
+      />
+
+      {/* El icono grande. Va detrás de todo y no recibe toques. */}
+      <View style={s.marca} pointerEvents="none">
+        <Ionicons name={p.icono} size={88} color="#fff" />
+      </View>
+
+      {/* La pastilla vive arriba a la IZQUIERDA: arriba a la derecha se montaba
+          encima del icono, y dos cosas en el mismo cuarto del bloque es lo que
+          hace que una pantalla con pocos elementos parezca cargada. */}
+      {p.cifra != null && (
+        <View style={s.pastilla}>
+          <Text style={s.pastillaCifra}>{p.cifra}</Text>
+          {p.unidad ? <Text style={s.pastillaUnidad}>{p.unidad}</Text> : null}
+        </View>
+      )}
+
+      <View style={s.textos}>
+        <Text style={s.nombre}>{p.nombre}</Text>
+        <Text style={s.lema}>{p.lema}</Text>
+      </View>
+    </TouchableOpacity>
+  )
+}
+
+const s = StyleSheet.create({
+  root: { flex: 1, backgroundColor: '#08080A' },
+  safe: { flex: 1 },
+  scroll: { paddingBottom: 130 },
+
+  head: { paddingHorizontal: Spacing[5], paddingTop: Spacing[4], paddingBottom: Spacing[5] },
+  eyebrow: {
+    fontFamily: 'Rajdhani_700Bold', fontSize: 11, color: '#FF1F3D',
+    letterSpacing: 2.8, marginBottom: Spacing[2],
+  },
+  titulo: {
+    fontFamily: 'Inter_600SemiBold', fontSize: 36, lineHeight: 38,
+    color: '#fff', letterSpacing: -1.2,
+  },
+
+  bloque: {
+    marginHorizontal: Spacing[5], marginBottom: Spacing[3],
+    height: 120, borderRadius: 20, overflow: 'hidden',
+  },
+  marca: {
+    position: 'absolute', right: 16, top: 16,
+    opacity: 0.24,
+  },
+  pastilla: {
+    position: 'absolute', left: 18, top: 15,
+    flexDirection: 'row', alignItems: 'baseline', gap: 4,
+    paddingHorizontal: 11, paddingVertical: 5,
+    borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.30)',
+  },
+  pastillaCifra: {
+    fontFamily: 'GeistMono_500Medium', fontSize: 15, color: '#fff',
+    fontVariant: ['tabular-nums'],
+  },
+  pastillaUnidad: { fontFamily: 'Inter_400Regular', fontSize: 11, color: 'rgba(255,255,255,0.72)' },
+
+  textos: { position: 'absolute', left: 18, bottom: 15, right: 116 },
+  nombre: {
+    /* El interlineado va POR ENCIMA del cuerpo a propósito. Con `lineHeight`
+       igual al `fontSize`, React Native recorta lo que sobresale de la altura
+       de mayúscula y la tilde de «HÁBITOS» desaparecía: en pantalla se leía
+       «HABITOS». Es un fallo que solo se ve en las palabras acentuadas, así
+       que pasa desapercibido hasta que alguien lo lee. */
+    fontFamily: 'Rajdhani_700Bold', fontSize: 28, lineHeight: 34,
+    color: '#fff', letterSpacing: 1.4,
+  },
+  lema: {
+    fontFamily: 'Inter_400Regular', fontSize: 12.5,
+    color: 'rgba(255,255,255,0.78)', marginTop: 4,
+  },
+})
