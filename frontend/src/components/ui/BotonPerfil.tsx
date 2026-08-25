@@ -80,6 +80,16 @@ const RUTAS_SIN_BOTON = new Set([
   'salud/habito',
 ])
 
+/**
+ * Y las secciones enteras que dibujan su propia cabecera.
+ *
+ * El ciclo son ocho rutas y cada una pone algo en esa esquina —la campana en
+ * Inicio, el selector 3M/6M/1A en Estadísticas, la lupa en Comunidad—. Con
+ * coincidencia exacta habría que acordarse de añadir cada pantalla nueva a la
+ * lista de arriba; por prefijo, la novena nace ya sin el botón encima.
+ */
+const RAMAS_SIN_BOTON = ['salud/ciclo']
+
 /** La letra del botón: nombre, y si no hay, correo. */
 function inicialDe(nombre?: string, correo?: string) {
   const fuente = (nombre ?? '').trim() || (correo ?? '').trim()
@@ -102,6 +112,7 @@ export function useEsquinaOcupada(): boolean {
   return (
     (isAuthenticated || !LOGIN_ACTIVO) &&
     !RUTAS_SIN_BOTON.has(ruta) &&
+    !RAMAS_SIN_BOTON.some(r => ruta === r || ruta.startsWith(`${r}/`)) &&
     !segmentos.some(s => GRUPOS_SIN_BOTON.includes(s))
   )
 }

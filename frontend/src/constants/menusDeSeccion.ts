@@ -161,7 +161,6 @@ const MARCADAS: Record<string, { activo: string; lugar?: LugarEntreno }> = {
 
   'salud/recuperacion': { activo: 'hoy' },
   'salud/habitos':      { activo: 'habitos' },
-  'salud/ciclo':        { activo: 'ciclo' },
   'salud/cuerpo':       { activo: 'cuerpo' },
 
   'social/search':      { activo: 'buscar' },
@@ -240,8 +239,24 @@ export type Sitio = {
  * Ahora se resuelve por prefijo: dentro de un destino la barra está siempre,
  * salvo en las pantallas de tarea.
  */
+/**
+ * Módulos que traen su PROPIA barra abajo.
+ *
+ * El ciclo menstrual tiene cinco pestañas suyas —Inicio, Calendario, Ajustes,
+ * Estadísticas y Comunidad— que sustituyen a las de la app mientras dura la
+ * sección. Si la flotante siguiera saliendo habría DOS barras apiladas: 130 px
+ * de cromo, la de abajo medio tapada, y en iOS eso se lee como un error de
+ * montaje, no como una función.
+ *
+ * Va por prefijo y no como entrada exacta en `SIN_BARRA` porque el ciclo son
+ * ocho rutas y subiendo: con coincidencia exacta, la novena nacería con las
+ * dos barras y nadie se acordaría de por qué.
+ */
+const CON_BARRA_PROPIA = ['salud/ciclo']
+
 export function sitioDe(ruta: string): Sitio | null {
   if (SIN_BARRA.has(ruta)) return null
+  if (CON_BARRA_PROPIA.some(p => ruta === p || ruta.startsWith(`${p}/`))) return null
 
   /* Las otras dos portadas de pestaña se quedan con su barra de siempre: sus
      tarjetas ya hacen de menú. */

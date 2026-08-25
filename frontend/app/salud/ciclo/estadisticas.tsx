@@ -110,9 +110,11 @@ export default function EstadisticasCiclo() {
           <View style={s.flex}>
             <Text style={s.titulo}>Estadísticas</Text>
             <Text style={s.subtitulo}>
-              {enVentana.length
-                ? `Basado en tus últimos ${enVentana.length} ${enVentana.length === 1 ? 'ciclo' : 'ciclos'}`
-                : 'Todavía sin ciclos en esta ventana'}
+              {enVentana.length === 0
+                ? 'Todavía sin ciclos en esta ventana'
+                : enVentana.length === 1
+                  ? 'Basado en tu último ciclo'
+                  : `Basado en tus últimos ${enVentana.length} ciclos`}
             </Text>
           </View>
           <View style={s.selector}>
@@ -137,16 +139,16 @@ export default function EstadisticasCiclo() {
         <View style={s.cifras}>
           <Cifra
             icono="cycle_duracion"
-            valor={estadisticas.media ? `${Math.round(estadisticas.media)} días` : '—'}
+            valor={diasODia(estadisticas.media)}
             pie="ciclo promedio"
           />
           <Cifra
             icono="cycle_gota_color"
-            valor={estadisticas.mediaSangrado ? `${Math.round(estadisticas.mediaSangrado)} días` : '—'}
+            valor={diasODia(estadisticas.mediaSangrado)}
             pie="de periodo"
           />
           <Cifra
-            icono="stats_check"
+            icono={bastante ? 'stats_check' : 'cycle_regular'}
             valor={bastante ? reg.texto : '—'}
             color={bastante ? reg.color : TEXTO.suave}
             pie={
@@ -318,6 +320,13 @@ function Vacio({ texto }: { texto: string }) {
 }
 
 /* ── Cálculos ──────────────────────────────────────────────────────────── */
+
+/** «1 día», no «1 días»: el plural mal puesto delata a una app sin cuidar. */
+const diasODia = (n: number | null): string => {
+  if (n === null) return '—'
+  const r = Math.round(n)
+  return `${r} ${r === 1 ? 'día' : 'días'}`
+}
 
 const nivelTexto = (v: number): string =>
   v >= 4.2 ? 'Muy alta' : v >= 3.4 ? 'Alta' : v >= 2.6 ? 'Media' : v >= 1.8 ? 'Baja' : 'Muy baja'

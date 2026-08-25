@@ -173,7 +173,10 @@ export function Seccion({ icono, fondo, titulo, derecha }: {
   return (
     <View style={s.seccion}>
       <Azulejo icono={icono} fondo={fondo} />
-      <Text style={s.seccionTxt} numberOfLines={1}>{titulo}</Text>
+      {/* Dos líneas, no una: «Síntomas más frecuentes» con el contador al lado
+          no cabe a 19 px en un iPhone de 375 pt, y cortado con puntos
+          suspensivos parece que la app se quedó a medias. */}
+      <Text style={s.seccionTxt} numberOfLines={2}>{titulo}</Text>
       {derecha ? <View style={s.seccionDer}>{derecha}</View> : null}
     </View>
   )
