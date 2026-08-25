@@ -34,6 +34,7 @@ import {
   isAllowedType, kindOf, mediaReady, MAX_VIDEO_SECONDS, AllowedType,
 } from '../services/media'
 import { notify, unnotify } from './socialController'
+import { esDelCirculo, VIS_FEMENINO, soloVisibles } from '../services/circuloFemenino'
 
 const uid = (req: Request) => req.user?.userId ?? req.user?.id
 const noAuth = (res: Response) => {
@@ -61,7 +62,10 @@ export const createPostSchema = z.object({
   body: z.object({
     content: z.string().max(2200).optional(),
     kind: z.enum(['post', 'story']).default('post'),
-    visibility: z.enum(['public', 'followers']).default('followers'),
+    /* `femenino` se acepta en el esquema pero NO basta con pedirlo: quién
+       puede usarlo se decide abajo, contra la base. Un esquema no sabe de
+       permisos. */
+    visibility: z.enum(['public', 'followers', 'femenino']).default('followers'),
     media: z.array(z.object({
       key: z.string().min(1).max(300),
       contentType: z.string(),
@@ -137,6 +141,24 @@ export async function createPost(req: Request, res: Response): Promise<void> {
     }
     const ok = await confirmUpload(m.key, m.contentType as AllowedType)
     if (!ok.ok) return fail(res, 400, ok.reason ?? 'El archivo no se subió correctamente')
+  }
+
+  /* ── Publicar en el círculo femenino ────────────────────────────────────
+     Se comprueba contra la base, no contra el token ni contra lo que diga la
+     app. Y si no pertenece, se RECHAZA en vez de caer a «público» en silencio:
+     alguien escribiría algo íntimo creyendo que va a un espacio cerrado y
+     acabaría en el muro de todos. Fallar en voz alta es lo seguro aquí.
+
+     Una historia no puede ir al círculo: caduca a las 24 h y se ve desde un
+     visor aparte que no pasa por `loadVisible`. Antes de abrir esa puerta hay
+     que cerrar aquella. */
+  if (b.visibility === VIS_FEMENINO) {
+    if (b.kind === 'story') {
+      return fail(res, 400, 'Las historias todavía no pueden ir al círculo femenino')
+    }
+    if (!(await esDelCirculo(userId))) {
+      return fail(res, 403, 'Esta publicación no se puede enviar al círculo femenino')
+    }
   }
 
   const expiresAt = b.kind === 'story'
@@ -271,6 +293,17 @@ export async function getFeed(req: Request, res: Response): Promise<void> {
   const limit = Math.min(Number(req.query.limit ?? 20) || 20, 50)
   const before = typeof req.query.before === 'string' ? req.query.before : null
 
+  /* ── El círculo femenino ─────────────────────────────────────────────────
+     `?circulo=femenino` pide SOLO ese espacio; sin el parámetro, el muro no lo
+     enseña nunca, ni siquiera a quien pertenece: es un sitio aparte, no un
+     añadido al muro de todos.
+
+     A quien no pertenece se le devuelve el muro VACÍO en vez de un 403. Un 403
+     confirmaría que el espacio existe y quién está dentro, y bastaría con
+     probarlo para deducir el sexo de una cuenta desde fuera. */
+  const pideCirculo = req.query.circulo === VIS_FEMENINO
+  const delCirculo = pideCirculo ? await esDelCirculo(viewerId) : false
+
   // El muro «Para ti» necesita filtrar por la cuenta del autor, y para eso hay
   // que traerla en la misma consulta; el de amigos no, pero pedirla también
   // ahorra tener dos variantes del mismo `select` que se desincronizan.
@@ -281,8 +314,24 @@ export async function getFeed(req: Request, res: Response): Promise<void> {
     .limit(limit)
   if (before) q = q.lt('created_at', before)
 
-  if (scope === 'friends') {
+  if (pideCirculo) {
+    if (!delCirculo) {
+      res.json({ success: true, data: { posts: [], nextBefore: null } } satisfies ApiResponse)
+      return
+    }
+    q = q.eq('visibility', VIS_FEMENINO)
+    const bloqueados = await blockedIds(viewerId)
+    if (bloqueados.length) q = q.not('user_id', 'in', `(${bloqueados.join(',')})`)
+  } else if (scope === 'friends') {
     q = q.in('user_id', await visibleAuthorIds(viewerId))
+    /* AQUÍ estaba el agujero: el muro de amigos filtra por AUTOR y no miraba
+       la visibilidad, así que un hombre que siguiera a una mujer veía sus
+       publicaciones del círculo aunque el muro público las escondiera.
+
+       Se escribe con `or` y no con un `neq` seco porque en SQL un `!=` deja
+       fuera también los NULL, y una publicación sin visibilidad marcada
+       —las hay— desaparecería del muro sin motivo. */
+    q = q.or(`visibility.is.null,visibility.neq.${VIS_FEMENINO}`)
   } else {
     /**
      * Público de verdad: la publicación marcada como pública Y de una cuenta
@@ -318,7 +367,13 @@ export async function getFeed(req: Request, res: Response): Promise<void> {
     return fail(res, 500, 'No pudimos cargar el muro')
   }
 
-  const posts = await hydrate(data ?? [], viewerId)
+  /* Segunda vuelta de llave, sobre lo ya traído.
+     El filtro de la consulta basta para que no salga nada indebido; este de
+     aquí existe para que siga bastando el día que alguien toque la consulta de
+     arriba y se le escape un caso. Cuesta un `filter` sobre veinte filas. */
+  const permitidos = soloVisibles(data ?? [], delCirculo, viewerId)
+
+  const posts = await hydrate(permitidos, viewerId)
   // El cursor va DENTRO de `data` y no como campo aparte: `ApiResponse` no
   // tiene sitio para metadatos, y `PaginatedResponse` pagina por número de
   // página — que en un muro se rompe solo. Si llegan publicaciones nuevas
@@ -388,7 +443,11 @@ export async function getUserPosts(req: Request, res: Response): Promise<void> {
     logger.error(`social · getUserPosts ${req.params.id}: ${error.message}`)
     return fail(res, 500, 'No pudimos cargar las publicaciones')
   }
-  res.json({ success: true, data: await hydrate(data ?? [], viewerId) } satisfies ApiResponse)
+  /* El muro de un perfil es el tercer camino a una publicación, y no pasaba
+     por `loadVisible`: abrir el perfil de una mujer enseñaba sus publicaciones
+     del círculo a cualquiera que pudiera ver su cuenta. */
+  const permitidos = soloVisibles(data ?? [], await esDelCirculo(viewerId), viewerId)
+  res.json({ success: true, data: await hydrate(permitidos, viewerId) } satisfies ApiResponse)
 }
 
 // ── Una publicación ──────────────────────────────────────────────────────────
@@ -401,9 +460,25 @@ export async function getUserPosts(req: Request, res: Response): Promise<void> {
  * la llame en vez de reescribirla es lo que garantiza que las dos puertas se
  * cierren con la misma llave.
  */
+/**
+ * Carga una publicación SI le toca verla, y si no dice por qué.
+ *
+ * Es el paso obligado de las cuatro rutas de publicación suelta —abrirla, dar
+ * me gusta, leer comentarios y comentar—, y por eso el cerrojo del círculo
+ * femenino va AQUÍ. Puesto en cada una de las cuatro, bastaría que alguien
+ * añadiera la quinta para abrir el espacio entero.
+ */
 export async function loadVisible(viewerId: string, postId: string) {
   const { data, error } = await supabase.from('posts').select(POST_COLS).eq('id', postId).maybeSingle()
   if (error || !data) return { post: null as any, why: 'no existe' }
+
+  /* El círculo femenino, antes que nada.
+     Se responde «no existe» y no «privada» a propósito: un 403 confirmaría que
+     ahí hay algo, y bastaría con probar identificadores para saber quién
+     escribe en el círculo. Es el mismo criterio que en el módulo de ciclo. */
+  if (data.visibility === VIS_FEMENINO && data.user_id !== viewerId) {
+    if (!(await esDelCirculo(viewerId))) return { post: null as any, why: 'no existe' }
+  }
 
   const access = await accessTo(viewerId, data.user_id)
   if (!access.content) return { post: null as any, why: 'privada' }

@@ -251,8 +251,22 @@ export interface FeedPage {
   nextBefore: string | null
 }
 
-export const getFeed = async (scope: FeedScope, before?: string | null): Promise<FeedPage> =>
-  unwrap(await apiGet('/social/feed', { params: { scope, before: before ?? undefined, limit: 20 } }))
+/**
+ * El muro.
+ *
+ * Con `circulo: 'femenino'` pide el espacio cerrado en vez del muro normal.
+ * Quién puede verlo NO lo decide este parámetro: el servidor lo comprueba
+ * contra el perfil y a quien no pertenece le devuelve el muro vacío —no un
+ * error—, porque un 403 confirmaría que el espacio existe y quién está dentro.
+ */
+export const getFeed = async (
+  scope: FeedScope,
+  before?: string | null,
+  circulo?: 'femenino',
+): Promise<FeedPage> =>
+  unwrap(await apiGet('/social/feed', {
+    params: { scope, before: before ?? undefined, limit: 20, circulo },
+  }))
     ?? { posts: [], nextBefore: null }
 
 export const getStories = async (): Promise<StoryGroup[]> =>

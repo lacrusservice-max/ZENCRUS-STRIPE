@@ -35,6 +35,7 @@ import {
   PUBLIC_FIELDS, toPublicProfile, accessTo, signAvatars,
 } from '../services/socialAccess'
 import { hydrate, POST_COLS } from './socialContentController'
+import { soloVisibles, esDelCirculo } from '../services/circuloFemenino'
 
 const uid = (req: Request) => req.user?.userId ?? req.user?.id
 const noAuth = (res: Response) => {
@@ -146,7 +147,14 @@ export async function listSaved(req: Request, res: Response): Promise<void> {
   }
 
   const filas = (data ?? []) as unknown as { created_at: string; post: any }[]
-  const posts = filas.map(f => f.post).filter(Boolean)
+  /* Y del círculo, solo lo que le siga tocando ver. El caso raro pero real:
+     guarda una publicación del círculo y después cambia el sexo de su perfil.
+     Sin esto, la seguiría viendo desde sus guardados para siempre. */
+  const posts = soloVisibles(
+    filas.map(f => f.post).filter(Boolean),
+    await esDelCirculo(me),
+    me,
+  )
 
   // Una comprobación por AUTOR, no por publicación: quien guarda veinte cosas
   // de la misma persona no merece veinte viajes a la base.

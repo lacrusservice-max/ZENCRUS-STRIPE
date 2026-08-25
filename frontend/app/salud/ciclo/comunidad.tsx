@@ -18,8 +18,10 @@
  * cuerpo creyendo que ningún hombre lo va a leer. La comprobación tiene que
  * estar donde no se puede tocar.
  *
- * Mientras el respaldo no esté cerrado, la puerta lo dice en vez de prometer
- * lo que todavía no puede garantizar.
+ * Ya está: `backend/src/services/circuloFemenino.ts` comprueba el perfil en
+ * cada petición y cierra los cinco caminos por los que se llega a una
+ * publicación —el muro, el muro de seguidos, el perfil de la autora, el enlace
+ * directo y los guardados—.
  */
 
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
@@ -141,15 +143,16 @@ export default function ComunidadCiclo() {
           </Pressable>
         ))}
 
-        {/* ── Lo que todavía no puedo prometer ──────────────────────────── */}
+        {/* ── Qué garantiza el círculo, dicho sin adornos ───────────────── */}
         <Tarjeta style={s.aviso}>
-          <Azulejo icono="auth_discreto" fondo={ACENTO.moradoFondo} tam={40} />
+          <Azulejo icono="auth_candado" fondo={ACENTO.verdeSuave} tam={40} />
           <View style={s.flex}>
-            <Text style={s.avisoTit}>El cerrojo está a medio poner</Text>
+            <Text style={s.avisoTit}>Quién puede leerte aquí</Text>
             <Text style={s.avisoTxt}>
-              El filtro del círculo femenino todavía se aplica solo en la app.
-              Hasta que el servidor lo compruebe también, no publiques aquí nada
-              que no quieras que se lea fuera.
+              Solo cuentas con perfil femenino. Lo comprueba el servidor en cada
+              petición, así que no basta con tener una versión modificada de la
+              app: ni el muro, ni el perfil, ni el enlace directo, ni los
+              comentarios enseñan estas publicaciones a nadie más.
             </Text>
           </View>
         </Tarjeta>
