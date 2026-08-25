@@ -1,4 +1,4 @@
-import { useEffect, useCallback } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { cargarPreferenciaHaptica } from '@/utils/haptica'
 import { View } from 'react-native'
 import { Stack } from 'expo-router'
@@ -105,7 +105,7 @@ export default function RootLayout() {
    * tipografía de respaldo. Se siguen pidiendo al arrancar. Lo único que cambia
    * es que ya no retrasan lo que se ve.
    */
-  const [fuentesBase] = useFonts({
+  const [fuentesBase, errorFuentes] = useFonts({
     Rajdhani_500Medium, Rajdhani_600SemiBold, Rajdhani_700Bold,
     Inter_400Regular, Inter_500Medium, Inter_600SemiBold, Inter_700Bold })
 
@@ -127,7 +127,33 @@ export default function RootLayout() {
     'Zencrus-Bold': require('../assets/fonts/Zencrus-Bold.ttf'),
     'Zencrus-Black': require('../assets/fonts/Zencrus-Black.ttf') })
 
-  const fontsLoaded = fuentesBase
+  /* ── Las fuentes NO pueden secuestrar el arranque ────────────────────────
+     Abajo hay un `if (!fontsLoaded) return null`, y el splash se esconde solo
+     cuando algo se pinta. Juntando las dos cosas, una fuente que no llegue
+     dejaba la app clavada en el logo PARA SIEMPRE, sin mensaje, sin redbox y
+     sin manera de saber qué pasaba: exactamente lo que se veía al abrirla en
+     un móvil de verdad mientras en el simulador iba bien.
+
+     Y el error ni se miraba: `useFonts` devuelve `[cargadas, error]` y aquí
+     solo se leía el primero, así que un fallo era indistinguible de «todavía
+     está cargando».
+
+     Ahora se sale del bloqueo por tres caminos: cargan, fallan, o se acaba el
+     tiempo. Arrancar con la tipografía de respaldo es un problema de aspecto;
+     no arrancar es que la app no existe. */
+  const [seAcaboLaEspera, setSeAcaboLaEspera] = useState(false)
+  useEffect(() => {
+    if (fuentesBase || errorFuentes) return
+    const t = setTimeout(() => setSeAcaboLaEspera(true), 6000)
+    return () => clearTimeout(t)
+  }, [fuentesBase, errorFuentes])
+
+  const fontsLoaded = fuentesBase || !!errorFuentes || seAcaboLaEspera
+
+  useEffect(() => {
+    if (errorFuentes) console.warn('[arranque] las fuentes no cargaron:', errorFuentes)
+    else if (seAcaboLaEspera) console.warn('[arranque] las fuentes tardaron demasiado; se sigue sin ellas')
+  }, [errorFuentes, seAcaboLaEspera])
 
   // La háptica se puede apagar; hay a quien le molesta y hay que respetarlo.
   useEffect(() => { void cargarPreferenciaHaptica() }, [])
