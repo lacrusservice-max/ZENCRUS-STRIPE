@@ -53,10 +53,15 @@ export function useCiclo(fecha?: string): EstadoCiclo {
   const logs = useCicloStore(s => s.logs)
   const inicios = useCicloStore(s => s.inicios)
   const modoId = useCicloStore(s => s.perfil.modo)
-  const declarado = useCicloStore(s => ({
-    duracion: s.perfil.duracionDeclarada ?? null,
-    sangrado: s.perfil.sangradoDeclarado ?? null,
-  }))
+  /* Dos selectores de números sueltos y NO uno que devuelva `{duracion,
+     sangrado}`.
+     Un selector que construye un objeto devuelve uno NUEVO en cada llamada;
+     Zustand los compara con `Object.is`, así que siempre le parece que cambió,
+     vuelve a renderizar, vuelve a construirlo… y React corta con «Maximum
+     update depth exceeded». El síntoma no señala aquí: la pila apuntaba a un
+     `AsyncStorage.getItem` de otro store. */
+  const duracionDeclarada = useCicloStore(s => s.perfil.duracionDeclarada ?? null)
+  const sangradoDeclarado = useCicloStore(s => s.perfil.sangradoDeclarado ?? null)
 
   return useMemo(() => {
     const hoy = fecha ?? hoyLocal()
@@ -67,13 +72,17 @@ export function useCiclo(fecha?: string): EstadoCiclo {
     /* El modo decide si se predice. En embarazo o sin ciclo no hay nada que
        predecir y forzar un número sería peor que el hueco: ver modos.ts. */
     const prediccion = modo.predice
-      ? predecir(periodos, { hoy, sinOvulacion: !modo.ovula, declarado })
+      ? predecir(periodos, {
+        hoy,
+        sinOvulacion: !modo.ovula,
+        declarado: { duracion: duracionDeclarada, sangrado: sangradoDeclarado },
+      })
       : null
 
     const marco = prediccion?.marco
       ?? marcoFases(
-        est.media ?? declarado.duracion ?? 28,
-        est.mediaSangrado ?? declarado.sangrado ?? 5,
+        est.media ?? duracionDeclarada ?? 28,
+        est.mediaSangrado ?? sangradoDeclarado ?? 5,
       )
 
     const anomalias = periodos.length
@@ -110,5 +119,5 @@ export function useCiclo(fecha?: string): EstadoCiclo {
         ? marco.duracion - prediccion.diaDeCiclo + 1
         : null,
     }
-  }, [logs, inicios, modoId, fecha, declarado.duracion, declarado.sangrado])
+  }, [logs, inicios, modoId, fecha, duracionDeclarada, sangradoDeclarado])
 }
