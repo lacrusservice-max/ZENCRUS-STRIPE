@@ -177,6 +177,10 @@ async function recalcularPeriodos(userId: string): Promise<void> {
   const entradas = (sangrados || []).map(f => ({
     fecha: f.log_date as string,
     nivel: Number((f.value as any)?.level ?? 0),
+    /* Sin esto, el servidor deduciría periodos que el cliente no deduce: ella
+       marca «sangrado fuera del periodo», la app lo respeta, y el recálculo del
+       servidor le abre igualmente un periodo fantasma que vuelve a bajar. */
+    fueraDePeriodo: (f.value as any)?.fueraDePeriodo === true,
   }))
   const declarados = (declaradas || []).map(f => f.start_date as string)
 

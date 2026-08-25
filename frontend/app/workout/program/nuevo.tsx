@@ -60,7 +60,27 @@ const SEMANAS = [4, 8, 12]
 const TOPE_MUSCULOS = 3
 
 /** Una foto por paso. La pregunta y la imagen cuentan lo mismo. */
-const FOTO_PASO = ['montana', 'gimnasio', 'fuerza', 'brazos']
+/**
+ * Una foto por paso. La pregunta y la imagen cuentan lo mismo.
+ *
+ * Va como MAPA y no como array porque los pasos no son 0..n: el del material
+ * es el -1, y `FOTO_PASO[-1]` en un array es `undefined`. Eso reventaba la
+ * pantalla entera con «cannot read 'fuente' of undefined» en cuanto se abría
+ * el asistente en casa.
+ */
+const FOTO_PASO: Record<number, keyof typeof FOTOS> = {
+  [-1]: 'casa',
+  0: 'montana',
+  1: 'gimnasio',
+  2: 'fuerza',
+  3: 'brazos',
+}
+
+/**
+ * Y la lectura lleva respaldo: un paso sin foto asignada enseña la de gimnasio
+ * en vez de tumbar la pantalla. Es la misma guarda que ya tenían las otras
+ * cuatro lecturas de `FOTOS` de la app; esta era la única sin ella.
+ */
 
 interface DiaEnMontaje {
   diaSemana: number
@@ -285,7 +305,7 @@ export default function TuSemana() {
       {/* ── El hero, que cambia con la pregunta ──────────────────────── */}
       <Animated.View key={`foto-${paso}`} entering={FadeIn.duration(520)} style={s.hero}>
         <Image
-          source={FOTOS[FOTO_PASO[paso]].fuente}
+          source={(FOTOS[FOTO_PASO[paso]] ?? FOTOS.gimnasio).fuente}
           style={StyleSheet.absoluteFill}
           contentFit="cover"
           transition={420}

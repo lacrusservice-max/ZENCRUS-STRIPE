@@ -24,16 +24,50 @@ export const TRACKER_KINDS = [
   'sangrado', 'dolor', 'animo', 'energia', 'flujo', 'digestion', 'piel',
   'sueno', 'libido', 'temperatura_basal', 'prueba', 'anticoncepcion',
   'medicacion', 'perimenopausia',
+  // Los cuatro del mockup del registro diario. Requieren la migración 020:
+  // `cycle_logs.kind` es un ENUM y sin ella el INSERT muere en el servidor.
+  'antojos', 'apetito', 'entrenamiento', 'notas',
 ] as const
 
 export type TrackerKind = typeof TRACKER_KINDS[number]
 
 // ── 1 · Sangrado ────────────────────────────────────────────────────────────
 
-/** Cinco niveles. El 0 existe y significa «hoy no», que es un dato, no un hueco. */
+/**
+ * Seis niveles: 0 = «hoy no», y del 1 al 5 los cinco del mockup.
+ *
+ * Antes llegaba a 4 y el mockup pide cinco grados —manchado, ligero, moderado,
+ * abundante, muy abundante—. Subir el techo es compatible hacia atrás: todo lo
+ * ya guardado con 0-4 sigue validando y sigue significando lo mismo.
+ *
+ *   0 sin sangrado · 1 manchado · 2 ligero · 3 moderado · 4 abundante
+ *   5 muy abundante
+ *
+ * El corte de `SANGRADO_MINIMO` sigue en 2, así que el manchado NO abre
+ * periodo — que es la primera de las cuatro guardas contra el fantasma.
+ */
+/**
+ * El color y la naturaleza del sangrado.
+ *
+ * Van DENTRO del `value` de `sangrado` y no como tipos aparte porque no tienen
+ * vida propia: un color sin sangrado no significa nada, y separarlos obligaría
+ * a leer dos filas para pintar un día.
+ */
+export const COLORES_SANGRADO = ['rojo_brillante', 'rojo_oscuro', 'cafe', 'otro'] as const
+
 export const sangradoSchema = z.object({
-  level: z.number().int().min(0).max(4),
+  level: z.number().int().min(0).max(5),
   spotting: z.boolean().optional(),
+  color: z.enum(COLORES_SANGRADO).optional(),
+  /**
+   * Ella dice que esto NO es su regla.
+   *
+   * Es la única de las cuatro guardas contra el periodo fantasma que no
+   * deduce el motor: la declara la persona. Un sangrado moderado a mitad de
+   * ciclo abriría un periodo y descuadraría todas las medias; con esto
+   * marcado, se registra el sangrado pero NO cuenta para deducir periodos.
+   */
+  fueraDePeriodo: z.boolean().optional(),
 })
 
 // ── 2 · Dolor ───────────────────────────────────────────────────────────────
@@ -183,6 +217,61 @@ export const perimenopausiaSchema = z.object({
   severity: z.number().int().min(1).max(5).optional(),
 })
 
+// ── 15 · Antojos ────────────────────────────────────────────────────────────
+
+export const ANTOJOS = [
+  'dulce', 'salado', 'carbohidratos', 'grasas', 'proteinas', 'citricos', 'otro',
+] as const
+
+export const antojosSchema = z.object({
+  tags: z.array(z.enum(ANTOJOS)).min(1).max(ANTOJOS.length),
+})
+
+// ── 16 · Apetito ────────────────────────────────────────────────────────────
+
+/**
+ * Aparte de `energia` aunque los dos sean una escala de cinco.
+ *
+ * En fase lútea el apetito sube de verdad —la progesterona eleva el gasto
+ * basal— y la energía suele bajar. Guardarlos juntos borraría justo el cruce
+ * que hace útil el módulo: comer más y rendir menos el mismo día no es una
+ * contradicción, es la fase.
+ */
+export const apetitoSchema = z.object({
+  level: z.number().int().min(1).max(5),
+})
+
+// ── 17 · Entrenamiento ──────────────────────────────────────────────────────
+
+export const ESTADOS_ENTRENO = [
+  'no_entrene', 'con_energia', 'cansada', 'con_dolor', 'motivada',
+] as const
+
+/**
+ * Cómo se sintió entrenando, no si entrenó.
+ *
+ * Si entrenó ya lo sabe la app por la sesión registrada en Entrena. Lo que no
+ * sabe —y es lo que se correlaciona con la fase— es cómo se sintió haciéndolo.
+ * `no_entrene` es una respuesta válida y NO es un hueco: un día de descanso
+ * elegido es un dato distinto de un día sin registrar.
+ */
+export const entrenamientoSchema = z.object({
+  estado: z.enum(ESTADOS_ENTRENO),
+})
+
+// ── 18 · Notas ──────────────────────────────────────────────────────────────
+
+/**
+ * El texto libre del día.
+ *
+ * Mil caracteres es de sobra para «dormí poco y me dolía la espalda» y poco
+ * para escribir un diario, que es exactamente lo que se busca: esto acompaña
+ * al registro, no lo sustituye.
+ */
+export const notasSchema = z.object({
+  texto: z.string().trim().min(1).max(1000),
+})
+
 // ── Registro ────────────────────────────────────────────────────────────────
 
 export const TRACKER_SCHEMAS = {
@@ -200,6 +289,10 @@ export const TRACKER_SCHEMAS = {
   anticoncepcion: anticoncepcionSchema,
   medicacion: medicacionSchema,
   perimenopausia: perimenopausiaSchema,
+  antojos: antojosSchema,
+  apetito: apetitoSchema,
+  entrenamiento: entrenamientoSchema,
+  notas: notasSchema,
 } as const satisfies Record<TrackerKind, z.ZodTypeAny>
 
 export type TrackerValue<K extends TrackerKind> = z.infer<typeof TRACKER_SCHEMAS[K]>
@@ -213,6 +306,7 @@ export type TrackerValue<K extends TrackerKind> = z.infer<typeof TRACKER_SCHEMAS
 export function validarTracker<K extends TrackerKind>(kind: K, value: unknown) {
   return TRACKER_SCHEMAS[kind].safeParse(value)
 }
+
 
 // ── Metadatos de presentación ───────────────────────────────────────────────
 
@@ -244,6 +338,10 @@ export const TRACKER_META: Record<TrackerKind, TrackerMeta> = {
   medicacion:        { kind: 'medicacion',        label: 'Medicación',     input: 'lista' },
   perimenopausia:    { kind: 'perimenopausia',    label: 'Perimenopausia', input: 'chips',
                        modes: ['perimenopausia'] },
+  antojos:           { kind: 'antojos',           label: 'Antojos',        input: 'chips' },
+  apetito:           { kind: 'apetito',           label: 'Apetito',        input: 'escala' },
+  entrenamiento:     { kind: 'entrenamiento',     label: 'Entrenamiento',  input: 'chips' },
+  notas:             { kind: 'notas',             label: 'Notas',          input: 'lista' },
 }
 
 /**

@@ -37,6 +37,8 @@ export const TRACKER_KINDS = [
   'sangrado', 'dolor', 'animo', 'energia', 'flujo', 'digestion', 'piel',
   'sueno', 'libido', 'temperatura_basal', 'prueba', 'anticoncepcion',
   'medicacion', 'perimenopausia',
+  // Los cuatro del registro diario del mockup. Migración 020.
+  'antojos', 'apetito', 'entrenamiento', 'notas',
 ] as const
 
 export type TrackerKind = typeof TRACKER_KINDS[number]
@@ -48,8 +50,11 @@ const ZONAS_DOLOR = [
 
 export const TRACKER_SCHEMAS: Record<TrackerKind, z.ZodTypeAny> = {
   sangrado: z.object({
-    level: z.number().int().min(0).max(4),
+    level: z.number().int().min(0).max(5),
     spotting: z.boolean().optional(),
+    color: z.enum(['rojo_brillante', 'rojo_oscuro', 'cafe', 'otro']).optional(),
+    /* Ella declara que esto no es su regla. Ver `derivarPeriodos`. */
+    fueraDePeriodo: z.boolean().optional(),
   }),
 
   dolor: z.object({
@@ -133,6 +138,27 @@ export const TRACKER_SCHEMAS: Record<TrackerKind, z.ZodTypeAny> = {
     ])).min(1),
     severity: z.number().int().min(1).max(5).optional(),
   }),
+
+  /* Los cuatro del mockup. Copia exacta de
+     `frontend/src/features/salud/trackers.ts`: si uno cambia sin el otro, el
+     servidor rechaza el registro y la cola se lo come en silencio. */
+  antojos: z.object({
+    tags: z.array(z.enum([
+      'dulce', 'salado', 'carbohidratos', 'grasas', 'proteinas', 'citricos', 'otro',
+    ])).min(1).max(7),
+  }),
+
+  apetito: z.object({
+    level: z.number().int().min(1).max(5),
+  }),
+
+  entrenamiento: z.object({
+    estado: z.enum(['no_entrene', 'con_energia', 'cansada', 'con_dolor', 'motivada']),
+  }),
+
+  notas: z.object({
+    texto: z.string().trim().min(1).max(1000),
+  }),
 }
 
 /**
@@ -196,11 +222,13 @@ export interface PeriodoDerivado {
  * Copia exacta de `frontend/src/features/salud/ciclo/periodos.ts`.
  */
 export function derivarPeriodos(
-  sangrados: Array<{ fecha: string; nivel: number }>,
+  sangrados: Array<{ fecha: string; nivel: number; fueraDePeriodo?: boolean }>,
   declarados: string[] = [],
 ): PeriodoDerivado[] {
   const conSangrado = sangrados
-    .filter(s => s.nivel >= SANGRADO_MINIMO)
+    /* La cuarta guarda contra el periodo fantasma, declarada por ella y no
+       deducida. Gemela de la de `frontend/.../ciclo/periodos.ts`. */
+    .filter(s => !s.fueraDePeriodo && s.nivel >= SANGRADO_MINIMO)
     .map(s => s.fecha)
 
   const forzados = new Set(declarados)

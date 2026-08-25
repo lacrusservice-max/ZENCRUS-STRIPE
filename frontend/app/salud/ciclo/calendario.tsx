@@ -1,377 +1,287 @@
 /**
  * CICLO · CALENDARIO
  * ═══════════════════════════════════════════════════════════════════════════
- * El mes entero de un vistazo, y cualquier día a un toque para registrar en
- * retrospectiva —que es como se registra de verdad: acordándose por la noche o
- * dos días después.
+ * La pantalla 07 del mockup: meses encadenados hacia abajo, los días de
+ * sangrado en granate, la ventana fértil en agua, y hoy con su marco.
  *
- * ── La cinta que atraviesa la rejilla ──────────────────────────────────────
- * Las fases no se pintan como pastillas sueltas dentro de cada casilla, sino
- * como una franja continua bajo los números que cruza la semana de lado a
- * lado. Es el mismo gesto que La Cinta de la portada, y hace visible lo que
- * una rejilla de pastillas esconde: que un ciclo es un continuo, no una
- * colección de días independientes.
+ * ── Lo registrado y lo previsto NO se pintan igual ─────────────────────────
+ * En el mockup los dos son el mismo rectángulo lleno. Aquí no, y es la única
+ * licencia que me tomo con el diseño: un día de sangrado registrado es un
+ * HECHO —lo marcó ella— y un día de periodo previsto es una APUESTA del
+ * motor. Pintarlos idénticos convierte una predicción en un dato, y el día que
+ * la regla se retrase tres días la app parecerá estar mintiendo sobre el
+ * pasado. Lo registrado va lleno; lo previsto, con el contorno punteado.
  *
- * ── Cuatro canales, no cuatro colores ──────────────────────────────────────
- * Hay que distinguir sangrado registrado, sangrado previsto, ovulación, día
- * con registro y hoy. Resolverlo con cinco colores sería ilegible —y sobre
- * todo, inaccesible—, así que cada cosa usa un canal distinto:
- *   · altura de la franja  → sangrado registrado
- *   · franja en contorno   → sangrado previsto
- *   · rombo                → ovulación estimada
- *   · punto                → ese día registró algo
- *   · aro                  → hoy
- * Ninguno depende de distinguir dos tonos parecidos.
+ * ── Doce meses atrás y tres adelante ───────────────────────────────────────
+ * Hacia atrás, porque el calendario es sobre todo un sitio para CORREGIR:
+ * «me bajó el martes y no lo apunté». Hacia delante solo tres, porque la banda
+ * de incertidumbre crece con la raíz del número de ciclos y a partir del
+ * cuarto la predicción es tan ancha que enseñarla es ruido.
  */
 
-import { useEffect, useMemo, useState } from 'react'
-import {
-  View, Text, StyleSheet, ScrollView, Pressable, useWindowDimensions,
-} from 'react-native'
+import { useCallback, useMemo, useRef } from 'react'
+import { View, Text, StyleSheet, Pressable, FlatList } from 'react-native'
 import { router } from 'expo-router'
-import { Ionicons } from '@expo/vector-icons'
-import { Seccion, Placa, Filete } from '@/components/salud/piezas'
 import { useCicloStore } from '@/store/cicloStore'
 import { useCiclo } from '@/features/salud/ciclo/useCiclo'
-import {
-  construirMes, mesAnterior, mesSiguiente, type DiaCalendario,
-} from '@/features/salud/ciclo/calendario'
-import { DIAS_SEMANA, nombreMes, diaLargo } from '@/features/salud/ciclo/formato'
-import { SANGRADO_MINIMO } from '@/features/salud/ciclo/periodos'
-import { TRACKER_META, type TrackerKind } from '@/features/salud/trackers'
-import { PHASES, base, space, radius, family, type as tipo, numeric } from '@/theme/salud/tokens'
+import { construirMes, type DiaCalendario } from '@/features/salud/ciclo/calendario'
+import { DIAS_SEMANA, nombreMes } from '@/features/salud/ciclo/formato'
 import { hoyLocal } from '@/utils/fechas'
+import { ALTO_BARRA } from '@/components/salud/ciclo/BarraCiclo'
+import { Pantalla, Icono } from '@/components/salud/ciclo/Claro'
+import {
+  FONDO, ACENTO, TEXTO, FUENTE, SUP, SOMBRA, RADIO, TABULAR,
+} from '@/theme/salud/cicloClaro'
 import { elegir } from '@/utils/haptica'
-import { Screen, ScreenHeader } from '@/components/ui/Screen'
 
-export default function Calendario() {
-  const load = useCicloStore(s => s.load)
+/** Cuántos meses se pueden recorrer. Ver el encabezado del archivo. */
+const ATRAS = 12
+const ADELANTE = 3
+
+/** Alto de una tarjeta de mes más su título, para poder saltar al mes actual. */
+const ALTO_MES = 452
+
+export default function CalendarioCiclo() {
   const logs = useCicloStore(s => s.logs)
-  const declararInicio = useCicloStore(s => s.declararInicio)
-  const quitarInicio = useCicloStore(s => s.quitarInicio)
-  const inicios = useCicloStore(s => s.inicios)
-
-  const { width } = useWindowDimensions()
-  const ciclo = useCiclo()
   const hoy = hoyLocal()
+  const { periodos, prediccion, marco } = useCiclo()
+  const lista = useRef<FlatList<{ año: number; mes: number }>>(null)
 
-  const [{ año, mes }, setMes] = useState(() => {
-    const [a, m] = hoy.split('-').map(Number)
-    return { año: a, mes: m }
-  })
-  const [elegido, setElegido] = useState<string | null>(hoy)
+  /* La lista de meses, del más antiguo al más nuevo. Se calcula una vez: si se
+     recalculara en cada pintada, `initialScrollIndex` saltaría solo. */
+  const meses = useMemo(() => {
+    const [a, m] = [Number(hoy.slice(0, 4)), Number(hoy.slice(5, 7))]
+    const out: { año: number; mes: number }[] = []
+    for (let k = -ATRAS; k <= ADELANTE; k++) {
+      const d = new Date(a, m - 1 + k, 1)
+      out.push({ año: d.getFullYear(), mes: d.getMonth() + 1 })
+    }
+    return out
+  }, [hoy])
 
-  useEffect(() => { void load() }, [load])
+  const indiceHoy = ATRAS
 
-  const rejilla = useMemo(
-    () => construirMes({
-      año, mes, logs,
-      periodos: ciclo.periodos,
-      prediccion: ciclo.prediccion,
-      marco: ciclo.marco,
-      hoy,
-    }),
-    [año, mes, logs, ciclo.periodos, ciclo.prediccion, ciclo.marco, hoy],
-  )
-
-  const celda = (width - space.lg * 2) / 7
-  const dia = elegido ? rejilla.dias.find(d => d.fecha === elegido) ?? null : null
-
-  const ir = (delta: -1 | 1) => {
-    elegir()
-    setMes(delta === -1 ? mesAnterior(año, mes) : mesSiguiente(año, mes))
-  }
+  const pintar = useCallback(({ item }: { item: { año: number; mes: number } }) => (
+    <Mes
+      año={item.año}
+      mes={item.mes}
+      esActual={item.año === Number(hoy.slice(0, 4)) && item.mes === Number(hoy.slice(5, 7))}
+      logs={logs}
+      periodos={periodos}
+      prediccion={prediccion}
+      marco={marco}
+      hoy={hoy}
+    />
+  ), [logs, periodos, prediccion, marco, hoy])
 
   return (
-    <Screen tint={ciclo.tema.accent}>
-      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 80 }}>
-        <ScreenHeader
-          back
-          eyebrow="Zencrus · Ciclo"
-          title="Calendario"
-          icon="calendar"
-          color={ciclo.tema.accent}
-        />
+    <Pantalla fondo={FONDO.calendario}>
+      <FlatList
+        ref={lista}
+        data={meses}
+        keyExtractor={m => `${m.año}-${m.mes}`}
+        renderItem={pintar}
+        initialScrollIndex={indiceHoy}
+        getItemLayout={(_, i) => ({ length: ALTO_MES, offset: ALTO_MES * i, index: i })}
+        /* Si la altura estimada no cuadra con la real, `initialScrollIndex`
+           deja la pantalla a medio mes. `onScrollToIndexFailed` es la red: se
+           reintenta una vez ya medido. */
+        onScrollToIndexFailed={info => {
+          setTimeout(() => {
+            lista.current?.scrollToIndex({ index: info.index, animated: false })
+          }, 60)
+        }}
+        contentContainerStyle={[s.scroll, { paddingBottom: ALTO_BARRA + 40 }]}
+        showsVerticalScrollIndicator={false}
+      />
 
-        {/* ── Mes ────────────────────────────────────────────────────── */}
-        <View style={s.barraMes}>
-          <Pressable onPress={() => ir(-1)} hitSlop={12} accessibilityLabel="Mes anterior">
-            <Ionicons name="chevron-back" size={20} color={base.textMid} />
-          </Pressable>
-          <View style={s.centro}>
-            <Text style={s.mes}>{nombreMes(mes)}</Text>
-            <Text style={s.año}>{año}</Text>
-          </View>
-          <Pressable onPress={() => ir(1)} hitSlop={12} accessibilityLabel="Mes siguiente">
-            <Ionicons name="chevron-forward" size={20} color={base.textMid} />
-          </Pressable>
-        </View>
-
-        {/* ── Rejilla ────────────────────────────────────────────────── */}
-        <View style={s.rejilla}>
-          <View style={s.semana}>
-            {DIAS_SEMANA.map((d, i) => (
-              <Text key={i} style={[s.diaSemana, { width: celda }]}>{d}</Text>
-            ))}
-          </View>
-
-          {Array.from({ length: 6 }, (_, fila) => (
-            <View key={fila} style={s.fila}>
-              {rejilla.dias.slice(fila * 7, fila * 7 + 7).map(d => (
-                <Celda
-                  key={d.fecha}
-                  d={d}
-                  ancho={celda}
-                  elegido={d.fecha === elegido}
-                  onPress={() => { elegir(); setElegido(d.fecha) }}
-                />
-              ))}
-            </View>
-          ))}
-        </View>
-
-        {/* ── Leyenda ────────────────────────────────────────────────── */}
-        <View style={s.leyenda}>
-          <Marca color={PHASES.menstrual.accent} alto={7} texto="sangrado registrado" />
-          <Marca color={PHASES.menstrual.accent} alto={7} contorno texto="previsto" />
-          <Marca color={PHASES.ovulatoria.accent} rombo texto="ovulación estimada" />
-        </View>
-
-        {/* ── El día elegido ─────────────────────────────────────────── */}
-        {dia && (
-          <Seccion
-            eyebrow={dia.hoy ? 'Hoy' : 'Día elegido'}
-            titulo={diaLargo(dia.fecha)}
-            color={ciclo.tema.accent}
-            nota={
-              dia.diaDeCiclo != null
-                ? `Día ${dia.diaDeCiclo} de tu ciclo · fase ${dia.fase ? PHASES[dia.fase].label.toLowerCase() : '—'}`
-                : 'Fuera de cualquier ciclo que el módulo pueda situar.'
-            }
-          >
-            <Placa>
-              <DetalleDia fecha={dia.fecha} registros={logs[dia.fecha]} tono={ciclo.tema.accent} />
-              <Filete />
-              <Pressable
-                onPress={() => router.push({ pathname: '/salud/ciclo/registrar', params: { fecha: dia.fecha } })}
-                style={({ pressed }) => [s.accion, pressed && s.pulsado]}
-              >
-                <Ionicons name="create-outline" size={16} color={ciclo.tema.accent} />
-                <Text style={[s.accionTxt, { color: ciclo.tema.accent }]}>
-                  {logs[dia.fecha] ? 'Editar este día' : 'Registrar este día'}
-                </Text>
-              </Pressable>
-              <Filete />
-              {/* La corrección a mano: el motor deduce, ella decide. */}
-              <Pressable
-                onPress={() => {
-                  elegir()
-                  if (inicios.includes(dia.fecha)) void quitarInicio(dia.fecha)
-                  else void declararInicio(dia.fecha)
-                }}
-                style={({ pressed }) => [s.accion, pressed && s.pulsado]}
-              >
-                <Ionicons
-                  name={inicios.includes(dia.fecha) ? 'flag' : 'flag-outline'}
-                  size={16}
-                  color={base.textMid}
-                />
-                <Text style={s.accionSec}>
-                  {inicios.includes(dia.fecha)
-                    ? 'Quitar «aquí empezó mi regla»'
-                    : 'Marcar que aquí empezó mi regla'}
-                </Text>
-              </Pressable>
-            </Placa>
-            <Text style={s.pie}>
-              Marcar el inicio a mano corrige lo que el módulo dedujo de tu sangrado.
-              Se usa para calcular tus ciclos y manda sobre la deducción.
-            </Text>
-          </Seccion>
-        )}
-      </ScrollView>
-    </Screen>
+      {/* El lápiz del mockup: entra al registro de HOY, no del día que se esté
+          mirando — para eso se toca el día. */}
+      <Pressable
+        onPress={() => { elegir(); router.push('/salud/ciclo/registrar') }}
+        style={({ pressed }) => [s.lapiz, { bottom: ALTO_BARRA + 22 }, pressed && s.pulsado]}
+        accessibilityRole="button"
+        accessibilityLabel="Registrar hoy"
+      >
+        <Icono nombre="dashboard_editar" tam={24} style={s.lapizIc} />
+      </Pressable>
+    </Pantalla>
   )
 }
 
-// ── Celda ───────────────────────────────────────────────────────────────────
+/* ── Un mes ─────────────────────────────────────────────────────────────── */
 
-function Celda({ d, ancho, elegido, onPress }: {
-  d: DiaCalendario; ancho: number; elegido: boolean; onPress: () => void
+function Mes({ año, mes, esActual, logs, periodos, prediccion, marco, hoy }: {
+  año: number
+  mes: number
+  esActual: boolean
+  logs: Parameters<typeof construirMes>[0]['logs']
+  periodos: Parameters<typeof construirMes>[0]['periodos']
+  prediccion: Parameters<typeof construirMes>[0]['prediccion']
+  marco: Parameters<typeof construirMes>[0]['marco']
+  hoy: string
 }) {
-  const tono = d.fase ? PHASES[d.fase].accent : base.hairline
-  const sangra = d.sangrado != null && d.sangrado >= SANGRADO_MINIMO
-  /* La franja crece con el nivel: la intensidad se lee por la forma y no solo
-     por el color, que es lo que la hace legible sin distinguir tonos. */
-  const alto = sangra ? 4 + (d.sangrado ?? 0) * 1.6 : 3
+  const datos = useMemo(
+    () => construirMes({ año, mes, logs, periodos, prediccion, marco, hoy }),
+    [año, mes, logs, periodos, prediccion, marco, hoy])
 
   return (
-    <Pressable
-      onPress={onPress}
-      style={[s.celda, { width: ancho }]}
-      accessibilityRole="button"
-      accessibilityLabel={
-        `${d.numero}${d.diaDeCiclo ? `, día ${d.diaDeCiclo} del ciclo` : ''}` +
-        `${sangra ? ', sangrado registrado' : ''}${d.periodoPredicho ? ', periodo previsto' : ''}` +
-        `${d.hoy ? ', hoy' : ''}`
-      }
-    >
-      <View style={[
-        s.numeroCaja,
-        elegido && { backgroundColor: `${tono}33` },
-        d.hoy && { borderColor: tono, borderWidth: 1.5 },
-      ]}>
-        <Text style={[
-          s.numero,
-          !d.delMes && s.fuera,
-          d.hoy && { color: base.textHi },
-        ]}>
-          {d.numero}
-        </Text>
-      </View>
-
-      {/* Punto de actividad: ese día registró algo. */}
-      <View style={s.marcas}>
-        {d.registros > 0 ? (
-          <View style={[s.punto, { backgroundColor: d.delMes ? tono : base.hairline }]} />
-        ) : <View style={s.punto} />}
-        {d.ovulacionPredicha ? (
-          <View style={[s.rombo, { borderColor: PHASES.ovulatoria.accent }]} />
+    <View style={s.mes}>
+      <View style={s.mesCab}>
+        <Text style={s.mesNombre}>{nombreMes(mes)}</Text>
+        <Text style={s.mesAño}>{año}</Text>
+        <View style={s.flex} />
+        {esActual ? (
+          <View style={s.pildoraActual}>
+            <Text style={s.pildoraActualTxt}>Mes actual</Text>
+          </View>
         ) : null}
       </View>
 
-      {/* La franja de fase: continua de lado a lado de la semana.
-          Va dentro de un carril de alto FIJO y anclada abajo. Sin el carril,
-          las filas con sangrado abundante —franja más alta— crecían y la
-          rejilla se ondulaba de arriba abajo: cada semana a una altura
-          distinta según lo que hubiera pasado esa semana. */}
-      <View style={s.carril}>
-      <View style={[
-        s.franja,
-        { height: alto, opacity: d.delMes ? 1 : 0.28 },
-        sangra
-          ? { backgroundColor: tono }
-          : d.periodoPredicho
-            ? { borderWidth: 1.2, borderColor: tono, borderStyle: 'dashed', backgroundColor: 'transparent' }
-            : d.bandaPrediccion
-              ? { backgroundColor: `${tono}33` }
-              : d.fase
-                ? { backgroundColor: `${tono}${d.fertil ? '55' : '2E'}` }
-                : { backgroundColor: 'transparent' },
-      ]} />
+      <View style={s.tarjeta}>
+        <View style={s.semana}>
+          {DIAS_SEMANA.map((d, i) => (
+            <Text key={`${d}${i}`} style={s.diaSemana}>{d}</Text>
+          ))}
+        </View>
+        <View style={s.rejilla}>
+          {datos.dias.map(d => <Celda key={d.fecha} d={d} />)}
+        </View>
       </View>
+    </View>
+  )
+}
+
+/* ── Un día ─────────────────────────────────────────────────────────────── */
+
+function Celda({ d }: { d: DiaCalendario }) {
+  if (!d.delMes) return <View style={s.celda} />
+
+  /* Un nivel 0 significa «hoy no sangré», que es un dato y NO debe pintarse de
+     granate. Solo cuenta a partir de 1. */
+  const sangro = (d.sangrado ?? 0) > 0
+  const previsto = !sangro && d.periodoPredicho
+  const fertil = !sangro && !previsto && d.fertil
+
+  const abrir = () => {
+    elegir()
+    router.push({ pathname: '/salud/ciclo/registrar', params: { fecha: d.fecha } })
+  }
+
+  return (
+    <Pressable
+      onPress={abrir}
+      style={s.celda}
+      accessibilityRole="button"
+      accessibilityLabel={etiquetaDe(d, sangro, previsto, fertil)}
+    >
+      <View style={[
+        s.caja,
+        sangro && s.cajaSangrado,
+        previsto && s.cajaPrevisto,
+        fertil && s.cajaFertil,
+        d.hoy && s.cajaHoy,
+      ]}>
+        {/* El corazón del día de ovulación, como en el mockup. */}
+        {d.ovulacionPredicha ? <View style={s.corazon} /> : null}
+        <Text style={[
+          s.numero,
+          sangro && s.numeroSangrado,
+          previsto && s.numeroPrevisto,
+          fertil && s.numeroFertil,
+          d.futuro && !sangro && !previsto && !fertil && s.numeroFuturo,
+        ]}>
+          {d.numero}
+        </Text>
+        {/* El punto de actividad: hubo registro ese día. */}
+        {d.registros > 0 && !sangro ? <View style={s.punto} /> : null}
+      </View>
+      {d.hoy ? <Text style={s.hoyTxt}>HOY</Text> : null}
     </Pressable>
   )
 }
 
-// ── Detalle del día ─────────────────────────────────────────────────────────
-
-function DetalleDia({ registros, tono }: {
-  fecha: string
-  registros: Record<string, unknown> | undefined
-  tono: string
-}) {
-  if (!registros || !Object.keys(registros).length) {
-    return <Text style={s.vacioDia}>Nada registrado este día.</Text>
-  }
-  return (
-    <View style={s.etiquetas}>
-      {(Object.keys(registros) as TrackerKind[]).map(k => (
-        <View key={k} style={[s.etiqueta, { backgroundColor: `${tono}1F` }]}>
-          <Text style={[s.etiquetaTxt, { color: tono }]}>
-            {TRACKER_META[k]?.label ?? k}
-          </Text>
-        </View>
-      ))}
-    </View>
-  )
-}
-
-// ── Leyenda ─────────────────────────────────────────────────────────────────
-
-function Marca({ color, alto = 5, contorno, rombo, texto }: {
-  color: string; alto?: number; contorno?: boolean; rombo?: boolean; texto: string
-}) {
-  return (
-    <View style={s.marca}>
-      {rombo ? (
-        <View style={[s.rombo, { borderColor: color }]} />
-      ) : (
-        <View style={[
-          s.muestra,
-          { height: alto },
-          contorno
-            ? { borderWidth: 1.2, borderColor: color, borderStyle: 'dashed' }
-            : { backgroundColor: color },
-        ]} />
-      )}
-      <Text style={s.marcaTxt}>{texto}</Text>
-    </View>
-  )
+function etiquetaDe(d: DiaCalendario, sangro: boolean, previsto: boolean, fertil: boolean): string {
+  const partes = [`${d.numero}`]
+  if (sangro) partes.push('sangrado registrado')
+  else if (previsto) partes.push('periodo previsto')
+  else if (fertil) partes.push('ventana fértil estimada')
+  if (d.ovulacionPredicha) partes.push('ovulación estimada')
+  if (d.hoy) partes.push('hoy')
+  return partes.join(', ')
 }
 
 const s = StyleSheet.create({
-  centro: { alignItems: 'center' },
-  pulsado: { opacity: 0.7 },
+  scroll: { paddingHorizontal: 20, paddingTop: 14 },
+  flex: { flex: 1 },
+  pulsado: { opacity: 0.75, transform: [{ scale: 0.96 }] },
 
-  barraMes: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    marginHorizontal: space.lg, marginTop: space.md,
+  mes: { marginBottom: 26 },
+  mesCab: { flexDirection: 'row', alignItems: 'baseline', gap: 9, marginBottom: 12 },
+  mesNombre: {
+    fontFamily: FUENTE.titulo, fontSize: 28, color: TEXTO.fuerte, letterSpacing: -0.8,
   },
-  mes: {
-    fontFamily: family.displaySemi, fontSize: tipo.display.sm,
-    color: base.textHi, textTransform: 'capitalize',
+  mesAño: { fontFamily: FUENTE.fuerte, fontSize: 20, color: '#B0A4CE', ...TABULAR },
+  pildoraActual: {
+    paddingHorizontal: 13, paddingVertical: 7, borderRadius: 999,
+    backgroundColor: ACENTO.morado, alignSelf: 'center',
   },
-  año: { fontFamily: family.data, fontSize: tipo.ui.xs, color: base.textLow, ...numeric },
+  pildoraActualTxt: { fontFamily: FUENTE.fuerte, fontSize: 12.5, color: '#FFFFFF' },
 
-  rejilla: { marginHorizontal: space.lg, marginTop: space.lg },
-  semana: { flexDirection: 'row', marginBottom: space.sm },
+  tarjeta: {
+    backgroundColor: SUP.tarjeta, borderRadius: RADIO.tarjeta,
+    paddingHorizontal: 10, paddingVertical: 14, ...SOMBRA,
+  },
+  semana: { flexDirection: 'row', marginBottom: 8 },
   diaSemana: {
-    fontFamily: family.brand, fontSize: 10, letterSpacing: 1.6,
-    color: base.textLow, textAlign: 'center',
+    flex: 1, textAlign: 'center',
+    fontFamily: FUENTE.fuerte, fontSize: 12.5, color: '#9A8FBA',
   },
-  fila: { flexDirection: 'row' },
+  rejilla: { flexDirection: 'row', flexWrap: 'wrap' },
 
-  celda: { alignItems: 'center', paddingTop: 6, paddingBottom: 6, gap: 3 },
-  numeroCaja: {
-    width: 28, height: 28, borderRadius: radius.pill,
-    alignItems: 'center', justifyContent: 'center', borderWidth: 1.5, borderColor: 'transparent',
+  /* Siete columnas exactas. Con `flex: 1` sobre 42 celdas React Native reparte
+     los restos de forma desigual y las semanas quedan descuadradas entre sí. */
+  celda: { width: `${100 / 7}%`, alignItems: 'center', paddingVertical: 3 },
+  caja: {
+    width: 40, height: 40, borderRadius: RADIO.celda,
+    alignItems: 'center', justifyContent: 'center',
   },
-  numero: { fontFamily: family.data, fontSize: tipo.ui.sm, color: base.textMid, ...numeric },
-  fuera: { color: base.textLow, opacity: 0.4 },
+  cajaSangrado: { backgroundColor: ACENTO.periodo },
+  cajaPrevisto: {
+    borderWidth: 1.5, borderStyle: 'dashed', borderColor: ACENTO.periodo,
+  },
+  cajaFertil: { backgroundColor: ACENTO.fertilSuave },
+  cajaHoy: { borderWidth: 2, borderColor: ACENTO.morado, borderStyle: 'solid' },
 
-  marcas: { height: 6, flexDirection: 'row', alignItems: 'center', gap: 3 },
-  punto: { width: 3.5, height: 3.5, borderRadius: 2 },
-  rombo: {
-    width: 6, height: 6, borderWidth: 1.2,
-    transform: [{ rotate: '45deg' }],
+  numero: { fontFamily: FUENTE.fuerte, fontSize: 15, color: TEXTO.fuerte, ...TABULAR },
+  numeroSangrado: { color: '#FFFFFF' },
+  numeroPrevisto: { color: ACENTO.periodo },
+  numeroFertil: { color: ACENTO.fertil },
+  numeroFuturo: { color: '#B6ACCB' },
+
+  corazon: {
+    position: 'absolute', top: 1, right: 4,
+    width: 7, height: 7, borderRadius: 4,
+    backgroundColor: ACENTO.fertil,
+  },
+  punto: {
+    position: 'absolute', bottom: 3,
+    width: 4, height: 4, borderRadius: 2,
+    backgroundColor: ACENTO.morado,
+  },
+  hoyTxt: {
+    fontFamily: FUENTE.fuerte, fontSize: 9.5, letterSpacing: 0.6,
+    color: ACENTO.morado, marginTop: 2,
   },
 
-  carril: { width: '100%', height: 13, justifyContent: 'flex-end' },
-  franja: { width: '100%', borderRadius: 1.5 },
-
-  leyenda: {
-    flexDirection: 'row', flexWrap: 'wrap', gap: space.md,
-    marginHorizontal: space.lg, marginTop: space.lg,
+  lapiz: {
+    position: 'absolute', right: 22,
+    width: 62, height: 62, borderRadius: 31,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: ACENTO.morado,
+    shadowColor: ACENTO.morado, shadowOpacity: 0.4,
+    shadowRadius: 16, shadowOffset: { width: 0, height: 8 },
+    elevation: 6,
   },
-  marca: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  muestra: { width: 16, borderRadius: 1.5 },
-  marcaTxt: { fontFamily: family.ui, fontSize: 10.5, color: base.textLow },
-
-  accion: { flexDirection: 'row', alignItems: 'center', gap: space.sm, paddingVertical: space.md - 2 },
-  accionTxt: { fontFamily: family.uiSemi, fontSize: tipo.ui.sm },
-  accionSec: { fontFamily: family.ui, fontSize: tipo.ui.sm, color: base.textMid },
-
-  vacioDia: {
-    fontFamily: family.ui, fontSize: tipo.ui.sm, color: base.textLow,
-    paddingBottom: space.md - 2,
-  },
-  etiquetas: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, paddingBottom: space.md - 2 },
-  etiqueta: { paddingHorizontal: space.sm + 2, paddingVertical: 5, borderRadius: radius.pill },
-  etiquetaTxt: { fontFamily: family.uiMedium, fontSize: tipo.ui.xs },
-
-  pie: {
-    fontFamily: family.ui, fontSize: tipo.ui.xs, color: base.textLow,
-    marginTop: space.sm, lineHeight: tipo.ui.xs * 1.5,
-  },
+  lapizIc: { tintColor: '#FFFFFF' },
 })

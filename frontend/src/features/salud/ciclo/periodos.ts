@@ -86,6 +86,11 @@ function diasConSangrado(logs: Record<string, RegistroDia>): string[] {
   return Object.keys(logs)
     .filter(f => {
       const s = logs[f]?.sangrado
+      /* La CUARTA guarda contra el periodo fantasma, y la única que no deduce
+         el motor: la declara ella. Un sangrado moderado a mitad de ciclo
+         abriría un periodo y hundiría todas las medias; marcado como «fuera
+         del periodo», se guarda el sangrado pero no cuenta para deducir. */
+      if (s?.fueraDePeriodo) return false
       return s != null && s.level >= SANGRADO_MINIMO
     })
     .sort()
