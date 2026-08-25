@@ -38,7 +38,33 @@ import {
 // `File` se renombra: el nombre a secas choca con el `File` del DOM que
 // TypeScript trae de serie, y la anotación acababa apuntando al otro.
 import { File as Fichero, Paths } from 'expo-file-system'
-import * as MediaLibrary from 'expo-media-library'
+/*
+ * `expo-media-library` NO SE IMPORTA ARRIBA. A PROPOSITO.
+ * ──────────────────────────────────────────────────────
+ * Es un modulo NATIVO, y Expo Go no lo lleva. Un `import` en la raiz se evalua
+ * al cargar el fichero, asi que en Expo Go lanzaba
+ *
+ *     Error: Cannot find native module 'ExpoMediaLibrary'
+ *
+ * antes de que nadie pulsara nada. Y como este visor lo importa la ruta del
+ * chat, el fallo subia hasta ella y la dejaba SIN `default export`: la pantalla
+ * entera del chat de social se caia por un boton de guardar que quiza nadie iba
+ * a tocar.
+ *
+ * Cargandolo dentro de `guardar()`, el fichero se evalua limpio en todas partes
+ * y lo unico que se pierde donde el modulo no existe es guardar en el carrete,
+ * avisando con un mensaje claro en vez de tumbar la pantalla.
+ */
+type ModuloMediaLibrary = typeof import('expo-media-library')
+
+function cargarMediaLibrary(): ModuloMediaLibrary | null {
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    return require('expo-media-library') as ModuloMediaLibrary
+  } catch {
+    return null
+  }
+}
 import * as Haptics from 'expo-haptics'
 import { Ionicons } from '@expo/vector-icons'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
@@ -91,6 +117,15 @@ export function VisorImagen({
     setGuardando(true)
     let temporal: Fichero | null = null
     try {
+      const MediaLibrary = cargarMediaLibrary()
+      if (!MediaLibrary) {
+        Alert.alert(
+          'Aqui no se puede guardar',
+          'Guardar en el carrete necesita la app instalada de verdad; en Expo Go ese trozo no existe. Todo lo demas del visor funciona igual.',
+        )
+        return
+      }
+
       const permiso = await MediaLibrary.requestPermissionsAsync(true)
       if (!permiso.granted) {
         Alert.alert(

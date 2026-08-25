@@ -136,6 +136,43 @@ function AnimatedTabIcon({ name, focused }: { name: string; focused: boolean }) 
  */
 const UMBRAL_GESTO = 18
 
+/**
+ * FUNDIDO DE ENTRADA QUE NO PUEDE QUEDARSE A MEDIAS
+ * ─────────────────────────────────────────────────
+ * El de antes vivia en el padre y era UN SOLO valor compartido: al cambiar
+ * `abiertoEn` se ponia la opacidad a cero y se lanzaba la animacion. El fallo
+ * es que `abiertoEn` cambia tambien estando en una pestana SIN menu, donde
+ * esta fila ni siquiera esta montada. La opacidad se quedaba en cero, y al
+ * volver despues a una pestana con menu la fila se montaba ya invisible y
+ * nadie la volvia a animar, porque `abiertoEn` no habia vuelto a cambiar.
+ * Resultado: el menu abierto y vacio, sin ninguna forma de recuperarlo.
+ *
+ * Aqui el valor NACE CON LA FILA. Cuando el efecto corre, la vista nativa ya
+ * existe, que es lo que `useNativeDriver` necesita para arrancar. Y al soltar
+ * se fuerza el 1: si la animacion se interrumpe a medio camino, la fila se
+ * queda VISIBLE. El unico estado imposible es el invisible.
+ */
+function FundidoAlEntrar({ children, style }: { children: React.ReactNode; style?: any }) {
+  const v = useRef(new Animated.Value(0)).current
+  useEffect(() => {
+    const anim = Animated.timing(v, {
+      toValue: 1, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+    })
+    anim.start(({ finished }) => { if (!finished) v.setValue(1) })
+    return () => { anim.stop(); v.setValue(1) }
+  }, [v])
+  return (
+    <Animated.View
+      style={[
+        style,
+        { opacity: v, transform: [{ translateX: v.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] },
+      ]}
+    >
+      {children}
+    </Animated.View>
+  )
+}
+
 function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
   const T = useAppTheme()
   const isDark = useThemeStore(s => s.isDark)
@@ -172,19 +209,9 @@ function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
    * flecha con la que volver a encenderla: invisible y sin arreglo posible.
    */
 
-  const fundido = useRef(new Animated.Value(1)).current
-  const estrenando = useRef(true)
-
-  /* No hace falta reiniciar nada al cambiar de pestaña: el estado guarda en
-     qué destino está abierto el menú, y en otra pestaña deja de coincidir. */
-
-  useEffect(() => {
-    if (estrenando.current) { estrenando.current = false; return }
-    fundido.setValue(0)
-    Animated.timing(fundido, {
-      toValue: 1, duration: 240, easing: Easing.out(Easing.cubic), useNativeDriver: true,
-    }).start()
-  }, [abiertoEn])
+  /* El fundido ya no vive aquí: lo lleva `FundidoAlEntrar`, que crea su propio
+     valor al montarse. Tenerlo en el padre era justo lo que dejaba el menú en
+     blanco —ver la explicación en ese componente—. */
 
   /**
    * DESLIZAR DE LADO, EL ATAJO DEL GALÓN
@@ -295,18 +322,31 @@ function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         )}
 
         {enSeccion ? (
-          <Animated.View
-            style={[
-              tb.fila,
-              { opacity: fundido, transform: [{ translateX: fundido.interpolate({ inputRange: [0, 1], outputRange: [18, 0] }) }] },
-            ]}
-          >
+          <FundidoAlEntrar style={tb.fila}>
             {(() => {
               const es = entradasDeMenu(conMenu.menu, { user: usuario, lugar: conMenu.lugar ?? 'gym' })
-              /* Sin hueco: aquí ZENA no se ve, así que las entradas usan el
-                 ancho entero. */
-              return [es].map((mitad, i) => (
+              /*
+               * DOS MITADES DE IGUAL PESO, CON EL HUECO DE ZENA EN MEDIO
+               * ────────────────────────────────────────────────────────
+               * Antes las entradas ocupaban el ancho entero porque aquí ZENA
+               * se escondía. Ahora ZENA no se esconde nunca, así que hay que
+               * guardarle su sitio también en este menú o el círculo cae encima
+               * de las entradas centrales y deja de poder tocarse.
+               *
+               * Las mitades llevan `flex: 1` cada una —y no las entradas
+               * sueltas— porque `zenaFila` centra a ZENA sobre la píldora
+               * entera. Con dos bloques de igual peso el hueco cae en el centro
+               * exacto sea cual sea el número de entradas; repartiendo el flex
+               * entrada a entrada, un menú impar (Nutrición tiene cinco) dejaba
+               * el hueco descentrado y ZENA volvía a tapar una entrada.
+               *
+               * La de más va a la izquierda. Con fuente de 9 puntos, tres
+               * entradas en media píldora siguen sobrándoles ancho.
+               */
+              const corte = Math.ceil(es.length / 2)
+              return [es.slice(0, corte), es.slice(corte)].map((mitad, i) => (
                 <React.Fragment key={i}>
+                  <View style={tb.mitad}>
                   {mitad.map(d => {
                     const on = d.id === conMenu.activo
                     const tinte = on ? (isDark ? T.accent : LIGHT_TAB.accent) : (isDark ? T.ink3 : LIGHT_TAB.idle)
@@ -328,10 +368,12 @@ function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
                       </TouchableOpacity>
                     )
                   })}
+                  </View>
+                  {i === 0 && <View style={tb.hueco} pointerEvents="none" />}
                 </React.Fragment>
               ))
             })()}
-          </Animated.View>
+          </FundidoAlEntrar>
         ) : (
         state.routes.map((route, index) => {
           if (!VISIBLE.has(route.name)) return null
@@ -397,9 +439,18 @@ function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
         y fondo transparente. Cualquier cosa detrás le dibujaría un segundo
         círculo alrededor del suyo.
       */}
-      {/* ZENA solo en el menú de la app: dentro del de la sección desaparece
-          y su hueco se cierra con ella. */}
-      {!enSeccion && (
+      {/*
+        ZENA NO SE DESMONTA NUNCA.
+        ─────────────────────────
+        Antes iba tras `{!enSeccion && ...}`: al abrir el menú de una sección
+        se desmontaba entera y volvía a montarse al cerrarlo. Cada montaje es
+        un `require` que en desarrollo Metro tiene que servir otra vez, y por
+        eso parpadeaba y a veces tardaba en volver.
+
+        Ahora vive fuera de las dos ramas y su hueco está reservado en las dos,
+        así que es lo único de la barra que no cambia jamás: ni se va, ni se
+        recarga, ni depende de en qué menú estés.
+      */}
       <View style={tb.zenaFila} pointerEvents="box-none">
         <TouchableOpacity
           onPress={() => router.push('/(tabs)/chat')}
@@ -419,7 +470,6 @@ function GlassTabBar({ state, descriptors, navigation }: BottomTabBarProps) {
           />
         </TouchableOpacity>
       </View>
-      )}
     </View>
   )
 }
@@ -472,6 +522,14 @@ const tb = StyleSheet.create({
     justifyContent: 'center',
   },
   fila: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  /* Cada mitad del menú de sección. El `flex: 1` va aquí y no en las entradas
+     para que el hueco de ZENA caiga en el centro exacto de la píldora aunque
+     el número de entradas sea impar. */
+  mitad: {
     flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
