@@ -1,7 +1,7 @@
 /**
  * ANILLO DE UN MACRO
  * ══════════════════
- * Proteína, carbos y grasas, cada uno con su arco.
+ * Proteína, carbos, grasas y fibra, cada uno con su arco.
  *
  * ── La misma forma que el plato, a propósito ────────────────────────────────
  * Arco de 270° con el mismo origen, las mismas puntas redondeadas y la misma

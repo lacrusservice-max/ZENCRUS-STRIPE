@@ -1,5 +1,6 @@
 import api from './api'
-import { FOOD_DB } from '@/data/foodDb'
+import { searchLocal } from './foodApi'
+import { scaleMacros, resolveUnit, esUnidad } from '@/utils/units'
 
 export interface ParsedFood {
   name: string
@@ -30,45 +31,97 @@ function guessEmoji(name: string): string {
 }
 
 /**
- * Fuzzy-match simple contra el catálogo local.
+ * LA CANTIDAD QUE VA DELANTE
+ * ══════════════════════════
+ * «3 huevos», «200 g de arroz», «2 tazas de leche», «1.5 tazas de avena».
+ *
+ * Antes esto no se leía en absoluto: la línea se buscaba entera en la tabla y
+ * se devolvía la porción de catálogo tal cual, así que «3 huevos» y «un huevo»
+ * apuntaban exactamente lo mismo. El número que la persona se había molestado
+ * en escribir se tiraba a la basura sin decírselo.
+ *
+ * Devuelve también el resto de la línea, que es lo que se busca en la tabla:
+ * dejar dentro el «200 g de» hace que la comparación falle contra un nombre que
+ * sí está.
+ */
+function leerCantidad(linea: string): { cantidad?: number; unidad?: string; resto: string } {
+  const m = linea.match(/^\s*(\d+(?:[.,]\d+)?)\s*([a-zA-ZáéíóúñÁÉÍÓÚÑ]+)?\s*(?:de\s+)?(.*)$/)
+  if (!m) return { resto: linea }
+
+  const cantidad = parseFloat(m[1].replace(',', '.'))
+  if (!Number.isFinite(cantidad) || cantidad <= 0) return { resto: linea }
+
+  /* Si la palabra de después del número NO es una unidad conocida, forma parte
+     del nombre: en «3 huevos» el «huevos» es el alimento, no una medida. Se
+     devuelve al resto para no perderlo en la búsqueda. */
+  const palabra = (m[2] ?? '').toLowerCase()
+  const medida = esUnidad(palabra)
+  return {
+    cantidad,
+    unidad: medida ? resolveUnit(palabra).id : undefined,
+    resto: medida ? m[3] : `${m[2] ?? ''} ${m[3]}`.trim(),
+  }
+}
+
+/**
+ * Fuzzy-match contra la base local.
  *
  * Tiene dos usos: respaldo cuando falla la llamada al backend, y vista previa
  * inmediata mientras se escribe. Al ser síncrono y sin red, sirve para mostrar
  * qué se está entendiendo antes de confirmar; el backend luego lo refina.
- * Lo que no reconoce vuelve con macros en 0, marcado para completar en revisión.
+ * Lo que no reconoce vuelve con macros en 0, marcado para completar en revisión
+ * —donde ahora sí hay campos para completarlo, ver `ReviewStage`—.
+ *
+ * ── Por qué ya no mira a `FOOD_DB` ──────────────────────────────────────────
+ * Porque había DOS tablas de alimentos en el proyecto y esta función usaba la
+ * mala. `FOOD_DB` tenía 25 entradas, sin sinónimos, y con cifras que ni
+ * siquiera coincidían con las de la otra: su atún en agua eran 84 kcal y 20 g
+ * de proteína, y el de `GENERIC_FOODS` 116 y 26. El mismo alimento con dos
+ * respuestas según por dónde entraras a la app.
+ *
+ * `GENERIC_FOODS` tiene 138 alimentos, sus nombres alternativos y su orden de
+ * prioridad, y es la que ya alimentaba el buscador. `FOOD_DB` se ha borrado:
+ * esta era su única llamada.
  */
 export function localParseFoodList(mealsText: MealTextInput): ParsedFoodsByMeal {
   const out: ParsedFoodsByMeal = {}
   for (const [mealId, text] of Object.entries(mealsText)) {
     if (!text?.trim()) { out[mealId] = []; continue }
     out[mealId] = text.split('\n').map(l => l.trim()).filter(Boolean).map(line => {
-      const clean = line.replace(/^[-•]\s*/, '')
-      const lower = clean.toLowerCase()
-      const match = FOOD_DB.find(f => lower.includes(f.name.toLowerCase().split(' (')[0]))
-      if (match) {
+      const limpia = line.replace(/^[-•]\s*/, '')
+      const { cantidad, unidad, resto } = leerCantidad(limpia)
+
+      const hit = searchLocal(resto || limpia)[0]
+      if (hit) {
+        // Lo que escribió la persona manda; el catálogo solo pone lo que falta.
+        const amount = cantidad ?? hit.defaultAmount
+        const unit = unidad ?? hit.defaultUnit
+        const m = scaleMacros(hit.per100, amount, unit, hit.gramsPerPiece)
         return {
-          name: match.name.split(' (')[0],
-          amount: match.amount,
-          unit: match.unit,
-          calories: match.calories,
-          protein: match.protein,
-          carbs: match.carbs,
-          fat: match.fat,
-          fiber: match.fiber,
-          emoji: guessEmoji(match.name),
+          name: hit.name,
+          amount,
+          unit,
+          calories: m.calories,
+          protein: m.protein,
+          carbs: m.carbs,
+          fat: m.fat,
+          fiber: m.fiber,
+          emoji: hit.emoji || guessEmoji(hit.name),
         }
       }
-      // No match — se agrega tal cual con macros en 0 para que el usuario los complete en la confirmación.
+
+      // Sin coincidencia: entra con los macros en 0 y marcado para completar.
+      // La cantidad que sí se entendió se conserva — es dato de la persona.
       return {
-        name: clean.charAt(0).toUpperCase() + clean.slice(1),
-        amount: 100,
-        unit: 'g',
+        name: limpia.charAt(0).toUpperCase() + limpia.slice(1),
+        amount: cantidad ?? 100,
+        unit: unidad ?? 'g',
         calories: 0,
         protein: 0,
         carbs: 0,
         fat: 0,
         fiber: 0,
-        emoji: guessEmoji(clean),
+        emoji: guessEmoji(limpia),
       }
     })
   }

@@ -62,6 +62,20 @@ export function resolveUnit(raw: string | undefined | null): UnitDef {
 }
 
 /**
+ * ¿Esta palabra es una medida, o es parte del nombre del alimento?
+ *
+ * `resolveUnit` no sirve para preguntarlo: devuelve gramos ante cualquier cosa
+ * que no reconozca, así que con ella «3 huevos» diría que «huevos» son gramos.
+ * Al leer una línea escrita a mano hace falta distinguir «200 gramos de arroz»
+ * —donde la palabra es la unidad— de «3 huevos», donde es el alimento.
+ */
+export function esUnidad(raw: string | undefined | null): boolean {
+  if (!raw) return false
+  const k = String(raw).trim().toLowerCase()
+  return BY_ID.has(k) || k in ALIASES
+}
+
+/**
  * Unidades que tiene sentido ofrecer para un alimento.
  *
  * Un líquido no se mide en rebanadas y un huevo no se mide en tazas: mostrar solo

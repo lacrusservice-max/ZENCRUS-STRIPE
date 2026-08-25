@@ -5,7 +5,9 @@ import {
   aNuevaEntrada, repartirEnComidas, sincronizarEntradas, sincronizarDia,
   traerDia, vaciarCola, migrarHistorico, olvidarPendiente,
 } from './nutritionSync'
-import { actualizar as actualizarEnServidor, eliminar as eliminarEnServidor } from '@/services/nutritionService'
+import {
+  actualizar as actualizarEnServidor, eliminar as eliminarEnServidor, leerRango,
+} from '@/services/nutritionService'
 import type { MealSlotId } from '@/services/nutritionService'
 
 export interface FoodEntry {
@@ -76,6 +78,8 @@ interface NutritionState {
   toggleEntryActive: (mealId: string, entryId: string) => void
   addWater: () => void
   removeWater: () => void
+  /** Deja los vasos en `n` de una vez. Un gesto, una escritura, un envío. */
+  setWater: (n: number) => void
   save: () => Promise<void>
   /** Trae el día del servidor y pisa lo local. Silencioso si no hay red. */
   sincronizar: () => Promise<void>
@@ -98,7 +102,9 @@ function todayKey() {
  * cero kcal: la tira lo dibuja distinto —hueco en vez de barra— porque la
  * diferencia es justo la que invita a tocarlo.
  */
-export async function resumenSemana(dias = 6): Promise<{ iso: string; calorias: number; registrado: boolean }[]> {
+export interface DiaDeLaTira { iso: string; calorias: number; registrado: boolean }
+
+export async function resumenSemana(dias = 6): Promise<DiaDeLaTira[]> {
   const isos = Array.from({ length: dias }, (_, i) => haceDias(dias - 1 - i))
   const pares = await AsyncStorage.multiGet(isos.map(d => `nutrition_${d}`))
   return pares.map(([clave, raw], i) => {
@@ -112,6 +118,55 @@ export async function resumenSemana(dias = 6): Promise<{ iso: string; calorias: 
     }
   })
 }
+
+/**
+ * LA MISMA TIRA, PERO PREGUNTANDO AL SERVIDOR
+ * ═══════════════════════════════════════════
+ * `resumenSemana` mira SOLO al disco de este teléfono, y eso es correcto para
+ * pintar la tira al instante —una espera de red ahí se ve como seis huecos
+ * rellenándose— pero deja fuera todo lo que no haya escrito este aparato: un
+ * día apuntado desde otro móvil, o por ZENA desde el chat, salía en la tira
+ * como «sin registrar», con su trazo hueco invitando a tocarlo para apuntar
+ * algo que ya estaba apuntado.
+ *
+ * `leerRango` llevaba tiempo en `nutritionService` sin que nadie lo llamara.
+ * Esto lo llama.
+ *
+ * Devuelve `null` si no hay red: quien pregunta se queda con lo de disco, que
+ * es exactamente lo que ya tenía delante.
+ *
+ * ── El servidor manda, salvo donde no sabe nada ─────────────────────────────
+ * `/nutrition/range` devuelve solo los días CON entradas, así que un día que no
+ * venga no significa «ese día está vacío» sino «no me consta». Si el teléfono
+ * tiene algo para ese día —una comida que sigue en la cola esperando red— se
+ * conserva. Pisarlo con un cero borraría de la pantalla lo que el usuario
+ * acaba de apuntar.
+ */
+export async function resumenSemanaDelServidor(
+  local: DiaDeLaTira[],
+): Promise<DiaDeLaTira[] | null> {
+  if (local.length === 0) return null
+  try {
+    const dias = await leerRango(local[0].iso, local[local.length - 1].iso)
+    const porFecha = new Map(dias.map(d => [d.date, d]))
+    return local.map(d => {
+      const s = porFecha.get(d.iso)
+      if (!s) return d
+      return { iso: d.iso, calorias: Math.round(s.calories), registrado: s.entries > 0 }
+    })
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Los vasos que cuentan como día hidratado.
+ *
+ * Vive aquí y no en la pantalla porque ya lo miran dos sitios: la fila de ocho
+ * vasos de Nutrición y el marcado automático del hábito «8 vasos de agua». Con
+ * un número en cada lado, mover la meta deja al hábito marcándose con la vieja.
+ */
+export const META_VASOS = 8
 
 function computeTotals(meals: MealSlot[]) {
   let cal = 0, prot = 0, carbs = 0, fat = 0, fiber = 0
@@ -280,8 +335,39 @@ export const useNutritionStore = create<NutritionState>((set, get) => ({
     void sincronizarDia(get().date, { waterGlasses: w })
   },
 
+  /**
+   * Salta a un número de vasos, en vez de ir de uno en uno.
+   *
+   * La tira de Nutrición deja tocar el vaso al que quieres llegar, y recorrer
+   * esa diferencia a base de `addWater` costaba una escritura en disco y un PUT
+   * al servidor POR CADA VASO: ponerse al día de golpe eran ocho de cada. Aquí
+   * es uno de cada, y la cola offline guarda una sola operación en vez de ocho
+   * que se pisan entre sí.
+   */
+  setWater: (n) => {
+    const w = Math.max(0, Math.round(n))
+    if (w === get().waterGlasses) return
+    set({ waterGlasses: w })
+    get().save()
+    void sincronizarDia(get().date, { waterGlasses: w })
+  },
+
+  /**
+   * Guarda el día en el disco del teléfono.
+   *
+   * ── La racha que se escribía sola ───────────────────────────────────────
+   * Aquí había un `newStreak = totalCalories > 0 ? 1 : 0` que pisaba en disco
+   * el `streak` del estado en cada guardado. No era una racha: era un booleano
+   * disfrazado de contador, que valía 1 el día que comieras algo y 0 el resto,
+   * sin mirar jamás la víspera. Y encima `loadToday` lo leía de vuelta para
+   * «arrastrar» la racha de ayer, así que arrastraba un uno.
+   *
+   * La racha de verdad la llevan `streakStore` y `useRachaDelDia`, con sus
+   * hitos y su calendario. Se conserva el campo —lo escriben versiones viejas
+   * de la app y hay días guardados con él— pero se guarda tal cual viene, sin
+   * inventarlo.
+   */
   save: async () => {
     const { date, meals, waterGlasses, streak } = get()
-    const newStreak = get().totalCalories > 0 ? 1 : 0
-    await AsyncStorage.setItem(`nutrition_${date}`, JSON.stringify({ meals, waterGlasses, streak: newStreak }))
+    await AsyncStorage.setItem(`nutrition_${date}`, JSON.stringify({ meals, waterGlasses, streak }))
   } }))

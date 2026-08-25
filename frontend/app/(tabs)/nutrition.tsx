@@ -20,9 +20,11 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { LinearGradient } from 'expo-linear-gradient'
 import { elegir, confirmar, logro, ojo } from '@/utils/haptica'
-import { useRouter, useFocusEffect } from 'expo-router'
+import { useRouter, useFocusEffect, useLocalSearchParams, type Href } from 'expo-router'
 import { useAuthStore } from '@/store/authStore'
-import { resumenSemana, useNutritionStore, MealSlot } from '@/store/nutritionStore'
+import {
+  resumenSemana, resumenSemanaDelServidor, useNutritionStore, MealSlot, META_VASOS,
+} from '@/store/nutritionStore'
 import { useBodyMeasurementsStore } from '@/store/bodyMeasurementsStore'
 import { suggestCalorieAdjustment, Goal } from '@/utils/calorieAdjustment'
 import api from '@/services/api'
@@ -48,7 +50,11 @@ const NEON = Colors.neon
    es ir a otro sitio, es tocar un día en la tira de arriba. Dos puertas a lo
    mismo, una de ellas escondida al final de la pantalla, solo confundían.
    La ruta /meal-planner sigue en el proyecto, sin acceso desde aquí. */
-const TOOLS: { icon: ZIconName; label: string; note: string; route: string | null }[] = [
+/* `Href` y no `string`. La tarjeta de Recetas apuntó durante meses a una ruta
+   que ya no existía —`app/recipes.tsx` se borró en el commit 87663c6— y el
+   `as any` del `router.push` de abajo se comía el aviso. Con el tipo puesto,
+   `typedRoutes` no deja compilar un destino que no resuelve. */
+const TOOLS: { icon: ZIconName; label: string; note: string; route: Href }[] = [
   { icon: 'codex',  label: 'Recetas',      note: 'Qué cocinar hoy',       route: '/recipes' },
   { icon: 'stack',  label: 'Compras',      note: 'Lista de la despensa',  route: '/grocery' },
   { icon: 'gauge',  label: 'Medidas',      note: 'Peso y composición',    route: '/measurements' },
@@ -66,8 +72,9 @@ export default function NutritionScreen() {
   const router = useRouter()
   const { user, setUser, refrescarPerfil } = useAuthStore()
   const {
-    meals, totalCalories, totalProtein, totalCarbs, totalFat,
+    meals, totalCalories, totalProtein, totalCarbs, totalFat, totalFiber,
     date, loadToday, addEntries, removeEntry, toggleEntryActive,
+    waterGlasses, setWater,
   } = useNutritionStore()
 
   const goals = (user as any)?.goals ?? {}
@@ -86,6 +93,9 @@ export default function NutritionScreen() {
   const proteinTarget  = goals.protein_g ?? 150
   const carbsTarget    = goals.carbs_g ?? 200
   const fatTarget      = goals.fat_g ?? 65
+  /* 28 g es el valor que ya usan Ajustes, Perfil y la bienvenida. Se repite
+     aquí el mismo respaldo para que las cuatro pantallas no discrepen. */
+  const fiberTarget    = goals.fiber_g ?? 28
   const visibleMeals   = meals.slice(0, goals.meals_per_day ?? 3)
 
   const { measurements, load: loadMeasurements } = useBodyMeasurementsStore()
@@ -95,6 +105,8 @@ export default function NutritionScreen() {
      y el consejo vuelve a valer. */
   const [avisoCerrado, setAvisoCerrado] = useState(false)
   const [consoleOpen, setConsoleOpen] = useState(false)
+  /** Con qué método abrir la consola cuando la manda abrir el menú de la barra. */
+  const [metodoConsola, setMetodoConsola] = useState<'buscar' | 'lista' | 'escanear' | 'recetas'>('buscar')
   const [consoleMeal, setConsoleMeal] = useState<string | null>(null)
 
   /**
@@ -119,7 +131,20 @@ export default function NutritionScreen() {
      pantalla. Solo al enfocar no bastaba. */
   const racha = useRachaDelDia()
   const [semana, setSemana] = useState<{ iso: string; calorias: number; registrado: boolean }[]>([])
-  useEffect(() => { void resumenSemana().then(setSemana) }, [date, totalCalories])
+  /* Dos pasadas: el disco pinta la tira YA, y el servidor la corrige cuando
+     conteste. Sin la segunda, un día apuntado desde otro teléfono o por ZENA
+     en el chat se quedaba con el trazo hueco de «sin registrar». */
+  useEffect(() => {
+    let vivo = true
+    void resumenSemana().then(local => {
+      if (!vivo) return
+      setSemana(local)
+      void resumenSemanaDelServidor(local).then(remoto => {
+        if (vivo && remoto) setSemana(remoto)
+      })
+    })
+    return () => { vivo = false }
+  }, [date, totalCalories])
 
   useFocusEffect(useCallback(() => {
     loadToday(useNutritionStore.getState().date)
@@ -201,20 +226,59 @@ export default function NutritionScreen() {
 
   const coachNote = buildCoachNote(budgets, Math.max(0, proteinTarget - totalProtein))
 
+  /*
+   * `null` cuando no hay ninguna comida cerrada, no 100.
+   *
+   * Con el día en blanco la fila decía «Sin registrar aún · 100 % adherencia»:
+   * las dos mitades de la misma línea se contradecían, y la que mentía era la
+   * buena noticia. Un cien por cien de adherencia sobre cero comidas no es un
+   * dato optimista, es una división por cero disfrazada.
+   */
   const closed = budgets.filter(b => b.status !== 'pending')
   const adherence = closed.length
     ? Math.round(closed.reduce((a, b) => (
         b.budget <= 0 ? a + 100 : a + Math.max(0, 100 - (Math.abs(b.delta) / b.budget) * 100)
       ), 0) / closed.length)
-    : 100
+    : null
 
   const nextPending = budgets.find(b => b.status === 'pending')
   const nextMeal = nextPending ? visibleMeals.find(m => m.id === nextPending.id) : undefined
 
   const openConsole = (mealId: string) => {
     setConsoleMeal(mealId)
+    setMetodoConsola('buscar')
     setConsoleOpen(true)
   }
+
+  /**
+   * El menú de la barra abre la consola.
+   *
+   * Buscar, Lista y Scanner son tres de los cuatro métodos de la consola, y
+   * desde el rediseño de la barra se llega a ellos desde abajo en vez de desde
+   * el riel de dentro. Llegan como `?captura=…` sobre esta misma pantalla.
+   *
+   * El parámetro se limpia en cuanto se usa: si se quedara puesto, volver aquí
+   * desde cualquier sitio reabriría la consola sola, y eso es de las cosas que
+   * más desconciertan — una ventana que aparece sin que la hayas pedido.
+   */
+  const { captura } = useLocalSearchParams<{ captura?: string }>()
+  useEffect(() => {
+    if (!captura) return
+    const valido = ['buscar', 'lista', 'escanear', 'recetas'] as const
+    const metodo = valido.find(v => v === captura)
+    if (!metodo) return
+
+    /* La consola necesita saber a qué comida apunta. Se usa la primera
+       pendiente, que es a la que iba a ir de todas formas; si no hay ninguna,
+       la primera del día. */
+    const destino = nextPending?.id ?? visibleMeals[0]?.id
+    if (!destino) return
+
+    setConsoleMeal(destino)
+    setMetodoConsola(metodo)
+    setConsoleOpen(true)
+    router.setParams({ captura: undefined })
+  }, [captura])
 
   return (
     <View style={s.root}>
@@ -334,7 +398,9 @@ export default function NutritionScreen() {
               {totalCalories === 0 ? 'Sin registrar aún' : 'Reparto entre comidas'}
             </Text>
             <Text style={s.verdictPct}>
-              <Text style={s.verdictPctB}>{adherence} %</Text> adherencia
+              {adherence === null
+                ? <Text style={s.verdictPctB}>sin datos aún</Text>
+                : <><Text style={s.verdictPctB}>{adherence} %</Text> adherencia</>}
             </Text>
           </View>
 
@@ -371,11 +437,18 @@ export default function NutritionScreen() {
             )
           })()}
 
+          {/* Cuatro, no tres. La fibra se venía contando en el store, tenía
+              meta en el perfil y se enseñaba por alimento en la búsqueda y en
+              la revisión — pero en la pantalla del día no salía por ninguna
+              parte. Era el único macro con meta que nadie podía comprobar. */}
           <View style={s.macros}>
             <AnilloMacro nombre="Proteína" valor={totalProtein} meta={proteinTarget} />
             <AnilloMacro nombre="Carbos"   valor={totalCarbs}   meta={carbsTarget} />
             <AnilloMacro nombre="Grasas"   valor={totalFat}     meta={fatTarget} />
+            <AnilloMacro nombre="Fibra"    valor={totalFiber}   meta={fiberTarget} />
           </View>
+
+          <Agua vasos={waterGlasses} onFijar={setWater} />
 
           {/* ── Ajuste sugerido ── */}
           {showAdjustment && (
@@ -452,7 +525,7 @@ export default function NutritionScreen() {
               <TouchableOpacity
                 key={tool.label}
                 style={s.tool}
-                onPress={() => tool.route && router.push(tool.route as any)}
+                onPress={() => router.push(tool.route)}
                 activeOpacity={0.78}
               >
                 <View style={s.toolIcon}>
@@ -483,6 +556,7 @@ export default function NutritionScreen() {
           meals={visibleMeals}
           budgetById={budgetById}
           initialMealId={consoleMeal}
+          metodoInicial={metodoConsola}
           dailyConsumed={totalCalories}
           dailyTarget={caloriesTarget}
           onClose={() => setConsoleOpen(false)}
@@ -507,6 +581,73 @@ export default function NutritionScreen() {
 }
 
 // ── Piezas ────────────────────────────────────────────────────────────────────
+
+/**
+ * EL AGUA, EN LA PANTALLA DONDE SE BUSCA
+ * ══════════════════════════════════════
+ * `waterGlasses`, `addWater` y `removeWater` viven en el `nutritionStore`
+ * desde siempre —viajan con el día, se sincronizan con el servidor y cuentan
+ * para el HealthScore— pero no había forma de tocarlos desde Nutrición. Estaban
+ * en Salud y en Progreso; en el sitio donde uno apunta lo que se mete al
+ * cuerpo, no.
+ *
+ * ── Ocho vasos que se tocan, no un más y un menos ───────────────────────────
+ * Con botones de ±1, ponerse al día después de una mañana entera cuesta cinco
+ * toques. Aquí se toca el vaso al que quieres llegar, y el store lo resuelve de
+ * una vez con `setWater` — que hubo que añadirle, porque solo sabía sumar y
+ * restar de uno en uno y recorrer la diferencia costaba una escritura en disco
+ * y un PUT por cada vaso.
+ */
+
+function Agua({ vasos, onFijar }: { vasos: number; onFijar: (n: number) => void }) {
+  const lleno = vasos >= META_VASOS
+
+  const tocar = (destino: number) => {
+    /* Tocar el último vaso lleno lo apaga: si no, llegar a 3 por error no
+       tendría marcha atrás sin un botón de menos que ya no existe. */
+    const n = destino === vasos ? destino - 1 : destino
+    if (n === vasos) return
+    onFijar(n)
+    /* El vaso que cierra la meta se siente distinto a los siete anteriores. */
+    if (n >= META_VASOS && vasos < META_VASOS) logro()
+    else if (n > vasos) confirmar()
+    else elegir()
+  }
+
+  return (
+    <View style={s.agua}>
+      <View style={s.aguaHead}>
+        <ZIcon name="droplet" size={13} color={lleno ? NEON.white : NEON.w2} weight={1.9} />
+        <Text style={s.aguaLbl}>HIDRATACIÓN</Text>
+        <View style={{ flex: 1 }} />
+        <Text style={s.aguaCuenta}>
+          <Text style={s.aguaCuentaB}>{vasos}</Text> de {META_VASOS} vasos
+        </Text>
+      </View>
+      <View style={s.aguaFila}>
+        {Array.from({ length: META_VASOS }, (_, i) => {
+          const on = i < vasos
+          return (
+            <TouchableOpacity
+              key={i}
+              style={[s.vaso, on && s.vasoOn]}
+              onPress={() => tocar(i + 1)}
+              activeOpacity={0.7}
+              accessibilityLabel={`Marcar ${i + 1} ${i === 0 ? 'vaso' : 'vasos'} de agua`}
+            >
+              <ZIcon
+                name="droplet"
+                size={13}
+                color={on ? NEON.white : NEON.w4}
+                weight={on ? 2.2 : 1.6}
+              />
+            </TouchableOpacity>
+          )
+        })}
+      </View>
+    </View>
+  )
+}
 
 function Section({ title, note }: { title: string; note?: string }) {
   return (
@@ -784,7 +925,29 @@ const s = StyleSheet.create({
   verdictPct: { marginLeft: 'auto', fontSize: 11, fontWeight: '700', color: NEON.w2 },
   verdictPctB: { color: NEON.white, fontWeight: '800' },
 
-  macros: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, marginTop: 14 },
+  /* Con cuatro anillos el hueco entre ellos baja de 8 a 6: a 402 px de ancho,
+     mantener 8 dejaba cada caja en 82 px y el nombre «PROTEÍNA» partía en dos
+     líneas. */
+  macros: { flexDirection: 'row', gap: 6, paddingHorizontal: 20, marginTop: 14 },
+
+  // Hidratación
+  agua: {
+    marginHorizontal: 20, marginTop: 10, padding: 13,
+    borderRadius: 15, borderWidth: 1, borderColor: NEON.edge,
+    backgroundColor: 'rgba(255,255,255,0.03)',
+  },
+  aguaHead: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  aguaLbl: { fontSize: 8.5, fontWeight: '800', letterSpacing: 1.6, color: NEON.w2 },
+  aguaCuenta: { fontSize: 10.5, color: NEON.w3 },
+  aguaCuentaB: { fontWeight: '800', color: NEON.white, fontVariant: ['tabular-nums'] },
+  aguaFila: { flexDirection: 'row', gap: 6, marginTop: 11 },
+  vaso: {
+    flex: 1, height: 34, borderRadius: 10,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: NEON.pane,
+    borderWidth: 1, borderColor: 'transparent',
+  },
+  vasoOn: { backgroundColor: 'rgba(255,31,61,0.16)', borderColor: 'rgba(255,31,61,0.36)' },
   macro: {
     flex: 1, paddingVertical: 10, paddingHorizontal: 11,
     borderRadius: 14, backgroundColor: NEON.pane,

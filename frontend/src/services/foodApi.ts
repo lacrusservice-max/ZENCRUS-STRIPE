@@ -2,15 +2,18 @@
 //
 // Fuente: el backend combina el catálogo propio (USDA FoodData Central y las
 // demás fuentes oficiales cargadas en Supabase — ver `006_food_database.sql`)
-// con FatSecret como relleno cuando el catálogo propio no alcanza. Open Food
-// Facts se retiró por completo: es colaborativo y sin curar, y devolvía
-// productos de cualquier país sin relación con lo buscado.
+// con FatSecret como relleno cuando el catálogo propio no alcanza.
+//
+// Open Food Facts está FUERA de la búsqueda por texto —es colaborativo y sin
+// curar, y devolvía productos de cualquier país sin relación con lo buscado—
+// pero es la fuente del escáner: un código de barras es una clave exacta y ahí
+// no hay relevancia que acertar.
 //
 // La base local sigue existiendo como red de seguridad: si no hay conexión, la
 // búsqueda sigue devolviendo los básicos en lugar de quedarse en blanco.
 
 import api from '@/services/api'
-import { GENERIC_FOODS } from '@/data/genericFoods'
+import { GENERIC_FOODS, GrupoAlimento } from '@/data/genericFoods'
 import { emojiForFood } from '@/data/foodEmoji'
 import { Per100 } from '@/utils/units'
 
@@ -32,7 +35,7 @@ export interface Food {
   verified: boolean
   /** Nombre de la fuente, para el distintivo "Verificado · …". */
   sourceLabel?: string
-  source: 'local' | 'catalog' | 'fatsecret'
+  source: 'local' | 'catalog' | 'fatsecret' | 'off'
 }
 
 // ── Catálogo del backend (USDA + FatSecret, ya combinados y ordenados) ────────
@@ -44,6 +47,8 @@ interface ApiFood {
   generic: boolean
   verified: boolean
   sourceLabel?: string
+  /** Foto del envase. Solo la traen los productos de Open Food Facts. */
+  imageUrl?: string
   per100: Per100
   servings: { description: string; grams?: number; calories: number }[]
 }
@@ -64,9 +69,13 @@ function fromApi(f: ApiFood): Food | null {
     defaultUnit: 'g',
     defaultAmount: weighed?.grams ? Math.round(weighed.grams) : 100,
     gramsPerPiece: weighed?.grams,
+    imageUrl: f.imageUrl,
     verified: f.verified,
     sourceLabel: f.sourceLabel,
-    source: f.verified ? 'catalog' : 'fatsecret',
+    /* El prefijo del id dice de dónde viene. Antes se deducía de `verified`, y
+       eso mandaba a Open Food Facts al cajón de FatSecret: los dos son «no
+       verificado» y ahí se acababa la distinción. */
+    source: f.id.startsWith('off:') ? 'off' : f.verified ? 'catalog' : 'fatsecret',
   }
 }
 
@@ -86,7 +95,7 @@ async function fromBackend(path: string, params?: Record<string, string>): Promi
 const norm = (s: string) =>
   s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim()
 
-interface LocalFood extends Food { haystack: string; pri: number }
+interface LocalFood extends Food { haystack: string; pri: number; grp: GrupoAlimento }
 
 const LOCAL: LocalFood[] = GENERIC_FOODS.map((g, i) => ({
   id: `gen:${i}`,
@@ -100,7 +109,68 @@ const LOCAL: LocalFood[] = GENERIC_FOODS.map((g, i) => ({
   source: 'local' as const,
   haystack: norm([g.name, ...(g.alt ?? [])].join(' ')),
   pri: g.pri ?? 0,
+  grp: g.grp,
 }))
+
+/**
+ * EL ORDEN EN QUE SE MONTA UN PLATO
+ *
+ * Manda el reparto de la lista de arranque: primero la ronda completa —uno de
+ * cada grupo, en este orden— y luego una segunda vuelta por los de arriba.
+ */
+const ORDEN_GRUPOS: GrupoAlimento[] = [
+  'proteina', 'cereal', 'verdura', 'fruta', 'huevo', 'lacteo',
+  'legumbre', 'grasa', 'platillo', 'bebida', 'snack',
+]
+
+/** Cuántos alimentos enseña el buscador antes de que se escriba nada. */
+const ARRANQUE = 16
+
+/**
+ * LA LISTA DE ARRANQUE, REPARTIDA POR GRUPOS
+ * ══════════════════════════════════════════
+ * Lo que había aquí era `sort(por prioridad).slice(0, 14)`, y salían catorce
+ * proteínas animales: pollo, pavo, res, cerdo, salmón, atún, huevo, clara y
+ * cinco lácteos. Ni un cereal, ni una fruta, ni una verdura, ni una legumbre.
+ *
+ * No era que faltaran: hay CUARENTA Y UN alimentos con prioridad 3, y entre
+ * ellos están el arroz, la avena, la tortilla, los frijoles y el plátano. Pero
+ * los cuarenta y uno empatan, `Array.sort` en JavaScript es estable, y la tabla
+ * está escrita por categorías con las carnes arriba. El corte en catorce caía
+ * justo antes de los cereales.
+ *
+ * El efecto visible es que la primera pantalla del buscador —la que se ve al
+ * abrir a registrar cualquier comida— no ofrecía carbohidratos. Ninguno.
+ *
+ * Se arregla repartiendo en vez de cortando: una ronda por grupo, y dentro de
+ * cada grupo el de más prioridad. Así la primera pantalla se parece a un plato
+ * y no a una carnicería.
+ */
+function arranque(): Food[] {
+  const porGrupo = new Map<GrupoAlimento, LocalFood[]>()
+  for (const g of ORDEN_GRUPOS) porGrupo.set(g, [])
+  for (const f of LOCAL) porGrupo.get(f.grp)?.push(f)
+  /* Solo por prioridad. Al empatar manda el orden de la tabla, que es
+     deliberado: dentro de cada grupo está primero lo que más se registra —la
+     pechuga antes que el atún, el arroz antes que la papa—. Desempatar por
+     nombre más corto lo tiraba justo al revés. */
+  for (const lista of porGrupo.values()) lista.sort((a, b) => b.pri - a.pri)
+
+  const out: Food[] = []
+  for (let vuelta = 0; out.length < ARRANQUE; vuelta++) {
+    let repartio = false
+    for (const g of ORDEN_GRUPOS) {
+      const f = porGrupo.get(g)![vuelta]
+      if (!f) continue
+      repartio = true
+      out.push(f)
+      if (out.length === ARRANQUE) break
+    }
+    // Ningún grupo tenía nada en esta vuelta: la tabla se acabó.
+    if (!repartio) break
+  }
+  return out
+}
 
 /**
  * Busca en la base genérica.
@@ -109,9 +179,9 @@ const LOCAL: LocalFood[] = GENERIC_FOODS.map((g, i) => ({
  * arroz con pollo. A igualdad, gana el que empieza antes por lo buscado y,
  * en último término, el nombre más corto por ser el más canónico.
  */
-function searchLocal(q: string): Food[] {
+export function searchLocal(q: string): Food[] {
   const n = norm(q)
-  if (!n) return [...LOCAL].sort((a, b) => b.pri - a.pri).slice(0, 14)
+  if (!n) return arranque()
   // Coincidir con el principio de una palabra vale más que caer en mitad de
   // otra: buscando "pan" interesa el pan, no el queso "panela".
   const word = new RegExp(`(^|\\s)${n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}`)
@@ -262,4 +332,53 @@ export async function getFoodByBarcode(barcode: string, _signal?: AbortSignal): 
   const food = raw ? fromApi(raw) : null
   remember(barcodeCache, code, food)
   return food
+}
+
+// ── Aportar un producto que no está ───────────────────────────────────────────
+
+export interface AporteAlimento {
+  barcode: string
+  name: string
+  brand?: string
+  per100: Per100
+  serving?: { description: string; grams: number }
+}
+
+/**
+ * TAPAR EL HUECO PARA TODOS, NO SOLO PARA UNO
+ * ═══════════════════════════════════════════
+ * Da de alta un producto que ninguna fuente tiene, con lo que la persona lee de
+ * la etiqueta que tiene en la mano.
+ *
+ * Open Food Facts cubre unos diecisiete mil productos vendidos en México. Un
+ * súper tiene bastantes más, y las marcas locales no están casi ninguna. Sin
+ * esta puerta, la respuesta a lo que falta es «no lo tenemos» y el catálogo no
+ * crece nunca; con ella, el primero que se topa con el hueco lo tapa en medio
+ * minuto y el siguiente ya lo encuentra hecho.
+ *
+ * Devuelve el alimento tal y como quedó GUARDADO, no una copia de lo que se
+ * mandó: si el servidor corrigió o completó algo, es eso lo que hay que
+ * enseñar. En caso de error devuelve el motivo en castellano — los rechazos de
+ * coherencia («los macros dan 780 kcal y la etiqueta dice 190») son
+ * instrucciones para el usuario, no fallos que ocultar.
+ */
+export async function aportarAlimento(
+  datos: AporteAlimento,
+): Promise<{ food: Food } | { error: string }> {
+  try {
+    const { data } = await api.post('/foods/aportar', datos)
+    const food = data?.success ? fromApi(data.data) : null
+    if (!food) return { error: 'El producto se guardó pero llegó incompleto.' }
+
+    /* La caché de códigos guardó el «no está» de hace un momento. Si no se
+       borra, volver a escanear el mismo envase seguiría diciendo que no existe
+       el producto que la persona acaba de dar de alta. */
+    barcodeCache.delete(datos.barcode.replace(/\D/g, ''))
+    searchCache.clear()
+
+    return { food }
+  } catch (err: any) {
+    const msg = err?.response?.data?.message
+    return { error: typeof msg === 'string' ? msg : 'No se pudo guardar. Revisa tu conexión.' }
+  }
 }

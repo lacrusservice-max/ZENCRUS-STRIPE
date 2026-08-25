@@ -85,6 +85,8 @@ function iconForMeal(id: string, index: number): ZIconName {
 }
 
 interface FoodConsoleProps {
+  /** Con qué método arranca. Lo usa el menú de la barra. */
+  metodoInicial?: MethodId
   visible: boolean
   meals: MealSlot[]
   budgetById: Record<string, MealBudget>
@@ -97,6 +99,7 @@ interface FoodConsoleProps {
 
 export function FoodConsole({
   visible, meals, budgetById, initialMealId, dailyConsumed, dailyTarget, onClose, onCommit,
+  metodoInicial,
 }: FoodConsoleProps) {
   const insets = useSafeAreaInsets()
 
@@ -110,10 +113,13 @@ export function FoodConsole({
   useEffect(() => {
     if (!visible) return
     setStage('capture')
-    setMethod('buscar')
+    /* Con qué método se abre lo decide quien la abre: el menú de la barra
+       manda «buscar», «lista» o «escanear» según lo que se haya tocado. Sin
+       parámetro se abre en Buscar, que es como estaba. */
+    setMethod(metodoInicial ?? 'buscar')
     setMealId(initialMealId)
     setDrafts([])
-  }, [visible, initialMealId])
+  }, [visible, initialMealId, metodoInicial])
 
   const targets = useMemo(
     () => meals.map((m, i) => ({
@@ -362,26 +368,4 @@ const c = StyleSheet.create({
   },
   trayGoTxt: { fontSize: 13.5, fontWeight: '800', color: '#fff' },
 
-  scrim: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.55)' },
-  menu: {
-    position: 'absolute', right: 12, width: 268,
-    borderRadius: CT.r.md, backgroundColor: '#131318',
-    borderWidth: StyleSheet.hairlineWidth, borderColor: CT.edge,
-    paddingBottom: 6, overflow: 'hidden',
-    shadowColor: '#000', shadowOpacity: 0.5, shadowRadius: 24, shadowOffset: { width: 0, height: 12 },
-    elevation: 24,
-  },
-  menuItem: {
-    flexDirection: 'row', alignItems: 'center', gap: 12,
-    paddingHorizontal: 14, paddingVertical: 11,
-  },
-  menuItemOn: { backgroundColor: 'rgba(255,255,255,0.05)' },
-  menuIcon: {
-    width: 32, height: 32, borderRadius: CT.r.xs, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,255,255,0.06)',
-  },
-  menuLbl: { fontSize: 13, fontWeight: '700', color: CT.ink2 },
-  menuNote: { fontSize: 10.5, color: CT.ink3, marginTop: 2 },
-  menuDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: CT.signal },
-  menuSep: { height: StyleSheet.hairlineWidth, backgroundColor: CT.hairline, marginVertical: 5 },
 })

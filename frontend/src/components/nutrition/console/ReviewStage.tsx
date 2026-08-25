@@ -11,7 +11,7 @@
  */
 
 import { useMemo, useState } from 'react'
-import { View, Text, StyleSheet, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, ScrollView, TextInput } from 'react-native'
 import Animated, { FadeIn, LinearTransition } from 'react-native-reanimated'
 import { ZIcon, ZIconName } from '@/components/ui/ZencrusIcon'
 import { FoodEntry } from '@/store/nutritionStore'
@@ -53,6 +53,42 @@ function rescale(d: Draft, amount: number): Draft {
     fiber: r1(d._base.fiber * f),
   }
 }
+
+/** Los cinco números que se pueden escribir a mano. */
+type CampoMacro = 'calories' | 'protein' | 'carbs' | 'fat' | 'fiber'
+
+/**
+ * FIJAR UN MACRO A MANO
+ * ═════════════════════
+ * Escribe el valor Y REESCRIBE LA BASE. Los dos, siempre.
+ *
+ * ── Por qué, y qué pasaba antes ─────────────────────────────────────────────
+ * Un alimento que la IA no reconoce llega aquí con los macros en cero. El panel
+ * de Lista lo dice por escrito —«se marca por estimar y se completa en
+ * revisión»—, pero en revisión no había con qué completarlo: el único control
+ * era el dial de porción, y `rescale` multiplica sobre `_base`. Con la base en
+ * cero, cero por lo que sea sigue siendo cero. Por mucho que se girara el dial,
+ * el alimento se quedaba en 0 kcal para siempre y entraba así en el diario.
+ *
+ * El agujero se abrió al retirar el panel de entrada manual, que era la única
+ * pantalla de la app con campos de macros. Esto lo devuelve donde hace falta.
+ *
+ * La base se ancla a la CANTIDAD ACTUAL, no a la original: si alguien ya movió
+ * el dial a 150 g y entonces teclea 300 kcal, está diciendo que sus 150 g son
+ * 300 kcal. Anclarlo a la cantidad de origen convertiría eso en otra cifra
+ * distinta en cuanto tocara el dial otra vez.
+ */
+function fijarMacro(d: Draft, campo: CampoMacro, valor: number): Draft {
+  const v = campo === 'calories' ? Math.round(valor) : r1(valor)
+  return {
+    ...d,
+    [campo]: v,
+    _base: { ...d._base, amount: d.amount || 1, [campo]: v },
+  }
+}
+
+/** Un alimento que llegó sin energía: hay que ponerle un número. */
+const porEstimar = (d: Draft) => d.calories <= 0
 
 interface ReviewStageProps {
   drafts: Draft[]
@@ -99,6 +135,9 @@ export function ReviewStage({
   const escala = Math.max(dailyTarget, dailyConsumed + totals.kcal)
   const basePct = escala > 0 ? dailyConsumed / escala : 0
   const addPct = escala > 0 ? totals.kcal / escala : 0
+
+  /** Los que la captura no supo poner en números. */
+  const sinEnergia = drafts.filter(porEstimar)
 
   const patch = (id: string, next: Draft | null) => {
     onChange(next
@@ -199,6 +238,25 @@ export function ReviewStage({
         )}
       </ScrollView>
 
+      {/*
+        NO SE BLOQUEA, SE DICE.
+
+        Registrar algo a cero es legítimo —el agua, un café solo, un té— así que
+        el botón sigue vivo: la app no decide por nadie. Lo que no puede pasar
+        es que un alimento que la IA no supo leer se cuele en el día como un
+        cero sin que se note, y luego cuadre uno el déficit sobre esa cifra.
+      */}
+      {sinEnergia.length > 0 && (
+        <View style={s.faltan}>
+          <ZIcon name="warning" size={13} color={CT.signal} weight={2} />
+          <Text style={s.faltanTxt}>
+            {sinEnergia.length === 1
+              ? `«${sinEnergia[0].name}» va sin calorías. Ábrelo y ponle sus valores.`
+              : `${sinEnergia.length} alimentos van sin calorías. Ábrelos y ponles sus valores.`}
+          </Text>
+        </View>
+      )}
+
       <PrimaryAction
         label={drafts.length > 0
           ? `Registrar ${drafts.length} ${drafts.length === 1 ? 'alimento' : 'alimentos'}`
@@ -232,9 +290,15 @@ function DraftRow({ draft, open, targets, onToggle, onPatch }: {
           <Text style={s.rowEmoji}>{draft.emoji ?? emojiForFood(draft.name)}</Text>
           <View style={{ flex: 1, minWidth: 0 }}>
             <Text style={s.rowName} numberOfLines={1}>{draft.name}</Text>
-            <Text style={s.rowSub}>{r1(draft.amount)} {draft.unit}</Text>
+            {/* Sin energía la fila no puede limitarse a decir «0»: eso se lee
+                como un dato, no como un hueco. */}
+            {porEstimar(draft)
+              ? <Text style={s.rowFalta}>Falta ponerle las calorías</Text>
+              : <Text style={s.rowSub}>{r1(draft.amount)} {draft.unit}</Text>}
           </View>
-          <Text style={s.rowKcal}>{Math.round(draft.calories)}</Text>
+          {porEstimar(draft)
+            ? <View style={s.avisoPunto}><ZIcon name="warning" size={12} color={CT.signal} weight={2} /></View>
+            : <Text style={s.rowKcal}>{Math.round(draft.calories)}</Text>}
           <ZIcon name={open ? 'chevronUp' : 'chevronDown'} size={13} color={CT.ink3} weight={1.9} />
         </View>
       </Tap>
@@ -269,6 +333,13 @@ function DraftRow({ draft, open, targets, onToggle, onPatch }: {
               <MacroBar label="Fibra" value={draft.fiber} max={30} tone={CT.ink4} />
             </View>
           </View>
+
+          {/* ── A mano ──
+              Abierto de par en par cuando falta la energía, plegado cuando ya
+              hay cifras: quien viene del catálogo no necesita ver cinco campos,
+              pero tiene que poder abrirlos. Control manual total, que es la
+              regla de la casa. */}
+          <Manual draft={draft} onPatch={onPatch} />
 
           <View style={s.rowCtrl}>
             <Text style={legend}>Mover a</Text>
@@ -324,6 +395,117 @@ function dialRange(d: Draft): { max: number; step: number; presets: number[]; la
     presets: [half, Math.round(base), Math.round(base * 2), Math.round(base * 3)],
     label: unitWord(d.unit),
   }
+}
+
+// ── Macros a mano ─────────────────────────────────────────────────────────────
+
+const CAMPOS: { id: CampoMacro; label: string; sufijo: string }[] = [
+  { id: 'calories', label: 'Calorías', sufijo: 'kcal' },
+  { id: 'protein',  label: 'Proteína', sufijo: 'g' },
+  { id: 'carbs',    label: 'Carbos',   sufijo: 'g' },
+  { id: 'fat',      label: 'Grasas',   sufijo: 'g' },
+  { id: 'fiber',    label: 'Fibra',    sufijo: 'g' },
+]
+
+function Manual({ draft, onPatch }: { draft: Draft; onPatch: (d: Draft) => void }) {
+  const falta = porEstimar(draft)
+  const [abierto, setAbierto] = useState(falta)
+
+  /* De los macros salen unas kcal; el alimento declara otras. Cuando no
+     cuadran, quien manda es lo que la persona escribió — aquí solo se dice,
+     no se corrige por su cuenta. */
+  const deMacros = draft.protein * 4 + draft.carbs * 4 + draft.fat * 9
+  const desvio = draft.calories > 0 ? Math.abs(deMacros - draft.calories) / draft.calories : 0
+  const descuadra = !falta && deMacros > 0 && desvio > 0.15
+
+  if (!abierto) {
+    return (
+      <Tap onPress={() => setAbierto(true)} scaleTo={0.98} haptic="light">
+        <View style={s.manualAbrir}>
+          <ZIcon name="pen" size={12} color={CT.ink3} weight={1.9} />
+          <Text style={s.manualAbrirTxt}>Escribir los macros a mano</Text>
+        </View>
+      </Tap>
+    )
+  }
+
+  return (
+    <View style={s.manual}>
+      <Text style={legend}>{falta ? 'Ponle sus valores' : 'A mano'}</Text>
+
+      {falta && (
+        <Text style={s.manualNota}>
+          No reconocimos «{draft.name}». Sin calorías entraría en tu día como un
+          cero, y el resto de la pantalla contaría mal.
+        </Text>
+      )}
+
+      <View style={s.manualGrid}>
+        {CAMPOS.map(c => (
+          <CampoNum
+            key={c.id}
+            label={c.label}
+            sufijo={c.sufijo}
+            valor={draft[c.id]}
+            destacado={c.id === 'calories' && falta}
+            onChange={v => onPatch(fijarMacro(draft, c.id, v))}
+          />
+        ))}
+      </View>
+
+      {descuadra && (
+        <View style={s.descuadre}>
+          <ZIcon name="warning" size={12} color={CT.signalSoft} weight={1.9} />
+          <Text style={s.descuadreTxt}>
+            Tus macros suman {Math.round(deMacros)} kcal, no {Math.round(draft.calories)}.
+          </Text>
+        </View>
+      )}
+    </View>
+  )
+}
+
+/**
+ * Campo numérico.
+ *
+ * Guarda su propio texto mientras está enfocado. Sin eso, teclear «12.» se
+ * convertía en 12 y el punto desaparecía bajo el dedo; y borrar el contenido
+ * para escribir otra cifra ponía un 0 delante que había que quitar antes.
+ */
+function CampoNum({ label, sufijo, valor, destacado, onChange }: {
+  label: string
+  sufijo: string
+  valor: number
+  destacado?: boolean
+  onChange: (v: number) => void
+}) {
+  const [texto, setTexto] = useState<string | null>(null)
+  const mostrado = texto ?? (valor > 0 ? String(r1(valor)) : '')
+
+  return (
+    <View style={s.campo}>
+      <Text style={s.campoLbl}>{label}</Text>
+      <View style={[s.campoCaja, destacado && s.campoCajaOjo]}>
+        <TextInput
+          style={[s.campoTxt, numeral as object]}
+          value={mostrado}
+          onChangeText={t => {
+            // Coma decimal: en el teclado español es la tecla que sale.
+            const limpio = t.replace(',', '.').replace(/[^0-9.]/g, '')
+            setTexto(limpio)
+            const n = parseFloat(limpio)
+            onChange(Number.isFinite(n) ? n : 0)
+          }}
+          onBlur={() => setTexto(null)}
+          placeholder="0"
+          placeholderTextColor={CT.ink4}
+          keyboardType="decimal-pad"
+          selectTextOnFocus
+        />
+        <Text style={s.campoSuf}>{sufijo}</Text>
+      </View>
+    </View>
+  )
 }
 
 function unitWord(unit: string) {
@@ -393,6 +575,47 @@ const s = StyleSheet.create({
   rowName: { fontSize: 13, fontWeight: '700', color: CT.ink },
   rowSub: { fontSize: 10.5, color: CT.ink3, marginTop: 2, fontVariant: ['tabular-nums'] },
   rowKcal: { fontSize: 13, fontWeight: '800', color: CT.ink2, fontVariant: ['tabular-nums'] },
+  rowFalta: { fontSize: 10.5, color: CT.signalSoft, marginTop: 2, fontWeight: '600' },
+  avisoPunto: {
+    width: 24, height: 24, borderRadius: 999,
+    alignItems: 'center', justifyContent: 'center',
+    backgroundColor: CT.signalWash,
+  },
+
+  // A mano
+  manualAbrir: {
+    flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7,
+    height: 36, borderRadius: CT.r.sm, backgroundColor: CT.panel,
+  },
+  manualAbrirTxt: { fontSize: 11.5, fontWeight: '700', color: CT.ink3 },
+  manual: { padding: 12, borderRadius: CT.r.sm, backgroundColor: CT.panelHot, gap: 10 },
+  manualNota: { fontSize: 11.5, color: CT.ink2, lineHeight: 16.5 },
+  manualGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  campo: { flexGrow: 1, flexBasis: '30%', minWidth: 92 },
+  campoLbl: {
+    fontSize: 8.5, fontWeight: '800', letterSpacing: 1.3,
+    color: CT.ink4, marginBottom: 5, textTransform: 'uppercase',
+  },
+  campoCaja: {
+    height: 42, paddingHorizontal: 11, borderRadius: CT.r.xs,
+    flexDirection: 'row', alignItems: 'center', gap: 6,
+    backgroundColor: CT.panel,
+    borderWidth: 1, borderColor: 'transparent',
+  },
+  campoCajaOjo: { borderColor: CT.signalEdge, backgroundColor: CT.signalWash },
+  campoTxt: { flex: 1, minWidth: 0, fontSize: 15, color: CT.ink, padding: 0 },
+  campoSuf: { fontSize: 9, fontWeight: '800', color: CT.ink4, letterSpacing: 0.5 },
+
+  descuadre: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  descuadreTxt: { flex: 1, fontSize: 11, color: CT.ink3, lineHeight: 15.5 },
+
+  faltan: {
+    flexDirection: 'row', alignItems: 'center', gap: 9,
+    marginHorizontal: 18, marginBottom: 4, padding: 11,
+    borderRadius: CT.r.sm, backgroundColor: CT.signalWash,
+    borderWidth: 1, borderColor: CT.signalEdge,
+  },
+  faltanTxt: { flex: 1, fontSize: 11.5, color: CT.ink2, lineHeight: 16 },
 
   rowBody: { paddingHorizontal: 13, paddingBottom: 13, gap: 11 },
   rowCtrl: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 12 },

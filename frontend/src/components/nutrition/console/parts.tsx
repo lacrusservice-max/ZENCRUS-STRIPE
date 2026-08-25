@@ -287,16 +287,6 @@ export function Panel({ children, style }: { children: React.ReactNode; style?: 
   return <View style={[p.panel, style]}>{children}</View>
 }
 
-/** Encabezado de sección dentro de un panel. */
-export function Legend({ children, right }: { children: string; right?: React.ReactNode }) {
-  return (
-    <View style={p.legendRow}>
-      <Text style={legend}>{children}</Text>
-      {right}
-    </View>
-  )
-}
-
 /** Submenú horizontal dentro de un panel — segundo nivel de organización. */
 export function SubTabs({ tabs, active, onSelect }: {
   tabs: { id: string; label: string }[]
@@ -420,10 +410,6 @@ const p = StyleSheet.create({
 
   // Panel
   panel: { flex: 1, minHeight: 0 },
-  legendRow: {
-    flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
-    paddingHorizontal: 18, paddingTop: 14, paddingBottom: 8,
-  },
 
   // Submenú
   subTabs: {
