@@ -52,6 +52,15 @@ interface PortionDialProps {
   /** Atajos de cantidad. Se ocultan si no se pasan. */
   presets?: number[]
   onChange: (next: number) => void
+  /**
+   * Avisa de cuándo hay un dedo sobre el arco.
+   *
+   * Quien pinta el dial DEBE usarlo para apagarle el scroll a la lista que lo
+   * contiene mientras dure el arrastre. No es un adorno ni una optimización:
+   * en iOS es la única forma de que la pantalla no se mueva. Ver la nota larga
+   * del gesto, más abajo.
+   */
+  onArrastre?: (activo: boolean) => void
 }
 
 /** Redondea al múltiplo de `step` más cercano, dentro de [0, max]. */
@@ -63,7 +72,7 @@ function quantize(raw: number, step: number, max: number) {
 }
 
 export function PortionDial({
-  value, max, unit, unitLabel, step = 5, presets, onChange,
+  value, max, unit, unitLabel, step = 5, presets, onChange, onArrastre,
 }: PortionDialProps) {
   const safeMax = Math.max(max, 1)
   const pct = Math.min(Math.max(value / safeMax, 0), 1)
@@ -89,8 +98,8 @@ export function PortionDial({
   // ── Gesto ───────────────────────────────────────────────────────────────
   // Se guardan en refs porque el PanResponder se crea una sola vez y sus
   // callbacks capturarían valores obsoletos si leyeran las props directamente.
-  const stateRef = useRef({ value, safeMax, step, onChange })
-  stateRef.current = { value, safeMax, step, onChange }
+  const stateRef = useRef({ value, safeMax, step, onChange, onArrastre })
+  stateRef.current = { value, safeMax, step, onChange, onArrastre }
 
   /**
    * EL DIAL GANA LA PUJA, Y NO LA SUELTA
@@ -112,9 +121,25 @@ export function PortionDial({
    *
    * Con eso solo no basta: una vez concedido, el `ScrollView` puede PEDIR el
    * responder a mitad del arrastre, y por defecto se le concede. `false` en
-   * `onPanResponderTerminationRequest` es lo que dice que no. Sin esa línea el
-   * tirón vuelve a mitad de gesto, que es peor que no arreglarlo — se va justo
-   * cuando ya te habías fiado.
+   * `onPanResponderTerminationRequest` es lo que dice que no.
+   *
+   * ── Y NADA DE ESO ES SUFICIENTE EN iOS ──────────────────────────────────────
+   * Se probó, y la pantalla seguía moviéndose. La razón está en el propio código
+   * de React Native, en `PanResponder.js`: al lado de
+   * `onShouldBlockNativeResponder` hay un comentario que dice «is currently only
+   * supported on android». En iOS esa llamada no hace absolutamente nada.
+   *
+   * Debajo hay un `UIScrollView` con `canCancelContentTouches` activado, que es
+   * su comportamiento por defecto: puede cancelar un toque que empezó en una
+   * vista hija y quedárselo como desplazamiento. Eso ocurre en la capa nativa,
+   * por encima del sistema de responders de JavaScript, y desde aquí no se le
+   * puede decir que no.
+   *
+   * Lo único que lo detiene es quitarle el scroll: un `ScrollView` con
+   * `scrollEnabled={false}` no se desplaza, y punto. Por eso el dial avisa con
+   * `onArrastre` en vez de intentar ganar una puja que no puede ganar. Los
+   * manejadores de arriba se quedan igualmente — en Android sí sirven, y aquí
+   * hacen que el dial reciba el gesto desde el primer fotograma.
    *
    * ── Lo que se pierde a cambio, y por qué compensa ───────────────────────────
    * Poner el dedo sobre el dial deja de servir para desplazar la lista. Es
@@ -131,8 +156,16 @@ export function PortionDial({
       /* Ni el ScrollView ni la FlatList pueden arrebatarlo a media vuelta. */
       onPanResponderTerminationRequest: () => false,
       onShouldBlockNativeResponder: () => true,
-      onPanResponderGrant: e => applyTouch(e.nativeEvent.locationX, e.nativeEvent.locationY),
+      onPanResponderGrant: e => {
+        stateRef.current.onArrastre?.(true)
+        applyTouch(e.nativeEvent.locationX, e.nativeEvent.locationY)
+      },
       onPanResponderMove: e => applyTouch(e.nativeEvent.locationX, e.nativeEvent.locationY),
+      /* Los dos finales. `Terminate` casi no debería ocurrir con el
+         `TerminationRequest` en false, pero si alguna vez llega y no se
+         devolviera el scroll, la lista se quedaría muerta para siempre. */
+      onPanResponderRelease: () => stateRef.current.onArrastre?.(false),
+      onPanResponderTerminate: () => stateRef.current.onArrastre?.(false),
     }),
   ).current
 

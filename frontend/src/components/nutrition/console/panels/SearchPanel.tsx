@@ -43,6 +43,11 @@ export function SearchPanel({ consumed, budget, onCommit }: SearchPanelProps) {
   const [loading, setLoading] = useState(true)
   const [offline, setOffline] = useState(false)
   const [open, setOpen] = useState<string | null>(null)
+  /* Mientras un dedo gira el dial, la lista NO se desplaza. Es lo único que
+     lo impide en iOS: el UIScrollView de debajo cancela por su cuenta los
+     toques que empiezan en una vista hija, y eso ocurre en la capa nativa,
+     donde el PanResponder de JavaScript no llega. Ver `PortionDial`. */
+  const [arrastrando, setArrastrando] = useState(false)
 
   // Una búsqueda en vuelo se cancela si llega otra: así la respuesta lenta de
   // una consulta vieja no puede pisar los resultados de la nueva.
@@ -98,6 +103,7 @@ export function SearchPanel({ consumed, budget, onCommit }: SearchPanelProps) {
         data={foods}
         keyExtractor={f => f.id}
         keyboardShouldPersistTaps="handled"
+        scrollEnabled={!arrastrando}
         contentContainerStyle={s.list}
         showsVerticalScrollIndicator={false}
         ListEmptyComponent={loading ? null : (
@@ -115,6 +121,7 @@ export function SearchPanel({ consumed, budget, onCommit }: SearchPanelProps) {
             consumed={consumed}
             budget={budget}
             onCommit={entry => { onCommit(entry); setOpen(null) }}
+            onArrastre={setArrastrando}
           />
         )}
       />
@@ -124,13 +131,15 @@ export function SearchPanel({ consumed, budget, onCommit }: SearchPanelProps) {
 
 // ── Fila de alimento ──────────────────────────────────────────────────────────
 
-function FoodRow({ food, expanded, onToggle, consumed, budget, onCommit }: {
+function FoodRow({ food, expanded, onToggle, consumed, budget, onCommit, onArrastre }: {
   food: Food
   expanded: boolean
   onToggle: () => void
   consumed: number
   budget: number
   onCommit: (entry: FoodEntry) => void
+  /** Sube hasta la lista para que deje de desplazarse mientras se gira el dial. */
+  onArrastre: (activo: boolean) => void
 }) {
   const [unit, setUnit] = useState(food.defaultUnit)
   const [amount, setAmount] = useState(food.defaultAmount)
@@ -249,6 +258,7 @@ function FoodRow({ food, expanded, onToggle, consumed, budget, onCommit }: {
             unitLabel={resolveUnit(unit).label.toLowerCase()}
             presets={presetsFor(unit)}
             onChange={next => setAmount(Math.max(step, next))}
+            onArrastre={onArrastre}
           />
 
           {/* Unidad como control segmentado: son opciones excluyentes de la

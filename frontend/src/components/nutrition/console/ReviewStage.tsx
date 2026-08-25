@@ -105,6 +105,10 @@ export function ReviewStage({
   drafts, targets, dailyConsumed, dailyTarget, bottomInset, onChange, onAddMore, onCommit,
 }: ReviewStageProps) {
   const [open, setOpen] = useState<string | null>(null)
+  /* Mientras se gira un dial, esta lista no se desplaza. En iOS es lo único que
+     lo impide: el UIScrollView cancela por su cuenta los toques que empiezan en
+     una vista hija. Ver la nota del gesto en `PortionDial`. */
+  const [arrastrando, setArrastrando] = useState(false)
 
   const totals = useMemo(() => drafts.reduce(
     (a, d) => ({
@@ -190,7 +194,11 @@ export function ReviewStage({
         </View>
       </View>
 
-      <ScrollView contentContainerStyle={s.scroll} keyboardShouldPersistTaps="handled">
+      <ScrollView
+        contentContainerStyle={s.scroll}
+        keyboardShouldPersistTaps="handled"
+        scrollEnabled={!arrastrando}
+      >
         {targets.map(t => {
           const group = drafts.filter(d => d._mealId === t.id)
           if (group.length === 0) return null
@@ -215,6 +223,7 @@ export function ReviewStage({
                     targets={targets}
                     onToggle={() => setOpen(open === d.id ? null : d.id)}
                     onPatch={next => patch(d.id, next)}
+                    onArrastre={setArrastrando}
                   />
                 ))}
 
@@ -272,12 +281,14 @@ export function ReviewStage({
 
 // ── Fila editable ─────────────────────────────────────────────────────────────
 
-function DraftRow({ draft, open, targets, onToggle, onPatch }: {
+function DraftRow({ draft, open, targets, onToggle, onPatch, onArrastre }: {
   draft: Draft
   open: boolean
   targets: { id: string; label: string; icon: ZIconName }[]
   onToggle: () => void
   onPatch: (next: Draft | null) => void
+  /** Sube hasta la lista para que deje de desplazarse mientras se gira el dial. */
+  onArrastre: (activo: boolean) => void
 }) {
   const dial = dialRange(draft)
 
@@ -323,6 +334,7 @@ function DraftRow({ draft, open, targets, onToggle, onPatch }: {
                 unitLabel={dial.label}
                 presets={dial.presets}
                 onChange={next => onPatch(rescale(draft, Math.max(dial.step, next)))}
+                onArrastre={onArrastre}
               />
             </View>
 

@@ -50,6 +50,10 @@ export default function GoalsEnergyScreen() {
   const [fibra, setFibra] = useState<number>(goals.fiber_g ?? 28)
   const [comidas, setComidas] = useState<number>(goals.meals_per_day ?? 3)
   const [saving, setSaving] = useState(false)
+  /* Con un dedo sobre un dial, la pantalla no se desplaza. En iOS es lo único
+     que lo impide: el UIScrollView cancela por su cuenta los toques que
+     empiezan en una vista hija. Ver la nota del gesto en `PortionDial`. */
+  const [arrastrando, setArrastrando] = useState(false)
 
   /**
    * Los tres van encadenados: piso ≤ meta ≤ techo.
@@ -128,6 +132,8 @@ export default function GoalsEnergyScreen() {
     <Screen>
       <ScrollView
         showsVerticalScrollIndicator={false}
+        /* No se desplaza mientras un dedo gira un dial. Ver `PortionDial`. */
+        scrollEnabled={!arrastrando}
         contentContainerStyle={{ paddingBottom: TabBar.scrollInset + 30 }}
       >
         <ScreenHeader
@@ -141,6 +147,7 @@ export default function GoalsEnergyScreen() {
         <Section title="Meta diaria" note="Se recalcula sola cada semana" />
 
         <DialCard
+          onArrastre={setArrastrando}
           icon="target"
           title="Meta de kcal"
           sub="Objetivo del día"
@@ -154,6 +161,7 @@ export default function GoalsEnergyScreen() {
         />
 
         <DialCard
+          onArrastre={setArrastrando}
           icon="target"
           title="Límite mínimo"
           sub="Piso de seguridad — no bajar de aquí"
@@ -171,6 +179,7 @@ export default function GoalsEnergyScreen() {
         />
 
         <DialCard
+          onArrastre={setArrastrando}
           icon="flame"
           title="Límite máximo"
           sub="Techo del día — a partir de aquí, te pasaste"
@@ -200,18 +209,21 @@ export default function GoalsEnergyScreen() {
         <Section title="Reparto de macros" note={`${pct(kcalP)} / ${pct(kcalC)} / ${pct(kcalF)} %`} />
 
         <DialCard
+          onArrastre={setArrastrando}
           icon="flame" title="Proteína" sub="4 kcal por gramo"
           value={protein} unit="g" readout="gramos de proteína"
           max={300} step={5} presets={[120, 150, 180, 210]}
           onChange={setProtein}
         />
         <DialCard
+          onArrastre={setArrastrando}
           icon="flame" title="Carbohidratos" sub="4 kcal por gramo"
           value={carbs} unit="g" readout="gramos de carbos"
           max={500} step={5} presets={[150, 200, 250, 300]}
           onChange={setCarbs}
         />
         <DialCard
+          onArrastre={setArrastrando}
           icon="flame" title="Grasas" sub="9 kcal por gramo"
           value={fat} unit="g" readout="gramos de grasa"
           max={200} step={5} presets={[50, 65, 80, 95]}
@@ -219,6 +231,7 @@ export default function GoalsEnergyScreen() {
         />
 
         <DialCard
+          onArrastre={setArrastrando}
           icon="flame" title="Fibra" sub="No suma calorías, pero se cuenta"
           value={fibra} unit="g" readout="gramos de fibra"
           max={60} step={1} presets={[22, 28, 35, 42]}
@@ -294,7 +307,9 @@ function Section({ title, note }: { title: string; note?: string }) {
   )
 }
 
-function DialCard({ icon, title, sub, value, unit, readout, max, step, presets, onChange }: {
+function DialCard({
+  icon, title, sub, value, unit, readout, max, step, presets, onChange, onArrastre,
+}: {
   icon: ZIconName
   title: string
   sub: string
@@ -305,6 +320,8 @@ function DialCard({ icon, title, sub, value, unit, readout, max, step, presets, 
   step: number
   presets: number[]
   onChange: (v: number) => void
+  /** Sube a la pantalla para que deje de desplazarse mientras se gira el dial. */
+  onArrastre: (activo: boolean) => void
 }) {
   return (
     <View style={s.card}>
@@ -334,6 +351,7 @@ function DialCard({ icon, title, sub, value, unit, readout, max, step, presets, 
         unitLabel={unit}
         presets={presets}
         onChange={onChange}
+        onArrastre={onArrastre}
       />
     </View>
   )
