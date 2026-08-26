@@ -39,6 +39,13 @@ import { sumarDias, diasEntre } from '@/utils/fechas'
 import type { Phase } from './fases'
 import type { Periodo } from './periodos'
 import { CICLO_MIN, CICLO_MAX } from './periodos'
+/* El marco de fases y los valores de población viven en el núcleo compartido:
+   ZENA los usa en el servidor y una copia que se separe hace que el chat hable
+   de una fase distinta a la que enseña la pantalla. */
+import {
+  marcoFases as marcoDelNucleo, faseDeDia as faseDelNucleo,
+  POBLACION as POBLACION_NUCLEO, type MarcoFases as MarcoNucleo,
+} from '@/nucleo/ciclo/fases'
 
 export const MODELO = 'ciclo-v1'
 
@@ -56,7 +63,7 @@ const VENTANA = 12
 export const CICLOS_PARA_FUNDAR = 3
 
 /** Medias poblacionales. Solo para el arranque, y siempre etiquetadas como tales. */
-const POBLACION = { duracion: 28, desviacion: 4, sangrado: 5, lutea: 14 } as const
+const POBLACION = POBLACION_NUCLEO
 
 /**
  * Cuantil t de Student al 90 % de una cola (banda del 80 % a dos colas).
@@ -184,55 +191,17 @@ export const confianzaProyectada = (usados: number, desviacion: number | null, m
 
 // ── Fases ───────────────────────────────────────────────────────────────────
 
-export interface MarcoFases {
-  duracion: number
-  diasPeriodo: number
-  /** Día de ciclo en que se estima la ovulación. */
-  diaOvulacion: number
-  /** Día en que empieza cada fase. Es lo que consume La Cinta. */
-  limites: Record<Phase, number>
-}
-
 /**
- * Las fases se calculan sobre SU ciclo, no sobre el día 14 de nadie.
+ * El marco de fases y quién lo calcula.
  *
- * Este es el error más extendido de la categoría: fijar la ovulación en el día
- * 14 porque es lo que toca en un ciclo de 28. En un ciclo de 34 días la
- * ovulación cae cerca del día 20, y una app que insista en el 14 le enseña la
- * ventana fértil casi una semana antes de tiempo.
- *
- * Lo que de verdad es estable es la fase lútea —de la ovulación a la regla,
- * unos catorce días—, así que se cuenta hacia atrás desde el final. Se acota a
- * un mínimo de ocho días de fase folicular para que en ciclos muy cortos la
- * ovulación no acabe cayendo dentro del sangrado.
+ * Definido en `nucleo/ciclo/fases.ts` y compartido con el servidor. Aquí solo
+ * se reexporta: si viviera en este archivo, ZENA tendría su propia versión y
+ * el día que se afinara el cálculo el chat hablaría de una fase y la pantalla
+ * de otra.
  */
-export function marcoFases(duracion: number, diasPeriodo: number): MarcoFases {
-  const dur = Math.max(CICLO_MIN, Math.min(CICLO_MAX, Math.round(duracion)))
-  const periodo = Math.max(1, Math.min(10, Math.round(diasPeriodo)))
-  const diaOvulacion = Math.max(periodo + 3, Math.min(dur - 8, dur - POBLACION.lutea))
-
-  return {
-    duracion: dur,
-    diasPeriodo: periodo,
-    diaOvulacion,
-    limites: {
-      menstrual: 1,
-      folicular: periodo + 1,
-      // Cinco días alrededor de la ovulación: es una estimación, no un instante.
-      ovulatoria: Math.max(periodo + 1, diaOvulacion - 2),
-      lutea: diaOvulacion + 3,
-    },
-  }
-}
-
-/** La fase de un día de ciclo dentro de su marco. */
-export function faseDeDia(dia: number, marco: MarcoFases): Phase {
-  const l = marco.limites
-  if (dia >= l.lutea) return 'lutea'
-  if (dia >= l.ovulatoria) return 'ovulatoria'
-  if (dia >= l.folicular) return 'folicular'
-  return 'menstrual'
-}
+export type MarcoFases = MarcoNucleo
+export const marcoFases = marcoDelNucleo
+export const faseDeDia = faseDelNucleo
 
 // ── Predicción ──────────────────────────────────────────────────────────────
 

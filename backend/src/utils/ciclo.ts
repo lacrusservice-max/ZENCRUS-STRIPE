@@ -29,144 +29,27 @@
  * aquí: la app enseña un ciclo y la base guarda otro.
  */
 
-import { z } from 'zod'
 
 // ═══ Trackers ══════════════════════════════════════════════════════════════
 
-export const TRACKER_KINDS = [
-  'sangrado', 'dolor', 'animo', 'energia', 'flujo', 'digestion', 'piel',
-  'sueno', 'libido', 'temperatura_basal', 'prueba', 'anticoncepcion',
-  'medicacion', 'perimenopausia',
-  // Los cuatro del registro diario del mockup. Migración 020.
-  'antojos', 'apetito', 'entrenamiento', 'notas',
-] as const
+/* ── El contrato de datos ────────────────────────────────────────────────
+   Los dieciocho esquemas vivían escritos a mano AQUÍ y otra vez en
+   `frontend/src/features/salud/trackers.ts`. Eran copias fieles, pero la
+   penalización por que se separaran no era un error visible: si un lado añade
+   un campo y el otro no, el registro se rechaza y —como el lote «descarta lo
+   inválido y sigue»— se pierde en silencio. Ahora hay una sola fuente. */
+export {
+  TRACKER_KINDS, TRACKER_SCHEMAS, validarTracker, ZONAS_DOLOR,
+} from '../nucleo/ciclo/trackers'
+export type { TrackerKind, TrackerValue } from '../nucleo/ciclo/trackers'
 
-export type TrackerKind = typeof TRACKER_KINDS[number]
+import { TRACKER_SCHEMAS } from '../nucleo/ciclo/trackers'
+import type { TrackerKind } from '../nucleo/ciclo/trackers'
+import {
+  agruparPeriodos, SANGRADO_MINIMO, diasEntreFechas,
+} from '../nucleo/ciclo/fases'
 
-const ZONAS_DOLOR = [
-  'cabeza', 'pecho', 'abdomen_bajo', 'ovarios', 'lumbar', 'piernas',
-  'articulaciones', 'vulva',
-] as const
 
-export const TRACKER_SCHEMAS: Record<TrackerKind, z.ZodTypeAny> = {
-  sangrado: z.object({
-    level: z.number().int().min(0).max(5),
-    spotting: z.boolean().optional(),
-    color: z.enum(['rojo_brillante', 'rojo_oscuro', 'cafe', 'otro']).optional(),
-    /* Ella declara que esto no es su regla. Ver `derivarPeriodos`. */
-    fueraDePeriodo: z.boolean().optional(),
-  }),
-
-  dolor: z.object({
-    zones: z.array(z.object({
-      id: z.enum(ZONAS_DOLOR),
-      intensity: z.number().int().min(1).max(10),
-    })).min(1).max(8),
-  }),
-
-  animo: z.object({
-    valence: z.number().min(-1).max(1),
-    arousal: z.number().min(-1).max(1),
-    tags: z.array(z.string().max(24)).max(5).optional(),
-  }),
-
-  energia: z.object({ level: z.number().int().min(1).max(5) }),
-
-  flujo: z.object({
-    texture: z.enum(['seco', 'pegajoso', 'cremoso', 'acuoso', 'clara_huevo']),
-    amount: z.enum(['poco', 'medio', 'abundante']).optional(),
-  }),
-
-  digestion: z.object({
-    tags: z.array(z.enum([
-      'hinchazon', 'nauseas', 'estrenimiento', 'diarrea', 'gases',
-      'acidez', 'antojos', 'sin_apetito',
-    ])).min(1),
-  }),
-
-  piel: z.object({
-    tags: z.array(z.enum(['acne', 'grasa', 'seca', 'sensible', 'normal'])).min(1),
-    zones: z.array(z.enum(['frente', 'mejillas', 'menton', 'espalda'])).optional(),
-  }),
-
-  sueno: z.object({
-    hours: z.number().min(0).max(24),
-    quality: z.enum(['mal', 'regular', 'bien', 'excelente']).optional(),
-    source: z.enum(['manual', 'wearable']).default('manual'),
-  }),
-
-  libido: z.object({
-    desire: z.number().int().min(1).max(5).optional(),
-    activity: z.enum(['ninguna', 'protegida', 'sin_proteccion', 'solitaria']).optional(),
-  }),
-
-  /* Dos decimales: el salto térmico que confirma la ovulación mide unas dos
-     décimas y con un solo decimal se pierde en el redondeo. */
-  temperatura_basal: z.object({
-    celsius: z.number().min(34).max(42),
-    time: z.string().regex(/^\d{2}:\d{2}$/).optional(),
-    disturbed: z.boolean().optional(),
-  }),
-
-  /* `photoLocalUri` se acepta y se DESCARTA antes de escribir: la foto de un
-     test nunca sale del teléfono. Ver `limpiar` más abajo. */
-  prueba: z.object({
-    type: z.enum(['ovulacion', 'embarazo']),
-    result: z.enum(['positivo', 'negativo', 'invalido']),
-    photoLocalUri: z.string().optional(),
-  }),
-
-  anticoncepcion: z.object({
-    method: z.enum([
-      'ninguno', 'pildora', 'diu_hormonal', 'diu_cobre', 'implante',
-      'inyeccion', 'parche', 'anillo', 'barrera', 'natural',
-    ]),
-    taken: z.boolean().optional(),
-  }),
-
-  medicacion: z.object({
-    items: z.array(z.object({
-      name: z.string().min(1).max(60),
-      taken: z.boolean(),
-    })).min(1).max(40),
-  }),
-
-  perimenopausia: z.object({
-    tags: z.array(z.enum([
-      'sofocos', 'sudores_nocturnos', 'sequedad', 'insomnio',
-      'niebla_mental', 'palpitaciones', 'cambios_animo',
-    ])).min(1),
-    severity: z.number().int().min(1).max(5).optional(),
-  }),
-
-  /* Los cuatro del mockup. Copia exacta de
-     `frontend/src/features/salud/trackers.ts`: si uno cambia sin el otro, el
-     servidor rechaza el registro y la cola se lo come en silencio. */
-  antojos: z.object({
-    tags: z.array(z.enum([
-      'dulce', 'salado', 'carbohidratos', 'grasas', 'proteinas', 'citricos', 'otro',
-    ])).min(1).max(7),
-  }),
-
-  apetito: z.object({
-    level: z.number().int().min(1).max(5),
-  }),
-
-  entrenamiento: z.object({
-    estado: z.enum(['no_entrene', 'con_energia', 'cansada', 'con_dolor', 'motivada']),
-  }),
-
-  notas: z.object({
-    texto: z.string().trim().min(1).max(1000),
-  }),
-}
-
-/**
- * Valida y limpia el valor de un tracker.
- *
- * Devuelve `null` si no pasa. No lanza: un registro mal formado dentro de un
- * lote de doscientos no debe tumbar los otros ciento noventa y nueve.
- */
 export function limpiarTracker(kind: TrackerKind, value: unknown): unknown | null {
   const esquema = TRACKER_SCHEMAS[kind]
   if (!esquema) return null
@@ -187,13 +70,6 @@ export function limpiarTracker(kind: TrackerKind, value: unknown): unknown | nul
 
 // ═══ Periodos ══════════════════════════════════════════════════════════════
 
-/** A partir de aquí cuenta como menstruación. El nivel 1 es manchado. */
-const SANGRADO_MINIMO = 2
-/** Días sin sangrado que cierran una menstruación. */
-const SEPARACION_MIN = 3
-/** Ningún ciclo humano dura menos. Es la guarda contra el periodo fantasma. */
-const CICLO_MIN = 15
-
 const DIA_MS = 86_400_000
 
 export function diasEntre(a: string, b: string): number {
@@ -211,72 +87,43 @@ export interface PeriodoDerivado {
 }
 
 /**
- * Reconstruye los periodos a partir de los registros de sangrado.
+ * Reconstruye los periodos a partir del sangrado registrado.
  *
- * **La ausencia de registro NO es ausencia de sangrado.** Un día sin apuntar es
- * un día desconocido, no un día seco. Por eso ninguna separación se calcula
- * contando días sin registro: se cuenta de día CON sangrado a día CON sangrado.
- * Confundirlo parte periodos cada vez que alguien se salta un día, y con
- * periodos partidos las medias se hunden.
+ * La REGLA —las tres guardas contra el periodo fantasma— vive en
+ * `nucleo/ciclo/fases.ts`, compartida con la app. Aquí solo se traduce la
+ * forma de los datos: el servidor recibe filas y la app un mapa por fecha.
  *
- * Copia exacta de `frontend/src/features/salud/ciclo/periodos.ts`.
+ * Antes estaba escrita entera aquí y otra vez en el cliente. Eran copias
+ * fieles, pero una regla copiada es una regla que algún día deja de estarlo, y
+ * cuando eso pase el servidor guardará unos periodos y la pantalla enseñará
+ * otros sin que nada falle.
  */
 export function derivarPeriodos(
   sangrados: Array<{ fecha: string; nivel: number; fueraDePeriodo?: boolean }>,
   declarados: string[] = [],
 ): PeriodoDerivado[] {
   const conSangrado = sangrados
-    /* La cuarta guarda contra el periodo fantasma, declarada por ella y no
-       deducida. Gemela de la de `frontend/.../ciclo/periodos.ts`. */
+    /* La cuarta guarda, la única que no deduce el motor: ella declara que ese
+       sangrado no es su regla. Gemela de la de `frontend/.../ciclo/periodos.ts`. */
     .filter(s => !s.fueraDePeriodo && s.nivel >= SANGRADO_MINIMO)
     .map(s => s.fecha)
 
-  const forzados = new Set(declarados)
-  const dias = [...new Set([...conSangrado, ...declarados])].sort()
-  if (!dias.length) return []
+  const { periodos: grupos } = agruparPeriodos(conSangrado, declarados)
 
-  const periodos: PeriodoDerivado[] = []
-  let inicio = dias[0]
-  let ultimo = dias[0]
-  let cuenta = 1
+  const periodos: PeriodoDerivado[] = grupos.map(g => ({
+    inicio: g.inicio,
+    fin: g.fin,
+    diasSangrado: g.diasSangrado,
+    duracionCiclo: null,
+    declarado: g.declarado,
+  }))
 
-  const cerrar = (fin: string, n: number) => {
-    periodos.push({
-      inicio, fin, diasSangrado: n, duracionCiclo: null,
-      declarado: forzados.has(inicio),
-    })
-  }
-
-  for (let i = 1; i < dias.length; i++) {
-    const dia = dias[i]
-    const separacion = diasEntre(ultimo, dia)
-    const desdeInicio = diasEntre(inicio, dia)
-    const declarado = forzados.has(dia)
-
-    if (declarado || (separacion >= SEPARACION_MIN && desdeInicio >= CICLO_MIN)) {
-      cerrar(ultimo, cuenta)
-      inicio = dia
-      ultimo = dia
-      cuenta = 1
-      continue
-    }
-
-    // Sangrado suelto dentro del ciclo: no abre periodo y no se cuenta como día
-    // de menstruación. Es sangrado intermenstrual, y lo informa el cliente.
-    if (separacion >= SEPARACION_MIN) continue
-
-    ultimo = dia
-    cuenta++
-  }
-
-  cerrar(ultimo, cuenta)
-
-  /* La duración se conoce al saber cuándo empezó el siguiente. La del último
-     se queda en null a propósito: rellenarla con la media sería guardar una
+  /* La duración se conoce al saber cuándo empezó el siguiente. La del último se
+     queda en null a propósito: rellenarla con la media sería guardar una
      estimación como si fuera un hecho, y la migración 018 lo dice en la propia
      columna. */
   for (let i = 0; i < periodos.length - 1; i++) {
-    periodos[i].duracionCiclo = diasEntre(periodos[i].inicio, periodos[i + 1].inicio)
+    periodos[i].duracionCiclo = diasEntreFechas(periodos[i].inicio, periodos[i + 1].inicio)
   }
 
   return periodos

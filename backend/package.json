@@ -14,9 +14,11 @@
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",
     "lint": "eslint src",
-    "type-check": "tsc --noEmit && tsc -p pruebas --noEmit",
+    "type-check": "npm run nucleo:verificar && tsc --noEmit && tsc -p pruebas --noEmit",
     "migrate": "ts-node src/config/migrate.ts",
-    "test:e2e": "tsx pruebas/correr.ts"
+    "test:e2e": "tsx pruebas/correr.ts",
+    "nucleo": "node ../scripts/nucleo.mjs",
+    "nucleo:verificar": "node ../scripts/nucleo.mjs --verificar"
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.1107.0",

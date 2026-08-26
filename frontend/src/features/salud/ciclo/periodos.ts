@@ -22,6 +22,11 @@
  */
 
 import { diasEntre } from '@/utils/fechas'
+import {
+  agruparPeriodos,
+  CICLO_MIN as MIN_NUCLEO, CICLO_MAX as MAX_NUCLEO,
+  SANGRADO_MINIMO as MINIMO_NUCLEO,
+} from '@/nucleo/ciclo/fases'
 import type { RegistroDia } from '@/store/cicloStore'
 
 /**
@@ -31,10 +36,7 @@ import type { RegistroDia } from '@/store/cicloStore'
  * común —ovulación, implantación, un DIU asentándose— y tratarlo como regla
  * fabricaría un ciclo de quince días que nunca ocurrió.
  */
-export const SANGRADO_MINIMO = 2
-
-/** Días sin sangrado que cierran una menstruación. */
-const SEPARACION_MIN = 3
+export const SANGRADO_MINIMO = MINIMO_NUCLEO
 
 /**
  * Ningún ciclo humano dura menos de esto.
@@ -44,10 +46,10 @@ const SEPARACION_MIN = 3
  * Sin esta guarda, dos días de manchado a mitad de mes bastarían para partir
  * el ciclo en dos y arruinar la media.
  */
-export const CICLO_MIN = 15
+export const CICLO_MIN = MIN_NUCLEO
 
 /** Y ninguno dura más. Por encima, casi siempre falta un periodo por registrar. */
-export const CICLO_MAX = 60
+export const CICLO_MAX = MAX_NUCLEO
 
 export interface Periodo {
   /** Primer día de sangrado. */
@@ -108,61 +110,23 @@ export function derivarPeriodos(
   logs: Record<string, RegistroDia>,
   declarados: string[] = [],
 ): Derivacion {
-  const sangrado = diasConSangrado(logs)
-  const forzados = new Set(declarados)
+  /* La REGLA vive en el núcleo compartido con el servidor; aquí solo se
+     traduce la forma de los datos. Antes estaba escrita entera en este archivo
+     y en `backend/src/utils/ciclo.ts`, y las dos versiones YA no coincidían:
+     el servidor miraba solo la separación entre días con sangrado y se saltaba
+     la guarda del día 15 desde el inicio, así que un manchado a los cuatro
+     días le abría un periodo que la app no abría. */
+  const { periodos: grupos, intermenstrual } = agruparPeriodos(
+    diasConSangrado(logs), declarados)
 
-  // Un inicio declarado que no tiene sangrado apuntado sigue siendo un inicio.
-  const dias = [...new Set([...sangrado, ...declarados])].sort()
-  if (!dias.length) return { periodos: [], intermenstrual: [] }
-
-  const periodos: Periodo[] = []
-  const intermenstrual: SangradoIntermenstrual[] = []
-
-  let inicio = dias[0]
-  let ultimo = dias[0]
-  let cuenta = 1
-
-  const cerrar = (fin: string, dias_: number) => {
-    periodos.push({
-      inicio,
-      fin,
-      diasSangrado: dias_,
-      duracionCiclo: null,
-      declarado: forzados.has(inicio),
-    })
-  }
-
-  for (let i = 1; i < dias.length; i++) {
-    const dia = dias[i]
-    const separacion = diasEntre(ultimo, dia)
-    const desdeInicio = diasEntre(inicio, dia)
-
-    const declarado = forzados.has(dia)
-    // Un inicio declarado abre periodo aunque caiga antes del mínimo: la
-    // usuaria sabe de su cuerpo más que la guarda.
-    const nuevo = declarado || (separacion >= SEPARACION_MIN && desdeInicio >= CICLO_MIN)
-
-    if (nuevo) {
-      cerrar(ultimo, cuenta)
-      inicio = dia
-      ultimo = dia
-      cuenta = 1
-      continue
-    }
-
-    if (separacion >= SEPARACION_MIN) {
-      /* Sangrado suelto dentro del mismo ciclo. No abre periodo —la guarda de
-         CICLO_MIN lo impide— pero tampoco se tira: es justo el dato que
-         interesa llevar a una consulta. */
-      intermenstrual.push({ fecha: dia, diaDeCiclo: desdeInicio + 1 })
-      continue
-    }
-
-    ultimo = dia
-    cuenta++
-  }
-
-  cerrar(ultimo, cuenta)
+  const periodos: Periodo[] = grupos.map(g => ({
+    inicio: g.inicio,
+    fin: g.fin,
+    diasSangrado: g.diasSangrado,
+    duracionCiclo: null,
+    declarado: g.declarado,
+  }))
+  if (!periodos.length) return { periodos: [], intermenstrual: [] }
 
   // La duración de cada ciclo se conoce al saber cuándo empezó el siguiente.
   for (let i = 0; i < periodos.length - 1; i++) {

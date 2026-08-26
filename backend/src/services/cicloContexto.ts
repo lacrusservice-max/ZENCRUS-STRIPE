@@ -26,52 +26,13 @@ import { supabase } from '../config/supabase'
 import { logger } from '../config/logger'
 import { diasEntre } from '../utils/ciclo'
 import { FASES, type FaseCiclo } from './cicloExperto'
+import { marcoFases, faseDeDia } from '../nucleo/ciclo/fases'
 
-/* ── El cálculo de fases ────────────────────────────────────────────────────
-   Copia exacta de `frontend/src/features/salud/ciclo/prediccion.ts`. Es la
-   TERCERA copia de lógica de ciclo que vive en los dos lados —las otras son
-   `derivarPeriodos` y los esquemas de trackers—, y como aquellas: si cambia,
-   cambia en ambos a la vez. Fijar la ovulación en el día 14 es el error de
-   toda la categoría; lo estable es la lútea y por eso se cuenta hacia atrás
-   desde el final. ───────────────────────────────────────────────────────── */
-
-const CICLO_MIN = 15
-const CICLO_MAX = 60
-const LUTEA = 14
+/* El cálculo de fases viene del núcleo compartido con la app. Vivía copiado
+   aquí, y una copia que se toca sin la otra hace que ZENA hable de una fase
+   distinta a la que enseña la pantalla — con la usuaria delante de las dos. */
 const POBLACION = { duracion: 28, sangrado: 5 } as const
 
-interface Marco {
-  duracion: number
-  diasPeriodo: number
-  diaOvulacion: number
-  limites: Record<FaseCiclo, number>
-}
-
-function marcoFases(duracion: number, diasPeriodo: number): Marco {
-  const dur = Math.max(CICLO_MIN, Math.min(CICLO_MAX, Math.round(duracion)))
-  const periodo = Math.max(1, Math.min(10, Math.round(diasPeriodo)))
-  const diaOvulacion = Math.max(periodo + 3, Math.min(dur - 8, dur - LUTEA))
-
-  return {
-    duracion: dur,
-    diasPeriodo: periodo,
-    diaOvulacion,
-    limites: {
-      menstrual: 1,
-      folicular: periodo + 1,
-      ovulatoria: Math.max(periodo + 1, diaOvulacion - 2),
-      lutea: diaOvulacion + 3,
-    },
-  }
-}
-
-function faseDeDia(dia: number, marco: Marco): FaseCiclo {
-  const l = marco.limites
-  if (dia >= l.lutea) return 'lutea'
-  if (dia >= l.ovulatoria) return 'ovulatoria'
-  if (dia >= l.folicular) return 'folicular'
-  return 'menstrual'
-}
 
 /* ── Lo que sale de aquí ───────────────────────────────────────────────── */
 
