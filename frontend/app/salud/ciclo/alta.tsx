@@ -186,7 +186,7 @@ export default function AltaCiclo() {
   }
 
   return (
-    <Pantalla fondo={FONDO.bienvenida}>
+    <Pantalla salida={false} fondo={FONDO.bienvenida}>
       <ScrollView contentContainerStyle={s.scrollFin} showsVerticalScrollIndicator={false}>
         <View style={s.avatar}>
           <Icono nombre="community_decorativo" tam={64} />

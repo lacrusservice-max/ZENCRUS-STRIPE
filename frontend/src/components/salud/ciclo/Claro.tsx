@@ -18,6 +18,7 @@
  */
 
 import type { ReactNode } from 'react'
+import { router } from 'expo-router'
 import {
   View, Text, StyleSheet, Pressable, Image,
   type ViewStyle, type ImageStyle, type StyleProp,
@@ -32,15 +33,51 @@ import { elegir } from '@/utils/haptica'
 
 /* ── El fondo de la pantalla ────────────────────────────────────────────── */
 
-export function Pantalla({ fondo, children, bordes = ['top'] }: {
+/**
+ * El fondo de la pantalla, con la salida hacia el resto de ZENCRUS.
+ *
+ * ── Por qué la salida vive AQUÍ y no en cada pantalla ──────────────────────
+ * Porque el módulo sustituye la barra de la app por la suya, y sin una salida
+ * explícita se entra al ciclo y no se sale: ni barra global, ni botón, ni nada.
+ * Pasó de verdad — se envió así y hubo que descubrirlo usándolo.
+ *
+ * Puesta en cada pantalla, la sexta que se añada nacería otra vez sin salida.
+ * Puesta aquí, y encendida POR DEFECTO, hay que apagarla a propósito. Esa es la
+ * diferencia entre «se me olvidó» y «lo decidí».
+ *
+ * La apagan solo los dos flujos de pantalla completa —el alta y el registro
+ * diario—, que ya traen su propia aspa y donde una segunda salida invitaría a
+ * escaparse a media captura de datos.
+ *
+ * ── Y va a Salud, no a `back()` ────────────────────────────────────────────
+ * Las cinco pestañas se sustituyen con `replace`, así que después de saltar
+ * entre dos no queda pila a la que volver: `router.back()` no haría nada. El
+ * destino es el sitio del que se entró.
+ */
+export function Pantalla({ fondo, children, bordes = ['top'], salida = true }: {
   fondo: string
   children: ReactNode
   bordes?: ('top' | 'bottom')[]
+  salida?: boolean
 }) {
   return (
     <View style={[s.raiz, { backgroundColor: fondo }]}>
       <StatusBar style="dark" />
-      <SafeAreaView style={s.flex} edges={bordes}>{children}</SafeAreaView>
+      <SafeAreaView style={s.flex} edges={bordes}>
+        {salida ? (
+          <Pressable
+            onPress={() => { elegir(); router.replace('/(tabs)/salud') }}
+            style={({ pressed }) => [s.salida, pressed && s.pulsado]}
+            accessibilityRole="button"
+            accessibilityLabel="Volver a ZENCRUS"
+            hitSlop={8}
+          >
+            <Text style={s.salidaFlecha}>‹</Text>
+            <Text style={s.salidaTxt}>ZENCRUS</Text>
+          </Pressable>
+        ) : null}
+        {children}
+      </SafeAreaView>
     </View>
   )
 }
@@ -204,6 +241,20 @@ export function BotonPrincipal({ texto, onPress, desactivado }: {
 const s = StyleSheet.create({
   raiz: { flex: 1 },
   flex: { flex: 1 },
+
+  /* Fila fina y pegada al margen: es una salida, no un destino, y no debe
+     competir con el título de la pantalla que va justo debajo. */
+  salida: {
+    flexDirection: 'row', alignItems: 'center', gap: 2,
+    alignSelf: 'flex-start',
+    paddingLeft: 18, paddingRight: 16, paddingTop: 6, paddingBottom: 2,
+  },
+  salidaFlecha: {
+    fontFamily: FUENTE.medio, fontSize: 22, color: TEXTO.medio, marginTop: -3,
+  },
+  salidaTxt: {
+    fontFamily: FUENTE.fuerte, fontSize: 12.5, letterSpacing: 1.8, color: TEXTO.medio,
+  },
 
   tarjeta: {
     backgroundColor: SUP.tarjeta,

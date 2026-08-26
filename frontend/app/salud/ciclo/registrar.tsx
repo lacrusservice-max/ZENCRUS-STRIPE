@@ -148,7 +148,7 @@ export default function RegistrarCiclo() {
   }
 
   return (
-    <Pantalla fondo={FONDO.registro}>
+    <Pantalla salida={false} fondo={FONDO.registro}>
       <KeyboardAvoidingView
         style={s.flex}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
