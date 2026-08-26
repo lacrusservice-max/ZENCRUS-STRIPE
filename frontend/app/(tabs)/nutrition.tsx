@@ -43,6 +43,7 @@ import { RachaEncendida } from '@/components/racha/RachaEncendida'
 import { useRachaDelDia } from '@/hooks/useRachaDelDia'
 import { FondoPlato } from '@/components/nutrition/FondoPlato'
 import { emojiForFood } from '@/data/foodEmoji'
+import { NotaDeFase } from '@/components/salud/ciclo/NotaDeFase'
 
 const NEON = Colors.neon
 
@@ -483,6 +484,13 @@ export default function NutritionScreen() {
               </View>
             </View>
           )}
+
+          {/* ── El ciclo, si lo hay ──
+              Va antes de las comidas y no al final: en fase lútea el hambre
+              sube de verdad, y esa explicación solo sirve si se lee ANTES de
+              mirar lo que ya se comió. Después es una excusa; antes, contexto.
+              El componente se esconde solo cuando no procede. */}
+          <NotaDeFase donde="nutricion" />
 
           {/* ── Comidas ── */}
           <Section title="Comidas" note="Presupuesto adaptativo" />

@@ -11,6 +11,7 @@ import { AI_TOOLS, executeAiTool } from '../services/aiTools'
 import { ligarAMensaje, type AccionPendiente } from '../services/confirmaciones'
 import { cuidadoDeEsteMensaje, faltanLosRecursos, RECURSOS_MX } from '../services/cuidado'
 import { instantaneaDelDia } from '../services/instantaneaDelDia'
+import { contextoDeCiclo, cicloParaPrompt as textoCiclo } from '../services/cicloContexto'
 
 const aiClient = new DeepSeekClient(process.env.DEEPSEEK_API_KEY || '')
 
@@ -243,7 +244,15 @@ export async function sendMessage(req: Request, res: Response): Promise<void> {
   // Obtener perfil del usuario y construir system prompt personalizado
   const { perfil, nombre } = await obtenerPerfilParaIA(userId)
   const resultadoNutricional = perfil ? calcularNutricion(perfil) : null
-  const systemPrompt = construirSystemPrompt(perfil, resultadoNutricional, nombre ?? undefined)
+  const base = construirSystemPrompt(perfil, resultadoNutricional, nombre ?? undefined)
+
+  /* El ciclo, si lo hay.
+     Devuelve cadena vacía cuando no hay nada que decir —sin módulo, sin
+     historial, o en embarazo—, así que se concatena sin comprobar nada. Y para
+     quien no tiene el módulo no llega ni una pista de que exista: la función
+     fantasma se rompería con que ZENA supiera que hay algo apagado. */
+  const delCiclo = textoCiclo(await contextoDeCiclo(userId))
+  const systemPrompt = delCiclo ? `${base}\n\n${delCiclo}` : base
 
   const history = (previousMessages || []).reverse().map((m: any) => ({
     role: m.sender_type === 'ai' ? 'assistant' : 'user',

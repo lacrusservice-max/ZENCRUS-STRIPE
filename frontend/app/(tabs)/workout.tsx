@@ -24,6 +24,7 @@ import { Ionicons } from '@expo/vector-icons'
 import { LinearGradient } from 'expo-linear-gradient'
 import { elegir } from '@/utils/haptica'
 import { Colors, Typography, Spacing } from '@/constants/theme'
+import { NotaDeFase } from '@/components/salud/ciclo/NotaDeFase'
 
 type IconName = React.ComponentProps<typeof Ionicons>['name']
 
@@ -70,6 +71,13 @@ export default function ElegirEntrenamiento() {
             <Text style={s.titulo}>¿Cómo{'\n'}entrenas hoy?</Text>
           </View>
 
+          {/* Antes de elegir el modo, no después: la nota sirve para decidir
+              qué sesión hacer hoy, y puesta debajo de las tarjetas llegaría
+              cuando ya se ha elegido. Se esconde sola si no procede. */}
+          <View style={s.nota}>
+            <NotaDeFase donde="entrena" />
+          </View>
+
           {MODOS.map(m => (
             <TouchableOpacity
               key={m.id}
@@ -112,6 +120,7 @@ const s = StyleSheet.create({
   root: { flex: 1, backgroundColor: '#000' },
   safe: { flex: 1 },
   scroll: { paddingBottom: 130 },
+  nota: { paddingHorizontal: 20, marginBottom: 14 },
   head: { paddingHorizontal: Spacing[5], paddingTop: Spacing[4], paddingBottom: Spacing[5] },
   eyebrow: {
     fontSize: 10, fontWeight: '900', color: Colors.primary[500],
