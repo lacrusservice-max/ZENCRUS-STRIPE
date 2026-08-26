@@ -32,6 +32,9 @@ import { authenticateWithBiometrics } from '@/services/authService'
 import { base, space, radius, family, type as tipo, PHASES } from '@/theme/salud/tokens'
 import { Screen } from '@/components/ui/Screen'
 import { BarraCiclo } from '@/components/salud/ciclo/BarraCiclo'
+import { useCicloStore } from '@/store/cicloStore'
+import { estadoDeHoy, apartadoHoy } from '@/features/salud/ciclo/checkin'
+import { hoyLocal } from '@/utils/fechas'
 
 const TONO = PHASES.ovulatoria.accent
 
@@ -69,6 +72,37 @@ export default function LayoutCiclo() {
     // Solo al montar: reintentar en cada render abriría un bucle de biometría.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bloqueo, permitido])
+
+  /* ── El check-in del día ─────────────────────────────────────────────────
+     Va en la puerta y no en la portada para que aparezca se entre por donde se
+     entre: por la portada, por un enlace al calendario o volviendo de otra
+     pestaña. Puesto solo en la portada, quien tiene por costumbre entrar
+     directo a Calendario no lo vería nunca.
+
+     Se comprueba una sola vez por montaje. Reevaluarlo en cada cambio de
+     pantalla haría que apareciera al volver de cualquier sitio, que es lo que
+     convierte una buena pantalla en una molestia. */
+  const [checkinVisto, setCheckinVisto] = useState(false)
+  const logs = useCicloStore(s => s.logs)
+  const cargado = useCicloStore(s => s.cargado)
+
+  useEffect(() => {
+    if (checkinVisto || !abierto || !permitido || !cargado) return
+    if (SIN_CHECKIN.some(r => ruta.startsWith(r))) return
+
+    let vivo = true
+    void (async () => {
+      const hoy = hoyLocal()
+      const apartado = await apartadoHoy(hoy)
+      if (!vivo) return
+      setCheckinVisto(true)
+      const { procede } = estadoDeHoy(logs[hoy], apartado)
+      if (procede) router.replace('/salud/ciclo/hoy')
+    })()
+    return () => { vivo = false }
+    // Solo al abrirse el módulo: ver el comentario de arriba.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [abierto, permitido, cargado, checkinVisto])
 
   if (cargandoSesion || !permitido) {
     return (
@@ -129,7 +163,12 @@ export default function LayoutCiclo() {
 }
 
 const PESTANAS = ['index', 'calendario', 'ajustes', 'estadisticas', 'comunidad']
-const SIN_BARRA = ['/salud/ciclo/alta', '/salud/ciclo/registrar']
+const SIN_BARRA = ['/salud/ciclo/alta', '/salud/ciclo/registrar', '/salud/ciclo/hoy']
+
+/* Dónde NO se puede interrumpir con el check-in: en el propio check-in —sería
+   un bucle—, en el alta —todavía no hay nada que registrar— y en el registro
+   diario, que ya es la versión larga de lo mismo. */
+const SIN_CHECKIN = ['/salud/ciclo/hoy', '/salud/ciclo/alta', '/salud/ciclo/registrar']
 
 const s = StyleSheet.create({
   flex: { flex: 1 },
