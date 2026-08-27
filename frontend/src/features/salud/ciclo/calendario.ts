@@ -64,8 +64,57 @@ export interface DiaCalendario {
    */
   fertilNucleo: boolean
 
-  /** Cuántos trackers se registraron ese día. Pinta el punto de actividad. */
+  /** Cuántos trackers se registraron ese día. */
   registros: number
+
+  /**
+   * Qué día del sangrado es, contando desde el inicio del periodo.
+   *
+   * Es lo que alimenta el degradado: día 1 sólido, último día desvanecido.
+   * Vale tanto para el sangrado registrado como para el previsto, porque los
+   * dos se pintan con el mismo degradado y distinto factor de estado.
+   */
+  diaDeSangrado: number | null
+
+  /**
+   * Las categorías con dato ese día, en el orden de prioridad del documento.
+   *
+   * La casilla enseña hasta tres y un «+n» si sobran. Se calcula aquí y no en
+   * la pantalla porque el orden de prioridad es una regla de producto, no una
+   * decisión de maquetación.
+   */
+  categorias: CategoriaDia[]
+
+  /** Hubo vida sexual registrada: pinta el corazón. */
+  vidaSexual: boolean
+}
+
+/** Las seis categorías que pueden aparecer como badge en una casilla. */
+export type CategoriaDia =
+  | 'sintomas' | 'animo' | 'energia' | 'nutricion' | 'entrenamiento' | 'piel'
+
+/**
+ * El orden de prioridad al recortar a tres.
+ *
+ * Síntomas primero porque es lo que más se consulta después; piel al final
+ * porque es lo que menos cambia una decisión del día.
+ */
+const PRIORIDAD: CategoriaDia[] = [
+  'sintomas', 'animo', 'energia', 'nutricion', 'entrenamiento', 'piel',
+]
+
+/** Qué categorías tienen dato en un registro. */
+function categoriasDe(reg: RegistroDia | undefined): CategoriaDia[] {
+  if (!reg) return []
+  const hay: Record<CategoriaDia, boolean> = {
+    sintomas: !!reg.dolor || !!reg.digestion,
+    animo: !!reg.animo,
+    energia: !!reg.energia,
+    nutricion: !!reg.antojos || !!reg.apetito,
+    entrenamiento: !!reg.entrenamiento,
+    piel: !!reg.piel,
+  }
+  return PRIORIDAD.filter(c => hay[c])
 }
 
 export interface Mes {
@@ -161,6 +210,22 @@ export function construirMes(e: Entrada): Mes {
       bandaPrediccion = false
     }
 
+    /* Qué día del sangrado es. Se busca primero en lo registrado —el periodo
+       real al que pertenece— y si no, en el previsto. */
+    let diaDeSangrado: number | null = null
+    if (sangrado != null && sangrado >= SANGRADO_MINIMO) {
+      for (let k = periodos.length - 1; k >= 0; k--) {
+        const delta = diasEntre(periodos[k].inicio, fecha)
+        if (delta >= 0 && delta < marco.diasPeriodo + 4) { diaDeSangrado = delta + 1; break }
+      }
+      diaDeSangrado = diaDeSangrado ?? 1
+    } else if (periodoPredicho) {
+      for (const pv of previstos) {
+        const delta = diasEntre(pv.inicio, fecha)
+        if (delta >= 0 && delta < marco.diasPeriodo) { diaDeSangrado = delta + 1; break }
+      }
+    }
+
     const ovulacionPredicha = !!prediccion?.ovulacion && fecha === prediccion.ovulacion.likely
     const fertil = !!prediccion?.ventanaFertil
       && fecha >= prediccion.ventanaFertil.inicio
@@ -190,6 +255,9 @@ export function construirMes(e: Entrada): Mes {
       fertil,
       fertilNucleo,
       registros: reg ? Object.keys(reg).length : 0,
+      diaDeSangrado,
+      categorias: categoriasDe(reg),
+      vidaSexual: !!reg?.libido,
     })
 
     if (i === 41) break

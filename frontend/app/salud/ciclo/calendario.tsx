@@ -30,13 +30,20 @@ import { hoyLocal } from '@/utils/fechas'
 import { ALTO_BARRA } from '@/components/salud/ciclo/BarraCiclo'
 import { Pantalla, Icono } from '@/components/salud/ciclo/Claro'
 import {
-  FONDO, ACENTO, TEXTO, FUENTE, SUP, SOMBRA, RADIO, TABULAR,
+  FONDO, FASE, PICO_FERTIL, CATEGORIA, ACENTO_HOY, ACENTO,
+  TEXTO, FUENTE, SUP, SOMBRA, RADIO, TABULAR,
 } from '@/theme/salud/cicloClaro'
+import {
+  opacidadDegradado, FACTOR_ESTADO, type MarcoFases,
+} from '@/nucleo/ciclo/fases'
 import { elegir } from '@/utils/haptica'
 
 /** Cuántos meses se pueden recorrer. Ver el encabezado del archivo. */
 const ATRAS = 12
 const ADELANTE = 3
+
+/** Hasta tres badges por casilla; el resto se resume en «+n». */
+const MAX_BADGES = 3
 
 /**
  * Por qué esto es un `ScrollView` y no una `FlatList`.
@@ -171,7 +178,7 @@ function Mes({ año, mes, esActual, onSituarse, logs, periodos, prediccion, marc
           ))}
         </View>
         <View style={s.rejilla}>
-          {datos.dias.map(d => <Celda key={d.fecha} d={d} />)}
+          {datos.dias.map(d => <Celda key={d.fecha} d={d} marco={marco} />)}
         </View>
       </View>
     </View>
@@ -180,18 +187,47 @@ function Mes({ año, mes, esActual, onSituarse, logs, periodos, prediccion, marc
 
 /* ── Un día ─────────────────────────────────────────────────────────────── */
 
-function Celda({ d }: { d: DiaCalendario }) {
+/**
+ * Una casilla, por capas.
+ *
+ * El orden del prompt maestro: fondo → corazón → badges de categoría →
+ * estados. Cada capa se decide sola y ninguna pisa a la anterior, que es lo que
+ * evita el «color especial para este caso» que rompe la consistencia.
+ */
+function Celda({ d, marco }: { d: DiaCalendario; marco: MarcoFases }) {
   if (!d.delMes) return <View style={s.celda} />
 
-  /* Un nivel 0 significa «hoy no sangré», que es un dato y NO debe pintarse de
-     granate. Solo cuenta a partir de 1. */
-  const sangro = (d.sangrado ?? 0) > 0
+  /* ── Capa 1 · el fondo ──────────────────────────────────────────────────
+     Un nivel 0 significa «hoy no sangré»: es un dato y NO se pinta de rojo. */
+  const sangro = (d.sangrado ?? 0) >= 1
   const previsto = !sangro && d.periodoPredicho
-  const fertil = !sangro && !previsto && d.fertil
-  /* Dentro de la ventana, el núcleo va más fuerte. La diferencia de tono es lo
-     único que distingue «probablemente» de «quizá», y sin ella los dos se leen
-     igual de seguros. */
-  const nucleo = fertil && d.fertilNucleo
+
+  let fondo: string | null = null
+  if (sangro || previsto) {
+    /* Degradado × factor de estado. Las dos cosas se combinan, no se
+       sustituyen: el día 3 previsto es más pálido que el día 3 registrado, y
+       los dos son más pálidos que su día 1. */
+    const opacidad = opacidadDegradado(d.diaDeSangrado ?? 1, marco.diasPeriodo)
+      * (sangro ? FACTOR_ESTADO.registrado : FACTOR_ESTADO.predicho)
+    fondo = conAlfa(FASE.menstrual.celda, opacidad)
+  } else if (d.ovulacionPredicha) {
+    fondo = PICO_FERTIL.celda
+  } else if (d.fertil) {
+    // Dentro de la ventana, el núcleo va entero y el margen a media luz.
+    fondo = d.fertilNucleo
+      ? FASE.ovulatoria.celda
+      : conAlfa(FASE.ovulatoria.celda, FACTOR_ESTADO.predicho)
+  }
+
+  /* Con fondo oscuro el número va en blanco; con fondo claro o sin fondo, en
+     el color de la fase. El umbral es la opacidad del rojo, que es el único
+     fondo que llega a oscurecerse de verdad. */
+  const sobreOscuro = (sangro || previsto)
+    && opacidadDegradado(d.diaDeSangrado ?? 1, marco.diasPeriodo)
+      * (sangro ? 1 : FACTOR_ESTADO.predicho) > 0.5
+
+  const badges = d.categorias.slice(0, MAX_BADGES)
+  const sobran = d.categorias.length - badges.length
 
   const abrir = () => {
     elegir()
@@ -203,42 +239,59 @@ function Celda({ d }: { d: DiaCalendario }) {
       onPress={abrir}
       style={s.celda}
       accessibilityRole="button"
-      accessibilityLabel={etiquetaDe(d, sangro, previsto, fertil)}
+      accessibilityLabel={etiquetaDe(d, sangro, previsto)}
     >
       <View style={[
         s.caja,
-        sangro && s.cajaSangrado,
-        previsto && s.cajaPrevisto,
-        fertil && s.cajaFertil,
-        nucleo && s.cajaFertilNucleo,
+        fondo ? { backgroundColor: fondo } : null,
         d.hoy && s.cajaHoy,
       ]}>
-        {/* El corazón del día de ovulación, como en el mockup. */}
-        {d.ovulacionPredicha ? <View style={s.corazon} /> : null}
+        {/* Capa 2 · el corazón de vida sexual, arriba a la derecha. */}
+        {d.vidaSexual ? <Text style={s.corazon}>♥</Text> : null}
+
+        {/* Capa 3 · los badges de categoría, arriba a la izquierda. */}
+        {badges.length ? (
+          <View style={s.badges}>
+            {badges.map(c => (
+              <View key={c} style={[s.badge, { backgroundColor: CATEGORIA[c] }]} />
+            ))}
+            {sobran > 0 ? <Text style={s.sobran}>{`+${sobran}`}</Text> : null}
+          </View>
+        ) : null}
+
         <Text style={[
           s.numero,
-          sangro && s.numeroSangrado,
-          previsto && s.numeroPrevisto,
-          fertil && s.numeroFertil,
-          nucleo && s.numeroFertilNucleo,
-          d.futuro && !sangro && !previsto && !fertil && s.numeroFuturo,
+          sobreOscuro && s.numeroBlanco,
+          !fondo && d.futuro && s.numeroFuturo,
+          !sobreOscuro && d.fertil && !sangro && !previsto && { color: FASE.ovulatoria.texto },
         ]}>
           {d.numero}
         </Text>
-        {/* El punto de actividad: hubo registro ese día. */}
-        {d.registros > 0 && !sangro ? <View style={s.punto} /> : null}
       </View>
       {d.hoy ? <Text style={s.hoyTxt}>HOY</Text> : null}
     </Pressable>
   )
 }
 
-function etiquetaDe(d: DiaCalendario, sangro: boolean, previsto: boolean, fertil: boolean): string {
+/**
+ * Un hex con transparencia.
+ *
+ * React Native no acepta `rgba()` sobre un hex de seis dígitos, así que se
+ * traduce a hex de ocho. Es lo que permite que degradado y factor de estado se
+ * multipliquen en vez de tener veinte colores fijos precalculados.
+ */
+function conAlfa(hex: string, alfa: number): string {
+  const a = Math.round(Math.max(0, Math.min(1, alfa)) * 255)
+  return `${hex}${a.toString(16).padStart(2, '0').toUpperCase()}`
+}
+
+
+function etiquetaDe(d: DiaCalendario, sangro: boolean, previsto: boolean): string {
   const partes = [`${d.numero}`]
   if (sangro) partes.push('sangrado registrado')
   else if (previsto) partes.push('periodo previsto')
   else if (d.fertilNucleo) partes.push('días más fértiles estimados')
-  else if (fertil) partes.push('ventana fértil estimada, con margen')
+  else if (d.fertil) partes.push('ventana fértil estimada, con margen')
   if (d.ovulacionPredicha) partes.push('ovulación estimada')
   if (d.hoy) partes.push('hoy')
   return partes.join(', ')
@@ -279,30 +332,23 @@ const s = StyleSheet.create({
     width: 40, height: 40, borderRadius: RADIO.celda,
     alignItems: 'center', justifyContent: 'center',
   },
-  cajaSangrado: { backgroundColor: ACENTO.periodo },
-  cajaPrevisto: {
-    borderWidth: 1.5, borderStyle: 'dashed', borderColor: ACENTO.periodo,
-  },
-  cajaFertil: { backgroundColor: '#EDF8F8' },
-  cajaFertilNucleo: { backgroundColor: ACENTO.fertilSuave },
-  cajaHoy: { borderWidth: 2, borderColor: ACENTO.morado, borderStyle: 'solid' },
+  cajaHoy: { borderWidth: 2, borderColor: ACENTO_HOY },
 
   numero: { fontFamily: FUENTE.fuerte, fontSize: 15, color: TEXTO.fuerte, ...TABULAR },
-  numeroSangrado: { color: '#FFFFFF' },
-  numeroPrevisto: { color: ACENTO.periodo },
-  numeroFertil: { color: '#7CBFC2' },
-  numeroFertilNucleo: { color: ACENTO.fertil },
+  numeroBlanco: { color: '#FFFFFF' },
   numeroFuturo: { color: '#B6ACCB' },
 
   corazon: {
-    position: 'absolute', top: 1, right: 4,
-    width: 7, height: 7, borderRadius: 4,
-    backgroundColor: ACENTO.fertil,
+    position: 'absolute', top: 0, right: 3,
+    fontSize: 10, color: CATEGORIA.vidaSexual,
   },
-  punto: {
-    position: 'absolute', bottom: 3,
-    width: 4, height: 4, borderRadius: 2,
-    backgroundColor: ACENTO.morado,
+  badges: {
+    position: 'absolute', top: 3, left: 3,
+    flexDirection: 'row', alignItems: 'center', gap: 2,
+  },
+  badge: { width: 4.5, height: 4.5, borderRadius: 1.5 },
+  sobran: {
+    fontFamily: FUENTE.fuerte, fontSize: 7.5, color: TEXTO.suave, marginLeft: 1,
   },
   hoyTxt: {
     fontFamily: FUENTE.fuerte, fontSize: 9.5, letterSpacing: 0.6,
