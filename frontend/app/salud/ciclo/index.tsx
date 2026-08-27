@@ -18,7 +18,7 @@
  * números que vengan después.
  */
 
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
 import { router } from 'expo-router'
 import { useAuthStore } from '@/store/authStore'
@@ -27,7 +27,9 @@ import { useCiclo } from '@/features/salud/ciclo/useCiclo'
 import { rachaRegistro } from '@/features/salud/ciclo/historial'
 import { diaCorto, diaLargo } from '@/features/salud/ciclo/formato'
 import { hoyLocal } from '@/utils/fechas'
-import { AnilloFases } from '@/components/salud/ciclo/AnilloFases'
+import { AnilloFases, VolverAHoy } from '@/components/salud/ciclo/AnilloFases'
+import { fraseDelDia } from '@/features/salud/ciclo/frase'
+import { diasEntre } from '@/utils/fechas'
 import { ALTO_BARRA } from '@/components/salud/ciclo/BarraCiclo'
 import {
   Pantalla, Tarjeta, Azulejo, Icono, BotonPrincipal,
@@ -54,7 +56,21 @@ export default function InicioCiclo() {
   const nombre = useAuthStore(s => (s.user?.full_name ?? '').trim().split(/\s+/)[0] ?? '')
   const logs = useCicloStore(s => s.logs)
   const hoy = hoyLocal()
-  const { hayDatos, prediccion, marco, estadisticas } = useCiclo()
+  const { hayDatos, prediccion, marco, estadisticas, periodos } = useCiclo()
+
+  /* Un PRIMITIVO, no `getDia(hoy)`: un selector que construye un objeto
+     devuelve uno nuevo en cada llamada y Zustand entra en bucle infinito. */
+  const sangradoHoy = useCicloStore(
+    s => (s.logs[hoy]?.sangrado as { level?: number } | undefined)?.level ?? null)
+
+  /* Qué día del periodo es hoy, si está sangrando. Se cuenta desde el inicio
+     del último periodo abierto, no desde el primer día que marcó: si se saltó
+     el día 1 y apuntó el 2, sigue siendo su día 2. */
+  const periodoEnCurso = useMemo(() => {
+    if (!sangradoHoy) return null
+    const ult = [...periodos].reverse().find(p => p.inicio <= hoy)
+    return ult ? diasEntre(ult.inicio, hoy) + 1 : null
+  }, [sangradoHoy, periodos, hoy])
 
   const racha = useMemo(() => rachaRegistro(logs, hoy), [logs, hoy])
 
@@ -76,6 +92,25 @@ export default function InicioCiclo() {
     return d > 0 ? d : null
   }, [prediccion, marco])
 
+  /* ── La rueda ────────────────────────────────────────────────────────────
+     El día que mira la burbuja, que puede no ser hoy. Se reengancha a hoy
+     cuando cambia la predicción —al cruzar la medianoche o tras registrar—
+     para no dejarla mirando un día que ya no significa lo mismo. */
+  const [diaMirado, setDiaMirado] = useState<number | null>(null)
+  const [moviendoRueda, setMoviendoRueda] = useState(false)
+  const diaSeleccionado = diaMirado ?? prediccion?.diaDeCiclo ?? 1
+
+  /* La frase de arriba va SIEMPRE sobre hoy, nunca sobre la burbuja: si se
+     moviera al explorar, bastaría dejarla en el día 20 para leer «estás en tu
+     ventana fértil» un día que no lo estás. */
+  const frase = useMemo(() => fraseDelDia({
+    sangradoHoy,
+    diaDePeriodo: periodoEnCurso,
+    diaDeCiclo: prediccion?.diaDeCiclo ?? null,
+    diasParaLaRegla: prediccion ? diasEntre(hoy, prediccion.proximoPeriodo.likely) : null,
+    marco: prediccion ? marco : null,
+  }), [sangradoHoy, periodoEnCurso, prediccion, marco, hoy])
+
   const abrirRegistro = (paso: number) => {
     elegir()
     router.push({ pathname: '/salud/ciclo/registrar', params: { paso: String(paso) } })
@@ -86,6 +121,9 @@ export default function InicioCiclo() {
       <ScrollView
         contentContainerStyle={[s.scroll, { paddingBottom: ALTO_BARRA + 40 }]}
         showsVerticalScrollIndicator={false}
+        /* En iOS ningún PanResponder le gana a un ScrollView que lo contiene:
+           sin esto la rueda no se deja arrastrar y parece rota. */
+        scrollEnabled={!moviendoRueda}
       >
         {/* ── Saludo ───────────────────────────────────────────────────── */}
         <View style={s.cab}>
@@ -124,16 +162,24 @@ export default function InicioCiclo() {
         <Tarjeta style={s.tarjetaAnillo}>
           {hayDatos && prediccion ? (
             <>
+              <Text style={[s.frase, TONO_FRASE[frase.tono]]}>{frase.texto}</Text>
+
               <AnilloFases
                 marco={marco}
                 diaDeCiclo={prediccion.diaDeCiclo}
-                fase={prediccion.fase}
+                diaSeleccionado={diaSeleccionado}
+                onDia={setDiaMirado}
+                onArrastre={setMoviendoRueda}
                 subtitulo={
-                  restanFase === null
-                    ? ''
-                    : `${FASE[prediccion.fase].etiqueta} · ${restanFase} ${restanFase === 1 ? 'día restante' : 'días restantes'} de fase`
+                  diaSeleccionado === prediccion.diaDeCiclo && restanFase !== null
+                    ? `${restanFase} ${restanFase === 1 ? 'día restante' : 'días restantes'} de fase`
+                    : ''
                 }
               />
+
+              {diaMirado !== null && diaMirado !== prediccion.diaDeCiclo
+                ? <VolverAHoy onPress={() => setDiaMirado(null)} />
+                : null}
               <View style={s.leyenda}>
                 {PHASE_ORDER.map(f => (
                   <View key={f} style={s.leyendaItem}>
@@ -282,6 +328,14 @@ const CONSEJO_ENTRENO: Record<string, string> = {
   lutea:      'Baja la intensidad hacia el final; el cardio moderado ayuda al ánimo.',
 }
 
+/** El color de la frase de arriba según lo que esté diciendo. */
+const TONO_FRASE: Record<string, { color: string }> = {
+  menstrual: { color: FASE.menstrual.texto },
+  alerta:    { color: '#C2410C' },
+  fertil:    { color: FASE.ovulatoria.texto },
+  neutro:    { color: TEXTO.medio },
+}
+
 const s = StyleSheet.create({
   scroll: { paddingHorizontal: 20, paddingTop: 12, gap: HUECO.lg },
   flex: { flex: 1 },
@@ -310,7 +364,11 @@ const s = StyleSheet.create({
   },
   cifraPie: { fontFamily: FUENTE.cuerpo, fontSize: 11.5, color: TEXTO.medio },
 
-  tarjetaAnillo: { paddingVertical: 24, gap: 16 },
+  tarjetaAnillo: { paddingVertical: 22, gap: 14 },
+  frase: {
+    fontFamily: FUENTE.titulo, fontSize: 18, textAlign: 'center',
+    letterSpacing: -0.3, paddingHorizontal: 8,
+  },
   leyenda: {
     flexDirection: 'row', flexWrap: 'wrap',
     justifyContent: 'center', gap: 14, rowGap: 6,

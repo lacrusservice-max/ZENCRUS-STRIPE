@@ -1,40 +1,54 @@
 /**
- * CICLO · EL ANILLO DE FASES
+ * CICLO · LA RUEDA
  * ═══════════════════════════════════════════════════════════════════════════
- * Los cuatro arcos del mockup, el marcador de hoy y la cifra del día en medio.
+ * 360° = un ciclo. Cuatro arcos, una burbuja que se arrastra y la cifra del día
+ * en medio.
  *
  * ── Los arcos NO son cuatro cuartos ────────────────────────────────────────
- * Es la tentación obvia —90° cada uno, queda simétrico— y es falso. En un
- * ciclo de 30 días la lútea ocupa catorce y la ovulatoria tres: dibujarlas
- * iguales le enseña a la usuaria una anatomía que no es la suya. Cada arco
- * mide lo que mide su fase en SU ciclo, sacado de `marco.limites`, así que un
- * ciclo largo se ve distinto de uno corto — que es justo la información.
+ * Cada uno mide lo que mide su fase en SU ciclo. En un ciclo de 30 la lútea
+ * ocupa catorce días y la ovulatoria uno solo; dibujarlas iguales le enseñaría
+ * a la usuaria una anatomía que no es la suya.
  *
- * ── Por qué empieza arriba y gira a la derecha ─────────────────────────────
- * Porque es como se lee un reloj, y el ciclo es tiempo. El día 1 arriba, y el
- * marcador de hoy avanza como una aguja.
+ * ── La ovulatoria dura un día, así que se dibuja la VENTANA ────────────────
+ * Un arco de 1/28 del círculo son doce grados: invisible. El anillo pinta la
+ * ventana fértil —seis días— en violeta y reserva el halo para el día pico.
+ * Es lo que dice el prompt maestro, y no es una licencia: la fase ovulatoria y
+ * la ventana fértil son cosas distintas, y el anillo enseña la que se puede ver.
  *
- * ── El círculo punteado de dentro ──────────────────────────────────────────
- * Está en el mockup y no es adorno: separa el aro de la cifra para que «Día 3»
- * no parezca flotar sobre los colores. Se dibuja con `strokeDasharray`, no con
- * treinta puntos sueltos.
+ * ── La burbuja se mueve mientras el dedo se mueve ──────────────────────────
+ * No al soltar. Un control que solo responde al final del gesto se siente
+ * roto: no hay forma de saber dónde va a caer hasta que ya cayó. El texto
+ * central se actualiza en cada frame, con el día ya enganchado al entero más
+ * cercano.
+ *
+ * ── Y el scroll se apaga mientras dura el arrastre ─────────────────────────
+ * En iOS ningún `PanResponder` le gana a un `UIScrollView` que lo contiene: el
+ * gesto se lo lleva el scroll y la burbuja no se mueve. La única cura es que la
+ * pantalla desactive su scroll mientras dura el gesto, y por eso existe
+ * `onArrastre`.
  */
 
-import { View, Text, StyleSheet } from 'react-native'
+import { useCallback, useMemo, useRef, useState } from 'react'
+import { View, Text, StyleSheet, Pressable, PanResponder } from 'react-native'
 import Svg, { Circle, Path, G } from 'react-native-svg'
-import { FASE } from '@/theme/salud/cicloClaro'
-import { TEXTO, FUENTE, TABULAR } from '@/theme/salud/cicloClaro'
-import { PHASE_ORDER, type Phase } from '@/features/salud/ciclo/fases'
-import type { MarcoFases } from '@/features/salud/ciclo/prediccion'
+import {
+  FASE, PICO_FERTIL, ACENTO_HOY, TEXTO, FUENTE, TABULAR, SUP,
+} from '@/theme/salud/cicloClaro'
+import { PHASE_ORDER } from '@/features/salud/ciclo/fases'
+import { faseDeDia, type MarcoFases } from '@/nucleo/ciclo/fases'
+import { elegir } from '@/utils/haptica'
 
-const TAM = 250
-const GROSOR = 19
+const TAM = 260
+const GROSOR = 20
 const R = (TAM - GROSOR) / 2
 const CX = TAM / 2
 const CY = TAM / 2
 
 /** Un hueco pequeño entre arcos para que se distingan sin parecer rotos. */
-const HUECO_GRADOS = 2.4
+const HUECO_GRADOS = 2.2
+
+/** Radio de la burbuja arrastrable. */
+const BURBUJA = 17
 
 const rad = (g: number) => ((g - 90) * Math.PI) / 180
 const punto = (g: number, r = R) => ({
@@ -42,49 +56,104 @@ const punto = (g: number, r = R) => ({
   y: CY + r * Math.sin(rad(g)),
 })
 
-/** Un arco de circunferencia entre dos ángulos, en grados desde arriba. */
-function arco(desde: number, hasta: number): string {
-  const a = punto(desde)
-  const b = punto(hasta)
+function arco(desde: number, hasta: number, r = R): string {
+  const a = punto(desde, r)
+  const b = punto(hasta, r)
   const largo = hasta - desde > 180 ? 1 : 0
-  return `M ${a.x} ${a.y} A ${R} ${R} 0 ${largo} 1 ${b.x} ${b.y}`
+  return `M ${a.x} ${a.y} A ${r} ${r} 0 ${largo} 1 ${b.x} ${b.y}`
 }
 
-export function AnilloFases({ marco, diaDeCiclo, fase, subtitulo }: {
+export function AnilloFases({
+  marco, diaDeCiclo, diaSeleccionado, onDia, onArrastre, subtitulo,
+}: {
   marco: MarcoFases
-  /** 1..duración. Si es null no se dibuja el marcador: no sabemos dónde está. */
+  /** El día real de hoy. `null` si no hay periodo del que contar. */
   diaDeCiclo: number | null
-  fase: Phase
+  /** El día que mira la burbuja. Puede no ser hoy. */
+  diaSeleccionado: number
+  onDia: (dia: number) => void
+  /** Avisa a la pantalla para que apague su scroll durante el gesto. */
+  onArrastre?: (moviendo: boolean) => void
   subtitulo: string
 }) {
   const total = Math.max(1, marco.duracion)
-  const grados = (dia: number) => ((dia - 1) / total) * 360
+  const grados = useCallback((dia: number) => ((dia - 1) / total) * 360, [total])
 
-  /* Cada fase va de su límite al límite de la siguiente. La última cierra
-     contra el final del ciclo, no contra el límite de menstrual —que es 1— o
-     el arco saldría del revés. */
-  const tramos = PHASE_ORDER.map((f, i) => {
-    const sig = PHASE_ORDER[(i + 1) % PHASE_ORDER.length]
-    const ini = marco.limites[f]
-    const fin = i === PHASE_ORDER.length - 1 ? total + 1 : marco.limites[sig]
-    return { fase: f, desde: grados(ini), hasta: grados(fin) }
-  }).filter(t => t.hasta > t.desde)
+  /* Se guarda en una ref además del estado: el `PanResponder` se crea una vez
+     y sus manejadores capturarían el primer valor para siempre. */
+  const diaRef = useRef(diaSeleccionado)
+  diaRef.current = diaSeleccionado
+  const [arrastrando, setArrastrando] = useState(false)
 
-  const anguloHoy = diaDeCiclo === null ? null : grados(diaDeCiclo)
-  const pos = anguloHoy === null ? null : punto(anguloHoy, R)
+  /** De coordenada dentro del anillo a día entero. */
+  const diaDesdeToque = useCallback((x: number, y: number): number => {
+    const dx = x - CX
+    const dy = y - CY
+    // `atan2` da 0 a la derecha; se rota para que 0 sea arriba.
+    let g = (Math.atan2(dy, dx) * 180) / Math.PI + 90
+    if (g < 0) g += 360
+    const dia = Math.round((g / 360) * total) + 1
+    // El día `total + 1` es el 1 del ciclo siguiente: se cierra el círculo.
+    return dia > total ? 1 : dia
+  }, [total])
+
+  const pan = useMemo(() => PanResponder.create({
+    onStartShouldSetPanResponder: () => true,
+    onMoveShouldSetPanResponder: () => true,
+    /* Que el scroll no pueda robar el gesto a media caricia. */
+    onPanResponderTerminationRequest: () => false,
+
+    onPanResponderGrant: e => {
+      setArrastrando(true)
+      onArrastre?.(true)
+      const d = diaDesdeToque(e.nativeEvent.locationX, e.nativeEvent.locationY)
+      if (d !== diaRef.current) { elegir(); onDia(d) }
+    },
+    onPanResponderMove: e => {
+      const d = diaDesdeToque(e.nativeEvent.locationX, e.nativeEvent.locationY)
+      /* Solo cuando cambia de día: llamar en cada frame con el mismo valor
+         dispararía un render por frame y un golpe de háptica continuo. */
+      if (d !== diaRef.current) { elegir(); onDia(d) }
+    },
+    onPanResponderRelease: () => { setArrastrando(false); onArrastre?.(false) },
+    onPanResponderTerminate: () => { setArrastrando(false); onArrastre?.(false) },
+  }), [diaDesdeToque, onDia, onArrastre])
+
+  /* Los cuatro arcos. La ovulatoria se dibuja como la VENTANA fértil, que es lo
+     que se puede ver; el día pico lleva su propio realce encima. */
+  const tramos = useMemo(() => {
+    const [fIni, fFin] = marco.ventanaFertil
+    return PHASE_ORDER.map((f, i) => {
+      if (f === 'ovulatoria') {
+        return { fase: f, desde: grados(fIni), hasta: grados(fFin + 1) }
+      }
+      const sig = PHASE_ORDER[(i + 1) % PHASE_ORDER.length]
+      let ini = marco.limites[f]
+      let fin = i === PHASE_ORDER.length - 1 ? total + 1 : marco.limites[sig]
+      // Folicular y lútea ceden el terreno que ocupa la ventana fértil.
+      if (f === 'folicular') fin = Math.min(fin, fIni)
+      if (f === 'lutea') ini = Math.max(ini, fFin + 1)
+      return { fase: f, desde: grados(ini), hasta: grados(fin) }
+    }).filter(t => t.hasta > t.desde + HUECO_GRADOS)
+  }, [marco, total, grados])
+
+  const posBurbuja = punto(grados(diaSeleccionado), R)
+  const posPico = punto(grados(marco.diaOvulacion), R)
+  const faseSel = faseDeDia(Math.min(diaSeleccionado, total), marco)
+  const esHoy = diaDeCiclo !== null && diaSeleccionado === diaDeCiclo
 
   return (
-    <View style={s.caja}>
-      <Svg width={TAM} height={TAM}>
+    <View style={s.caja} {...pan.panHandlers}>
+      <Svg width={TAM} height={TAM} pointerEvents="none">
         <G>
-          {/* El punteado va DEBAJO de los arcos: si se pintara encima, el
-              marcador de hoy quedaría partido por una línea de puntos. */}
+          {/* El punteado interior, debajo de todo. */}
           <Circle
             cx={CX} cy={CY} r={R - GROSOR / 2 - 9}
-            stroke={FASE.ovulatoria.arco} strokeOpacity={0.45}
+            stroke={FASE.ovulatoria.arco} strokeOpacity={0.28}
             strokeWidth={2} strokeDasharray="2 7" strokeLinecap="round"
             fill="none"
           />
+
           {tramos.map(t => (
             <Path
               key={t.fase}
@@ -95,35 +164,79 @@ export function AnilloFases({ marco, diaDeCiclo, fase, subtitulo }: {
               fill="none"
             />
           ))}
+
+          {/* El día pico: un segmento más ancho encima de la ventana. */}
+          <Path
+            d={arco(grados(marco.diaOvulacion) - 4, grados(marco.diaOvulacion) + 4)}
+            stroke={PICO_FERTIL.arco}
+            strokeWidth={GROSOR + 6}
+            strokeLinecap="round"
+            fill="none"
+          />
         </G>
       </Svg>
 
-      {/* La cifra del día, centrada sobre el hueco del anillo. */}
+      {/* El halo del día más fértil. Va fuera del SVG porque `shadow` de React
+          Native da un desenfoque real y `filter` de SVG no está soportado. */}
+      <View
+        style={[s.halo, { left: posPico.x, top: posPico.y }]}
+        pointerEvents="none"
+      />
+
+      {/* La cifra del día seleccionado. */}
       <View style={s.centro} pointerEvents="none">
-        <Text style={s.dia} numberOfLines={1}>
-          {diaDeCiclo === null ? '—' : `Día ${diaDeCiclo}`}
-        </Text>
-        <Text style={s.subtitulo}>{subtitulo}</Text>
+        <Text style={s.dia} numberOfLines={1}>{`Día ${diaSeleccionado}`}</Text>
+        <Text style={s.deTuCiclo}>de tu ciclo</Text>
+        <View style={[s.chipFase, { backgroundColor: FASE[faseSel].celda }]}>
+          <Text style={[s.chipFaseTxt, { color: FASE[faseSel].texto }]}>
+            {FASE[faseSel].etiqueta}
+          </Text>
+        </View>
+        {subtitulo ? <Text style={s.subtitulo}>{subtitulo}</Text> : null}
       </View>
 
-      {/* El marcador de hoy y la píldora de fase, colgados del ángulo. */}
-      {pos ? (
-        <>
-          <View
-            style={[s.pildora, {
-              left: pos.x, top: pos.y,
-              backgroundColor: FASE[fase].arco,
-            }]}
-            pointerEvents="none"
-          >
-            <Text style={s.pildoraTxt}>{FASE[fase].etiqueta}</Text>
-          </View>
-          <View style={[s.hoy, { left: pos.x, top: pos.y }]} pointerEvents="none">
-            <Text style={s.hoyTxt}>Hoy</Text>
-          </View>
-        </>
+      {/* La burbuja. */}
+      <View
+        style={[
+          s.burbuja,
+          { left: posBurbuja.x, top: posBurbuja.y },
+          arrastrando && s.burbujaViva,
+        ]}
+        pointerEvents="none"
+      >
+        <Text style={s.burbujaTxt}>{diaSeleccionado}</Text>
+      </View>
+
+      {/* El marcador de hoy, si la burbuja está en otro sitio. */}
+      {diaDeCiclo !== null && !esHoy ? (
+        <View
+          style={[s.marcaHoy, {
+            left: punto(grados(diaDeCiclo), R).x,
+            top: punto(grados(diaDeCiclo), R).y,
+          }]}
+          pointerEvents="none"
+        />
       ) : null}
     </View>
+  )
+}
+
+/**
+ * El botón «volver a hoy».
+ *
+ * Vive fuera del anillo: dentro tendría que competir por el sitio con la cifra,
+ * y además el anillo entero es zona de arrastre — un botón ahí dentro se
+ * pulsaría sin querer al soltar la burbuja.
+ */
+export function VolverAHoy({ onPress }: { onPress: () => void }) {
+  return (
+    <Pressable
+      onPress={() => { elegir(); onPress() }}
+      style={({ pressed }) => [s.volver, pressed && { opacity: 0.7 }]}
+      accessibilityRole="button"
+    >
+      <Text style={s.volverTxt}>Volver a hoy</Text>
+    </Pressable>
   )
 }
 
@@ -133,34 +246,68 @@ const s = StyleSheet.create({
   centro: {
     ...StyleSheet.absoluteFillObject,
     alignItems: 'center', justifyContent: 'center',
-    paddingHorizontal: 46,
+    paddingHorizontal: 52,
   },
   dia: {
-    fontFamily: FUENTE.titulo, fontSize: 40, color: TEXTO.fuerte,
-    letterSpacing: -1.4, ...TABULAR,
+    fontFamily: FUENTE.titulo, fontSize: 34, color: TEXTO.fuerte,
+    letterSpacing: -1.1, ...TABULAR,
   },
+  deTuCiclo: {
+    fontFamily: FUENTE.cuerpo, fontSize: 12.5, color: TEXTO.suave, marginTop: -2,
+  },
+  chipFase: {
+    marginTop: 7, paddingHorizontal: 11, paddingVertical: 5, borderRadius: 999,
+  },
+  chipFaseTxt: { fontFamily: FUENTE.fuerte, fontSize: 12 },
   subtitulo: {
-    fontFamily: FUENTE.medio, fontSize: 13.5, color: TEXTO.medio,
-    textAlign: 'center', lineHeight: 19, marginTop: 2,
+    fontFamily: FUENTE.cuerpo, fontSize: 11.5, color: TEXTO.suave,
+    textAlign: 'center', marginTop: 6,
   },
 
-  /* Se anclan al punto del arco y se recentran con `translate`, que es lo que
-     permite colgarlos de un ángulo sin recalcular su ancho. */
-  pildora: {
+  halo: {
     position: 'absolute',
-    paddingHorizontal: 13, height: 30, borderRadius: 999,
+    width: 30, height: 30, borderRadius: 15,
+    backgroundColor: '#FFFFFF',
+    opacity: 0.6,
+    transform: [{ translateX: -15 }, { translateY: -15 }],
+    shadowColor: '#FFFFFF',
+    shadowOpacity: 0.9,
+    shadowRadius: 9,
+    shadowOffset: { width: 0, height: 0 },
+  },
+
+  burbuja: {
+    position: 'absolute',
+    width: BURBUJA * 2, height: BURBUJA * 2, borderRadius: BURBUJA,
     alignItems: 'center', justifyContent: 'center',
-    transform: [{ translateX: -46 }, { translateY: -15 }],
-    minWidth: 92,
+    backgroundColor: SUP.tarjeta,
+    borderWidth: 2.5, borderColor: ACENTO_HOY,
+    transform: [{ translateX: -BURBUJA }, { translateY: -BURBUJA }],
+    shadowColor: '#2A1A44', shadowOpacity: 0.22,
+    shadowRadius: 8, shadowOffset: { width: 0, height: 3 },
+    elevation: 4,
   },
-  pildoraTxt: {
-    fontFamily: FUENTE.fuerte, fontSize: 13, color: '#FFFFFF',
+  /* Al arrastrar crece un poco: confirma que el dedo la lleva, que es lo que
+     hace que el control se sienta agarrado y no perseguido. */
+  burbujaViva: {
+    transform: [{ translateX: -BURBUJA }, { translateY: -BURBUJA }, { scale: 1.18 }],
   },
-  hoy: {
+  burbujaTxt: {
+    fontFamily: FUENTE.titulo, fontSize: 13, color: ACENTO_HOY, ...TABULAR,
+  },
+
+  marcaHoy: {
     position: 'absolute',
-    transform: [{ translateX: -16 }, { translateY: -46 }],
+    width: 9, height: 9, borderRadius: 5,
+    backgroundColor: ACENTO_HOY,
+    borderWidth: 2, borderColor: SUP.tarjeta,
+    transform: [{ translateX: -4.5 }, { translateY: -4.5 }],
   },
-  hoyTxt: {
-    fontFamily: FUENTE.fuerte, fontSize: 13.5, color: TEXTO.medio,
+
+  volver: {
+    alignSelf: 'center',
+    paddingHorizontal: 16, paddingVertical: 8, borderRadius: 999,
+    backgroundColor: '#ECE5FA',
   },
+  volverTxt: { fontFamily: FUENTE.fuerte, fontSize: 13, color: ACENTO_HOY },
 })
