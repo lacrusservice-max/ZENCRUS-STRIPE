@@ -21,7 +21,7 @@
  *      útil a la escala. Que el rojo signifique «alerta» es un acuerdo universal
  *      y no se gasta en identidad de marca.
  *
- *   2. LA MARCA Y LA ACCIÓN (`signal`) — el rojo `#FF1F3D` de ZENCRUS. Botones
+ *   2. LA MARCA Y LA ACCIÓN (`signal`) — el naranja `#FF5C00` de ZENCRUS. Botones
  *      primarios, acentos de identidad, lo que se toca. Así Running sigue siendo
  *      de esta app sin robarle el significado a la escala.
  *
@@ -30,7 +30,7 @@
  * en un icono genérico, nunca en un botón que no represente acción en vivo.
  *
  * ── El fondo se reancla, el color no ────────────────────────────────────────
- * El negro parte del `#050506` que ya usa toda la app, no de un negro azulado
+ * El negro parte del `#050505` que ya usa toda la app, no de un negro azulado
  * propio. Un fondo distinto se nota al cambiar de pestaña; una escala de color
  * dentro de un módulo, no.
  */
@@ -42,11 +42,11 @@ import { Easing } from 'react-native-reanimated'
 export const RunningColors = {
   /** Superficies. Se separan con `hairline`, nunca con sombra. */
   surface: {
-    void: '#050506',
+    void: '#050505',
     base: '#0A0C10',
-    raised: '#12151B',
+    raised: '#17181C',
     inset: '#07080B',
-    hairline: '#1C222B',
+    hairline: '#2A2C32',
   },
 
   /**
@@ -58,22 +58,22 @@ export const RunningColors = {
     optimal: '#00F5FF',
     loaded: '#FFB74D',
     strained: '#FF5A5A',
-    dormant: '#48525E',
+    dormant: '#5C5F66',
   },
 
-  /** Marca y acción. El rojo de ZENCRUS. */
+  /** Marca y acción. El naranja de ZENCRUS. */
   signal: {
-    base: '#FF1F3D',
-    soft: '#FF5871',
-    deep: '#FF0030',
-    dim: 'rgba(255,31,61,0.14)',
-    edge: 'rgba(255,31,61,0.28)',
+    base: '#FF5C00',
+    soft: '#FF7A1F',
+    deep: '#FF5C00',
+    dim: 'rgba(255,92,0,0.14)',
+    edge: 'rgba(255,92,0,0.28)',
   },
 
   text: {
     primary: '#EDF1F5',
-    secondary: '#8D99A6',
-    tertiary: '#545F6B',
+    secondary: '#A1A3A9',
+    tertiary: '#5C5F66',
     /** Sobre superficies de color de estado o de marca. */
     onSignal: '#04060A',
   },
@@ -151,11 +151,11 @@ export const RunningRadius = {
 export const RunningElevation = {
   0: {},
   1: {
-    shadowColor: '#000', shadowOpacity: 0.45,
+    shadowColor: '#050505', shadowOpacity: 0.45,
     shadowRadius: 24, shadowOffset: { width: 0, height: 4 }, elevation: 8,
   },
   2: {
-    shadowColor: '#000', shadowOpacity: 0.6,
+    shadowColor: '#050505', shadowOpacity: 0.6,
     shadowRadius: 48, shadowOffset: { width: 0, height: 12 }, elevation: 16,
   },
 } as const
@@ -258,14 +258,14 @@ export const OutdoorMaterial = {
   },
   /** La variante encendida: lo que se toca o lo que urge. */
   brasa: {
-    degradado: ['rgba(255,31,61,0.26)', 'rgba(255,31,61,0.07)', 'rgba(255,255,255,0.02)'],
+    degradado: ['rgba(255,92,0,0.26)', 'rgba(255,92,0,0.07)', 'rgba(255,255,255,0.02)'],
     paradas: [0, 0.56, 1],
     filo: 'rgba(255,255,255,0.22)',
-    borde: 'rgba(255,90,110,0.30)',
+    borde: 'rgba(255,122,31,0.30)',
   },
   radio: 20,
   sombra: {
-    shadowColor: '#000',
+    shadowColor: '#050505',
     shadowOpacity: 0.55,
     shadowRadius: 18,
     shadowOffset: { width: 0, height: 12 },
@@ -274,7 +274,7 @@ export const OutdoorMaterial = {
 } as const
 
 /** El degradado de la marca: naranja → rojo → granate. Trazo, anillo y barra. */
-export const OutdoorBrasa = ['#FFB07A', '#FF1F3D', '#B50E28'] as const
+export const OutdoorBrasa = ['#FFA45C', '#FF5C00', '#B33D00'] as const
 
 /**
  * EL FONDO TEÑIDO

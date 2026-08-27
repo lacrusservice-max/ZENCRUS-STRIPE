@@ -61,7 +61,7 @@ export const DAY_TYPE_LABELS: Record<DayType, { emoji: string; label: string; co
   high: {
     emoji: '🔥',
     label: 'Alto en carbs',
-    color: '#FF6B35',
+    color: '#FF5C00',
     description: 'Días de entreno intenso. Más energía para rendir al máximo.',
   },
   moderate: {
@@ -79,7 +79,7 @@ export const DAY_TYPE_LABELS: Record<DayType, { emoji: string; label: string; co
   rest: {
     emoji: '😴',
     label: 'Día de descanso',
-    color: '#9E9E9E',
+    color: '#A1A3A9',
     description: 'Sin entreno. Mínimos carbos, más grasas para recuperación.',
   },
 }

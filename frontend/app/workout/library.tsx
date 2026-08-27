@@ -93,7 +93,7 @@ function Tarjeta({ ex, ancho, onPress }: { ex: E.ExerciseCard; ancho: number; on
           <View style={c.sinFoto}><Ionicons name="barbell-outline" size={22} color={T.ink3} /></View>
         )}
         <LinearGradient
-          colors={['transparent', 'rgba(5,5,7,0.88)']}
+          colors={['transparent', 'rgba(5,5,5,0.88)']}
           style={c.velo}
           pointerEvents="none"
         />
@@ -123,7 +123,7 @@ const c = StyleSheet.create({
   casa: {
     position: 'absolute', top: 7, right: 7,
     width: 19, height: 19, borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(5,5,5,0.55)', alignItems: 'center', justifyContent: 'center',
   },
   tira: { position: 'absolute', left: 0, right: 0, bottom: 0, height: 2.5 },
   pie: { padding: 9, gap: 4 },

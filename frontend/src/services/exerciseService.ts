@@ -267,7 +267,7 @@ export const getPosters = async (slugs: string[]): Promise<Record<string, string
  * añadir un grupo nuevo y nada cuadraría con nada.
  */
 export const COLOR_GRUPO: Record<string, string> = {
-  chest:      '#FF1F3D',
+  chest:      '#FF5C00',
   back:       '#FF6B2C',
   shoulders:  '#FFB020',
   biceps:     '#22E0C8',
@@ -275,13 +275,13 @@ export const COLOR_GRUPO: Record<string, string> = {
   forearms:   '#0E7C8F',
   quads:      '#7C5CFF',
   hamstrings: '#A78BFA',
-  glutes:     '#FF2D78',
+  glutes:     '#FF7A1F',
   calves:     '#5B8DEF',
   core:       '#F5B31F',
-  fullbody:   '#E5E7EB',
+  fullbody:   '#F2F3F5',
 }
 
-export const colorDe = (muscle: string | null) => COLOR_GRUPO[muscle ?? ''] ?? '#8B8D96'
+export const colorDe = (muscle: string | null) => COLOR_GRUPO[muscle ?? ''] ?? '#A1A3A9'
 
 /** Icono de Ionicons por material, para las fichas y los filtros. */
 export const ICONO_MATERIAL: Record<string, string> = {

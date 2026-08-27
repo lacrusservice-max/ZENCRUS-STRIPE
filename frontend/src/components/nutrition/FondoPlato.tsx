@@ -1,11 +1,11 @@
 /**
  * EL FONDO DE NUTRICIÓN
  * ═════════════════════
- * Un rubor rojo que sube desde arriba y muere en el negro, para que la pantalla
+ * Un rubor naranja que sube desde arriba y muere en el negro, para que la pantalla
  * no se sienta seca sin robarle sitio a los datos.
  *
- * ── Rojo de MARCA, nunca el semántico ───────────────────────────────────────
- * Usa #FF1F3D, el rojo de ZENCRUS, y no el #FF3B47 del «te pasaste». Si fueran
+ * ── Naranja de MARCA, nunca el semántico ────────────────────────────────────
+ * Usa #FF5C00, el naranja de ZENCRUS, y no el #FF7A1F del «te pasaste». Si fueran
  * el mismo, al cruzar el techo el aviso rojo caería sobre un fondo del mismo
  * rojo y dejaría de avisar de nada: el color perdería su único trabajo.
  *
@@ -40,14 +40,14 @@ export function FondoPlato() {
         <Defs>
           {/* El foco principal, colgando del borde superior. */}
           <RadialGradient id="alto" cx="52%" cy="-4%" rx="72%" ry="30%">
-            <Stop offset="0"    stopColor="#FF1F3D" stopOpacity="0.42" />
-            <Stop offset="0.42" stopColor="#FF1F3D" stopOpacity="0.11" />
-            <Stop offset="1"    stopColor="#FF1F3D" stopOpacity="0" />
+            <Stop offset="0"    stopColor="#FF5C00" stopOpacity="0.42" />
+            <Stop offset="0.42" stopColor="#FF5C00" stopOpacity="0.11" />
+            <Stop offset="1"    stopColor="#FF5C00" stopOpacity="0" />
           </RadialGradient>
           {/* Un segundo foco descentrado, para que no haya un eje simétrico. */}
           <RadialGradient id="lado" cx="6%" cy="17%" rx="44%" ry="22%">
-            <Stop offset="0" stopColor="#A81028" stopOpacity="0.30" />
-            <Stop offset="1" stopColor="#A81028" stopOpacity="0" />
+            <Stop offset="0" stopColor="#B33D00" stopOpacity="0.30" />
+            <Stop offset="1" stopColor="#B33D00" stopOpacity="0" />
           </RadialGradient>
         </Defs>
         <Rect x="0" y="0" width="100" height="100" fill="url(#alto)" />

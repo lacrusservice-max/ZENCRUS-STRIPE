@@ -160,7 +160,7 @@ const s = StyleSheet.create({
   relleno: { height: '100%', borderRadius: 3, backgroundColor: '#fff' },
   dia: { flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 10, paddingHorizontal: 15 },
   diaBorde: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: 'rgba(255,255,255,0.08)' },
-  diaNombre: { width: 28, fontSize: 10, fontWeight: '700', color: '#FF93A6' },
+  diaNombre: { width: 28, fontSize: 10, fontWeight: '700', color: '#FFA45C' },
   diaTitulo: { fontSize: 12.5, fontWeight: '700', color: '#fff', letterSpacing: -0.2 },
   diaDetalle: { fontSize: 10.5, color: 'rgba(255,255,255,0.36)', marginTop: 2 },
   fin: { fontSize: 12, color: 'rgba(255,255,255,0.55)', lineHeight: 18 },

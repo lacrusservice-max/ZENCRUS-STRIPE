@@ -217,7 +217,7 @@ export default function LoginScreen() {
 }
 
 const s = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#080808' },
+  bg: { flex: 1, backgroundColor: '#050505' },
   blob: {
     position: 'absolute',
     borderRadius: 9999,
@@ -252,7 +252,7 @@ const s = StyleSheet.create({
     borderColor: Glass.cardBorder,
     padding: Spacing[6],
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: '#050505',
     shadowOffset: { width: 0, height: 20 },
     shadowOpacity: 0.5,
     shadowRadius: 40,

@@ -76,7 +76,7 @@ export function IconoRacha({ dias, encendida, onRepetir }: Props) {
             neon={hito.neon}
             claro={hito.claro}
             apagada={!encendida}
-            fondo={encendida ? hito.fondo : '#17171A'}
+            fondo={encendida ? hito.fondo : '#17181C'}
           />
           <Text style={[r.dias, !encendida && r.diasOff]}>{dias}</Text>
         </View>
@@ -106,7 +106,7 @@ const r = StyleSheet.create({
      leía a través el texto de la tarjeta que pasa por debajo, y la palabra
      «RACHA» se cruzaba con las kcal de la comida. Lo que flota, tapa. */
   cajaOn: { borderWidth: 1 },
-  cajaOff: { backgroundColor: '#17171A', borderColor: 'rgba(255,255,255,0.14)' },
+  cajaOff: { backgroundColor: '#17181C', borderColor: 'rgba(255,255,255,0.14)' },
   dias: {
     fontSize: 14, fontWeight: '900', color: '#fff',
     fontVariant: ['tabular-nums'], letterSpacing: -0.3,

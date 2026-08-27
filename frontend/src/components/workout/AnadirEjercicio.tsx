@@ -185,7 +185,7 @@ export function AnadirEjercicio({
 }
 
 const s = StyleSheet.create({
-  fondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.62)', justifyContent: 'flex-end' },
+  fondo: { flex: 1, backgroundColor: 'rgba(5,5,5,0.62)', justifyContent: 'flex-end' },
   hoja: {
     maxHeight: '86%',
     backgroundColor: Colors.neon.void,
@@ -218,13 +218,13 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 11, paddingVertical: 10,
     borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: 'rgba(255,255,255,0.07)',
   },
-  filaPropia: { borderBottomColor: 'rgba(255,31,61,0.3)' },
+  filaPropia: { borderBottomColor: 'rgba(255,92,0,0.3)' },
   icono: {
     width: 34, height: 34, borderRadius: 11,
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.07)',
   },
-  iconoPropio: { backgroundColor: 'rgba(255,31,61,0.14)' },
+  iconoPropio: { backgroundColor: 'rgba(255,92,0,0.14)' },
   nombre: { fontSize: 13.5, fontWeight: '600', color: '#fff', letterSpacing: -0.2 },
   pista: { fontSize: 10.5, color: Colors.neon.w4, marginTop: 1 },
   vacio: { fontSize: 12, color: Colors.neon.w4, textAlign: 'center', marginTop: 24, lineHeight: 18 },

@@ -283,7 +283,7 @@ export default function HacerEjercicio() {
             * dibuja una costura recta, y ya nos costó semanas encontrar dos.
             */}
           <LinearGradient
-            colors={['rgba(5,5,6,0.55)', 'rgba(5,5,6,0.10)', 'rgba(5,5,6,0.30)', C.neon.void]}
+            colors={['rgba(5,5,5,0.55)', 'rgba(5,5,5,0.10)', 'rgba(5,5,5,0.30)', C.neon.void]}
             locations={[0, 0.32, 0.72, 1]}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
@@ -662,14 +662,14 @@ const s = StyleSheet.create({
   volverTxt: { fontSize: T.fontSize.sm, fontWeight: '700', color: C.neon.white },
 
   videoMarco: {
-    height: 230, backgroundColor: '#111', overflow: 'hidden',
+    height: 230, backgroundColor: '#0d0d10', overflow: 'hidden',
   },
   sinVideo: { alignItems: 'center', justifyContent: 'center', gap: 6 },
   sinVideoTxt: { fontSize: T.fontSize.xs, color: C.neon.w3, fontWeight: '600' },
   atras: {
     position: 'absolute', top: Platform.OS === 'ios' ? 8 : 12, left: 12,
     width: 34, height: 34, borderRadius: 17,
-    backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(5,5,5,0.45)', alignItems: 'center', justifyContent: 'center',
   },
 
   cuerpo: { paddingHorizontal: Spacing[4], paddingTop: Spacing[4], gap: Spacing[4] },
@@ -747,8 +747,8 @@ const s = StyleSheet.create({
   hecho: {
     flexDirection: 'row', gap: Spacing[3], alignItems: 'flex-start',
     padding: Spacing[4], borderRadius: BorderRadius.xl,
-    backgroundColor: 'rgba(255,31,61,0.08)',
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.30)',
+    backgroundColor: 'rgba(255,92,0,0.08)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.30)',
   },
   hechoTitulo: { fontSize: T.fontSize.base, fontWeight: '800', color: C.neon.white },
   hechoSub: { fontSize: T.fontSize.xs, color: C.neon.w2, lineHeight: 17, marginTop: 2 },

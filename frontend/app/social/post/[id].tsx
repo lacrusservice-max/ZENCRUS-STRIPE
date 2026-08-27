@@ -258,12 +258,12 @@ export default function PostScreen() {
           {/* Arriba, para que se lean volver y el menú. Abajo, para el nombre y
               el texto. Sin los dos, sobre una foto clara desaparece todo. */}
           <LinearGradient
-            colors={['rgba(0,0,0,0.55)', 'transparent']}
+            colors={['rgba(5,5,5,0.55)', 'transparent']}
             style={[s.velo, { top: 0, height: 92 }]}
             pointerEvents="none"
           />
           <LinearGradient
-            colors={['transparent', 'rgba(0,0,0,0.82)']}
+            colors={['transparent', 'rgba(5,5,5,0.82)']}
             style={[s.velo, { bottom: 0, height: 168 }]}
             pointerEvents="none"
           />

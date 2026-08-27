@@ -138,12 +138,12 @@ export function HeroCard({
             // hay un hueco gris esperando a que llegue una imagen.
             <View style={s.generado}>
               <LinearGradient
-                colors={['#2A0A12', '#12060A', '#050506']}
+                colors={['#17181C', '#0D0D10', '#050505']}
                 start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
                 style={StyleSheet.absoluteFill}
               />
               <LinearGradient
-                colors={['rgba(255,31,61,0.35)', 'transparent']}
+                colors={['rgba(255,92,0,0.35)', 'transparent']}
                 start={{ x: 0.9, y: 0 }} end={{ x: 0.2, y: 0.8 }}
                 style={StyleSheet.absoluteFill}
               />
@@ -153,7 +153,7 @@ export function HeroCard({
 
         {/* Velo: sin esto el texto blanco sobre pósters claros no se lee. */}
         <LinearGradient
-          colors={['rgba(5,5,6,0.10)', 'rgba(5,5,6,0.62)', 'rgba(5,5,6,0.95)']}
+          colors={['rgba(5,5,5,0.10)', 'rgba(5,5,5,0.62)', 'rgba(5,5,5,0.95)']}
           locations={[0, 0.45, 1]}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
@@ -246,13 +246,13 @@ export function ColeccionCard({ titulo, cuenta, foto, posters = [], onPress, anc
             </View>
           ) : (
             <LinearGradient
-              colors={['#2A0A12', '#0C0508']}
+              colors={['#17181C', '#050505']}
               start={{ x: 0, y: 0 }} end={{ x: 1, y: 1 }}
               style={StyleSheet.absoluteFill}
             />
           )}
           <LinearGradient
-            colors={['transparent', 'rgba(5,5,6,0.94)']}
+            colors={['transparent', 'rgba(5,5,5,0.94)']}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />

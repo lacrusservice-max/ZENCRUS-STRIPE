@@ -146,7 +146,7 @@ export default function Progreso() {
               <View style={s.hero}>
                 <Image source={FOTOS.fuerza.fuente} style={StyleSheet.absoluteFill} contentFit="cover" transition={280} />
                 <LinearGradient
-                  colors={['rgba(5,5,6,0.12)', 'rgba(5,5,6,0.70)', 'rgba(5,5,6,0.96)']}
+                  colors={['rgba(5,5,5,0.12)', 'rgba(5,5,5,0.70)', 'rgba(5,5,5,0.96)']}
                   locations={[0, 0.5, 1]}
                   style={StyleSheet.absoluteFill}
                   pointerEvents="none"
@@ -228,7 +228,7 @@ export default function Progreso() {
                         </View>
                       )}
                       <LinearGradient
-                        colors={['transparent', on ? 'rgba(255,31,61,0.85)' : 'rgba(5,5,6,0.92)']}
+                        colors={['transparent', on ? 'rgba(255,92,0,0.85)' : 'rgba(5,5,5,0.92)']}
                         style={StyleSheet.absoluteFill}
                         pointerEvents="none"
                       />
@@ -367,7 +367,7 @@ const s = StyleSheet.create({
   },
   nota: { fontSize: 11, color: Colors.neon.w3, lineHeight: 16 },
 
-  selector: { flexDirection: 'row', gap: 4, padding: 3, alignSelf: 'flex-start', backgroundColor: 'rgba(0,0,0,0.3)', borderRadius: BorderRadius.full },
+  selector: { flexDirection: 'row', gap: 4, padding: 3, alignSelf: 'flex-start', backgroundColor: 'rgba(5,5,5,0.3)', borderRadius: BorderRadius.full },
   selectorChip: { paddingHorizontal: Spacing[4], paddingVertical: 6, borderRadius: BorderRadius.full },
   selectorChipOn: { backgroundColor: Colors.neon.paneHi },
   selectorTxt: { fontSize: 12, fontWeight: '700', color: Colors.neon.w3 },

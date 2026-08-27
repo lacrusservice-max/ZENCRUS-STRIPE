@@ -48,10 +48,11 @@ const VENTANAS = [
 ] as const
 
 const REGULARIDAD: Record<Regularidad, { texto: string; color: string }> = {
-  sin_datos:       { texto: 'Sin datos',   color: TEXTO.suave },
-  regular:         { texto: 'Regular',     color: ACENTO.verde },
-  algo_irregular:  { texto: 'Algo irregular', color: ACENTO.naranja },
-  irregular:       { texto: 'Irregular',   color: ACENTO.rojo },
+  sin_datos:      { texto: 'Sin datos',      color: TEXTO.suave },
+  muy_regular:    { texto: 'Muy regular',    color: ACENTO.verde },
+  regular:        { texto: 'Regular',        color: ACENTO.verde },
+  algo_irregular: { texto: 'Algo irregular', color: ACENTO.naranja },
+  irregular:      { texto: 'Irregular',      color: ACENTO.rojo },
 }
 
 export default function EstadisticasCiclo() {
@@ -209,7 +210,7 @@ export default function EstadisticasCiclo() {
               const d = porFase[f]
               return (
                 <View key={f} style={s.faseCol}>
-                  <View style={[s.punto, { backgroundColor: FASE[f].color }]} />
+                  <View style={[s.punto, { backgroundColor: FASE[f].arco }]} />
                   <Text style={[s.faseNivel, { color: d ? TEXTO.fuerte : TEXTO.suave }]}>
                     {d ? nivelTexto(d.energia) : '—'}
                   </Text>

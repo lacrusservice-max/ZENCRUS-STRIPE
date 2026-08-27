@@ -127,7 +127,7 @@ export default function RecipesScreen() {
               activeOpacity={0.8}
             >
               {f.id === 'favoritas' && (
-                <ZIcon name="star" size={11} color={on ? '#0A0A0D' : N.w3} weight={2} />
+                <ZIcon name="star" size={11} color={on ? '#0D0D10' : N.w3} weight={2} />
               )}
               <Text style={[s.chipTxt, on && s.chipTxtOn]}>{f.label}</Text>
             </TouchableOpacity>
@@ -271,7 +271,7 @@ const s = StyleSheet.create({
   },
   chipOn: { backgroundColor: N.white, borderColor: N.white },
   chipTxt: { fontSize: 11.5, fontWeight: '700', color: N.w2 },
-  chipTxtOn: { color: '#0A0A0D' },
+  chipTxtOn: { color: '#0D0D10' },
 
   countRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 11 },
   count: { fontSize: 10, fontWeight: '800', letterSpacing: 1.8, color: N.w3 },
@@ -282,18 +282,18 @@ const s = StyleSheet.create({
     position: 'absolute', top: 10, right: 10,
     width: 30, height: 30, borderRadius: 999,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(5,5,6,0.55)',
+    backgroundColor: 'rgba(5,5,5,0.55)',
   },
   cardCap: { position: 'absolute', left: 13, right: 13, bottom: 11 },
   cardTitle: {
     fontSize: 16, fontWeight: '800', color: N.white, letterSpacing: -0.4,
-    textShadowColor: 'rgba(0,0,0,0.75)', textShadowRadius: 6,
+    textShadowColor: 'rgba(5,5,5,0.75)', textShadowRadius: 6,
   },
   cardMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: 12, marginTop: 5 },
   metaItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   metaTxt: {
     fontSize: 10.5, color: N.w2, fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.75)', textShadowRadius: 5,
+    textShadowColor: 'rgba(5,5,5,0.75)', textShadowRadius: 5,
   },
 
   vacio: { alignItems: 'center', paddingVertical: 54, gap: 9 },

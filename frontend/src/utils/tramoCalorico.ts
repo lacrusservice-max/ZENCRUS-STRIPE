@@ -66,17 +66,17 @@ export function tramoDe(consumido: number, l: Limites): Tramo {
  * El color de cada tramo.
  *
  * Son los ÚNICOS colores semánticos de la pantalla: no se usan para nada más.
- * El rojo de aquí (#FF3B47) no es el rojo de marca (#FF1F3D) a propósito —
+ * El naranja de aquí (#FF7A1F) no es el naranja de marca (#FF5C00) a propósito —
  * si fueran el mismo, el fondo de la pantalla y el «te pasaste» serían
  * indistinguibles y el aviso dejaría de avisar.
  */
 export const COLOR_TRAMO: Record<Tramo, string> = {
-  bajo:   '#8A8D98',
+  bajo:   '#A1A3A9',
   minimo: '#FFC542',
   /* Esmeralda, elegido mirándolo. El anterior (#29D07B) llevaba demasiado
      azul y se leía como verde menta: barato al lado del rojo de marca. */
   meta:   '#00C853',
-  pasado: '#FF3B47',
+  pasado: '#FF7A1F',
 }
 
 /** Etiqueta corta, para la pastilla del centro del plato. */

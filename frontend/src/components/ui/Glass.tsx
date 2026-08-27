@@ -119,7 +119,7 @@ const g = StyleSheet.create({
     borderWidth: 1,
     borderColor: 'rgba(255,255,255,0.10)',
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: '#050505',
     shadowOffset: { width: 0, height: 12 },
     shadowOpacity: 0.42,
     shadowRadius: 26,

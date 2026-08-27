@@ -21,7 +21,7 @@ function PasswordStrength({ password }: { password: string }) {
     { ok: /[^A-Za-z0-9]/.test(password), label: '!@#' },
   ]
   const score = checks.filter(c => c.ok).length
-  const color = score <= 1 ? '#ef4444' : score <= 2 ? '#f97316' : score <= 3 ? '#eab308' : '#22c55e'
+  const color = score <= 1 ? '#FF5C00' : score <= 2 ? '#FF7A1F' : score <= 3 ? '#eab308' : '#22c55e'
   return (
     <View style={{ marginTop: 8, marginBottom: 4 }}>
       <View style={{ flexDirection: 'row', gap: 4 }}>
@@ -220,7 +220,7 @@ export default function RegisterScreen() {
                     </View>
 
                     <Text style={s.fieldLabel}>
-                      Username <Text style={{ color: '#ef4444', fontSize: 13 }}>*</Text>
+                      Username <Text style={{ color: '#ff7a1f', fontSize: 13 }}>*</Text>
                     </Text>
                     <View style={inputStyle('user')}>
                       <Text style={s.atSign}>@</Text>
@@ -237,7 +237,7 @@ export default function RegisterScreen() {
                       />
                       {usernameStatus === 'checking' && <ActivityIndicator size="small" color="rgba(255,255,255,0.35)" />}
                       {usernameStatus === 'ok' && <Ionicons name="checkmark-circle" size={18} color="#22c55e" />}
-                      {usernameStatus === 'taken' && <Ionicons name="close-circle" size={18} color="#ef4444" />}
+                      {usernameStatus === 'taken' && <Ionicons name="close-circle" size={18} color="#ff7a1f" />}
                     </View>
                     {usernameStatus === 'taken' && <Text style={s.errorNote}>Username no disponible</Text>}
                     {usernameStatus === 'ok' && <Text style={s.successNote}>¡Disponible!</Text>}
@@ -367,7 +367,7 @@ export default function RegisterScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#080808' },
+  bg: { flex: 1, backgroundColor: '#050505' },
   blob: {
     position: 'absolute', width: 280, height: 280, borderRadius: 9999,
     backgroundColor: Colors.primary[500], opacity: 0.10,
@@ -439,7 +439,7 @@ const s = StyleSheet.create({
     fontWeight: '600', marginRight: 6,
   },
 
-  errorNote: { fontSize: 12, color: '#ef4444', marginTop: 5, fontWeight: '500' },
+  errorNote: { fontSize: 12, color: '#ff7a1f', marginTop: 5, fontWeight: '500' },
   successNote: { fontSize: 12, color: '#22c55e', marginTop: 5, fontWeight: '500' },
 
   privacyNote: {

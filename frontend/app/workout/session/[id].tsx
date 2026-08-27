@@ -205,7 +205,7 @@ const s = StyleSheet.create({
 
   firma: {
     alignItems: 'center', gap: Spacing[3], padding: Spacing[4],
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    backgroundColor: 'rgba(5,5,5,0.28)',
     borderRadius: 22,
     borderWidth: 1, borderColor: Colors.neon.edge,
   },

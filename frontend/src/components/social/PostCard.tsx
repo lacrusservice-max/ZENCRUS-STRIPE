@@ -196,7 +196,7 @@ const m = StyleSheet.create({
   punto: { width: 5, height: 5, borderRadius: 3 },
   contador: {
     position: 'absolute', top: 12, right: 12,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(5,5,5,0.55)',
     paddingHorizontal: 9, paddingVertical: 4, borderRadius: 11,
   },
   contadorTxt: { color: '#fff', fontSize: 11, fontWeight: '700' },
@@ -335,7 +335,7 @@ export function PostCard({
               una foto clara. Se queda en el tercio de arriba y no toca la
               imagen donde suele estar lo que se quiere ver. */}
           <LinearGradient
-            colors={['rgba(0,0,0,0.55)', 'rgba(0,0,0,0.18)', 'transparent']}
+            colors={['rgba(5,5,5,0.55)', 'rgba(5,5,5,0.18)', 'transparent']}
             style={c.velo}
             pointerEvents="none"
           />

@@ -188,7 +188,7 @@ export default function WelcomeScreen() {
           </View>
 
           <View style={s.macroGrid}>
-            <MacroCard label="Proteína" value={protein} unit="g" color="#FF5871" icon="barbell" delay={200} />
+            <MacroCard label="Proteína" value={protein} unit="g" color="#FF7A1F" icon="barbell" delay={200} />
             <MacroCard label="Carbohidratos" value={carbs} unit="g" color={Colors.accent.yellow} icon="leaf" delay={350} />
             <MacroCard label="Grasas" value={fat} unit="g" color={Colors.accent.orange} icon="water" delay={500} />
             <MacroCard label="Fibra" value={fiber} unit="g" color={Colors.accent.green} icon="nutrition" delay={650} />
@@ -232,7 +232,7 @@ export default function WelcomeScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#080808' },
+  bg: { flex: 1, backgroundColor: '#050505' },
   blob: {
     position: 'absolute', borderRadius: 9999,
     opacity: 0.10, width: 280, height: 280,
@@ -271,7 +271,7 @@ const s = StyleSheet.create({
 
   // AI Card
   aiCard: {
-    backgroundColor: '#111',
+    backgroundColor: '#0d0d10',
     borderRadius: 18,
     borderWidth: 1,
     borderColor: `${Colors.primary[500]}30`,

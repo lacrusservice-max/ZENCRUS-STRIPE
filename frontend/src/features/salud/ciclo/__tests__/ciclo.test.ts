@@ -11,6 +11,7 @@
  */
 
 import { derivarPeriodos, diaDeCiclo } from '../periodos'
+import { enVentanaFertil } from '@/nucleo/ciclo/fases'
 import {
   estadisticas, predecir, marcoFases, faseDeDia,
   calcularConfianza, confianzaProyectada,
@@ -129,9 +130,12 @@ describe('estadisticas', () => {
     expect(e.masLargo).toBe(29)
   })
 
-  it('clasifica la regularidad por la dispersión real', () => {
-    const regular = estadisticas(derivarPeriodos(historial('2026-01-01', [28, 28, 29, 27])).periodos)
-    expect(regular.regularidad).toBe('regular')
+  /* Cuatro niveles desde el prompt maestro: ≤2 muy regular · 3-4 regular ·
+     5-7 algo irregular · >7 irregular. Antes eran tres y el ≤2 se llamaba
+     «regular» a secas. */
+  it('clasifica la regularidad en los cuatro niveles del documento', () => {
+    const muyRegular = estadisticas(derivarPeriodos(historial('2026-01-01', [28, 28, 29, 27])).periodos)
+    expect(muyRegular.regularidad).toBe('muy_regular')
 
     const dispersa = estadisticas(derivarPeriodos(historial('2026-01-01', [22, 35, 26, 40])).periodos)
     expect(dispersa.regularidad).toBe('irregular')
@@ -145,10 +149,21 @@ describe('predecir', () => {
     expect(predecir([], { hoy: '2026-03-10' })).toBeNull()
   })
 
-  it('la banda siempre tiene anchura: nunca da una fecha exacta', () => {
+  /* CAMBIO DE CRITERIO del prompt maestro, y conviene tenerlo a la vista: a
+     una usuaria «muy regular» (SD ≤ 2) se le da FECHA PUNTUAL, sin banda.
+     Antes había un suelo de un día precisamente para no prometer nunca una
+     fecha exacta. Ahora se promete cuando la dispersión medida lo justifica. */
+  it('con un ciclo muy regular se da fecha puntual, sin banda', () => {
     const { periodos } = derivarPeriodos(historial('2026-01-01', [28, 28, 28, 28, 28, 28]))
     const p = predecir(periodos, { hoy: '2026-06-10' })!
-    expect(p.margenDias).toBeGreaterThanOrEqual(1)
+    expect(p.margenDias).toBe(0)
+    expect(p.proximoPeriodo.low).toBe(p.proximoPeriodo.high)
+  })
+
+  it('y en cuanto hay dispersión, vuelve a haber banda', () => {
+    const { periodos } = derivarPeriodos(historial('2026-01-01', [24, 31, 26, 34, 27]))
+    const p = predecir(periodos, { hoy: '2026-06-10' })!
+    expect(p.margenDias).toBeGreaterThanOrEqual(2)
     expect(p.proximoPeriodo.low).not.toBe(p.proximoPeriodo.high)
   })
 
@@ -229,15 +244,17 @@ describe('confianza', () => {
 // ── Fases ───────────────────────────────────────────────────────────────────
 
 describe('marcoFases', () => {
-  it('en un ciclo de 28 días la ovulación cae cerca del 14', () => {
-    expect(marcoFases(28, 5).diaOvulacion).toBe(14)
+  /* `Ovulación = C − 13`, la fórmula del prompt maestro. Antes se restaban 14.
+     La tabla de referencia completa se comprueba en `marco.test.ts`. */
+  it('en un ciclo de 28 días la ovulación es el día 15', () => {
+    expect(marcoFases(28, 5).diaOvulacion).toBe(15)
   })
 
   it('en un ciclo de 34 días NO la fija en el día 14', () => {
     const m = marcoFases(34, 5)
-    expect(m.diaOvulacion).toBe(20)
+    expect(m.diaOvulacion).toBe(21)
     expect(faseDeDia(14, m)).toBe('folicular')   // el 14 aún es folicular
-    expect(faseDeDia(20, m)).toBe('ovulatoria')
+    expect(faseDeDia(21, m)).toBe('ovulatoria')
   })
 
   it('en un ciclo corto la ovulación no cae dentro del sangrado', () => {
@@ -245,12 +262,27 @@ describe('marcoFases', () => {
     expect(m.diaOvulacion).toBeGreaterThan(m.diasPeriodo)
   })
 
+  /* La fase ovulatoria dura UN día —el de la ovulación—, no un tramo. La
+     ventana fértil, que sí son seis días, es otra cosa y se consulta con
+     `enVentanaFertil`. */
   it('las cuatro fases se recorren en orden', () => {
     const m = marcoFases(28, 5)
     expect(faseDeDia(1, m)).toBe('menstrual')
     expect(faseDeDia(8, m)).toBe('folicular')
-    expect(faseDeDia(14, m)).toBe('ovulatoria')
+    expect(faseDeDia(15, m)).toBe('ovulatoria')
+    expect(faseDeDia(16, m)).toBe('lutea')
     expect(faseDeDia(25, m)).toBe('lutea')
+  })
+
+  it('la ventana fértil abarca seis días y se consulta aparte', () => {
+    const m = marcoFases(28, 5)
+    expect(enVentanaFertil(10, m)).toBe(true)   // Ov − 5
+    expect(enVentanaFertil(16, m)).toBe(true)   // Ov + 1
+    expect(enVentanaFertil(9, m)).toBe(false)
+    expect(enVentanaFertil(17, m)).toBe(false)
+    // Y un día fértil puede seguir siendo folicular: son ejes distintos.
+    expect(faseDeDia(12, m)).toBe('folicular')
+    expect(enVentanaFertil(12, m)).toBe(true)
   })
 })
 

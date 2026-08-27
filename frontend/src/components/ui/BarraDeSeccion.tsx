@@ -492,7 +492,7 @@ const b = StyleSheet.create({
        como mínimo y la franja muerta desaparece. */
     paddingVertical: 7,
     paddingHorizontal: 6,
-    shadowColor: '#000',
+    shadowColor: '#050505',
     shadowOffset: { width: 0, height: 14 },
     shadowOpacity: 0.45,
     shadowRadius: 30,

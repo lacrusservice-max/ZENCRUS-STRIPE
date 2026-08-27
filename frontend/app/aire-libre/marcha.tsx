@@ -208,7 +208,7 @@ const s = StyleSheet.create({
   rejilla: { flexDirection: 'row', flexWrap: 'wrap', gap: 1, borderRadius: 19, overflow: 'hidden', marginTop: 6 },
   casilla: {
     width: '49.7%', paddingVertical: 16, paddingHorizontal: 14,
-    backgroundColor: 'rgba(22,20,26,0.82)',
+    backgroundColor: 'rgba(23,24,28,0.82)',
   },
   pieMapa: { fontSize: 10.5, color: 'rgba(255,255,255,0.3)', textAlign: 'center', lineHeight: 15, marginTop: 12, paddingHorizontal: 14 },
   fin: {

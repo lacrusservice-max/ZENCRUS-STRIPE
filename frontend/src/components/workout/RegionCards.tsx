@@ -92,8 +92,8 @@ function Tarjeta({ zona, activa, onPress }: { zona: Zona; activa: boolean; onPre
         <Image source={foto} style={StyleSheet.absoluteFill} contentFit="cover" transition={200} />
         <LinearGradient
           colors={activa
-            ? ['rgba(255,31,61,0.30)', 'rgba(5,5,6,0.92)']
-            : ['rgba(5,5,6,0.20)', 'rgba(5,5,6,0.90)']}
+            ? ['rgba(255,92,0,0.30)', 'rgba(5,5,5,0.92)']
+            : ['rgba(5,5,5,0.20)', 'rgba(5,5,5,0.90)']}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
         />

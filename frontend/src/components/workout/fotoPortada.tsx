@@ -151,7 +151,7 @@ export function SelectorFoto({ abierto, actual, onCerrar, onElegir }: {
                       transition={180}
                     />
                     <LinearGradient
-                      colors={['transparent', 'rgba(5,5,6,0.85)']}
+                      colors={['transparent', 'rgba(5,5,5,0.85)']}
                       style={StyleSheet.absoluteFill}
                       pointerEvents="none"
                     />
@@ -177,13 +177,13 @@ const f = StyleSheet.create({
     position: 'absolute', top: Spacing[3], right: Spacing[3], zIndex: 3,
     width: 32, height: 32, borderRadius: 16,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.42)',
+    backgroundColor: 'rgba(5,5,5,0.42)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.18)',
   },
 
-  modalFondo: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.62)' },
+  modalFondo: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(5,5,5,0.62)' },
   modal: {
-    backgroundColor: '#0d0d0f',
+    backgroundColor: '#0d0d10',
     borderTopLeftRadius: 26, borderTopRightRadius: 26,
     borderTopWidth: 1, borderColor: C.neon.edge,
     padding: Spacing[4], paddingBottom: Spacing[6], gap: Spacing[2],

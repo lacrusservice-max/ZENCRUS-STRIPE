@@ -39,7 +39,7 @@ type IconName = React.ComponentProps<typeof Ionicons>['name']
  * foto al desplazar, y `recyclingKey` impide que al reciclar una fila se vea un
  * instante la cara de otra persona.
  */
-const TONOS = ['#FF1F3D', '#FF7A1F', '#C11FFF', '#1F9DFF', '#12B981', '#F5B31F', '#FF1F8C']
+const TONOS = ['#FF5C00', '#FF7A1F', '#C11FFF', '#1F9DFF', '#12B981', '#F5B31F', '#FFA45C']
 
 export function Avatar({
   profile, size = 42, ring, onPress,
@@ -163,7 +163,7 @@ export function Btn({
     solid:  { bg: T.accent, br: T.accent, fg: '#FFFFFF' },
     soft:   { bg: T.glass, br: T.glassBorder, fg: T.ink },
     ghost:  { bg: 'transparent', br: 'transparent', fg: T.ink2 },
-    danger: { bg: 'rgba(255,31,61,0.12)', br: 'rgba(255,31,61,0.32)', fg: '#FF5871' },
+    danger: { bg: 'rgba(255,92,0,0.12)', br: 'rgba(255,92,0,0.32)', fg: '#FF7A1F' },
   }[tone]
 
   const apagado = disabled || loading
@@ -526,7 +526,7 @@ export function confirmarBloqueo(userId: string, nombre?: string, alHacerlo?: ()
 export function BrandRing({ size, children }: { size: number; children: React.ReactNode }) {
   return (
     <LinearGradient
-      colors={['#FF1F3D', '#FF7A1F', '#FF1F8C']}
+      colors={['#FF5C00', '#FF7A1F', '#FFA45C']}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
       style={{

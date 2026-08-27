@@ -435,7 +435,7 @@ const s = StyleSheet.create({
   unit: { paddingVertical: 8, paddingHorizontal: 18, borderRadius: CT.r.pill },
   unitOn: { backgroundColor: CT.ink },
   unitTxt: { fontSize: 10.5, fontWeight: '800', letterSpacing: 1.1, color: CT.ink3 },
-  unitTxtOn: { color: '#0A0A0D' },
+  unitTxtOn: { color: '#0D0D10' },
 
   // Reparto calórico
   splitBar: { flexDirection: 'row', gap: 2, height: 4, borderRadius: 2, overflow: 'hidden', marginTop: 4 },

@@ -121,8 +121,8 @@ export default function ComunidadCiclo() {
         {/* ── Temas según la fase ─────────────────────────────────────── */}
         <View style={s.rotuloFila}>
           <Text style={s.rotulo}>Para ti hoy</Text>
-          <View style={[s.pildoraFase, { backgroundColor: FASE[fase].suave }]}>
-            <Text style={[s.pildoraFaseTxt, { color: FASE[fase].color }]}>
+          <View style={[s.pildoraFase, { backgroundColor: FASE[fase].celda }]}>
+            <Text style={[s.pildoraFaseTxt, { color: FASE[fase].texto }]}>
               fase {FASE[fase].etiqueta}
             </Text>
           </View>

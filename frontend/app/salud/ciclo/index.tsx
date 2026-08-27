@@ -137,7 +137,7 @@ export default function InicioCiclo() {
               <View style={s.leyenda}>
                 {PHASE_ORDER.map(f => (
                   <View key={f} style={s.leyendaItem}>
-                    <View style={[s.punto, { backgroundColor: FASE[f].color }]} />
+                    <View style={[s.punto, { backgroundColor: FASE[f].arco }]} />
                     <Text style={s.leyendaTxt}>{FASE[f].etiqueta}</Text>
                   </View>
                 ))}

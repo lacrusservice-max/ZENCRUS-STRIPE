@@ -30,8 +30,8 @@ import { View, StyleSheet, PanResponder, type GestureResponderEvent } from 'reac
 import Svg, { Circle, Path, Line, Text as SvgText, G } from 'react-native-svg'
 import { Ionicons } from '@expo/vector-icons'
 
-const ROJO = '#FF1F3D'
-const ROJO_HONDO = '#C4102A'
+const ROJO = '#FF5C00'
+const ROJO_HONDO = '#B33D00'
 
 const LADO = 300
 const C = LADO / 2
@@ -287,6 +287,6 @@ const s = StyleSheet.create({
     alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.14)',
   },
-  tiradorVivo: { backgroundColor: 'rgba(0,0,0,0.35)' },
+  tiradorVivo: { backgroundColor: 'rgba(5,5,5,0.35)' },
   astro: { position: 'absolute', width: 18, alignItems: 'center' },
 })

@@ -59,7 +59,7 @@ export async function registerForPush(): Promise<boolean> {
         description: 'Mensajes, seguidores y reacciones',
         importance: Notifications.AndroidImportance.DEFAULT,
         vibrationPattern: [0, 180, 90, 180],
-        lightColor: '#FF1F3D',
+        lightColor: '#FF5C00',
       })
     }
 

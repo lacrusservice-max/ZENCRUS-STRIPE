@@ -490,7 +490,7 @@ const tb = StyleSheet.create({
     borderColor: Glass.tabBorder,
     paddingVertical: 10,
     paddingHorizontal: 6,
-    shadowColor: '#000',
+    shadowColor: '#050505',
     shadowOffset: { width: 0, height: 14 },
     shadowOpacity: 0.45,
     shadowRadius: 30,
@@ -647,7 +647,7 @@ export default function TabsLayout() {
   // registrada) — mientras `EXIGIR_PLAN` esté en `true`. Ahora mismo NO lo está.
   if (checking) {
     return (
-      <View style={{ flex: 1, backgroundColor: '#080808', alignItems: 'center', justifyContent: 'center' }}>
+      <View style={{ flex: 1, backgroundColor: '#050505', alignItems: 'center', justifyContent: 'center' }}>
         <ActivityIndicator color={Colors.primary[400]} size="large" />
       </View>
     )

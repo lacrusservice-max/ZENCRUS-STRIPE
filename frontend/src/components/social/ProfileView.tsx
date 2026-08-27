@@ -62,7 +62,7 @@ export function ProfileHeader({
           {/* Hasta abajo del todo y opaco al final: el avatar y el nombre se
               apoyan justo ahí y tienen que leerse sobre cualquier foto. */}
           <LinearGradient
-            colors={['rgba(0,0,0,0.35)', 'rgba(8,8,8,0.75)', T.bg]}
+            colors={['rgba(5,5,5,0.35)', 'rgba(5,5,5,0.75)', T.bg]}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
@@ -191,7 +191,7 @@ export function ProfileBody({
   if (!posts.length) {
     return (
       <View style={s.vacio}>
-        <Ionicons name="camera-outline" size={26} color="#7A7A85" />
+        <Ionicons name="camera-outline" size={26} color="#5C5F66" />
         <Text style={s.vacioTxt}>Todavía no hay publicaciones</Text>
       </View>
     )
@@ -222,8 +222,8 @@ const s = StyleSheet.create({
   celdaTxt: { fontSize: 10.5, lineHeight: 14 },
   marca: {
     position: 'absolute', top: 5, right: 5,
-    backgroundColor: 'rgba(0,0,0,0.55)', borderRadius: 6, padding: 3,
+    backgroundColor: 'rgba(5,5,5,0.55)', borderRadius: 6, padding: 3,
   },
   vacio: { alignItems: 'center', paddingVertical: 54, gap: 10 },
-  vacioTxt: { fontSize: 13, color: '#7A7A85' },
+  vacioTxt: { fontSize: 13, color: '#5C5F66' },
 })

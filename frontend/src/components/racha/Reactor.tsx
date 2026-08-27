@@ -186,7 +186,7 @@ export function Reactor({ dias, onHito }: Props) {
       <View style={s.tubo} onLayout={e => { alto.value = e.nativeEvent.layout.height }}>
         <Animated.View style={[s.nucleo, eNucleo]}>
           <LinearGradient
-            colors={['#FFE9C4', '#FF9166', '#FF4A2E', '#8E1B0A']}
+            colors={['#FFFFFF', '#FFA45C', '#FF7A1F', '#B33D00']}
             locations={[0, 0.3, 0.62, 1]}
             style={StyleSheet.absoluteFill}
           />
@@ -208,7 +208,7 @@ export function Reactor({ dias, onHito }: Props) {
           {Array.from({ length: 5 }).map((_, i) => (
             <LinearGradient
               key={i}
-              colors={['#3A3A46', '#15151C', '#2A2A34']}
+              colors={['#2A2C32', '#17181C', '#2A2C32']}
               style={s.aro}
             />
           ))}
@@ -353,14 +353,14 @@ const s = StyleSheet.create({
 
   tubo: {
     width: 64, borderRadius: 12, overflow: 'hidden',
-    backgroundColor: '#0F0F16',
+    backgroundColor: '#0D0D10',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.11)',
     marginBottom: 12,
   },
   nucleo: {
     position: 'absolute', left: 4, right: 4, bottom: 4,
     borderRadius: 9, overflow: 'hidden',
-    shadowColor: '#FF4A2E', shadowOpacity: 0.9, shadowRadius: 22,
+    shadowColor: '#FF7A1F', shadowOpacity: 0.9, shadowRadius: 22,
     shadowOffset: { width: 0, height: 0 },
   },
   rejilla: { ...StyleSheet.absoluteFillObject, justifyContent: 'space-between', opacity: 0.5 },
@@ -369,18 +369,18 @@ const s = StyleSheet.create({
   aro: { height: 7 },
   brasa: {
     position: 'absolute', bottom: 0,
-    backgroundColor: '#FFD3A8',
-    shadowColor: '#FF9166', shadowOpacity: 0.95, shadowRadius: 5,
+    backgroundColor: '#FFA45C',
+    shadowColor: '#FFA45C', shadowOpacity: 0.95, shadowRadius: 5,
     shadowOffset: { width: 0, height: 0 },
     zIndex: 5,
   },
   testigo: {
     position: 'absolute', top: 8, alignSelf: 'center',
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 4,
-    backgroundColor: 'rgba(10,4,2,0.85)',
-    borderWidth: 1, borderColor: 'rgba(255,74,46,0.4)',
+    backgroundColor: 'rgba(5,5,5,0.85)',
+    borderWidth: 1, borderColor: 'rgba(255,122,31,0.4)',
   },
-  testigoTxt: { fontSize: 6, fontWeight: '900', letterSpacing: 1.4, color: '#FF4A2E' },
+  testigoTxt: { fontSize: 6, fontWeight: '900', letterSpacing: 1.4, color: '#FF7A1F' },
   testigoEspera: { borderColor: 'rgba(255,176,31,0.45)' },
   testigoTxtEspera: { color: '#FFB01F' },
 
@@ -412,9 +412,9 @@ const s = StyleSheet.create({
 
   tuMarca: { position: 'absolute', left: -18, flexDirection: 'row', alignItems: 'center', gap: 6, zIndex: 20 },
   tuRaya: {
-    width: 12, height: 2, backgroundColor: '#FF4A2E',
-    shadowColor: '#FF4A2E', shadowOpacity: 0.9, shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
+    width: 12, height: 2, backgroundColor: '#FF7A1F',
+    shadowColor: '#FF7A1F', shadowOpacity: 0.9, shadowRadius: 8, shadowOffset: { width: 0, height: 0 },
   },
-  tuPildora: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, backgroundColor: '#3A1108' },
-  tuTxt: { fontSize: 6.5, fontWeight: '900', letterSpacing: 1.3, color: '#FF4A2E' },
+  tuPildora: { paddingHorizontal: 6, paddingVertical: 2, borderRadius: 5, backgroundColor: '#17181C' },
+  tuTxt: { fontSize: 6.5, fontWeight: '900', letterSpacing: 1.3, color: '#FF7A1F' },
 })

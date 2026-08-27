@@ -51,7 +51,7 @@ export const HITOS: Hito[] = [
   { desde: 400,  neon: '#39D353', claro: '#93F0A2', fondo: '#04220C', titulo: 'Cuatrocientos', video: require('@/assets/video/racha-verde.mp4') , poster: require('@/assets/video/poster-verde.jpg') },
   { desde: 200,  neon: '#A855F7', claro: '#D6ABFF', fondo: '#1B0A2E', titulo: 'Doscientos',    video: require('@/assets/video/racha-morada.mp4') , poster: require('@/assets/video/poster-morada.jpg') },
   { desde: 100,  neon: '#2E9BFF', claro: '#8FD0FF', fondo: '#04182E', titulo: 'Cien días',     video: require('@/assets/video/racha-azul.mp4') , poster: require('@/assets/video/poster-azul.jpg') },
-  { desde: 1,    neon: '#FF4A2E', claro: '#FF9166', fondo: '#2A0E06', titulo: 'Primera racha', video: require('@/assets/video/racha-roja.mp4') , poster: require('@/assets/video/poster-roja.jpg') },
+  { desde: 1,    neon: '#FF7A1F', claro: '#FFA45C', fondo: '#17181C', titulo: 'Primera racha', video: require('@/assets/video/racha-roja.mp4') , poster: require('@/assets/video/poster-roja.jpg') },
 ]
 
 /** El hito que corresponde a una racha. Nunca devuelve undefined con días ≥ 1. */

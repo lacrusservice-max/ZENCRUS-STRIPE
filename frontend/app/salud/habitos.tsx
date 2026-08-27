@@ -46,8 +46,8 @@ import { buscarSeguro, loQueBastaHoy } from '@/features/salud/seguro'
 type IconName = React.ComponentProps<typeof Ionicons>['name']
 
 const DIAS = ['L', 'M', 'X', 'J', 'V', 'S', 'D'] as const
-const ROJO = '#FF1F3D'
-const ROJO_HONDO = '#C4102A'
+const ROJO = '#FF5C00'
+const ROJO_HONDO = '#B33D00'
 
 const MOMENTOS: { id: Momento; titulo: string; icono: IconName }[] = [
   { id: 'manana', titulo: 'MAÑANA', icono: 'sunny-outline' },
@@ -529,7 +529,7 @@ export default function Habitos() {
 const GUTTER = 46
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#08080A' },
+  root: { flex: 1, backgroundColor: '#050505' },
   safe: { flex: 1 },
   scroll: { paddingBottom: 140 },
   pulsado: { opacity: 0.78 },
@@ -594,7 +594,7 @@ const s = StyleSheet.create({
     marginHorizontal: Spacing[5], marginTop: Spacing[5],
     borderRadius: 24, padding: 18,
     backgroundColor: 'rgba(255,255,255,0.05)',
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.35)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.35)',
   },
   seguroCab: { flexDirection: 'row', alignItems: 'center', gap: 10, marginBottom: 12 },
   seguroPunta: {
@@ -634,7 +634,7 @@ const s = StyleSheet.create({
   ahoraTile: {
     width: 64, height: 64, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.24)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
+    backgroundColor: 'rgba(5,5,5,0.24)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.2)',
   },
   ahoraNm: { fontFamily: 'Inter_800ExtraBold', fontSize: 26, color: '#fff', letterSpacing: -0.4 },
   ahoraMeta: { fontFamily: 'Inter_400Regular', fontSize: 13.5, color: 'rgba(255,255,255,0.8)', marginTop: 4 },
@@ -647,7 +647,7 @@ const s = StyleSheet.create({
   todoHecho: {
     marginHorizontal: Spacing[5], marginTop: Spacing[5], borderRadius: 26, padding: 26,
     alignItems: 'center', gap: 8,
-    backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,31,61,0.3)',
+    backgroundColor: 'rgba(255,255,255,0.05)', borderWidth: 1, borderColor: 'rgba(255,92,0,0.3)',
   },
   todoHechoTxt: { fontFamily: 'Inter_800ExtraBold', fontSize: 20, color: '#fff' },
   todoHechoSub: { fontFamily: 'Inter_400Regular', fontSize: 13.5, color: 'rgba(255,255,255,0.55)' },
@@ -695,16 +695,16 @@ const s = StyleSheet.create({
     width: 42, height: 42, borderRadius: 13, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.1)',
   },
-  cajaOn: { backgroundColor: 'rgba(0,0,0,0.22)', borderColor: 'rgba(255,255,255,0.16)' },
+  cajaOn: { backgroundColor: 'rgba(5,5,5,0.22)', borderColor: 'rgba(255,255,255,0.16)' },
   txt: { flex: 1, minWidth: 0 },
   nmFila: { flexDirection: 'row', alignItems: 'center', gap: 7 },
   nm: { flexShrink: 1, fontFamily: 'Inter_600SemiBold', fontSize: 15, color: 'rgba(255,255,255,0.92)' },
   nmOn: { color: '#fff' },
   pastilla: {
     paddingHorizontal: 6, paddingVertical: 2, borderRadius: 6,
-    backgroundColor: 'rgba(255,31,61,0.16)', borderWidth: 1, borderColor: 'rgba(255,31,61,0.4)',
+    backgroundColor: 'rgba(255,92,0,0.16)', borderWidth: 1, borderColor: 'rgba(255,92,0,0.4)',
   },
-  pastillaOn: { backgroundColor: 'rgba(0,0,0,0.24)', borderColor: 'rgba(255,255,255,0.3)' },
+  pastillaOn: { backgroundColor: 'rgba(5,5,5,0.24)', borderColor: 'rgba(255,255,255,0.3)' },
   pastillaTxt: { fontFamily: 'Inter_600SemiBold', fontSize: 9, letterSpacing: 0.8, color: ROJO },
   pastillaTxtOn: { color: '#fff' },
   crono: {
@@ -720,7 +720,7 @@ const s = StyleSheet.create({
   rachaTxtOn: { color: '#fff' },
   play: {
     width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,31,61,0.14)', borderWidth: 1, borderColor: 'rgba(255,31,61,0.45)',
+    backgroundColor: 'rgba(255,92,0,0.14)', borderWidth: 1, borderColor: 'rgba(255,92,0,0.45)',
   },
   marca: {
     width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',

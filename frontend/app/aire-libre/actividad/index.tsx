@@ -66,7 +66,7 @@ export default function Actividades() {
           {ORDEN_DEPORTES.map(d => (
             <Pressable key={d} onPress={() => { Haptics.selectionAsync(); setFiltro(d === filtro ? null : d) }}>
               <Chip activo={filtro === d}>
-                <Ionicons name={DEPORTES[d].icono} size={12} color={filtro === d ? '#0D0D12' : 'rgba(255,255,255,0.62)'} />
+                <Ionicons name={DEPORTES[d].icono} size={12} color={filtro === d ? '#0D0D10' : 'rgba(255,255,255,0.62)'} />
               </Chip>
             </Pressable>
           ))}

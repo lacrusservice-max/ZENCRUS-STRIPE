@@ -57,7 +57,7 @@ export function BarraPestanas() {
           style={({ pressed }) => [b.centro, pressed && { transform: [{ scale: 0.94 }] }]}
         >
           <LinearGradient
-            colors={['#FF5A48', RunningColors.signal.base, '#D4102F']}
+            colors={['#FF7A1F', RunningColors.signal.base, '#FF5C00']}
             locations={[0, 0.52, 1]}
             start={{ x: 0.15, y: 0 }} end={{ x: 0.85, y: 1 }}
             style={b.centroFondo}
@@ -94,10 +94,10 @@ const b = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 7,
-    backgroundColor: 'rgba(20,20,27,0.86)',
+    backgroundColor: 'rgba(23,24,28,0.86)',
     borderWidth: StyleSheet.hairlineWidth,
     borderColor: 'rgba(255,255,255,0.1)',
-    shadowColor: '#000',
+    shadowColor: '#050505',
     shadowOpacity: 0.7,
     shadowRadius: 22,
     shadowOffset: { width: 0, height: 14 },

@@ -267,7 +267,7 @@ export default function GuideScreen() {
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080808' },
+  container: { flex: 1, backgroundColor: '#050505' },
   header: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     paddingHorizontal: Spacing[4], paddingVertical: Spacing[3],

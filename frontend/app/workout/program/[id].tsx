@@ -123,7 +123,7 @@ export default function FichaPrograma() {
           <View style={s.hero}>
             <Image source={fotoDePrograma(p)} style={StyleSheet.absoluteFill} contentFit="cover" transition={300} />
             <LinearGradient
-              colors={['rgba(5,5,6,0.25)', 'rgba(5,5,6,0.78)', 'rgba(5,5,6,0.98)']}
+              colors={['rgba(5,5,5,0.25)', 'rgba(5,5,5,0.78)', 'rgba(5,5,5,0.98)']}
               locations={[0, 0.45, 1]}
               style={StyleSheet.absoluteFill}
               pointerEvents="none"
@@ -271,7 +271,7 @@ const s = StyleSheet.create({
   pastilla: {
     paddingHorizontal: Spacing[2] + 2, paddingVertical: 4,
     borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(5,5,5,0.45)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
   },
   pastillaTxt: { fontSize: 10, fontWeight: '700', color: Colors.neon.w2 },
@@ -280,7 +280,7 @@ const s = StyleSheet.create({
   datos: {
     flexDirection: 'row', alignItems: 'center', paddingVertical: Spacing[3],
     borderRadius: 16,
-    backgroundColor: 'rgba(0,0,0,0.42)',
+    backgroundColor: 'rgba(5,5,5,0.42)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
   },
   datoSep: { width: 1, height: 24, backgroundColor: 'rgba(255,255,255,0.14)' },
@@ -295,7 +295,7 @@ const s = StyleSheet.create({
     padding: Spacing[3] + 2,
     borderRadius: BorderRadius.lg,
     backgroundColor: Colors.neon.redDim,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   avisoTxt: { flex: 1, fontSize: 12, color: Colors.neon.w2, lineHeight: 17 },
 
@@ -331,7 +331,7 @@ const s = StyleSheet.create({
   pieFijo: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     padding: Spacing[4], paddingBottom: Spacing[6],
-    backgroundColor: 'rgba(5,5,6,0.96)',
+    backgroundColor: 'rgba(5,5,5,0.96)',
     borderTopWidth: 1, borderTopColor: Colors.neon.edge,
   },
   boton: {

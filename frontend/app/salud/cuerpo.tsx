@@ -85,7 +85,7 @@ export default function Cuerpo() {
               accessibilityRole="button"
               accessibilityLabel={`${d.titulo}. ${d.lema}`}
             >
-              <View style={s.caja}><Ionicons name={d.icono} size={18} color="#FF5871" /></View>
+              <View style={s.caja}><Ionicons name={d.icono} size={18} color="#FF7A1F" /></View>
               <View style={s.textos}>
                 <Text style={s.filaTitulo}>{d.titulo}</Text>
                 <Text style={s.filaLema}>{d.lema}</Text>
@@ -118,7 +118,7 @@ function Lectura({ valor, unidad, etiqueta }: {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#08080A' },
+  root: { flex: 1, backgroundColor: '#050505' },
   safe: { flex: 1 },
   scroll: { paddingBottom: 130 },
   pulsado: { opacity: 0.75 },
@@ -126,7 +126,7 @@ const s = StyleSheet.create({
   head: { paddingHorizontal: Spacing[5], paddingTop: Spacing[2], paddingBottom: Spacing[5] },
   volver: { width: 34, height: 34, justifyContent: 'center', marginLeft: -6, marginBottom: Spacing[2] },
   eyebrow: {
-    fontFamily: 'Rajdhani_700Bold', fontSize: 11, color: '#FF1F3D',
+    fontFamily: 'Rajdhani_700Bold', fontSize: 11, color: '#FF5C00',
     letterSpacing: 2.8, marginBottom: 6,
   },
   titulo: { fontFamily: 'Inter_600SemiBold', fontSize: 34, color: '#fff', letterSpacing: -1 },
@@ -135,7 +135,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center',
     marginHorizontal: Spacing[5], marginBottom: Spacing[5],
     paddingVertical: Spacing[4], paddingHorizontal: Spacing[3],
-    borderRadius: 18, backgroundColor: '#141519',
+    borderRadius: 18, backgroundColor: '#17181c',
   },
   filete: { width: 1, height: 30, backgroundColor: 'rgba(255,255,255,0.08)' },
   lectura: { flex: 1, alignItems: 'center' },
@@ -154,11 +154,11 @@ const s = StyleSheet.create({
   fila: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
     marginHorizontal: Spacing[5], marginBottom: 9,
-    paddingHorizontal: 14, height: 68, borderRadius: 16, backgroundColor: '#141519',
+    paddingHorizontal: 14, height: 68, borderRadius: 16, backgroundColor: '#17181c',
   },
   caja: {
     width: 36, height: 36, borderRadius: 12, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,88,113,0.14)',
+    backgroundColor: 'rgba(255,122,31,0.14)',
   },
   textos: { flex: 1 },
   filaTitulo: { fontFamily: 'Inter_500Medium', fontSize: 15.5, color: '#fff' },

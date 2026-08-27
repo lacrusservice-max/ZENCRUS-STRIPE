@@ -69,7 +69,7 @@ export function RecipePhoto({
       {/* Fondo del marco: barato y siempre listo, a diferencia de una copia
           desenfocada de la propia foto. */}
       <LinearGradient
-        colors={['#16161b', '#0c0c0f']}
+        colors={['#17181c', '#0d0d10']}
         start={{ x: 0.2, y: 0 }}
         end={{ x: 0.8, y: 1 }}
         style={StyleSheet.absoluteFill}
@@ -90,7 +90,7 @@ export function RecipePhoto({
           />
           {duotone && (
             <LinearGradient
-              colors={['rgba(255,31,61,0.55)', 'rgba(122,14,29,0.5)', 'rgba(10,10,13,0.45)']}
+              colors={['rgba(255,92,0,0.55)', 'rgba(179,61,0,0.5)', 'rgba(13,13,16,0.45)']}
               start={{ x: 0.1, y: 0 }}
               end={{ x: 0.9, y: 1 }}
               style={StyleSheet.absoluteFill}
@@ -112,7 +112,7 @@ export function RecipePhoto({
 
       {scrim && (
         <LinearGradient
-          colors={['rgba(5,5,6,0.34)', 'rgba(5,5,6,0)', 'rgba(5,5,6,0.78)']}
+          colors={['rgba(5,5,5,0.34)', 'rgba(5,5,5,0)', 'rgba(5,5,5,0.78)']}
           locations={[0, 0.38, 1]}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
@@ -181,7 +181,7 @@ function Curl({ d, delay, left }: { d: string; delay: number; left: DimensionVal
 }
 
 const s = StyleSheet.create({
-  frame: { width: '100%', overflow: 'hidden', backgroundColor: '#0c0c0f', position: 'relative' },
+  frame: { width: '100%', overflow: 'hidden', backgroundColor: '#0d0d10', position: 'relative' },
   blank: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   emoji: { opacity: 0.9 },
   steam: { ...StyleSheet.absoluteFillObject, opacity: 0.55 },
@@ -190,6 +190,6 @@ const s = StyleSheet.create({
   credit: {
     position: 'absolute', right: 10, bottom: 6,
     fontSize: 7.5, color: 'rgba(255,255,255,0.32)',
-    textShadowColor: 'rgba(0,0,0,0.9)', textShadowRadius: 3,
+    textShadowColor: 'rgba(5,5,5,0.9)', textShadowRadius: 3,
   },
 })

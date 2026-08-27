@@ -286,10 +286,33 @@ function Retrato({ hito, tam = 92 }: { hito: Hito; tam?: number }) {
   const player = useVideoPlayer(hito.video, p => { p.loop = true; p.muted = true; p.play() })
   useEffect(() => () => { try { player.pause() } catch { /* ya destruido */ } }, [])
   return (
-    <View style={[s.retrato, { width: tam, height: tam, borderRadius: tam / 2, shadowColor: hito.neon }]}>
+    <View style={[s.retrato, { width: tam, height: tam, borderRadius: tam / 2, shadowColor: hito.neon, isolation: 'isolate' }]}>
       <Image source={hito.poster} style={StyleSheet.absoluteFill} contentFit="cover" transition={0} />
       <VideoView player={player} style={StyleSheet.absoluteFill} contentFit="cover" nativeControls={false} />
+      <TinteNaranja hito={hito} />
     </View>
+  )
+}
+
+/**
+ * El personaje del primer nivel viene en rojo.
+ *
+ * Los seis niveles tienen su vídeo de color —blanco, dorado, verde, morado,
+ * azul y ROJO— y el rojo es el del nivel 1, el que ve todo el mundo su primer
+ * día. Recolorear un `.mp4` pide reexportarlo; mientras tanto se le funde
+ * encima el naranja de marca en modo `hue`, que cambia el tono y respeta la luz
+ * y la saturación —que es justo lo que mantiene vivas las llamas—.
+ *
+ * Los otros cinco niveles NO se tocan: su color no es la marca, es su identidad
+ * de nivel, y teñirlos los volvería el mismo naranja.
+ */
+function TinteNaranja({ hito }: { hito: Hito }) {
+  if (hito.desde !== 1) return null
+  return (
+    <View
+      pointerEvents="none"
+      style={[StyleSheet.absoluteFill, { backgroundColor: '#FF5C00', mixBlendMode: 'hue' }]}
+    />
   )
 }
 
@@ -409,7 +432,7 @@ function aFecha(iso: string): Date {
 const s = StyleSheet.create({
   hero: { flexDirection: 'row', alignItems: 'center', gap: 14, paddingHorizontal: 20, paddingTop: 4 },
   retrato: {
-    overflow: 'hidden', backgroundColor: '#000',
+    overflow: 'hidden', backgroundColor: '#050505',
     shadowOpacity: 0.55, shadowRadius: 26, shadowOffset: { width: 0, height: 0 },
   },
   numero: { fontSize: 50, fontWeight: '900', letterSpacing: -3, lineHeight: 52, fontVariant: ['tabular-nums'] },
@@ -488,10 +511,10 @@ const s = StyleSheet.create({
   previaFill: { height: '100%', borderRadius: 3 },
   previaFecha: { fontSize: 8, color: N.w3, width: 84, fontWeight: '600', textAlign: 'right' },
 
-  velo: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(0,0,0,0.82)', alignItems: 'center', justifyContent: 'center', padding: 28, zIndex: 100 },
+  velo: { ...StyleSheet.absoluteFillObject, backgroundColor: 'rgba(5,5,5,0.82)', alignItems: 'center', justifyContent: 'center', padding: 28, zIndex: 100 },
   ficha: {
     width: '100%', maxWidth: 300, borderRadius: 22, padding: 22, alignItems: 'center',
-    backgroundColor: '#0B0B10', borderWidth: 1,
+    backgroundColor: '#0D0D10', borderWidth: 1,
   },
   fichaNum: { fontSize: 44, fontWeight: '900', letterSpacing: -2.4, marginTop: 14, fontVariant: ['tabular-nums'] },
   fichaTitulo: { fontSize: 8.5, fontWeight: '900', letterSpacing: 2.6, color: N.w3, marginTop: 2 },

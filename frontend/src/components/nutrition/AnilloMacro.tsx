@@ -165,7 +165,7 @@ export function AnilloMacro({ nombre, valor, meta }: Props) {
           <Path d={ARCO_COMPLETO} fill="none" stroke="rgba(255,255,255,0.10)"
                 strokeWidth={SW} strokeLinecap="round" />
           {/* El terreno de más allá de la meta, para que se vea antes de llegar. */}
-          <Path d={ARCO_EXCESO} fill="none" stroke="rgba(255,59,71,0.28)"
+          <Path d={ARCO_EXCESO} fill="none" stroke="rgba(255,122,31,0.28)"
                 strokeWidth={SW} strokeLinecap="round" />
           {/* El arco nace de un punto: una punta redonda no puede dibujarse más
               estrecha que ella misma, así que sin esto los primeros gramos

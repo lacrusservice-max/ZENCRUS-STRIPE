@@ -135,7 +135,7 @@ export default function Resumen() {
                   <Text style={[s.splitDes, p.desnivel > 0 && { color: RunningColors.state.loaded }]}>
                     {p.desnivel > 0 ? '+' : ''}{p.desnivel} m
                   </Text>
-                  <Cifra valor={mmss(p.segundos)} tam={12} color={mejor ? '#FF93A6' : '#fff'} />
+                  <Cifra valor={mmss(p.segundos)} tam={12} color={mejor ? '#FFA45C' : '#fff'} />
                 </View>
               )
             })}

@@ -165,7 +165,7 @@ export default function PlanDelPrograma() {
         <Animated.View entering={FadeIn.duration(400)} style={s.hero}>
           <Image source={fotoDePrograma(p)} style={StyleSheet.absoluteFill} contentFit="cover" transition={280} />
           <LinearGradient
-            colors={['rgba(5,5,6,0.35)', 'rgba(5,5,6,0.92)']}
+            colors={['rgba(5,5,5,0.35)', 'rgba(5,5,5,0.92)']}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
           />
@@ -330,7 +330,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 7, paddingVertical: 2,
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.neon.redDim,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.3)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.3)',
   },
   descargaTxt: { fontSize: 8.5, fontWeight: '800', color: Colors.neon.redCore, letterSpacing: 0.8 },
 

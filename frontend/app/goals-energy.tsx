@@ -390,7 +390,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: N.edge,
     alignItems: 'center', justifyContent: 'center',
   },
-  comidaBtnOn: { backgroundColor: 'rgba(255,31,61,0.18)', borderColor: N.red },
+  comidaBtnOn: { backgroundColor: 'rgba(255,92,0,0.18)', borderColor: N.red },
   comidaTxt: { fontSize: 17, fontWeight: '800', color: N.w2 },
   comidaTxtOn: { color: N.white },
   recalc: {

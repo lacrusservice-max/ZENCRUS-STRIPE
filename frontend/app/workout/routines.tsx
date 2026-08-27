@@ -509,7 +509,7 @@ function Portada({ rutina, posters, onEmpezar, onEditar, onBorrar }: {
         transition={300}
       />
       <LinearGradient
-        colors={['rgba(5,5,6,0.30)', 'rgba(5,5,6,0.80)', 'rgba(5,5,6,0.98)']}
+        colors={['rgba(5,5,5,0.30)', 'rgba(5,5,5,0.80)', 'rgba(5,5,5,0.98)']}
         locations={[0, 0.42, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
@@ -727,7 +727,7 @@ const ed = StyleSheet.create({
     borderRadius: BorderRadius.lg,
     borderWidth: 1, borderColor: Colors.neon.edge,
   },
-  tipoOn: { borderColor: 'rgba(255,31,61,0.45)', backgroundColor: Colors.neon.redDim },
+  tipoOn: { borderColor: 'rgba(255,92,0,0.45)', backgroundColor: Colors.neon.redDim },
   tipoTxt: { fontSize: 10, fontWeight: '700', color: Colors.neon.w3 },
 
   filaTitulo: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
@@ -751,7 +751,7 @@ const ed = StyleSheet.create({
   campoLabel: { fontSize: 9, fontWeight: '700', color: Colors.neon.w3, letterSpacing: 1 },
   campoCaja: {
     flexDirection: 'row', alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(5,5,5,0.3)',
     borderRadius: BorderRadius.md,
     paddingHorizontal: Spacing[2],
   },
@@ -781,7 +781,7 @@ const b = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: Spacing[2],
     padding: Spacing[3], marginBottom: Spacing[3],
     backgroundColor: Colors.neon.redDim,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.3)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.3)',
     borderRadius: BorderRadius.md,
   },
   libreTxt: { fontSize: Typography.fontSize.sm, color: Colors.neon.redCore, fontWeight: '700' },

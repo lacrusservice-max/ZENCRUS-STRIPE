@@ -27,7 +27,7 @@ const NEON = Colors.neon
 export const CT = {
   // ── Superficies ──────────────────────────────────────────────────────────
   /** Fondo de la consola. Un punto por encima del negro del sistema. */
-  base: '#08080A',
+  base: '#050505',
   /** Panel elevado sobre el fondo. */
   panel: 'rgba(255,255,255,0.038)',
   /** Panel en estado activo o enfocado. */
@@ -46,8 +46,8 @@ export const CT = {
   // ── Señal ────────────────────────────────────────────────────────────────
   signal: NEON.red,
   signalSoft: NEON.redSoft,
-  signalWash: 'rgba(255,31,61,0.10)',
-  signalEdge: 'rgba(255,31,61,0.42)',
+  signalWash: 'rgba(255,92,0,0.10)',
+  signalEdge: 'rgba(255,92,0,0.42)',
 
   // ── Neón ─────────────────────────────────────────────────────────────────
   // Marca los elementos que responden al toque: el filo de cada alimento y el
@@ -60,10 +60,10 @@ export const CT = {
   // existe la sombra gris de `elevation`. Por eso el neón vive del borde y del
   // filo, que se ven igual en las dos, y el halo es un extra que suma donde lo
   // hay pero cuya ausencia no rompe el diseño.
-  neonLine: 'rgba(255,31,61,0.55)',
-  neonLineHot: 'rgba(255,88,113,0.95)',
-  neonHalo: 'rgba(255,31,61,0.30)',
-  neonInner: 'rgba(255,31,61,0.07)',
+  neonLine: 'rgba(255,92,0,0.55)',
+  neonLineHot: 'rgba(255,122,31,0.95)',
+  neonHalo: 'rgba(255,92,0,0.30)',
+  neonInner: 'rgba(255,92,0,0.07)',
   /** Grosor del filo encendido a la izquierda de la fila. */
   neonEdgeWidth: 3,
 

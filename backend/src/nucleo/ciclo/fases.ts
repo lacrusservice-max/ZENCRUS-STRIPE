@@ -60,12 +60,22 @@ export const CICLO_MAX = 60
 export const SANGRADO_MINIMO = 2
 
 /**
- * Los valores de la población, para cuando no hay historial.
+ * La duración de la fase lútea, en días.
  *
- * `lutea: 14` es el número importante: la fase lútea es la parte ESTABLE del
- * ciclo, y por eso las fases se cuentan hacia atrás desde la regla prevista.
+ * Es LA constante del módulo: todo se cuenta hacia atrás desde la regla
+ * prevista porque la lútea es la parte estable del ciclo, mientras que la
+ * folicular varía muchísimo entre personas. De ahí sale `Ovulación = C − 13`.
+ *
+ * El prompt maestro la fija en 13. La literatura la sitúa entre 12 y 14; 13 es
+ * el centro y es el número con el que están calculadas las tablas de
+ * referencia del documento, así que cambiarlo aquí descuadraría esas tablas.
  */
-export const POBLACION = { duracion: 28, desviacion: 4, sangrado: 5, lutea: 14 } as const
+export const LUTEA = 13
+
+/**
+ * Los valores de la población, para cuando no hay historial.
+ */
+export const POBLACION = { duracion: 28, desviacion: 4, sangrado: 5, lutea: LUTEA } as const
 
 export interface MarcoFases {
   duracion: number
@@ -74,6 +84,8 @@ export interface MarcoFases {
   diaOvulacion: number
   /** Día en que empieza cada fase. */
   limites: Record<Fase, number>
+  /** Primer y último día de la ventana fértil: [Ov−5, Ov+1]. */
+  ventanaFertil: [number, number]
 }
 
 /**
@@ -92,20 +104,87 @@ export interface MarcoFases {
 export function marcoFases(duracion: number, diasPeriodo: number): MarcoFases {
   const dur = Math.max(CICLO_MIN, Math.min(CICLO_MAX, Math.round(duracion)))
   const periodo = Math.max(1, Math.min(10, Math.round(diasPeriodo)))
-  const diaOvulacion = Math.max(periodo + 3, Math.min(dur - 8, dur - POBLACION.lutea))
+
+  /* `Ovulación = C − 13`, acotada para que en ciclos muy cortos no caiga dentro
+     del sangrado ni deje la folicular en nada. */
+  const diaOvulacion = Math.max(periodo + 2, dur - LUTEA)
 
   return {
     duracion: dur,
     diasPeriodo: periodo,
     diaOvulacion,
+    /* La fase ovulatoria es UN día: el de la ovulación estimada.
+       La ventana fértil —seis días— es otra cosa y va aparte, porque se
+       superpone con el final de la folicular y el principio de la lútea. Meter
+       las dos ideas en el mismo tramo es lo que hacía que el arco «ovulatoria»
+       midiera seis días y la ovulación pareciera durar una semana. */
     limites: {
       menstrual: 1,
       folicular: periodo + 1,
-      // Cinco días alrededor de la ovulación: es una estimación, no un instante.
-      ovulatoria: Math.max(periodo + 1, diaOvulacion - 2),
-      lutea: diaOvulacion + 3,
+      ovulatoria: diaOvulacion,
+      lutea: diaOvulacion + 1,
     },
+    ventanaFertil: [Math.max(1, diaOvulacion - 5), Math.min(dur, diaOvulacion + 1)],
   }
+}
+
+/**
+ * ¿Cae este día de ciclo dentro de la ventana fértil?
+ *
+ * Función única, compartida por rueda, calendario y estadísticas. Reimplantarla
+ * en cada pantalla es la causa más común de que el calendario y el anillo
+ * pinten días distintos.
+ */
+export function enVentanaFertil(dia: number, marco: MarcoFases): boolean {
+  return dia >= marco.ventanaFertil[0] && dia <= marco.ventanaFertil[1]
+}
+
+/**
+ * La opacidad del degradado del sangrado.
+ *
+ * Día 1 sólido, último día muy desvanecido. Comunica de un vistazo que el flujo
+ * baja, que es información real y no decoración.
+ *
+ *     opacidad(n) = 1 − ((n−1) / (D−1)) × 0.75
+ */
+export function opacidadDegradado(diaDeSangrado: number, diasPeriodo: number): number {
+  if (diasPeriodo <= 1) return 1
+  const n = Math.max(1, Math.min(diasPeriodo, diaDeSangrado))
+  return 1 - ((n - 1) / (diasPeriodo - 1)) * 0.75
+}
+
+/** Lo registrado se ve entero; lo previsto, a media luz. */
+export const FACTOR_ESTADO = { registrado: 1, predicho: 0.55 } as const
+
+export type Regularidad = 'sin_datos' | 'muy_regular' | 'regular' | 'algo_irregular' | 'irregular'
+
+/**
+ * Cuatro niveles según la desviación estándar de las duraciones.
+ *
+ * Función única: la usan la predicción —para decidir si enseña fecha puntual o
+ * rango— y las estadísticas. Con menos de tres ciclos no se clasifica, porque
+ * una desviación calculada sobre dos números no significa nada.
+ */
+export function clasificarRegularidad(sd: number | null, ciclos: number): Regularidad {
+  if (sd === null || ciclos < 3) return 'sin_datos'
+  if (sd <= 2) return 'muy_regular'
+  if (sd <= 4) return 'regular'
+  if (sd <= 7) return 'algo_irregular'
+  return 'irregular'
+}
+
+/**
+ * Cuántos días de margen se enseñan a cada lado, según la regularidad.
+ *
+ *   Muy regular    → 0, fecha puntual
+ *   Regular        → ±2
+ *   Algo irregular → ±SD
+ *   Irregular      → ±SD, y la pantalla añade sugerencia de consulta
+ */
+export function margenSegunRegularidad(r: Regularidad, sd: number | null): number {
+  if (r === 'muy_regular') return 0
+  if (r === 'regular') return 2
+  return Math.max(2, Math.round(sd ?? POBLACION.desviacion))
 }
 
 /** La fase de un día de ciclo dentro de su marco. */

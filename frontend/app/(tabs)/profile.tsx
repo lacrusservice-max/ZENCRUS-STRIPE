@@ -496,11 +496,11 @@ const s = StyleSheet.create({
   irAMetas: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between',
     height: 48, paddingHorizontal: 15, borderRadius: 14,
-    backgroundColor: 'rgba(255,31,61,0.14)',
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.36)',
+    backgroundColor: 'rgba(255,92,0,0.14)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.36)',
   },
-  irAMetasTxt: { fontSize: 14, fontWeight: '700', color: '#FF5871' },
-  irAMetasFlecha: { fontSize: 19, color: '#FF5871', marginTop: -2 },
+  irAMetasTxt: { fontSize: 14, fontWeight: '700', color: '#FF7A1F' },
+  irAMetasFlecha: { fontSize: 19, color: '#FF7A1F', marginTop: -2 },
 
   header: {
     flexDirection: 'row', alignItems: 'center', padding: Spacing[5], gap: Spacing[4],
@@ -522,12 +522,12 @@ const s = StyleSheet.create({
     width: 22, height: 22, borderRadius: 11,
     backgroundColor: Colors.primary[500],
     alignItems: 'center', justifyContent: 'center',
-    borderWidth: 1.5, borderColor: '#080808',
+    borderWidth: 1.5, borderColor: '#050505',
   },
   levelBubble: {
     position: 'absolute', top: -2, right: -2,
     width: 22, height: 22, borderRadius: 11,
-    backgroundColor: '#080808',
+    backgroundColor: '#050505',
     borderWidth: 1.5, borderColor: Glass.cardBorder,
     alignItems: 'center', justifyContent: 'center',
   },

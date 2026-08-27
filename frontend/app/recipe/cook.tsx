@@ -371,13 +371,13 @@ const s = StyleSheet.create({
   back: {
     position: 'absolute', top: 12, left: 12,
     width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
+    backgroundColor: 'rgba(5,5,5,0.55)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
   lbl: { fontFamily: Typography.fontFamily.display, fontSize: 9, fontWeight: '800', letterSpacing: 1.9, color: N.w3, marginTop: 18, marginBottom: 9 },
 
   stepCard: {
     padding: 14, borderRadius: 16,
-    backgroundColor: N.pane, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    backgroundColor: N.pane, borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   stepHead: { flexDirection: 'row', gap: 11, alignItems: 'flex-start', marginBottom: 12 },
   stepN: {
@@ -390,7 +390,7 @@ const s = StyleSheet.create({
   timer: {
     flexDirection: 'row', alignItems: 'center', gap: 11,
     padding: 10, borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.32)', borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    backgroundColor: 'rgba(5,5,5,0.32)', borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   tRing: { width: 48, height: 48 },
   tCenter: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
@@ -410,14 +410,14 @@ const s = StyleSheet.create({
   hfBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     marginTop: 10, paddingVertical: 12, borderRadius: 12,
-    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   hfBtnTxt: { fontSize: 11, fontWeight: '800', letterSpacing: 1.2, color: N.red },
 
   mini: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     padding: 11, borderRadius: 10, marginBottom: 5,
-    backgroundColor: 'rgba(0,0,0,0.24)',
+    backgroundColor: 'rgba(5,5,5,0.24)',
   },
   miniDone: { opacity: 0.6 },
   miniN: {
@@ -453,7 +453,7 @@ const s = StyleSheet.create({
   cmds: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, justifyContent: 'center', marginBottom: 26 },
   cmd: {
     paddingVertical: 5, paddingHorizontal: 11, borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.34)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
+    backgroundColor: 'rgba(5,5,5,0.34)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
   cmdTxt: { fontSize: 11, color: N.w2 },
   hfActions: { alignSelf: 'stretch', gap: 9 },
@@ -466,17 +466,17 @@ const s = StyleSheet.create({
   // Cierre
   doneCard: {
     padding: 18, borderRadius: 18, alignItems: 'center',
-    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   doneTitle: { fontFamily: Typography.fontFamily.display, fontSize: 19, fontWeight: '800', color: N.white, letterSpacing: 0.3 },
   doneSub: { fontSize: 11.5, color: N.w2, marginTop: 5 },
   shot: {
     marginTop: 12, paddingVertical: 22, paddingHorizontal: 16, borderRadius: 16, alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.24)', borderWidth: 1, borderColor: N.edge, borderStyle: 'dashed',
+    backgroundColor: 'rgba(5,5,5,0.24)', borderWidth: 1, borderColor: N.edge, borderStyle: 'dashed',
   },
   shotIc: {
     width: 46, height: 46, borderRadius: 23, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)', marginBottom: 11,
+    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)', marginBottom: 11,
   },
   shotTitle: { fontFamily: Typography.fontFamily.display, fontSize: 13, fontWeight: '800', letterSpacing: 1.2, color: N.white, marginBottom: 5 },
   shotSub: { fontSize: 11.5, lineHeight: 17, color: N.w3, textAlign: 'center' },
@@ -484,16 +484,16 @@ const s = StyleSheet.create({
   portions: { flexDirection: 'row', gap: 6 },
   portion: {
     flex: 1, paddingVertical: 12, borderRadius: 10, alignItems: 'center',
-    backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: 1, borderColor: N.edge,
+    backgroundColor: 'rgba(5,5,5,0.3)', borderWidth: 1, borderColor: N.edge,
   },
-  portionOn: { borderColor: 'rgba(255,31,61,0.45)', backgroundColor: N.redDim },
+  portionOn: { borderColor: 'rgba(255,92,0,0.45)', backgroundColor: N.redDim },
   portionV: { fontFamily: Typography.fontFamily.display, fontSize: 14, fontWeight: '800', color: N.white },
   portionVOn: { color: N.red },
   portionL: { fontFamily: Typography.fontFamily.display, fontSize: 8.5, fontWeight: '700', letterSpacing: 0.8, color: N.w3, marginTop: 4, textTransform: 'uppercase' },
 
   adj: {
     marginTop: 10, padding: 12, borderRadius: 10,
-    backgroundColor: 'rgba(0,0,0,0.3)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
+    backgroundColor: 'rgba(5,5,5,0.3)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
   adjTxt: { fontSize: 11.5, lineHeight: 17, color: N.w3 },
   adjB: { color: N.white, fontWeight: '700' },

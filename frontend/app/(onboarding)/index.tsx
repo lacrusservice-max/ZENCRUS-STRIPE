@@ -18,8 +18,8 @@ const TOTAL_STEPS = 7
 // ── Data ──────────────────────────────────────────────────────────────────────
 
 const GOALS: { key: Goal; icon: string; emoji: string; label: string; desc: string; color: string }[] = [
-  { key: 'lose_fat',    icon: 'trending-down', emoji: '🔥', label: 'Perder grasa',    desc: 'Definición, reducir peso y porcentaje de grasa corporal',    color: '#f97316' },
-  { key: 'gain_muscle', icon: 'barbell',       emoji: '💪', label: 'Ganar músculo',   desc: 'Aumentar masa muscular, fuerza y potencia',                  color: '#FF5871' },
+  { key: 'lose_fat',    icon: 'trending-down', emoji: '🔥', label: 'Perder grasa',    desc: 'Definición, reducir peso y porcentaje de grasa corporal',    color: '#FF5C00' },
+  { key: 'gain_muscle', icon: 'barbell',       emoji: '💪', label: 'Ganar músculo',   desc: 'Aumentar masa muscular, fuerza y potencia',                  color: '#FF7A1F' },
   { key: 'maintain',   icon: 'shield-half',   emoji: '⚖️',  label: 'Mantenimiento',  desc: 'Mantener composición corporal y mejorar rendimiento',        color: '#a78bfa' },
 ]
 
@@ -91,7 +91,7 @@ function StepDot({ active, completed }: { active: boolean; completed: boolean })
       active && sdot.active,
       { transform: [{ scale }] },
     ]}>
-      {completed && <Ionicons name="checkmark" size={8} color="#000" />}
+      {completed && <Ionicons name="checkmark" size={8} color="#050505" />}
     </Animated.View>
   )
 }
@@ -681,7 +681,7 @@ export default function OnboardingScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#080808' },
+  bg: { flex: 1, backgroundColor: '#050505' },
   blob: { position: 'absolute', width: 300, height: 300, borderRadius: 9999, opacity: 0.09 },
   scroll: { paddingHorizontal: Spacing[5], paddingBottom: 120 },
 

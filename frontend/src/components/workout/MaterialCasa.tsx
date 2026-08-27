@@ -126,7 +126,7 @@ export function cuantosCon(tengo: Aparejo[]) {
 export { SIEMPRE as EJERCICIOS_SIN_MATERIAL }
 
 const s = StyleSheet.create({
-  fondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.66)', justifyContent: 'flex-end' },
+  fondo: { flex: 1, backgroundColor: 'rgba(5,5,5,0.66)', justifyContent: 'flex-end' },
   hoja: {
     maxHeight: '88%',
     backgroundColor: Colors.neon.void,
@@ -146,7 +146,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.045)',
     borderWidth: StyleSheet.hairlineWidth, borderColor: 'rgba(255,255,255,0.08)',
   },
-  filaOn: { backgroundColor: 'rgba(255,31,61,0.1)', borderColor: 'rgba(255,31,61,0.4)' },
+  filaOn: { backgroundColor: 'rgba(255,92,0,0.1)', borderColor: 'rgba(255,92,0,0.4)' },
   icono: {
     width: 36, height: 36, borderRadius: 12,
     alignItems: 'center', justifyContent: 'center',

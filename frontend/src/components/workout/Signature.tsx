@@ -156,8 +156,8 @@ export function Signature({ sessionId, series, tam = 260 }: Props) {
         <Defs>
           <RadialGradient id="nucleo" cx="50%" cy="50%" r="50%">
             <Stop offset="0%" stopColor="#FFFFFF" stopOpacity="0.16" />
-            <Stop offset="70%" stopColor="#FF1F3D" stopOpacity="0.10" />
-            <Stop offset="100%" stopColor="#FF1F3D" stopOpacity="0" />
+            <Stop offset="70%" stopColor="#FF5C00" stopOpacity="0.10" />
+            <Stop offset="100%" stopColor="#FF5C00" stopOpacity="0" />
           </RadialGradient>
         </Defs>
 

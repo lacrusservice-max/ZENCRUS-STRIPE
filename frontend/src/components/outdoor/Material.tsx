@@ -183,7 +183,7 @@ export function Boton({
       style={({ pressed }) => [p.boton, rojo && p.botonSombra, pressed && { opacity: 0.82 }, style]}
     >
       <LinearGradient
-        colors={rojo ? ['#FF5A48', RunningColors.signal.base, '#D4102F'] : ['rgba(255,255,255,0.11)', 'rgba(255,255,255,0.06)']}
+        colors={rojo ? ['#FF7A1F', RunningColors.signal.base, '#FF5C00'] : ['rgba(255,255,255,0.11)', 'rgba(255,255,255,0.06)']}
         locations={rojo ? [0, 0.54, 1] : [0, 1]}
         start={{ x: 0.15, y: 0 }}
         end={{ x: 0.85, y: 1 }}
@@ -215,7 +215,7 @@ const p = StyleSheet.create({
   },
   chipActivo: { backgroundColor: '#fff', borderColor: '#fff' },
   chipTexto: { fontSize: 10, fontWeight: '700', color: 'rgba(255,255,255,0.62)', letterSpacing: -0.05 },
-  chipTextoActivo: { color: '#0D0D12' },
+  chipTextoActivo: { color: '#0D0D10' },
   boton: {
     height: 48,
     borderRadius: 24,

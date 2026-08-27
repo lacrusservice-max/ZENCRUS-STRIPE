@@ -112,18 +112,18 @@ function Field({ label, value, onChangeText, placeholder, multiline }: { label: 
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080808' },
+  container: { flex: 1, backgroundColor: '#050505' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing[4], paddingVertical: Spacing[3], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },
 
-  notice: { flexDirection: 'row', gap: Spacing[3], backgroundColor: 'rgba(255,59,48,0.08)', borderWidth: 1, borderColor: 'rgba(255,59,48,0.22)', borderRadius: BorderRadius.lg, padding: Spacing[4], marginBottom: Spacing[6] },
+  notice: { flexDirection: 'row', gap: Spacing[3], backgroundColor: 'rgba(255,122,31,0.08)', borderWidth: 1, borderColor: 'rgba(255,122,31,0.22)', borderRadius: BorderRadius.lg, padding: Spacing[4], marginBottom: Spacing[6] },
   noticeTxt: { flex: 1, fontSize: 12.5, color: 'rgba(255,255,255,0.7)', lineHeight: 18 },
 
   sectionTitle: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff', marginBottom: Spacing[3] },
   bloodGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2], marginBottom: Spacing[5] },
   bloodChip: { paddingHorizontal: Spacing[4], paddingVertical: Spacing[2], borderRadius: BorderRadius.full, backgroundColor: Glass.card, borderWidth: 1, borderColor: Glass.cardBorder },
-  bloodChipOn: { backgroundColor: 'rgba(255,59,48,0.15)', borderColor: 'rgba(255,59,48,0.4)' },
+  bloodChipOn: { backgroundColor: 'rgba(255,122,31,0.15)', borderColor: 'rgba(255,122,31,0.4)' },
   bloodChipTxt: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.6)', fontWeight: '700' },
   bloodChipTxtOn: { color: Colors.accent.red },
 

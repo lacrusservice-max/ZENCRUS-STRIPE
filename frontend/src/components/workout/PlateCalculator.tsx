@@ -85,7 +85,7 @@ export function PlateCalculator({ peso, barraKg, onCambiarBarra, onAjustar }: Pr
                         backgroundColor: color,
                         // Los discos claros necesitan un borde o se pierden
                         // contra el panel; los oscuros no.
-                        borderColor: d.kg === 5 ? 'rgba(0,0,0,0.25)' : 'rgba(255,255,255,0.22)',
+                        borderColor: d.kg === 5 ? 'rgba(5,5,5,0.25)' : 'rgba(255,255,255,0.22)',
                       }]} />
                       <Text style={s.discoKg}>{String(d.kg).replace('.', ',')}</Text>
                     </View>
@@ -148,7 +148,7 @@ const s = StyleSheet.create({
   escena: {
     justifyContent: 'center',
     borderRadius: BorderRadius.lg,
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    backgroundColor: 'rgba(5,5,5,0.28)',
     borderWidth: 1, borderColor: Colors.neon.edge,
     paddingVertical: Spacing[3],
   },
@@ -203,7 +203,7 @@ const s = StyleSheet.create({
   ajuste: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing[2],
     backgroundColor: Colors.neon.redDim,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.3)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.3)',
     borderRadius: BorderRadius.md, padding: Spacing[3],
   },
   ajusteTxt: { flex: 1, fontSize: 11, color: Colors.neon.redCore, lineHeight: 16 },

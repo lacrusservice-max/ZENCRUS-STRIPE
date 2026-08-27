@@ -229,7 +229,7 @@ function MedidasTab({ onGoToMeasurements }: { onGoToMeasurements: () => void }) 
               const progress = getProgress(key as any)
               const change = progress?.change ?? 0
               const isGood = goodDown ? change <= 0 : change >= 0
-              const changeColor = change === 0 ? 'rgba(255,255,255,0.35)' : (isGood ? Colors.accent.green : '#FF375F')
+              const changeColor = change === 0 ? 'rgba(255,255,255,0.35)' : (isGood ? Colors.accent.green : '#FF7A1F')
               return (
                 <View key={key} style={mt.row}>
                   <Text style={mt.rowEmoji}>{emoji}</Text>

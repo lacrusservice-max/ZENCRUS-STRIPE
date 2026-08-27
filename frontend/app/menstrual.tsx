@@ -19,7 +19,7 @@ import { Screen, ScreenHeader } from '@/components/ui/Screen'
 // ── Phase colors ──────────────────────────────────────────────────────────────
 
 const PHASE_COLORS: Record<CyclePhase, string> = {
-  menstrual: '#FF375F',
+  menstrual: '#FF7A1F',
   follicular: Colors.accent.green,
   ovulation: Colors.accent.yellow,
   luteal: Colors.secondary[400],
@@ -192,9 +192,9 @@ const ld = StyleSheet.create({
   moodEmoji: { fontSize: 26 },
   flowRow: { flexDirection: 'row', gap: Spacing[2] },
   flowChip: { flex: 1, alignItems: 'center', paddingVertical: Spacing[3], borderRadius: BorderRadius.md, backgroundColor: Colors.dark.surface, borderWidth: 1.5, borderColor: Colors.dark.border },
-  flowChipOn: { borderColor: '#FF375F', backgroundColor: '#FF375F20' },
+  flowChipOn: { borderColor: '#FF7A1F', backgroundColor: '#FF375F20' },
   flowTxt: { fontSize: Typography.fontSize.xs, fontWeight: '600', color: Colors.dark.textSecondary, textAlign: 'center' },
-  flowTxtOn: { color: '#FF375F' },
+  flowTxtOn: { color: '#FF7A1F' },
   symptomsGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: Spacing[2] },
   symptomChip: { paddingHorizontal: Spacing[3], paddingVertical: Spacing[2], borderRadius: BorderRadius.full, backgroundColor: Colors.dark.surface, borderWidth: 1, borderColor: Colors.dark.border },
   symptomChipOn: { backgroundColor: Colors.primary[900] + '40', borderColor: Colors.primary[500] },
@@ -346,13 +346,13 @@ function MenstrualScreenContent() {
                       </TouchableOpacity>
                     ) : (
                       <TouchableOpacity
-                        style={[s.periodBtn, { borderColor: '#FF375F' }]}
+                        style={[s.periodBtn, { borderColor: '#FF7A1F' }]}
                         onPress={() => Alert.alert('¿Inició tu período?', 'Esto registrará el inicio de un nuevo ciclo.', [
                           { text: 'Cancelar', style: 'cancel' },
                           { text: 'Sí, inició', onPress: () => logPeriodStart() },
                         ])}
                       >
-                        <Text style={[s.periodBtnTxt, { color: '#FF375F' }]}>🩸 Inició mi período</Text>
+                        <Text style={[s.periodBtnTxt, { color: '#FF7A1F' }]}>🩸 Inició mi período</Text>
                       </TouchableOpacity>
                     )}
                   </View>
@@ -675,7 +675,7 @@ const s = StyleSheet.create({
   noCycleEmoji: { fontSize: 48 },
   noCycleTxt: { fontSize: Typography.fontSize.lg, fontWeight: '800', color: Colors.dark.text },
   noCycleSub: { fontSize: Typography.fontSize.sm, color: Colors.dark.textSecondary, textAlign: 'center', lineHeight: 20 },
-  noCycleBtn: { backgroundColor: '#FF375F', borderRadius: BorderRadius.lg, paddingHorizontal: Spacing[6], paddingVertical: Spacing[3], marginTop: Spacing[2] },
+  noCycleBtn: { backgroundColor: '#FF7A1F', borderRadius: BorderRadius.lg, paddingHorizontal: Spacing[6], paddingVertical: Spacing[3], marginTop: Spacing[2] },
   noCycleBtnTxt: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: '#fff' },
   historyCard: { backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.lg, padding: Spacing[4], borderWidth: 1, borderColor: Colors.dark.border, marginBottom: Spacing[3] },
   historyHeader: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3] },
@@ -692,6 +692,6 @@ const s = StyleSheet.create({
   featureList: { width: '100%', gap: Spacing[2] },
   featureRow: { padding: Spacing[3], backgroundColor: Colors.dark.surface, borderRadius: BorderRadius.md, borderWidth: 1, borderColor: Colors.dark.border },
   featureTxt: { fontSize: Typography.fontSize.sm, color: Colors.dark.text },
-  enableBtn: { backgroundColor: '#FF375F', borderRadius: BorderRadius.lg, paddingHorizontal: Spacing[8], paddingVertical: Spacing[4] },
+  enableBtn: { backgroundColor: '#FF7A1F', borderRadius: BorderRadius.lg, paddingHorizontal: Spacing[8], paddingVertical: Spacing[4] },
   enableBtnTxt: { fontSize: Typography.fontSize.base, fontWeight: '900', color: '#fff' },
 })

@@ -181,7 +181,7 @@ function EnCurso({ inscripcion }: { inscripcion: Inscripcion }) {
         transition={300}
       />
       <LinearGradient
-        colors={['rgba(5,5,6,0.28)', 'rgba(5,5,6,0.80)', 'rgba(5,5,6,0.98)']}
+        colors={['rgba(5,5,5,0.28)', 'rgba(5,5,5,0.80)', 'rgba(5,5,5,0.98)']}
         locations={[0, 0.42, 1]}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
@@ -250,7 +250,7 @@ function Tarjeta({ programa: p }: { programa: ProgramaCabecera }) {
     >
       <Image source={fotoDePrograma(p)} style={StyleSheet.absoluteFill} contentFit="cover" transition={260} />
       <LinearGradient
-        colors={['rgba(5,5,6,0.35)', 'rgba(5,5,6,0.88)']}
+        colors={['rgba(5,5,5,0.35)', 'rgba(5,5,5,0.88)']}
         style={StyleSheet.absoluteFill}
         pointerEvents="none"
       />
@@ -336,12 +336,12 @@ const s = StyleSheet.create({
     padding: Spacing[4],
     borderRadius: 18,
     backgroundColor: Colors.neon.redDim,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.3)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.3)',
   },
   montarIcono: {
     width: 40, height: 40, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,31,61,0.16)',
+    backgroundColor: 'rgba(255,92,0,0.16)',
   },
   montarTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: Colors.neon.white },
   montarSub: { fontSize: 11, color: Colors.neon.w2, marginTop: 2, lineHeight: 16 },
@@ -357,10 +357,10 @@ const s = StyleSheet.create({
   pastilla: {
     paddingHorizontal: Spacing[2] + 2, paddingVertical: 4,
     borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(5,5,5,0.45)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
   },
-  pastillaOn: { backgroundColor: Colors.neon.redDim, borderColor: 'rgba(255,31,61,0.45)' },
+  pastillaOn: { backgroundColor: Colors.neon.redDim, borderColor: 'rgba(255,92,0,0.45)' },
   pastillaTxt: { fontSize: 10, fontWeight: '700', color: Colors.neon.w2 },
   tarjetaTitulo: { fontSize: 21, fontWeight: '800', color: Colors.neon.white, letterSpacing: -0.5 },
   tarjetaSub: { fontSize: 12, color: Colors.neon.w2, marginTop: 3, lineHeight: 17 },

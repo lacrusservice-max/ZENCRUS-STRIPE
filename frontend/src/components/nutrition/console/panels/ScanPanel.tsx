@@ -345,7 +345,7 @@ function Visor({ estado, linterna, onLinterna, onLeer }: {
 
       <Tap onPress={onLinterna} scaleTo={0.9} haptic="light">
         <View style={[s.linterna, linterna && s.linternaOn]}>
-          <ZIcon name="bolt" size={15} color={linterna ? '#0A0A0D' : CT.ink} weight={2} />
+          <ZIcon name="bolt" size={15} color={linterna ? '#0D0D10' : CT.ink} weight={2} />
         </View>
       </Tap>
 
@@ -550,7 +550,7 @@ function Aportar({ codigo, onCancelar, onGuardado }: {
             <CameraView ref={camara} style={StyleSheet.absoluteFill} facing="back" />
             <Tap onPress={retratar} scaleTo={0.92} haptic="medium">
               <View style={s.disparador}>
-                <ZIcon name="aperture" size={17} color="#0A0A0D" weight={2} />
+                <ZIcon name="aperture" size={17} color="#0D0D10" weight={2} />
                 <Text style={s.disparadorTxt}>Foto de la tabla</Text>
               </View>
             </Tap>
@@ -822,7 +822,7 @@ const VISOR_ALTO = 268
 /** Márgenes del escudo. La ventana es lo que queda libre en el centro. */
 const ESCUDO_V = 62
 const ESCUDO_H = 30
-const ESCUDO = 'rgba(5,5,6,0.62)'
+const ESCUDO = 'rgba(5,5,5,0.62)'
 
 const s = StyleSheet.create({
   scroll: { paddingBottom: 28 },
@@ -830,7 +830,7 @@ const s = StyleSheet.create({
   // Visor con cámara
   visor: {
     height: VISOR_ALTO, marginHorizontal: 18, marginTop: 14,
-    borderRadius: CT.r.md, overflow: 'hidden', backgroundColor: '#000',
+    borderRadius: CT.r.md, overflow: 'hidden', backgroundColor: '#050505',
   },
   escudoArriba: { position: 'absolute', top: 0, left: 0, right: 0, height: ESCUDO_V, backgroundColor: ESCUDO },
   escudoAbajo:  { position: 'absolute', bottom: 0, left: 0, right: 0, height: ESCUDO_V, backgroundColor: ESCUDO },
@@ -855,7 +855,7 @@ const s = StyleSheet.create({
   pieFila: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   pieTxt: {
     fontSize: 11.5, color: CT.ink2, fontWeight: '600',
-    textShadowColor: 'rgba(0,0,0,0.85)', textShadowRadius: 4,
+    textShadowColor: 'rgba(5,5,5,0.85)', textShadowRadius: 4,
   },
 
   // Visor sin cámara
@@ -904,14 +904,14 @@ const s = StyleSheet.create({
 
   etiqueta: {
     height: 190, marginHorizontal: 18, marginTop: 12,
-    borderRadius: CT.r.md, overflow: 'hidden', backgroundColor: '#000',
+    borderRadius: CT.r.md, overflow: 'hidden', backgroundColor: '#050505',
     alignItems: 'center', justifyContent: 'flex-end', paddingBottom: 12,
   },
   disparador: {
     height: 40, paddingHorizontal: 18, borderRadius: CT.r.pill,
     flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: CT.ink,
   },
-  disparadorTxt: { fontSize: 12.5, fontWeight: '800', color: '#0A0A0D' },
+  disparadorTxt: { fontSize: 12.5, fontWeight: '800', color: '#0D0D10' },
   etiquetaOtra: {
     width: 36, height: 36, borderRadius: 999,
     alignItems: 'center', justifyContent: 'center',
@@ -941,7 +941,7 @@ const s = StyleSheet.create({
     borderRadius: CT.r.sm, backgroundColor: CT.signalWash,
     borderWidth: 1, borderColor: CT.signalEdge,
   },
-  chequeoError: { backgroundColor: 'rgba(255,31,61,0.16)' },
+  chequeoError: { backgroundColor: 'rgba(255,92,0,0.16)' },
   chequeoTxt: { flex: 1, fontSize: 11.5, color: CT.ink2, lineHeight: 16 },
 
   explica: { paddingHorizontal: 18, paddingTop: 14 },

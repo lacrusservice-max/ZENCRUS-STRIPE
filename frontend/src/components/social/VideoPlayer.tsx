@@ -152,20 +152,20 @@ const v = StyleSheet.create({
   centro: { ...StyleSheet.absoluteFillObject, alignItems: 'center', justifyContent: 'center' },
   play: {
     width: 58, height: 58, borderRadius: 29,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(5,5,5,0.5)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.28)',
     alignItems: 'center', justifyContent: 'center',
   },
   sonido: {
     position: 'absolute', bottom: 10, right: 10,
     width: 28, height: 28, borderRadius: 14,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(5,5,5,0.55)',
     alignItems: 'center', justifyContent: 'center',
   },
   duracion: {
     position: 'absolute', bottom: 10, left: 10,
     paddingHorizontal: 7, paddingVertical: 3, borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(5,5,5,0.55)',
   },
   duracionTxt: { color: '#fff', fontSize: 10.5, fontWeight: '700' },
 })

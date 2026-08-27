@@ -117,12 +117,12 @@ export default function ExerciseScreen() {
               : <View style={s.sinMedio}><Ionicons name="barbell-outline" size={34} color={T.ink3} /></View>}
 
           <LinearGradient
-            colors={['rgba(5,5,7,0.72)', 'transparent']}
+            colors={['rgba(5,5,5,0.72)', 'transparent']}
             style={s.veloArriba}
             pointerEvents="none"
           />
           <LinearGradient
-            colors={['transparent', 'rgba(5,5,7,0.92)']}
+            colors={['transparent', 'rgba(5,5,5,0.92)']}
             style={s.veloAbajo}
             pointerEvents="none"
           />
@@ -332,7 +332,7 @@ const s = StyleSheet.create({
   altImg: { width: '100%', aspectRatio: 1, position: 'relative' },
   altCasa: {
     position: 'absolute', top: 5, right: 5, width: 16, height: 16, borderRadius: 8,
-    backgroundColor: 'rgba(0,0,0,0.55)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(5,5,5,0.55)', alignItems: 'center', justifyContent: 'center',
   },
   altNombre: { fontSize: 11, fontWeight: '700', lineHeight: 14, paddingHorizontal: 8, paddingTop: 7 },
   altMat: { fontSize: 9.5, paddingHorizontal: 8, paddingTop: 2 },

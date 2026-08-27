@@ -168,7 +168,7 @@ function AddStepsModal({ visible, onClose }: { visible: boolean; onClose: () => 
 }
 
 const asp = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', justifyContent: 'flex-end' },
+  overlay: { flex: 1, backgroundColor: 'rgba(5,5,5,0.7)', justifyContent: 'flex-end' },
   card: { backgroundColor: Colors.dark.surface, borderTopLeftRadius: 20, borderTopRightRadius: 20, padding: Spacing[6] },
   title: { fontSize: Typography.fontSize.lg, fontWeight: '800', color: Colors.dark.text, marginBottom: 4 },
   sub: { fontSize: Typography.fontSize.sm, color: Colors.dark.textSecondary, marginBottom: Spacing[4] },
@@ -341,7 +341,7 @@ export default function HealthTrackerScreen() {
         title="Tracker de salud"
         subtitle="Pasos, sueño y frecuencia cardiaca"
         icon="heart"
-        color="#FF5871"
+        color="#FF7A1F"
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: Spacing[10] }}>
@@ -528,7 +528,7 @@ const s = StyleSheet.create({
   header: { flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing[5], paddingVertical: Spacing[3], borderBottomWidth: 1, borderBottomColor: Colors.dark.border },
   trendRow: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], paddingVertical: Spacing[3], borderTopWidth: 1, borderTopColor: Colors.dark.border },
   trendTxt: { flex: 1, fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.65)', lineHeight: 17 },
-  medicalLink: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: 'rgba(255,59,48,0.06)', borderWidth: 1, borderColor: 'rgba(255,59,48,0.2)', borderRadius: BorderRadius.lg, padding: Spacing[4], marginHorizontal: Spacing[5], marginBottom: Spacing[4] },
+  medicalLink: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], backgroundColor: 'rgba(255,122,31,0.06)', borderWidth: 1, borderColor: 'rgba(255,122,31,0.2)', borderRadius: BorderRadius.lg, padding: Spacing[4], marginHorizontal: Spacing[5], marginBottom: Spacing[4] },
   medicalLinkTxt: { flex: 1, fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#fff' },
   medicalLinkArrow: { fontSize: 20, color: 'rgba(255,255,255,0.3)' },
   back: { fontSize: 28, color: Colors.dark.text, marginRight: Spacing[2] },

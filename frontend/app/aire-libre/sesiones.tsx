@@ -230,7 +230,7 @@ const s = StyleSheet.create({
   ct: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, marginBottom: 6 },
   chips: { flexDirection: 'row', gap: 6, marginBottom: 12, flexWrap: 'wrap' },
   nombre: { fontSize: 14.5, fontWeight: '700', color: '#fff', letterSpacing: -0.35, flex: 1 },
-  resumen: { fontSize: 11.5, color: '#FF93A6', fontWeight: '600' },
+  resumen: { fontSize: 11.5, color: '#FFA45C', fontWeight: '600' },
   porque: { fontSize: 11.5, color: 'rgba(255,255,255,0.5)', lineHeight: 17.5 },
   avisoVoz: { fontSize: 11.5, color: 'rgba(255,255,255,0.55)', lineHeight: 17.5 },
   fuerte: { color: '#fff', fontWeight: '700' },

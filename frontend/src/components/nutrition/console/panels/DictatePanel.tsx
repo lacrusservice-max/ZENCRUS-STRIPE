@@ -325,12 +325,12 @@ const s = StyleSheet.create({
     fontSize: 11, fontWeight: '800', letterSpacing: 1.1,
     textTransform: 'uppercase', color: CT.ink3,
   },
-  modeTxtOn: { color: '#0A0A0D' },
+  modeTxtOn: { color: '#0D0D10' },
 
   // Sintaxis
   syntax: {
     padding: 13, borderRadius: CT.r.sm, marginBottom: 12,
-    backgroundColor: 'rgba(0,0,0,0.28)',
+    backgroundColor: 'rgba(5,5,5,0.28)',
     borderWidth: 1, borderColor: CT.hairline, borderStyle: 'dashed',
   },
   syntaxLbl: {
@@ -363,7 +363,7 @@ const s = StyleSheet.create({
   buffer: {
     marginHorizontal: 11, marginBottom: 11, padding: 11,
     minHeight: 78, borderRadius: CT.r.sm,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(5,5,5,0.3)',
     borderWidth: 1, borderColor: CT.hairline,
     fontSize: 13.5, lineHeight: 20, color: CT.ink,
   },

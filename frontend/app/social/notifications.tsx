@@ -37,7 +37,7 @@ import { TabBar } from '@/constants/layout'
 
 /** Qué dice cada tipo de aviso y con qué icono. */
 const TEXTO: Record<S.NotificationType, { verbo: string; icon: any; color: string }> = {
-  like:            { verbo: 'le gustó tu publicación', icon: 'heart',        color: '#FF1F3D' },
+  like:            { verbo: 'le gustó tu publicación', icon: 'heart',        color: '#FF5C00' },
   comment:         { verbo: 'comentó tu publicación',  icon: 'chatbubble',   color: '#1F9DFF' },
   follow:          { verbo: 'empezó a seguirte',        icon: 'person-add',   color: '#12B981' },
   follow_request:  { verbo: 'quiere seguirte',          icon: 'person-add',   color: '#F5B31F' },

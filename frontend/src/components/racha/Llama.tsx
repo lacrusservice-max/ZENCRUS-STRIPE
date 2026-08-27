@@ -36,7 +36,7 @@ interface Props {
   fondo?: string
 }
 
-export function Llama({ tam, neon, claro, apagada, fondo = '#08080C' }: Props) {
+export function Llama({ tam, neon, claro, apagada, fondo = '#0D0D10' }: Props) {
   /* Cada instancia necesita su propio id de degradado: con uno compartido, la
      primera llama que se monte define el color de todas las demás. */
   const id = `llama${contador++}`

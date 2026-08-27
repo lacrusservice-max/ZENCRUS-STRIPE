@@ -340,7 +340,7 @@ export default function EditProfileScreen() {
               value={privada}
               onValueChange={v => { Haptics.selectionAsync().catch(() => {}); setPrivada(v) }}
               trackColor={{ false: T.ink4, true: `${T.accent}88` }}
-              thumbColor={privada ? T.accent : '#f4f4f5'}
+              thumbColor={privada ? T.accent : '#f2f3f5'}
             />
           </View>
 
@@ -365,7 +365,7 @@ const s = StyleSheet.create({
   portadaTxt: { fontSize: 12, textAlign: 'center' },
   portadaCargando: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: 'rgba(0,0,0,0.45)', alignItems: 'center', justifyContent: 'center',
+    backgroundColor: 'rgba(5,5,5,0.45)', alignItems: 'center', justifyContent: 'center',
   },
   portadaBotones: { flexDirection: 'row', gap: 8, marginTop: 10, marginBottom: 26 },
   foto: { flexDirection: 'row', alignItems: 'center', gap: 20, marginBottom: 26 },

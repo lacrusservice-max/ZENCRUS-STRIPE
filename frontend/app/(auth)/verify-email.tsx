@@ -159,7 +159,7 @@ export default function VerifyEmailScreen() {
 }
 
 const s = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#080808' },
+  bg: { flex: 1, backgroundColor: '#050505' },
   blob: { position: 'absolute', borderRadius: 9999, opacity: 0.12, width: 260, height: 260 },
   header: {
     paddingHorizontal: Spacing[5], paddingTop: Spacing[2], paddingBottom: Spacing[3],

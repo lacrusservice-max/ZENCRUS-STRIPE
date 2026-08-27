@@ -553,7 +553,7 @@ export default function NutritionScreen() {
       {/* Difuminado bajo la barra flotante: el contenido se desvanece en vez de
           quedar cortado por la píldora. */}
       <LinearGradient
-        colors={['rgba(5,5,6,0)', 'rgba(5,5,6,0.92)', '#050506']}
+        colors={['rgba(5,5,5,0)', 'rgba(5,5,5,0.92)', '#050505']}
         style={s.scrim}
         pointerEvents="none"
       />
@@ -840,7 +840,7 @@ const s = StyleSheet.create({
     flex: 1, alignItems: 'center', paddingTop: 9, paddingBottom: 10, borderRadius: 13,
     backgroundColor: NEON.pane,
   },
-  dayOn: { backgroundColor: 'rgba(255,31,61,0.16)' },
+  dayOn: { backgroundColor: 'rgba(255,92,0,0.16)' },
   dayNum: { fontSize: 13.5, fontWeight: '800', color: NEON.w2, fontVariant: ['tabular-nums'] },
   dayNumOn: { color: NEON.white },
   dayLbl: { fontSize: 8, fontWeight: '800', letterSpacing: 1.2, color: NEON.w3, marginTop: 3 },
@@ -955,7 +955,7 @@ const s = StyleSheet.create({
     backgroundColor: NEON.pane,
     borderWidth: 1, borderColor: 'transparent',
   },
-  vasoOn: { backgroundColor: 'rgba(255,31,61,0.16)', borderColor: 'rgba(255,31,61,0.36)' },
+  vasoOn: { backgroundColor: 'rgba(255,92,0,0.16)', borderColor: 'rgba(255,92,0,0.36)' },
   macro: {
     flex: 1, paddingVertical: 10, paddingHorizontal: 11,
     borderRadius: 14, backgroundColor: NEON.pane,
@@ -1005,13 +1005,13 @@ const s = StyleSheet.create({
     marginHorizontal: 20, marginBottom: 9, padding: 14,
     borderRadius: 18, backgroundColor: NEON.pane,
   },
-  mealEmpty: { backgroundColor: 'rgba(255,31,61,0.06)' },
+  mealEmpty: { backgroundColor: 'rgba(255,92,0,0.06)' },
   mealTop: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   mealMark: {
     width: 40, height: 40, borderRadius: 13, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.07)',
   },
-  mealMarkEmpty: { backgroundColor: 'rgba(255,31,61,0.13)' },
+  mealMarkEmpty: { backgroundColor: 'rgba(255,92,0,0.13)' },
   mealName: { fontSize: 13.5, fontWeight: '700', color: NEON.white, letterSpacing: -0.2 },
   mealSub: { fontSize: 11, color: NEON.w3, marginTop: 3 },
   mealKcal: { fontSize: 15, fontWeight: '800', color: NEON.white, fontVariant: ['tabular-nums'] },
@@ -1056,14 +1056,14 @@ const s = StyleSheet.create({
   // ZENA
   zena: {
     flexDirection: 'row', gap: 12, marginHorizontal: 20, marginTop: 22, padding: 15,
-    borderRadius: 18, backgroundColor: 'rgba(255,31,61,0.09)',
+    borderRadius: 18, backgroundColor: 'rgba(255,92,0,0.09)',
   },
   zenaMark: {
     width: 28, height: 28, borderRadius: 9, backgroundColor: NEON.red,
     alignItems: 'center', justifyContent: 'center',
   },
   zenaName: { fontSize: 9.5, fontWeight: '800', letterSpacing: 1.6, color: NEON.redSoft, marginBottom: 4 },
-  zenaTxt: { fontSize: 12.5, lineHeight: 19, color: 'rgba(255,225,230,0.92)' },
+  zenaTxt: { fontSize: 12.5, lineHeight: 19, color: 'rgba(242,243,245,0.92)' },
 
   // Herramientas
   tools: { paddingHorizontal: 20, gap: 8 },

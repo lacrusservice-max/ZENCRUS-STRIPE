@@ -141,7 +141,7 @@ export default function Records() {
                     transition={300}
                   />
                   <LinearGradient
-                    colors={['rgba(5,5,6,0.30)', 'rgba(5,5,6,0.75)', 'rgba(5,5,6,0.97)']}
+                    colors={['rgba(5,5,5,0.30)', 'rgba(5,5,5,0.75)', 'rgba(5,5,5,0.97)']}
                     locations={[0, 0.45, 1]}
                     style={StyleSheet.absoluteFill}
                     pointerEvents="none"
@@ -309,7 +309,7 @@ const s = StyleSheet.create({
     flexGrow: 1, minWidth: '30%',
     paddingVertical: Spacing[2], paddingHorizontal: Spacing[3],
     borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(5,5,5,0.3)',
   },
   marcaValor: { fontSize: Typography.fontSize.base, fontWeight: '800', color: Colors.neon.white },
   marcaLabel: { fontSize: 9.5, color: Colors.neon.w3, marginTop: 1 },

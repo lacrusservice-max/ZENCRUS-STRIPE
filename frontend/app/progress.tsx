@@ -229,7 +229,7 @@ const xp = StyleSheet.create({
   row: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', marginBottom: 4 },
   left: { flexDirection: 'row', alignItems: 'center', gap: 10, flex: 1 },
   emoji: { fontSize: 28 },
-  name: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#f4f4f5' },
+  name: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#f2f3f5' },
   levelBadge: { backgroundColor: `${Colors.primary[500]}20`, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1, borderWidth: 1, borderColor: `${Colors.primary[500]}35` },
   levelTxt: { fontSize: 9, fontWeight: '700', color: Colors.primary[400] },
   xpTxt: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.4)' },
@@ -278,12 +278,12 @@ function ChallengesCard() {
 
 const ch = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[4], paddingBottom: Spacing[3] },
-  title: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#f4f4f5' },
+  title: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#f2f3f5' },
   link: { fontSize: Typography.fontSize.xs, color: Colors.primary[400], fontWeight: '700' },
   body: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[4], gap: Spacing[3] },
   item: { flexDirection: 'row', alignItems: 'center', gap: 10 },
   dot: { width: 36, height: 36, borderRadius: 12, backgroundColor: `${Colors.primary[500]}18`, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: `${Colors.primary[500]}28` },
-  itemTitle: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: '#f4f4f5', flex: 1 },
+  itemTitle: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: '#f2f3f5', flex: 1 },
   xpBadge: { backgroundColor: `${Colors.accent.yellow}18`, borderRadius: 6, paddingHorizontal: 6, paddingVertical: 1 },
   xpTxt: { fontSize: 9, fontWeight: '700', color: Colors.accent.yellow },
   sub: { fontSize: 9, color: 'rgba(255,255,255,0.3)' } })
@@ -335,11 +335,11 @@ function DuelsCard() {
 
 const du = StyleSheet.create({
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[4], paddingBottom: Spacing[3] },
-  title: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#f4f4f5' },
+  title: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: '#f2f3f5' },
   link: { fontSize: Typography.fontSize.xs, color: Colors.primary[400], fontWeight: '700' },
   body: { paddingHorizontal: Spacing[4], paddingBottom: Spacing[4], gap: Spacing[3] },
   item: { backgroundColor: 'rgba(255,255,255,0.03)', borderRadius: 12, padding: Spacing[3], borderWidth: 1, borderColor: G.border },
-  metric: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: '#f4f4f5' },
+  metric: { fontSize: Typography.fontSize.xs, fontWeight: '700', color: '#f2f3f5' },
   days: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.35)' },
   player: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.5)', fontWeight: '600' },
   xp: { fontSize: 9, color: Colors.accent.yellow, fontWeight: '600', marginTop: 4 } })
@@ -464,7 +464,7 @@ const qa = StyleSheet.create({
     alignItems: 'center',
     gap: 6,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: '#050505',
     shadowOffset: { width: 0, height: 3 },
     shadowOpacity: 0.2,
     shadowRadius: 8,
@@ -651,7 +651,7 @@ export default function ProgressScreen() {
             <View style={s.scoreGrid}>
               <ScorePill label="Nutrición"   val={todayScore?.nutrition  ?? 0} max={25} color={Colors.primary[400]} />
               <ScorePill label="Entreno"     val={todayScore?.workout    ?? 0} max={25} color={Colors.secondary[400]} />
-              <ScorePill label="Hidratación" val={todayScore?.hydration  ?? 0} max={20} color="#FF5871" />
+              <ScorePill label="Hidratación" val={todayScore?.hydration  ?? 0} max={20} color="#FF7A1F" />
               <ScorePill label="Sueño"       val={todayScore ? todayScore.sleep : null} max={15} color={Colors.accent.orange} />
               <ScorePill label="Bienestar"   val={todayScore ? todayScore.mood  : null} max={15} color={Colors.accent.green} />
             </View>
@@ -713,11 +713,11 @@ export default function ProgressScreen() {
             <View style={act.card}>
               <View style={act.highlight} pointerEvents="none" />
               <View style={act.top}>
-                <Ionicons name="water" size={20} color="#FF5871" />
+                <Ionicons name="water" size={20} color="#FF7A1F" />
                 <Text style={act.bigVal}>{waterGlasses}<Text style={act.bigSub}>/8</Text></Text>
               </View>
               <Text style={act.label}>Hidratación</Text>
-              <GlassProgress pct={waterGlasses / 8} color="#FF5871" height={4} style={{ marginBottom: 8 }} />
+              <GlassProgress pct={waterGlasses / 8} color="#FF7A1F" height={4} style={{ marginBottom: 8 }} />
               <View style={act.btnRow}>
                 <TouchableOpacity style={act.btn} onPress={removeWater} activeOpacity={0.7}>
                   <Ionicons name="remove" size={14} color="rgba(255,255,255,0.6)" />
@@ -841,7 +841,7 @@ const act = StyleSheet.create({
     padding: 14,
     marginRight: 10,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: '#050505',
     shadowOffset: { width: 0, height: 5 },
     shadowOpacity: 0.25,
     shadowRadius: 14,
@@ -853,7 +853,7 @@ const act = StyleSheet.create({
     height: 1,
     backgroundColor: G.highlight },
   top: { flexDirection: 'row', alignItems: 'center', marginBottom: 6 },
-  bigVal: { fontSize: 26, fontWeight: '900', color: '#f4f4f5', marginLeft: 8 },
+  bigVal: { fontSize: 26, fontWeight: '900', color: '#f2f3f5', marginLeft: 8 },
   bigSub: { fontSize: 13, color: 'rgba(255,255,255,0.35)', fontWeight: '500' },
   label: { fontSize: 10, color: 'rgba(255,255,255,0.4)', fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.5 },
   status: { fontSize: Typography.fontSize.xs, fontWeight: '700', marginTop: 2 },
@@ -875,7 +875,7 @@ const act = StyleSheet.create({
 // ── Main styles ────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080808' },
+  container: { flex: 1, backgroundColor: '#050505' },
   content: { paddingBottom: 140 },
   // Header
   header: {
@@ -886,7 +886,7 @@ const s = StyleSheet.create({
     paddingTop: Spacing[3],
     paddingBottom: Spacing[4] },
   brand: { fontFamily: Typography.fontFamily.displaySemiBold, fontSize: 11, color: Colors.primary[500], letterSpacing: 3.5, marginBottom: 4 },
-  greeting: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize['2xl'] + 4, letterSpacing: 0.2, color: '#f4f4f5' },
+  greeting: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize['2xl'] + 4, letterSpacing: 0.2, color: '#f2f3f5' },
   // Hero unificado
   heroWrap: {
     backgroundColor: 'rgba(255,255,255,0.045)', borderWidth: 1, borderColor: 'rgba(96,165,250,0.18)',
@@ -895,7 +895,7 @@ const s = StyleSheet.create({
   heroTop: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   heroInfo: { flex: 1 },
   heroBrand: { fontSize: 9, fontWeight: '900', color: Colors.primary[400], letterSpacing: 2, marginBottom: 6 },
-  heroMsg: { fontSize: Typography.fontSize.base, fontWeight: '700', color: '#f4f4f5', lineHeight: 21, marginBottom: 10 },
+  heroMsg: { fontSize: Typography.fontSize.base, fontWeight: '700', color: '#f2f3f5', lineHeight: 21, marginBottom: 10 },
   heroMetaRow: { flexDirection: 'row', gap: 8, flexWrap: 'wrap' },
   heroMetaChip: {
     flexDirection: 'row', alignItems: 'center', gap: 4,
@@ -939,7 +939,7 @@ const s = StyleSheet.create({
     gap: Spacing[1] },
   // Nutrition
   calSection: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', padding: Spacing[4], paddingBottom: Spacing[3] },
-  calBig: { fontSize: 38, fontWeight: '900', color: '#f4f4f5', lineHeight: 42 },
+  calBig: { fontSize: 38, fontWeight: '900', color: '#f2f3f5', lineHeight: 42 },
   calSub: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.35)', marginTop: 2 },
   macroCol: { alignItems: 'flex-end', gap: 4, paddingTop: 4 },
   macroRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },

@@ -194,7 +194,7 @@ function GoalComposer({ visible, onClose, onSave }: { visible: boolean; onClose:
 }
 
 const s = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080808' },
+  container: { flex: 1, backgroundColor: '#050505' },
   header: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingHorizontal: Spacing[4], paddingVertical: Spacing[3], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
   backBtn: { width: 40, height: 40, alignItems: 'center', justifyContent: 'center' },
   headerTitle: { fontFamily: Typography.fontFamily.display, fontSize: Typography.fontSize.lg + 2, color: '#fff' },
@@ -224,8 +224,8 @@ const s = StyleSheet.create({
   daysRemaining: { fontSize: Typography.fontSize.xs, color: 'rgba(255,255,255,0.4)', fontWeight: '600' } })
 
 const cm = StyleSheet.create({
-  overlay: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)', justifyContent: 'flex-end' },
-  sheet: { backgroundColor: '#111', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderColor: Glass.cardBorder, maxHeight: '85%' },
+  overlay: { flex: 1, backgroundColor: 'rgba(5,5,5,0.6)', justifyContent: 'flex-end' },
+  sheet: { backgroundColor: '#0d0d10', borderTopLeftRadius: 24, borderTopRightRadius: 24, borderTopWidth: 1, borderColor: Glass.cardBorder, maxHeight: '85%' },
   head: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: Spacing[4], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
   cancel: { fontSize: Typography.fontSize.sm, color: 'rgba(255,255,255,0.6)', fontWeight: '600' },
   title: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#fff' },

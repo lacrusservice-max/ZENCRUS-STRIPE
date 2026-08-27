@@ -250,11 +250,11 @@ const am = StyleSheet.create({
     paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999,
     backgroundColor: 'rgba(255,255,255,0.93)',
   },
-  recipeTimeTxt: { fontSize: 9.5, fontWeight: '800', color: '#0A0A0D' },
+  recipeTimeTxt: { fontSize: 9.5, fontWeight: '800', color: '#0D0D10' },
   recipeKcal: {
     position: 'absolute', top: 8, right: 8,
     paddingVertical: 3, paddingHorizontal: 9, borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.72)',
+    backgroundColor: 'rgba(5,5,5,0.72)',
   },
   recipeKcalTxt: { fontSize: 10, fontWeight: '800', color: '#fff' },
   recipeCap: { position: 'absolute', left: 11, right: 11, bottom: 9 },

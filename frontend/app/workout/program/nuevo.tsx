@@ -322,7 +322,7 @@ export default function TuSemana() {
           transition={420}
         />
         <LinearGradient
-          colors={['rgba(5,5,6,0.45)', 'rgba(5,5,6,0.72)', 'rgba(5,5,6,0.97)', C.neon.void]}
+          colors={['rgba(5,5,5,0.45)', 'rgba(5,5,5,0.72)', 'rgba(5,5,5,0.97)', C.neon.void]}
           locations={[0, 0.4, 0.82, 1]}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
@@ -770,7 +770,7 @@ const s = StyleSheet.create({
     borderRadius: BorderRadius.lg, alignItems: 'center', justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.07)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.12)',
   },
-  sitioOn: { backgroundColor: 'rgba(255,31,61,0.22)', borderColor: C.neon.red },
+  sitioOn: { backgroundColor: 'rgba(255,92,0,0.22)', borderColor: C.neon.red },
   sitioTxt: { fontSize: T.fontSize.sm, fontWeight: '700', color: C.neon.w3 },
   sitioTxtOn: { color: '#fff' },
 
@@ -788,7 +788,7 @@ const s = StyleSheet.create({
     borderRadius: BorderRadius.xl, backgroundColor: 'rgba(255,255,255,0.06)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.11)', overflow: 'hidden',
   },
-  tarjetaVacia: { borderStyle: 'dashed', borderColor: 'rgba(255,31,61,0.4)' },
+  tarjetaVacia: { borderStyle: 'dashed', borderColor: 'rgba(255,92,0,0.4)' },
   tarjetaCab: { flexDirection: 'row', alignItems: 'center', gap: Spacing[3], padding: Spacing[3] },
   tarjetaDia: { fontSize: 9.5, fontWeight: '800', color: 'rgba(255,255,255,0.5)', letterSpacing: 1.1 },
   tarjetaNombre: { fontSize: T.fontSize.sm, fontWeight: '800', color: '#fff', marginTop: 2 },
@@ -816,7 +816,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.09)', borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
     alignItems: 'center', justifyContent: 'center',
   },
-  semanaBotonOn: { backgroundColor: 'rgba(255,31,61,0.22)', borderColor: C.neon.red },
+  semanaBotonOn: { backgroundColor: 'rgba(255,92,0,0.22)', borderColor: C.neon.red },
   semanaTxt: { fontSize: T.fontSize.base, fontWeight: '800', color: 'rgba(255,255,255,0.8)' },
   semanaTxtOn: { color: '#fff' },
   semanaUnidad: { fontSize: 9, fontWeight: '700', color: 'rgba(255,255,255,0.45)' },
@@ -835,9 +835,9 @@ const s = StyleSheet.create({
   siguienteTxt: { fontSize: T.fontSize.base, fontWeight: '800', color: '#fff', textAlign: 'center', lineHeight: 20 },
   siguienteTxtOff: { color: 'rgba(255,255,255,0.55)' },
 
-  modalFondo: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(0,0,0,0.62)' },
+  modalFondo: { flex: 1, justifyContent: 'flex-end', backgroundColor: 'rgba(5,5,5,0.62)' },
   modal: {
-    maxHeight: '82%', backgroundColor: '#0d0d0f',
+    maxHeight: '82%', backgroundColor: '#0d0d10',
     borderTopLeftRadius: 26, borderTopRightRadius: 26,
     borderTopWidth: 1, borderColor: C.neon.edge,
     padding: Spacing[4], gap: Spacing[3],

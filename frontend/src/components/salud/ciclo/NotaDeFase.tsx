@@ -77,14 +77,14 @@ export function NotaDeFase({ donde }: { donde: Donde }) {
   return (
     <Pressable
       onPress={() => { elegir(); router.push('/salud/ciclo') }}
-      style={({ pressed }) => [s.caja, { borderColor: `${tono.color}44` }, pressed && s.pulsado]}
+      style={({ pressed }) => [s.caja, { borderColor: `${tono.arco}44` }, pressed && s.pulsado]}
       accessibilityRole="button"
       accessibilityLabel={`Fase ${tono.etiqueta}, día ${prediccion.diaDeCiclo}. Abrir el ciclo.`}
     >
-      <View style={[s.punto, { backgroundColor: tono.color }]} />
+      <View style={[s.punto, { backgroundColor: tono.arco }]} />
       <View style={s.texto}>
         <Text style={s.cabecera}>
-          <Text style={{ color: tono.color }}>{tono.etiqueta.toUpperCase()}</Text>
+          <Text style={{ color: tono.arco }}>{tono.etiqueta.toUpperCase()}</Text>
           <Text style={s.dia}>{`  ·  DÍA ${prediccion.diaDeCiclo}`}</Text>
         </Text>
         <Text style={s.frase}>{TEXTO[donde][fase]}</Text>

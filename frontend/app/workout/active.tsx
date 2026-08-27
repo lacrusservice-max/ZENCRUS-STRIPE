@@ -868,7 +868,7 @@ export default function SesionActiva() {
                 transition={220}
               />
               <LinearGradient
-                colors={['rgba(5,5,6,0.55)', 'rgba(5,5,6,0.88)']}
+                colors={['rgba(5,5,5,0.55)', 'rgba(5,5,5,0.88)']}
                 style={StyleSheet.absoluteFill}
                 pointerEvents="none"
               />
@@ -1177,7 +1177,7 @@ function Resumen({ datos, marcas = [], titulo, modo, posters = [] }: {
             transition={320}
           />
           <LinearGradient
-            colors={['rgba(5,5,6,0.25)', 'rgba(5,5,6,0.78)', 'rgba(5,5,6,0.98)']}
+            colors={['rgba(5,5,5,0.25)', 'rgba(5,5,5,0.78)', 'rgba(5,5,5,0.98)']}
             locations={[0, 0.45, 1]}
             style={StyleSheet.absoluteFill}
             pointerEvents="none"
@@ -1290,7 +1290,7 @@ const r = StyleSheet.create({
   marcas: {
     gap: Spacing[2],
     backgroundColor: Colors.neon.redDim,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.3)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.3)',
     borderRadius: BorderRadius.lg, padding: Spacing[4],
   },
   marcasTitulo: { fontSize: 10, fontWeight: '800', color: Colors.neon.redCore, letterSpacing: 1.3 },
@@ -1326,7 +1326,7 @@ const b = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: Spacing[2],
     padding: Spacing[3], marginBottom: Spacing[3],
     backgroundColor: Colors.neon.redDim,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.3)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.3)',
     borderRadius: BorderRadius.md,
   },
   libreTxt: { fontSize: Typography.fontSize.sm, color: Colors.neon.redCore, fontWeight: '700' },
@@ -1354,7 +1354,7 @@ const s = StyleSheet.create({
     paddingHorizontal: Spacing[3], paddingVertical: 7,
     borderRadius: BorderRadius.full,
     backgroundColor: Colors.neon.redDim,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.35)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.35)',
   },
   botonTerminarTxt: { fontSize: 12, fontWeight: '800', color: Colors.neon.redCore },
 
@@ -1415,7 +1415,7 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 6,
     alignSelf: 'flex-start',
     paddingVertical: 5, paddingHorizontal: Spacing[2] + 2,
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(5,5,5,0.45)',
     borderRadius: BorderRadius.full,
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.14)',
     marginTop: 6,
@@ -1468,7 +1468,7 @@ const s = StyleSheet.create({
   descansoPanel: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     paddingTop: Spacing[5], paddingBottom: Spacing[6],
-    backgroundColor: 'rgba(5,5,6,0.97)',
+    backgroundColor: 'rgba(5,5,5,0.97)',
     borderTopWidth: 1, borderTopColor: Colors.neon.edge,
   },
 

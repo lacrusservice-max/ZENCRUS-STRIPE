@@ -35,7 +35,7 @@ const CHECK = 'M7.6 12.3 L10.6 15.2 L16.4 9.1'
 export function VerifiedSeal({
   size = 16,
   color = '#FFFFFF',
-  checkColor = '#08080A',
+  checkColor = '#050505',
   delay = 0,
 }: {
   size?: number

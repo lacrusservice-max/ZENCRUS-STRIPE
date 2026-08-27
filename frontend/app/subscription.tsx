@@ -335,11 +335,11 @@ const s = StyleSheet.create({
   disclaimer:         { fontSize: 11, color: Colors.dark.textTertiary, textAlign: 'center', lineHeight: 16 },
 
   // Cancel
-  cancelBtn:          { backgroundColor: Glass.errorTint, borderWidth: 1, borderColor: 'rgba(255,59,48,0.22)', borderRadius: BorderRadius.lg, paddingVertical: Spacing[4], alignItems: 'center', marginTop: Spacing[4] },
+  cancelBtn:          { backgroundColor: Glass.errorTint, borderWidth: 1, borderColor: 'rgba(255,122,31,0.22)', borderRadius: BorderRadius.lg, paddingVertical: Spacing[4], alignItems: 'center', marginTop: Spacing[4] },
   cancelBtnTxt:       { color: Colors.accent.red, fontSize: Typography.fontSize.sm, fontWeight: '700' },
 
   // Modal de confirmación previa al pago
-  modalOverlay:       { flex: 1, backgroundColor: 'rgba(0,0,0,0.7)', alignItems: 'center', justifyContent: 'center', padding: Spacing[6] },
+  modalOverlay:       { flex: 1, backgroundColor: 'rgba(5,5,5,0.7)', alignItems: 'center', justifyContent: 'center', padding: Spacing[6] },
   modalCard:          { width: '100%', maxWidth: 380, backgroundColor: Colors.dark.surface, borderWidth: 1, borderColor: Colors.dark.border, borderRadius: BorderRadius['2xl'], padding: Spacing[6], alignItems: 'center' },
   modalClose:         { position: 'absolute', top: Spacing[3], right: Spacing[3], width: 32, height: 32, alignItems: 'center', justifyContent: 'center' },
   modalLogo:          { width: 96, height: 40, marginTop: Spacing[2], marginBottom: Spacing[5] },

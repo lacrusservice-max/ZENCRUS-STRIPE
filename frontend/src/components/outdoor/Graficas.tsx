@@ -334,7 +334,7 @@ export function Recorrido({
 
         return (
           <Group>
-            <Path path={trazo} style="stroke" strokeWidth={grosor + 3.4} strokeCap="round" strokeJoin="round" color="rgba(0,0,0,0.6)" />
+            <Path path={trazo} style="stroke" strokeWidth={grosor + 3.4} strokeCap="round" strokeJoin="round" color="rgba(5,5,5,0.6)" />
             <Group>
               <Path path={trazo} style="stroke" strokeWidth={grosor} strokeCap="round" strokeJoin="round">
                 <SkGradient start={vec(pts[0].x, pts[0].y)} end={vec(pts[pts.length - 1].x, pts[pts.length - 1].y)}

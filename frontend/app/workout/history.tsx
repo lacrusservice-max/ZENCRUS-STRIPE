@@ -281,7 +281,7 @@ function Portada({ sesion }: { sesion: Sesion }) {
           transition={300}
         />
         <LinearGradient
-          colors={['rgba(5,5,6,0.25)', 'rgba(5,5,6,0.72)', 'rgba(5,5,6,0.97)']}
+          colors={['rgba(5,5,5,0.25)', 'rgba(5,5,5,0.72)', 'rgba(5,5,5,0.97)']}
           locations={[0, 0.45, 1]}
           style={StyleSheet.absoluteFill}
           pointerEvents="none"
@@ -407,7 +407,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.neon.edge,
     backgroundColor: Colors.neon.pane,
   },
-  filtroOn: { borderColor: 'rgba(255,31,61,0.45)', backgroundColor: Colors.neon.redDim },
+  filtroOn: { borderColor: 'rgba(255,92,0,0.45)', backgroundColor: Colors.neon.redDim },
   filtroTxt: { fontSize: 11, fontWeight: '700', color: Colors.neon.w3 },
   filtroTxtOn: { color: Colors.neon.white },
 

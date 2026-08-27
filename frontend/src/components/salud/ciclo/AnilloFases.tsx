@@ -81,7 +81,7 @@ export function AnilloFases({ marco, diaDeCiclo, fase, subtitulo }: {
               marcador de hoy quedaría partido por una línea de puntos. */}
           <Circle
             cx={CX} cy={CY} r={R - GROSOR / 2 - 9}
-            stroke={FASE.ovulatoria.color} strokeOpacity={0.45}
+            stroke={FASE.ovulatoria.arco} strokeOpacity={0.45}
             strokeWidth={2} strokeDasharray="2 7" strokeLinecap="round"
             fill="none"
           />
@@ -89,7 +89,7 @@ export function AnilloFases({ marco, diaDeCiclo, fase, subtitulo }: {
             <Path
               key={t.fase}
               d={arco(t.desde + HUECO_GRADOS / 2, t.hasta - HUECO_GRADOS / 2)}
-              stroke={FASE[t.fase].color}
+              stroke={FASE[t.fase].arco}
               strokeWidth={GROSOR}
               strokeLinecap="round"
               fill="none"
@@ -112,7 +112,7 @@ export function AnilloFases({ marco, diaDeCiclo, fase, subtitulo }: {
           <View
             style={[s.pildora, {
               left: pos.x, top: pos.y,
-              backgroundColor: FASE[fase].color,
+              backgroundColor: FASE[fase].arco,
             }]}
             pointerEvents="none"
           >

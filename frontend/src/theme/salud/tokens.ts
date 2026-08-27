@@ -37,14 +37,14 @@ export type { Phase }
 // ── BASE · invariante ───────────────────────────────────────────────────────
 
 export const base = {
-  void:     '#050507',  // fondo absoluto
-  surface1: '#0C0D11',  // superficie elevada 1
-  surface2: '#14161C',  // superficie elevada 2
-  surface3: '#1D2028',  // superficie elevada 3 (interactiva)
-  hairline: '#262A34',  // divisores — nunca sombras para separar
+  void:     '#050505',  // fondo absoluto
+  surface1: '#0D0D10',  // superficie elevada 1
+  surface2: '#17181C',  // superficie elevada 2
+  surface3: '#17181C',  // superficie elevada 3 (interactiva)
+  hairline: '#2A2C32',  // divisores — nunca sombras para separar
   textHi:   '#F2F4F8',
-  textMid:  '#9AA1B0',
-  textLow:  '#5D6472',
+  textMid:  '#A1A3A9',
+  textLow:  '#5C5F66',
   danger:   '#FF4D4D',
   warn:     '#FFB020',
   ok:       '#29C48D',
@@ -78,36 +78,36 @@ export interface PhaseTokens {
  */
 export const PHASES: Record<Phase, PhaseTokens> = {
   menstrual: {
-    accent:      '#B3184C',
-    accentSoft:  '#2A0A16',
-    accentGlow:  'rgba(179,24,76,0.32)',
+    accent:      '#B33D00',
+    accentSoft:  '#0D0D10',
+    accentGlow:  'rgba(179,61,0,0.32)',
     luminance:   0.62,
     motionScale: 0.65,
     density:     0.85,
     label:       'Menstrual',
   },
   folicular: {
-    accent:      '#E0326E',
-    accentSoft:  '#33101F',
-    accentGlow:  'rgba(224,50,110,0.34)',
+    accent:      '#FF5C00',
+    accentSoft:  '#17181C',
+    accentGlow:  'rgba(255,92,0,0.34)',
     luminance:   0.82,
     motionScale: 0.90,
     density:     0.95,
     label:       'Folicular',
   },
   ovulatoria: {
-    accent:      '#FF4D8F',
-    accentSoft:  '#3B1425',
-    accentGlow:  'rgba(255,77,143,0.44)',
+    accent:      '#FFA45C',
+    accentSoft:  '#2A2C32',
+    accentGlow:  'rgba(255,164,92,0.44)',
     luminance:   1.00,
     motionScale: 1.00,
     density:     1.00,
     label:       'Ovulatoria',
   },
   lutea: {
-    accent:      '#C4436B',
-    accentSoft:  '#2E1220',
-    accentGlow:  'rgba(196,67,107,0.30)',
+    accent:      '#FF7A1F',
+    accentSoft:  '#17181C',
+    accentGlow:  'rgba(255,122,31,0.30)',
     luminance:   0.74,
     motionScale: 0.78,
     density:     0.92,

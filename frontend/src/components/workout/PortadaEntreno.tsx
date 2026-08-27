@@ -933,7 +933,7 @@ function FilaDia({ d, ultimo, semana }: { d: DiaDeLaSemana; ultimo: boolean; sem
 
 export const Velo = () => (
   <LinearGradient
-    colors={['rgba(5,5,6,0.28)', 'rgba(5,5,6,0.80)', 'rgba(5,5,6,0.98)']}
+    colors={['rgba(5,5,5,0.28)', 'rgba(5,5,5,0.80)', 'rgba(5,5,5,0.98)']}
     locations={[0, 0.42, 1]}
     style={StyleSheet.absoluteFill}
     pointerEvents="none"
@@ -1015,7 +1015,7 @@ const s = StyleSheet.create({
     padding: Spacing[3],
     borderRadius: BorderRadius.md,
     backgroundColor: Colors.neon.redDim,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   descargaTxt: { flex: 1, fontSize: 11, color: Colors.neon.w2, lineHeight: 16 },
 
@@ -1043,12 +1043,12 @@ const s = StyleSheet.create({
     padding: Spacing[4],
     borderRadius: 18,
     backgroundColor: Colors.neon.redDim,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   montarIcono: {
     width: 40, height: 40, borderRadius: 20,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,31,61,0.16)',
+    backgroundColor: 'rgba(255,92,0,0.16)',
   },
   montarTitulo: { fontSize: Typography.fontSize.sm, fontWeight: '800', color: Colors.neon.white },
   montarSub: { fontSize: 11, color: Colors.neon.w2, marginTop: 2, lineHeight: 16 },
@@ -1160,7 +1160,7 @@ const m = StyleSheet.create({
   nombre: { fontSize: Typography.fontSize.sm, fontWeight: '700', color: Colors.neon.white },
   sub: { fontSize: 11, color: Colors.neon.w3, marginTop: 1 },
 
-  pendiente: { borderWidth: 1.5, borderColor: 'rgba(255,31,61,0.55)' },
+  pendiente: { borderWidth: 1.5, borderColor: 'rgba(255,92,0,0.55)' },
 
   hoyPastilla: {
     paddingHorizontal: 7, paddingVertical: 3,
@@ -1174,7 +1174,7 @@ const m = StyleSheet.create({
   pendientePastilla: {
     paddingHorizontal: 7, paddingVertical: 3,
     borderRadius: BorderRadius.full,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.55)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.55)',
   },
   pendienteTxt: { fontSize: 8.5, fontWeight: '800', color: Colors.neon.redSoft, letterSpacing: 0.8 },
 })

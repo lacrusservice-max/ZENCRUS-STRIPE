@@ -31,20 +31,66 @@ import type { Phase } from '@/features/salud/ciclo/fases'
 /* ── Las cuatro fases ───────────────────────────────────────────────────── */
 
 export interface TonoFase {
-  /** El trazo del anillo y el punto de la leyenda. */
-  color: string
-  /** Fondo suave para píldoras y celdas. */
-  suave: string
-  /** Cómo se llama en pantalla. */
+  /**
+   * El arco del anillo y el punto de la leyenda.
+   *
+   * En la ventana fértil el anillo usa violeta sólido mientras el calendario
+   * usa lila claro: es la misma fase tratada con el detalle que permite cada
+   * componente, y el prompt maestro lo dice explícitamente.
+   */
+  arco: string
+  /** El relleno de una casilla de calendario. */
+  celda: string
+  /**
+   * El mismo color, oscurecido lo justo para leerse como TEXTO sobre blanco.
+   *
+   * El documento no da estos valores porque solo define rellenos, y un lila
+   * `#D9CCF5` de 12 px sobre fondo blanco no se lee. Son derivados del color de
+   * fase, no colores nuevos: la regla de oro sigue intacta.
+   */
+  texto: string
   etiqueta: string
 }
 
+/**
+ * Los cuatro colores de fase. Única fuente de verdad.
+ *
+ * Vienen del prompt maestro y sustituyen a los del mockup: rojo `#D93B3B`,
+ * lila `#D9CCF5`, violeta `#8B5CF6` y celeste `#AEE0F0`.
+ */
 export const FASE: Record<Phase, TonoFase> = {
-  menstrual:  { color: '#EA6666', suave: '#FDECEC', etiqueta: 'Menstrual' },
-  folicular:  { color: '#FCAE5A', suave: '#FFF1E0', etiqueta: 'Folicular' },
-  ovulatoria: { color: '#4ED2D2', suave: '#E0F7F7', etiqueta: 'Ovulación' },
-  lutea:      { color: '#B49CE4', suave: '#F0EBFC', etiqueta: 'Lútea' },
+  menstrual:  { arco: '#D93B3B', celda: '#D93B3B', texto: '#B32E2E', etiqueta: 'Menstrual' },
+  folicular:  { arco: '#D9CCF5', celda: '#EFE9FB', texto: '#7A6AAE', etiqueta: 'Folicular' },
+  ovulatoria: { arco: '#8B5CF6', celda: '#D9CCF5', texto: '#7A4FD6', etiqueta: 'Ovulación' },
+  lutea:      { arco: '#AEE0F0', celda: '#E4F4FA', texto: '#3F8FA8', etiqueta: 'Lútea' },
 }
+
+/** El día pico de fertilidad: más intenso que el resto de la ventana. */
+export const PICO_FERTIL = { celda: '#B49CE8', arco: '#8B5CF6' } as const
+
+/**
+ * Los colores de categoría de los badges del calendario.
+ *
+ * Nutrición y piel comparten verde a propósito: es lo que dice el documento, y
+ * las dos hablan de lo mismo —lo que entra y cómo se refleja fuera—.
+ */
+export const CATEGORIA = {
+  sintomas: '#E4525F',
+  animo: '#E9711B',
+  energia: '#2FA9AC',
+  nutricion: '#1F9E6A',
+  entrenamiento: '#6C4FD9',
+  piel: '#1F9E6A',
+  vidaSexual: '#D6538F',
+} as const
+
+/** El orden de prioridad al recortar a tres badges por casilla. */
+export const ORDEN_CATEGORIAS = [
+  'sintomas', 'animo', 'energia', 'nutricion', 'entrenamiento', 'piel',
+] as const
+
+/** El borde de «hoy», en cualquier pantalla. */
+export const ACENTO_HOY = '#6C4FD9'
 
 /* ── Los acentos funcionales ────────────────────────────────────────────── */
 

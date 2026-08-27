@@ -56,10 +56,10 @@ type IconName = React.ComponentProps<typeof Ionicons>['name']
  * corta en seco contra la pantalla y el bloque parece un recorte pegado.
  */
 const DEGRADADOS: Record<string, [string, string, string]> = {
-  hoy:    ['#FF1F3D', '#C50E28', '#0D0E12'],
-  habito: ['#A81238', '#560C22', '#0D0E12'],
-  ciclo:  ['#A81460', '#530C31', '#0D0E12'],
-  cuerpo: ['#93123C', '#4A0C1E', '#0D0E12'],
+  hoy:    ['#FF5C00', '#B33D00', '#0D0D10'],
+  habito: ['#FF7A1F', '#B33D00', '#0D0D10'],
+  ciclo:  ['#FFA45C', '#B33D00', '#0D0D10'],
+  cuerpo: ['#B33D00', '#2A2C32', '#0D0D10'],
 }
 
 interface Puerta {
@@ -241,13 +241,13 @@ function Bloque({ p }: { p: Puerta }) {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#08080A' },
+  root: { flex: 1, backgroundColor: '#050505' },
   safe: { flex: 1 },
   scroll: { paddingBottom: 130 },
 
   head: { paddingHorizontal: Spacing[5], paddingTop: Spacing[4], paddingBottom: Spacing[5] },
   eyebrow: {
-    fontFamily: 'Rajdhani_700Bold', fontSize: 11, color: '#FF1F3D',
+    fontFamily: 'Rajdhani_700Bold', fontSize: 11, color: '#FF5C00',
     letterSpacing: 2.8, marginBottom: Spacing[2],
   },
   titulo: {
@@ -267,7 +267,7 @@ const s = StyleSheet.create({
     position: 'absolute', left: 18, top: 15,
     flexDirection: 'row', alignItems: 'baseline', gap: 4,
     paddingHorizontal: 11, paddingVertical: 5,
-    borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.30)',
+    borderRadius: 999, backgroundColor: 'rgba(5,5,5,0.30)',
   },
   pastillaCifra: {
     fontFamily: 'GeistMono_500Medium', fontSize: 15, color: '#fff',

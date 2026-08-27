@@ -34,7 +34,7 @@ import { useHabitsStore } from '@/store/habitsStore'
 import { hoyLocal } from '@/utils/fechas'
 import { elegir, confirmar, logro } from '@/utils/haptica'
 
-const ROJO = '#FF1F3D'
+const ROJO = '#FF5C00'
 
 const NOMBRE_MOMENTO = { manana: 'Mañana', tarde: 'Tarde', noche: 'Noche' } as const
 
@@ -224,7 +224,7 @@ export default function Sesion() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#08080A' },
+  root: { flex: 1, backgroundColor: '#050505' },
   safe: { flex: 1, paddingHorizontal: 26, paddingBottom: 26, alignItems: 'center' },
   pulsado: { opacity: 0.8 },
 

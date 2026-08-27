@@ -274,7 +274,7 @@ const s = StyleSheet.create({
     borderWidth: 1, borderColor: Colors.neon.edge,
     backgroundColor: Colors.neon.pane,
   },
-  chipOn: { borderColor: 'rgba(255,31,61,0.45)', backgroundColor: Colors.neon.redDim },
+  chipOn: { borderColor: 'rgba(255,92,0,0.45)', backgroundColor: Colors.neon.redDim },
   txt: { fontSize: 12, fontWeight: '700', color: Colors.neon.w3 },
   txtOn: { color: Colors.neon.white },
 })

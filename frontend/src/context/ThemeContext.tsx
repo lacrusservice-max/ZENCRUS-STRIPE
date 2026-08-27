@@ -6,7 +6,7 @@ export interface AppTokens {
   bg: string
   bgSurface: string
   bgElevated: string
-  // Accent (red en dark, azul #0F448B en light)
+  // Accent (naranja #FF5C00 en dark, azul #0F448B en light)
   accent: string
   accentSoft: string
   accentBorder: string
@@ -35,12 +35,12 @@ export interface AppTokens {
 
 const DARK: AppTokens = {
   isDark: true,
-  bg:           '#070709',
-  bgSurface:    '#141414',
-  bgElevated:   '#1c1c1e',
-  accent:       '#FF1F3D',
-  accentSoft:   'rgba(255,31,61,0.14)',
-  accentBorder: 'rgba(255,31,61,0.28)',
+  bg:           '#050505',
+  bgSurface:    '#0d0d10',
+  bgElevated:   '#17181c',
+  accent:       '#FF5C00',
+  accentSoft:   'rgba(255,92,0,0.14)',
+  accentBorder: 'rgba(255,92,0,0.28)',
   ink:          '#FFFFFF',
   ink2:         'rgba(255,255,255,0.60)',
   ink3:         'rgba(255,255,255,0.35)',
@@ -53,7 +53,7 @@ const DARK: AppTokens = {
   tabBorder:    'rgba(255,255,255,0.07)',
   tabHighlight: 'rgba(255,255,255,0.14)',
   tabBlurTint:  'dark',
-  shadow:       '#000000',
+  shadow:       '#050505',
   statusBar:    'light',
   screenOverlay: 'rgba(6,6,12,0.45)',
 }

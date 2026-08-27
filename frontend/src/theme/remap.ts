@@ -1,12 +1,12 @@
 // Motor de remapeo de color dark → light.
 //
-// Toda la app está escrita con la paleta oscura literal (negro + rojo #FF1F3D)
+// Toda la app está escrita con la paleta oscura literal (negro + naranja #FF5C00)
 // dentro de StyleSheet.create, que se evalúa una sola vez al importar el módulo
 // y por eso NO puede leer un hook de React. En vez de reescribir 1900+ literales
 // en 67 archivos, el tema claro se deriva de la paleta oscura con dos reglas:
 //
 //   1. Los grises (blanco ↔ negro) invierten su luminosidad.
-//   2. Los rojos rotan al azul de marca #0F448B conservando su claridad relativa.
+//   2. Los naranjas rotan al azul de marca #0F448B conservando su claridad relativa.
 //
 // El alpha siempre se conserva, así los cristales y bordes translúcidos siguen
 // funcionando. Los colores semánticos (verde/ámbar) mantienen su tono y solo se
@@ -112,8 +112,9 @@ const COOL_BIAS_H = 220
 const COOL_BIAS_S = 0.14
 
 function isRedFamily(h: number, s: number): boolean {
-  // Rojos/rosas saturados: el rojo de marca vive en ~351°, sus variantes entre 340–15°.
-  return s > 0.35 && (h >= 335 || h <= 18)
+  // Naranjas de marca: el primario vive en ~22°, sus paradas entre 20° y 26°.
+  // El tope en 30° deja fuera el dorado de la racha (39°), que no es la marca.
+  return s > 0.35 && (h >= 335 || h <= 30)
 }
 
 /** Convierte un color de la paleta oscura a su equivalente en tema claro. */
@@ -124,7 +125,7 @@ export function toLight(input: string): string {
   const { h, s, l } = rgbToHsl(c.r, c.g, c.b)
 
   // 1. Familia roja → SIEMPRE el azul de marca exacto, sin variantes.
-  // Todo lo que era rojo en el tema oscuro es #0F448B en el claro; lo único que
+  // Todo lo que es naranja en el tema oscuro es #0F448B en el claro; lo único que
   // se conserva es el alpha, para que los tintes y bordes translúcidos sigan
   // funcionando como washes del mismo azul.
   if (isRedFamily(h, s)) {

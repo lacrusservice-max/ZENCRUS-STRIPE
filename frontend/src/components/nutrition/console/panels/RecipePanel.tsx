@@ -679,7 +679,7 @@ const s = StyleSheet.create({
   dBack: {
     position: 'absolute', top: 12, left: 14,
     width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
+    backgroundColor: 'rgba(5,5,5,0.55)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
   dCap: { position: 'absolute', left: 18, right: 18, bottom: 12 },
   dTitle: {
@@ -692,13 +692,13 @@ const s = StyleSheet.create({
     borderRadius: 14, marginBottom: 8, overflow: 'hidden',
     backgroundColor: N.pane, borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
-  accOn: { borderColor: 'rgba(255,31,61,0.28)' },
+  accOn: { borderColor: 'rgba(255,92,0,0.28)' },
   accHead: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
   accMark: {
     width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
     backgroundColor: N.paneHi, borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
-  accMarkOn: { backgroundColor: N.redDim, borderColor: 'rgba(255,31,61,0.28)' },
+  accMarkOn: { backgroundColor: N.redDim, borderColor: 'rgba(255,92,0,0.28)' },
   accTitle: {
     fontFamily: Typography.fontFamily.display,
     fontSize: 12, fontWeight: '800', letterSpacing: 1, color: N.white, textTransform: 'uppercase',
@@ -713,13 +713,13 @@ const s = StyleSheet.create({
   splitTxt: { fontSize: 10, color: N.w3 },
 
   quad: { flexDirection: 'row', gap: 5 },
-  quadItem: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.32)', alignItems: 'center' },
+  quadItem: { flex: 1, paddingVertical: 8, borderRadius: 8, backgroundColor: 'rgba(5,5,5,0.32)', alignItems: 'center' },
   quadV: { fontFamily: Typography.fontFamily.display, fontSize: 13, fontWeight: '800', color: N.white },
   quadL: { fontFamily: Typography.fontFamily.display, fontSize: 7.5, fontWeight: '700', letterSpacing: 1, color: N.w3, marginTop: 2 },
 
   seg: {
     flexDirection: 'row', gap: 4, padding: 3, marginBottom: 10,
-    borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 999, backgroundColor: 'rgba(5,5,5,0.35)',
     borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
   segItem: { flex: 1, paddingVertical: 7, borderRadius: 999, alignItems: 'center' },
@@ -728,7 +728,7 @@ const s = StyleSheet.create({
   segTxtOn: { color: N.void },
 
   realBox: {
-    padding: 11, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.3)',
+    padding: 11, borderRadius: 10, backgroundColor: 'rgba(5,5,5,0.3)',
     borderWidth: 1, borderColor: N.edge, borderStyle: 'dashed',
   },
   realLbl: { fontFamily: Typography.fontFamily.display, fontSize: 8, fontWeight: '800', letterSpacing: 1.6, color: N.w3, marginBottom: 8 },
@@ -755,7 +755,7 @@ const s = StyleSheet.create({
   cookBtn: {
     flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8,
     marginTop: 8, paddingVertical: 13, borderRadius: 14,
-    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   cookTxt: { fontFamily: Typography.fontFamily.display, fontSize: 11.5, fontWeight: '800', letterSpacing: 1.2, color: N.red },
 
@@ -775,7 +775,7 @@ const s = StyleSheet.create({
   navTxt: { fontFamily: Typography.fontFamily.display, fontSize: 11, fontWeight: '800', letterSpacing: 1, color: N.w3, textTransform: 'uppercase' },
   navTxtOn: { color: N.void },
 
-  today: { marginHorizontal: 20, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)' },
+  today: { marginHorizontal: 20, borderRadius: 20, overflow: 'hidden', borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)' },
   todayCap: { position: 'absolute', left: 14, right: 14, bottom: 12 },
   todayPin: {
     flexDirection: 'row', alignItems: 'center', gap: 5, alignSelf: 'flex-start',
@@ -789,7 +789,7 @@ const s = StyleSheet.create({
   chip: {
     flexDirection: 'row', alignItems: 'center', gap: 5,
     paddingVertical: 5, paddingHorizontal: 10, borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.6)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
+    backgroundColor: 'rgba(5,5,5,0.6)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
   chipTxt: { fontFamily: Typography.fontFamily.display, fontSize: 11, fontWeight: '800', color: N.white },
   chipTime: { backgroundColor: 'rgba(255,255,255,0.94)', borderColor: 'transparent' },
@@ -798,11 +798,11 @@ const s = StyleSheet.create({
   missing: {
     flexDirection: 'row', alignItems: 'center', gap: 10,
     marginHorizontal: 20, marginTop: 10, padding: 12, borderRadius: 14,
-    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   missingIc: {
     width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(5,5,5,0.35)',
   },
   missingTitle: { fontFamily: Typography.fontFamily.display, fontSize: 12, fontWeight: '800', letterSpacing: 0.6, color: N.red, textTransform: 'uppercase' },
   missingSub: { fontSize: 11.5, color: N.w2, marginTop: 2 },
@@ -825,7 +825,7 @@ const s = StyleSheet.create({
   cardKcal: {
     position: 'absolute', top: 7, right: 7,
     paddingVertical: 3, paddingHorizontal: 8, borderRadius: 999,
-    backgroundColor: 'rgba(0,0,0,0.72)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
+    backgroundColor: 'rgba(5,5,5,0.72)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
   cardKcalTxt: { fontFamily: Typography.fontFamily.display, fontSize: 9.5, fontWeight: '800', color: N.white },
   cardMiss: {
@@ -839,7 +839,7 @@ const s = StyleSheet.create({
 
   batchCard: {
     marginHorizontal: 20, marginBottom: 10, padding: 14, borderRadius: 18,
-    backgroundColor: N.pane, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    backgroundColor: N.pane, borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   batchHead: { flexDirection: 'row', alignItems: 'center', gap: 11, marginBottom: 11 },
   batchMark: {
@@ -851,8 +851,8 @@ const s = StyleSheet.create({
   batchCount: { fontFamily: Typography.fontFamily.display, fontSize: 15, fontWeight: '800', color: N.white },
   propose: {
     flexDirection: 'row', gap: 9, alignItems: 'flex-start',
-    padding: 11, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.3)',
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)', borderStyle: 'dashed',
+    padding: 11, borderRadius: 10, backgroundColor: 'rgba(5,5,5,0.3)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)', borderStyle: 'dashed',
   },
   proposeTxt: { flex: 1, fontSize: 11.5, lineHeight: 17, color: N.w2 },
   proposeB: { color: N.white, fontWeight: '700' },
@@ -882,7 +882,7 @@ const s = StyleSheet.create({
   commMeta: { fontSize: 10, color: N.w3, marginTop: 1 },
   saveBtn: {
     paddingVertical: 6, paddingHorizontal: 12, borderRadius: 999,
-    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   saveTxt: { fontFamily: Typography.fontFamily.display, fontSize: 9.5, fontWeight: '800', letterSpacing: 1, color: N.red },
   commTitle: { fontFamily: Typography.fontFamily.display, fontSize: 13.5, fontWeight: '700', color: N.white, marginTop: 10, marginBottom: 3 },

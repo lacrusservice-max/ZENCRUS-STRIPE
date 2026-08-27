@@ -176,7 +176,7 @@ export function PlateRing({ consumed, limites, size = 268 }: Props) {
         <Path d={ARCO} fill="none" stroke="rgba(255,255,255,0.09)"
               strokeWidth={SW} strokeLinecap="round" />
 
-        <Path d={ARCO_EXCESO} fill="none" stroke="rgba(255,59,71,0.30)"
+        <Path d={ARCO_EXCESO} fill="none" stroke="rgba(255,122,31,0.30)"
               strokeWidth={SW} strokeLinecap="round" />
 
         {/*
@@ -212,7 +212,7 @@ export function PlateRing({ consumed, limites, size = 268 }: Props) {
               <SvgText
                 x={t.x} y={t.y + 3.5}
                 textAnchor={izquierda ? 'end' : 'start'}
-                fill={m.tope ? 'rgba(255,90,100,0.92)' : 'rgba(255,255,255,0.5)'}
+                fill={m.tope ? 'rgba(255,122,31,0.92)' : 'rgba(255,255,255,0.5)'}
                 fontSize={10} fontWeight="700"
               >
                 {m.texto}

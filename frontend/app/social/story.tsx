@@ -205,7 +205,7 @@ export default function StoryViewer() {
 }
 
 const v = StyleSheet.create({
-  root: { backgroundColor: '#000', position: 'relative' },
+  root: { backgroundColor: '#050505', position: 'relative' },
   barras: { position: 'absolute', left: 12, right: 12, flexDirection: 'row', gap: 4 },
   barraFondo: { flex: 1, height: 2.5, borderRadius: 2, backgroundColor: 'rgba(255,255,255,0.28)', overflow: 'hidden' },
   barraLlena: { height: 2.5, backgroundColor: '#fff', borderRadius: 2 },
@@ -218,7 +218,7 @@ const v = StyleSheet.create({
   pie: {
     position: 'absolute', left: 0, right: 0, bottom: 0,
     paddingHorizontal: 22, paddingTop: 26, paddingBottom: 46,
-    backgroundColor: 'rgba(0,0,0,0.42)',
+    backgroundColor: 'rgba(5,5,5,0.42)',
   },
   pieTxt: { color: '#fff', fontSize: 15, lineHeight: 22 },
   zonas: { position: 'absolute', top: 100, left: 0, right: 0, bottom: 90, flexDirection: 'row' },

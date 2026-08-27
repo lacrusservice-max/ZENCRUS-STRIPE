@@ -136,7 +136,7 @@ function StrengthBar({ password }: { password: string }) {
     /[^A-Za-z0-9]/.test(password),
   ].filter(Boolean).length
 
-  const colors = ['#ff3b30', '#ff9f0a', '#30d158', '#30d158']
+  const colors = ['#ff7a1f', '#ff9f0a', '#30d158', '#30d158']
   const labels = ['Débil', 'Regular', 'Buena', 'Fuerte']
 
   return (

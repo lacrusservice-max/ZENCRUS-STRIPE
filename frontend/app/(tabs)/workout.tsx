@@ -36,7 +36,7 @@ const MODOS = [
     icono: 'barbell' as IconName,
     imagen: require('@/assets/images/zena-gym.jpg'),
     ruta: '/workout/gym' as const,
-    tono: '#FF1F3D',
+    tono: '#FF5C00',
   },
   {
     id: 'running',
@@ -45,7 +45,7 @@ const MODOS = [
     icono: 'walk' as IconName,
     imagen: require('@/assets/images/zena-running.jpg'),
     ruta: '/aire-libre' as const,
-    tono: '#FF5871',
+    tono: '#FF7A1F',
   },
   {
     id: 'casa',
@@ -54,7 +54,7 @@ const MODOS = [
     icono: 'home' as IconName,
     imagen: require('@/assets/images/zena-casa.jpg'),
     ruta: '/workout/casa' as const,
-    tono: '#FF8A9C',
+    tono: '#FFA45C',
   },
 ]
 
@@ -91,7 +91,7 @@ export default function ElegirEntrenamiento() {
                 {/* El degradado no es decoración: sin él, el titular cae sobre
                     la parte clara de la foto y deja de leerse. */}
                 <LinearGradient
-                  colors={['rgba(0,0,0,0.25)', 'rgba(0,0,0,0.55)', 'rgba(0,0,0,0.92)']}
+                  colors={['rgba(5,5,5,0.25)', 'rgba(5,5,5,0.55)', 'rgba(5,5,5,0.92)']}
                   locations={[0, 0.45, 1]}
                   style={StyleSheet.absoluteFill}
                 />
@@ -117,7 +117,7 @@ export default function ElegirEntrenamiento() {
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#000' },
+  root: { flex: 1, backgroundColor: '#050505' },
   safe: { flex: 1 },
   scroll: { paddingBottom: 130 },
   nota: { paddingHorizontal: 20, marginBottom: 14 },

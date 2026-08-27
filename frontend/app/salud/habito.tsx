@@ -48,8 +48,8 @@ import { PLANTILLAS, type Plantilla } from '@/features/salud/plantillas'
 
 type IconName = React.ComponentProps<typeof Ionicons>['name']
 
-const ROJO = '#FF1F3D'
-const ROJO_HONDO = '#C4102A'
+const ROJO = '#FF5C00'
+const ROJO_HONDO = '#B33D00'
 
 const MOMENTOS: { id: Momento; titulo: string; icono: IconName }[] = [
   { id: 'manana', titulo: 'MAÑANA', icono: 'sunny-outline' },
@@ -828,7 +828,7 @@ function Alarma({ icono, titulo, hora, encendida, onEncender, dias, onDia, onTod
 }
 
 const s = StyleSheet.create({
-  root: { flex: 1, backgroundColor: '#08080A' },
+  root: { flex: 1, backgroundColor: '#050505' },
   safe: { flex: 1 },
   flex: { flex: 1 },
   pulsado: { opacity: 0.8 },
@@ -1040,7 +1040,7 @@ const s = StyleSheet.create({
     backgroundColor: 'rgba(255,255,255,0.05)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.09)',
   },
-  alarmaOn: { borderColor: 'rgba(255,31,61,0.4)' },
+  alarmaOn: { borderColor: 'rgba(255,92,0,0.4)' },
   alarmaCab: { flexDirection: 'row', alignItems: 'center', gap: 13 },
   dias: { flexDirection: 'row', flexWrap: 'wrap', gap: 7, marginTop: 14 },
   diasOff: { opacity: 0.35 },
@@ -1091,8 +1091,8 @@ const s = StyleSheet.create({
   plantIc: {
     width: 44, height: 44, borderRadius: 15, marginBottom: 9,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(255,31,61,0.14)',
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    backgroundColor: 'rgba(255,92,0,0.14)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   plantNm: {
     fontFamily: 'Rajdhani_700Bold', fontSize: 17, letterSpacing: 1.6, color: '#fff',
@@ -1125,8 +1125,8 @@ const s = StyleSheet.create({
   borrar: {
     height: 48, borderRadius: 16, flexDirection: 'row',
     alignItems: 'center', justifyContent: 'center', gap: 8,
-    backgroundColor: 'rgba(255,31,61,0.10)',
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.35)',
+    backgroundColor: 'rgba(255,92,0,0.10)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.35)',
   },
   borrarTxt: { fontFamily: 'Rajdhani_700Bold', fontSize: 14, letterSpacing: 2, color: ROJO },
   crear: {

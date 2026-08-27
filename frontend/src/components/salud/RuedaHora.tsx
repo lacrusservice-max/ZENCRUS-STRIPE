@@ -24,7 +24,7 @@ import {
   type NativeSyntheticEvent, type NativeScrollEvent,
 } from 'react-native'
 
-const ROJO = '#FF1F3D'
+const ROJO = '#FF5C00'
 
 const ITEM = 46
 const VISIBLES = 5
@@ -114,8 +114,8 @@ const s = StyleSheet.create({
   banda: {
     position: 'absolute', left: 14, right: 14,
     top: HUECO, height: ITEM, borderRadius: 14,
-    backgroundColor: 'rgba(255,31,61,0.13)',
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.4)',
+    backgroundColor: 'rgba(255,92,0,0.13)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.4)',
   },
   col: { width: 88 },
   celda: { height: ITEM, alignItems: 'center', justifyContent: 'center' },

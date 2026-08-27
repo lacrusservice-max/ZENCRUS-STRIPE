@@ -254,7 +254,7 @@ export default function ComposeScreen() {
                   </View>
                 )}
                 {p.estado === 'error' && (
-                  <View style={[s.velo, { backgroundColor: 'rgba(255,31,61,0.55)' }]}>
+                  <View style={[s.velo, { backgroundColor: 'rgba(255,92,0,0.55)' }]}>
                     <Ionicons name="alert-circle" size={19} color="#fff" />
                     <Text style={s.veloTxt}>Falló</Text>
                   </View>
@@ -347,18 +347,18 @@ const s = StyleSheet.create({
   miniImg: { width: '100%', height: '100%' },
   velo: {
     position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
-    backgroundColor: 'rgba(0,0,0,0.55)',
+    backgroundColor: 'rgba(5,5,5,0.55)',
     alignItems: 'center', justifyContent: 'center', gap: 5,
   },
   veloTxt: { color: '#fff', fontSize: 10.5, fontWeight: '700' },
   videoMarca: {
     position: 'absolute', bottom: 6, left: 6,
-    backgroundColor: 'rgba(0,0,0,0.6)', borderRadius: 7, padding: 4,
+    backgroundColor: 'rgba(5,5,5,0.6)', borderRadius: 7, padding: 4,
   },
   quitar: {
     position: 'absolute', top: 5, right: 5,
     width: 22, height: 22, borderRadius: 11,
-    backgroundColor: 'rgba(0,0,0,0.68)',
+    backgroundColor: 'rgba(5,5,5,0.68)',
     alignItems: 'center', justifyContent: 'center',
   },
   anadir: {

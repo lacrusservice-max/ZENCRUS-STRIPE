@@ -35,7 +35,7 @@
  * Lo que llevan es el tratamiento que no se nota precisamente porque está bien
  * hecho: exposición bajada al 62 %, contraste y saturación subidos ANTES de
  * oscurecer —al revés se realza una foto ya apagada y sale ruido—, las sombras
- * un punto frías para que sus negros peguen con el #050506 de la app en vez de
+ * un punto frías para que sus negros peguen con el #050505 de la app en vez de
  * tirar a marrón, y viñeta en las esquinas para que el texto tenga fondo venga
  * la foto que venga. El script queda en `scratchpad/procesar.py`.
  */

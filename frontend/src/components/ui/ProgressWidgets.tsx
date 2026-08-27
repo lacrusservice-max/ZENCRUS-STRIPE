@@ -162,7 +162,7 @@ export function WeightModal({ visible, onClose }: { visible: boolean; onClose: (
 }
 
 const wm = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080808' },
+  container: { flex: 1, backgroundColor: '#050505' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[5], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
   title: { fontSize: Typography.fontSize.lg, fontWeight: '800', color: '#fff' },
   body: { padding: Spacing[5], gap: Spacing[4] },
@@ -242,7 +242,7 @@ export function MeasurementsModal({ visible, onClose }: { visible: boolean; onCl
 }
 
 const mm = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#080808' },
+  container: { flex: 1, backgroundColor: '#050505' },
   header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: Spacing[5], borderBottomWidth: 1, borderBottomColor: Glass.cardBorder },
   title: { fontSize: Typography.fontSize.lg, fontWeight: '800', color: '#fff' },
   body: { padding: Spacing[5], gap: Spacing[4], paddingBottom: 60 },

@@ -271,7 +271,7 @@ export function VisorImagen({
 
 const v = StyleSheet.create({
   raiz: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  fondo: { backgroundColor: '#000000' },
+  fondo: { backgroundColor: '#050505' },
   lienzo: { alignItems: 'center', justifyContent: 'center' },
   redondo: {
     position: 'absolute',

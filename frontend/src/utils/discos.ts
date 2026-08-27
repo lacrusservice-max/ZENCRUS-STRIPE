@@ -35,13 +35,13 @@ export const DISCOS_KG = [25, 20, 15, 10, 5, 2.5, 1.25] as const
 
 /** Color de cada disco, como en un gimnasio de verdad. */
 export const COLOR_DISCO: Record<number, string> = {
-  25: '#E01A36',   // rojo
+  25: '#FF5C00',   // rojo
   20: '#2F6FED',   // azul
   15: '#F5B31F',   // amarillo
   10: '#22B07D',   // verde
-  5:  '#F4F4F5',   // blanco
-  2.5: '#8B8D96',  // acero
-  1.25: '#5C5E67', // acero oscuro
+  5:  '#F2F3F5',   // blanco
+  2.5: '#A1A3A9',  // acero
+  1.25: '#5C5F66', // acero oscuro
 }
 
 export interface Disco {

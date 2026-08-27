@@ -266,7 +266,7 @@ export default function SubscriptionIntroScreen() {
 // ── Styles ────────────────────────────────────────────────────────────────────
 
 const s = StyleSheet.create({
-  bg: { flex: 1, backgroundColor: '#080808' },
+  bg: { flex: 1, backgroundColor: '#050505' },
   blob: { position: 'absolute', borderRadius: 9999, opacity: 0.09, width: 260, height: 260 },
   scroll: { paddingHorizontal: Spacing[5], paddingBottom: Spacing[10] },
 
@@ -319,7 +319,7 @@ const s = StyleSheet.create({
     shadowColor: Colors.accent.green, shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.4, shadowRadius: 20, elevation: 12,
   },
-  trialBtnText: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#000' },
+  trialBtnText: { fontSize: Typography.fontSize.base, fontWeight: '800', color: '#050505' },
   trialNote: {
     textAlign: 'center', fontSize: 11,
     color: 'rgba(255,255,255,0.25)', marginTop: 10,
@@ -344,7 +344,7 @@ const s = StyleSheet.create({
     paddingHorizontal: 10, paddingVertical: 4,
     borderBottomLeftRadius: 8, borderBottomRightRadius: 8,
   },
-  badgeText: { fontSize: 10, fontWeight: '800', color: '#000', letterSpacing: 0.5 },
+  badgeText: { fontSize: 10, fontWeight: '800', color: '#050505', letterSpacing: 0.5 },
 
   planRow: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: 4 },
   planName: { fontSize: Typography.fontSize.base, fontWeight: '700', color: '#fff', marginBottom: 2 },

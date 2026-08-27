@@ -279,7 +279,7 @@ export default function DiaDelPrograma() {
               transition={280}
             />
             <LinearGradient
-              colors={['rgba(5,5,6,0.30)', 'rgba(5,5,6,0.80)', 'rgba(5,5,6,0.98)']}
+              colors={['rgba(5,5,5,0.30)', 'rgba(5,5,5,0.80)', 'rgba(5,5,5,0.98)']}
               locations={[0, 0.45, 1]}
               style={StyleSheet.absoluteFill}
               pointerEvents="none"
@@ -749,12 +749,12 @@ const s = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: 4,
     paddingHorizontal: Spacing[2] + 2, paddingVertical: 5,
     borderRadius: BorderRadius.full,
-    backgroundColor: 'rgba(0,0,0,0.5)',
+    backgroundColor: 'rgba(5,5,5,0.5)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.16)',
   },
   pastillaHoy: { backgroundColor: Colors.neon.red, borderColor: Colors.neon.red },
   pastillaHecho: { backgroundColor: 'rgba(255,255,255,0.94)', borderColor: 'transparent' },
-  pastillaDescarga: { backgroundColor: Colors.neon.redDim, borderColor: 'rgba(255,31,61,0.35)' },
+  pastillaDescarga: { backgroundColor: Colors.neon.redDim, borderColor: 'rgba(255,92,0,0.35)' },
   pastillaTxt: { fontSize: 9, fontWeight: '800', color: Colors.neon.w2, letterSpacing: 1 },
   heroTitulo: { fontSize: 27, fontWeight: '800', color: Colors.neon.white, letterSpacing: -0.7, lineHeight: 31 },
   heroSub: { fontSize: 12, color: Colors.neon.w2, marginTop: 3 },
@@ -791,7 +791,7 @@ const s = StyleSheet.create({
     position: 'absolute', left: 0, right: 0, bottom: 0,
     // `paddingBottom` lo pone `useEspacioBarra` en el propio componente.
     padding: Spacing[4],
-    backgroundColor: 'rgba(5,5,6,0.96)',
+    backgroundColor: 'rgba(5,5,5,0.96)',
     borderTopWidth: 1, borderTopColor: Colors.neon.edge,
   },
   boton: {
@@ -866,7 +866,7 @@ const f = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', gap: Spacing[3],
     padding: Spacing[3],
     borderRadius: BorderRadius.md,
-    backgroundColor: 'rgba(0,0,0,0.3)',
+    backgroundColor: 'rgba(5,5,5,0.3)',
   },
   pesoValor: { fontSize: 22, fontWeight: '800', color: Colors.neon.white, letterSpacing: -0.6 },
   pesoUnidad: { fontSize: 13, fontWeight: '700', color: Colors.neon.w2 },
@@ -903,9 +903,9 @@ const f = StyleSheet.create({
 })
 
 const e = StyleSheet.create({
-  fondo: { flex: 1, backgroundColor: 'rgba(0,0,0,0.6)' },
+  fondo: { flex: 1, backgroundColor: 'rgba(5,5,5,0.6)' },
   hoja: {
-    backgroundColor: '#141416',
+    backgroundColor: '#17181c',
     borderTopLeftRadius: 26, borderTopRightRadius: 26,
     padding: Spacing[5], paddingBottom: Spacing[6],
     gap: Spacing[3],
@@ -915,7 +915,7 @@ const e = StyleSheet.create({
   sub: { fontSize: 12, color: Colors.neon.w3, lineHeight: 17 },
   campo: {
     flexDirection: 'row', alignItems: 'center', gap: Spacing[2],
-    backgroundColor: 'rgba(0,0,0,0.35)',
+    backgroundColor: 'rgba(5,5,5,0.35)',
     borderRadius: BorderRadius.lg,
     borderWidth: 1, borderColor: Colors.neon.edge,
     paddingHorizontal: Spacing[4],
@@ -954,7 +954,7 @@ const c = StyleSheet.create({
     padding: Spacing[3],
     borderRadius: BorderRadius.md,
     backgroundColor: Colors.neon.redDim,
-    borderWidth: 1, borderColor: 'rgba(255,31,61,0.3)',
+    borderWidth: 1, borderColor: 'rgba(255,92,0,0.3)',
     marginBottom: Spacing[2],
   },
   volverTxt: { flex: 1, fontSize: 12, fontWeight: '700', color: Colors.neon.redCore },

@@ -243,8 +243,8 @@ export default function RootLayout() {
         <SafeAreaProvider>
           {/* Los colores se escriben en paleta oscura: el interceptor los
               convierte a la clara. `style` de StatusBar no es un color. */}
-          <View style={{ flex: 1, backgroundColor: '#070709' }} onLayout={onRootLayout}>
-            <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor="#0a0a0a" />
+          <View style={{ flex: 1, backgroundColor: '#050505' }} onLayout={onRootLayout}>
+            <StatusBar style={isDark ? 'light' : 'dark'} backgroundColor="#0d0d10" />
             {/* La key remonta el árbol al cambiar de tema, para que ningún
                 subárbol memoizado se quede con la paleta anterior. */}
             <Stack key={isDark ? 'dark' : 'light'} screenOptions={{ headerShown: false }}>

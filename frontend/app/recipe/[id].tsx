@@ -487,7 +487,7 @@ const s = StyleSheet.create({
   back: {
     position: 'absolute', top: 14, left: 16,
     width: 32, height: 32, borderRadius: 16, alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.55)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
+    backgroundColor: 'rgba(5,5,5,0.55)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
   heroCap: { position: 'absolute', left: 20, right: 20, bottom: 14 },
   heroTitle: { fontFamily: Typography.fontFamily.display, fontSize: 23, fontWeight: '800', color: N.white, letterSpacing: -0.5, marginBottom: 7 },
@@ -499,13 +499,13 @@ const s = StyleSheet.create({
     borderRadius: 14, marginBottom: 8, overflow: 'hidden',
     backgroundColor: N.pane, borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
-  accOn: { borderColor: 'rgba(255,31,61,0.28)' },
+  accOn: { borderColor: 'rgba(255,92,0,0.28)' },
   accHead: { flexDirection: 'row', alignItems: 'center', gap: 10, padding: 12 },
   accMark: {
     width: 28, height: 28, borderRadius: 8, alignItems: 'center', justifyContent: 'center',
     backgroundColor: N.paneHi, borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
-  accMarkOn: { backgroundColor: N.redDim, borderColor: 'rgba(255,31,61,0.28)' },
+  accMarkOn: { backgroundColor: N.redDim, borderColor: 'rgba(255,92,0,0.28)' },
   accTitle: { fontFamily: Typography.fontFamily.display, fontSize: 12, fontWeight: '800', letterSpacing: 1, color: N.white, textTransform: 'uppercase' },
   accSub: { fontSize: 10.5, color: N.w3, marginTop: 1 },
   accVal: { fontFamily: Typography.fontFamily.display, fontSize: 13, fontWeight: '800', color: N.white },
@@ -524,14 +524,14 @@ const s = StyleSheet.create({
 
   delta: {
     marginTop: 11, padding: 10, borderRadius: 10,
-    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   deltaTxt: { fontSize: 11.5, lineHeight: 17, color: N.w2 },
   deltaB: { fontFamily: Typography.fontFamily.display, color: N.red, fontWeight: '800' },
 
   seg: {
     flexDirection: 'row', gap: 4, padding: 3, marginBottom: 11,
-    borderRadius: 999, backgroundColor: 'rgba(0,0,0,0.35)',
+    borderRadius: 999, backgroundColor: 'rgba(5,5,5,0.35)',
     borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
   segItem: { flex: 1, paddingVertical: 7, borderRadius: 999, alignItems: 'center' },
@@ -540,7 +540,7 @@ const s = StyleSheet.create({
   segTxtOn: { color: N.void },
 
   realBox: {
-    padding: 11, borderRadius: 10, backgroundColor: 'rgba(0,0,0,0.3)',
+    padding: 11, borderRadius: 10, backgroundColor: 'rgba(5,5,5,0.3)',
     borderWidth: 1, borderColor: N.edge, borderStyle: 'dashed',
   },
   realLbl: { fontFamily: Typography.fontFamily.display, fontSize: 8, fontWeight: '800', letterSpacing: 1.6, color: N.w3, marginBottom: 8 },
@@ -551,9 +551,9 @@ const s = StyleSheet.create({
 
   ing: {
     borderRadius: 10, marginBottom: 6, overflow: 'hidden',
-    backgroundColor: 'rgba(0,0,0,0.26)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
+    backgroundColor: 'rgba(5,5,5,0.26)', borderWidth: StyleSheet.hairlineWidth, borderColor: N.edge,
   },
-  ingOn: { borderColor: 'rgba(255,31,61,0.28)', backgroundColor: N.redDim },
+  ingOn: { borderColor: 'rgba(255,92,0,0.28)', backgroundColor: N.redDim },
   ingHead: { flexDirection: 'row', alignItems: 'center', gap: 9, padding: 10 },
   ingName: { flex: 1, minWidth: 0, fontSize: 12, color: N.white },
   ingQty: { fontSize: 10.5, color: N.w3 },
@@ -561,7 +561,7 @@ const s = StyleSheet.create({
   ingBody: { paddingHorizontal: 10, paddingBottom: 10 },
 
   quad: { flexDirection: 'row', gap: 5, marginBottom: 9 },
-  quadItem: { flex: 1, paddingVertical: 7, borderRadius: 8, backgroundColor: 'rgba(0,0,0,0.35)', alignItems: 'center' },
+  quadItem: { flex: 1, paddingVertical: 7, borderRadius: 8, backgroundColor: 'rgba(5,5,5,0.35)', alignItems: 'center' },
   quadV: { fontFamily: Typography.fontFamily.display, fontSize: 12.5, fontWeight: '800', color: N.white },
   quadL: { fontFamily: Typography.fontFamily.display, fontSize: 7.5, fontWeight: '700', letterSpacing: 1, color: N.w3, marginTop: 2 },
 
@@ -576,9 +576,9 @@ const s = StyleSheet.create({
   opt: {
     flexDirection: 'row', alignItems: 'center', gap: 6,
     padding: 9, borderRadius: 8, marginBottom: 5,
-    backgroundColor: 'rgba(0,0,0,0.35)', borderWidth: 1, borderColor: N.edge,
+    backgroundColor: 'rgba(5,5,5,0.35)', borderWidth: 1, borderColor: N.edge,
   },
-  optOn: { borderColor: 'rgba(255,31,61,0.45)', backgroundColor: 'rgba(255,31,61,0.12)' },
+  optOn: { borderColor: 'rgba(255,92,0,0.45)', backgroundColor: 'rgba(255,92,0,0.12)' },
   optName: { flex: 1, minWidth: 0, fontSize: 11.5, color: N.w2 },
   dv: { fontFamily: Typography.fontFamily.display, fontSize: 9.5, fontWeight: '800', paddingVertical: 2, paddingHorizontal: 6, borderRadius: 999, overflow: 'hidden' },
   dvUp: { backgroundColor: 'rgba(255,255,255,0.11)', color: N.white },
@@ -596,7 +596,7 @@ const s = StyleSheet.create({
   usual: {
     flexDirection: 'row', gap: 9, alignItems: 'flex-start', marginTop: 10,
     padding: 11, borderRadius: 10,
-    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,31,61,0.28)',
+    backgroundColor: N.redDim, borderWidth: 1, borderColor: 'rgba(255,92,0,0.28)',
   },
   usualTxt: { flex: 1, fontSize: 11.5, lineHeight: 17, color: N.w2 },
   usualB: { color: N.white, fontWeight: '700' },

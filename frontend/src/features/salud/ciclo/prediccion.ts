@@ -45,6 +45,8 @@ import { CICLO_MIN, CICLO_MAX } from './periodos'
 import {
   marcoFases as marcoDelNucleo, faseDeDia as faseDelNucleo,
   POBLACION as POBLACION_NUCLEO, type MarcoFases as MarcoNucleo,
+  clasificarRegularidad, margenSegunRegularidad,
+  type Regularidad as RegularidadNucleo,
 } from '@/nucleo/ciclo/fases'
 
 export const MODELO = 'ciclo-v1'
@@ -82,7 +84,8 @@ const t90 = (gl: number): number =>
 
 // ── Estadísticas ────────────────────────────────────────────────────────────
 
-export type Regularidad = 'sin_datos' | 'regular' | 'algo_irregular' | 'irregular'
+/** Los cuatro niveles del prompt maestro. Definidos en el núcleo. */
+export type Regularidad = RegularidadNucleo
 
 export interface Estadisticas {
   /** Ciclos completos que hay en el historial. */
@@ -137,11 +140,11 @@ export function estadisticas(periodos: Periodo[]): Estadisticas {
     ? Math.sqrt(recientes.reduce((a, b) => a + (b - media) ** 2, 0) / (n - 1))
     : null
 
-  const regularidad: Regularidad =
-    desviacion == null ? 'sin_datos'
-      : desviacion <= 2 ? 'regular'
-        : desviacion <= 5 ? 'algo_irregular'
-          : 'irregular'
+  /* Los cuatro niveles del prompt maestro, calculados por la función del
+     núcleo: la misma que usan las estadísticas. Dos clasificaciones distintas
+     del mismo dato es como acaba una app diciendo «regular» en una pantalla y
+     «algo irregular» en la de al lado. */
+  const regularidad = clasificarRegularidad(desviacion, todas.length)
 
   return {
     ciclos: todas.length,
@@ -280,17 +283,18 @@ export function predecir(
   const sd = est.desviacion ?? POBLACION.desviacion
   const n = Math.max(1, est.usados)
 
-  /* Intervalo de PREDICCIÓN, no de la media: el √(1 + 1/n) es lo que lo
-     distingue, y con pocos ciclos es justo lo que evita una banda falsamente
-     estrecha. */
-  const margenCrudo = t90(n - 1) * sd * Math.sqrt(1 + 1 / n)
+  /* El margen sale de la REGULARIDAD, según el prompt maestro:
+     muy regular → fecha puntual · regular → ±2 · algo irregular e irregular → ±SD.
 
-  /* Suelo de un día: ningún cuerpo funciona con precisión de reloj y una banda
-     de cero días volvería a ser la fecha exacta que este módulo evita.
-     Techo de siete: por encima, la banda deja de ser información y la pantalla
-     debe decir «demasiado irregular para predecir» en vez de pintar dos
-     semanas de incertidumbre. */
-  const margenDias = Math.max(1, Math.min(7, Math.round(margenCrudo)))
+     Sustituye al intervalo de predicción con t de Student que había antes. Se
+     deja dicho lo que se pierde, porque no es gratis: con tres ciclos, ±SD da
+     una banda más estrecha de lo que la incertidumbre justifica —el √(1+1/n) y
+     el t existían justo para ensancharla cuando hay pocos datos—. A cambio, la
+     regla es la misma que se le explica a la usuaria y se puede auditar de un
+     vistazo, que fue la decisión de producto.
+
+     El techo de siete se queda: por encima, la banda deja de ser información. */
+  const margenDias = Math.min(7, margenSegunRegularidad(est.regularidad, sd))
 
   const likely = sumarDias(ultimo.inicio, Math.round(duracion))
   const proximoPeriodo: Banda = {

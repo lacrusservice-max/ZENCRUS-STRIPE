@@ -200,7 +200,7 @@ export function RachaEncendida({ visible, dias, semana, onCerrar }: Props) {
                 <Text style={s.equisTxt}>✕</Text>
               </Pressable>
 
-              <View style={s.marco}>
+              <View style={[s.marco, { isolation: 'isolate' }]}>
                 {/* El póster va debajo y sin transición: la celebración salta
                     en el instante en que apuntas algo, y un hueco negro de dos
                     segundos justo ahí se lleva por delante el momento. */}
@@ -214,10 +214,18 @@ export function RachaEncendida({ visible, dias, semana, onCerrar }: Props) {
                     allowsPictureInPicture={false}
                   />
                 )}
+                {/* El vídeo del nivel 1 viene en rojo y se tiñe al vuelo.
+                    La explicación entera está en `app/streaks.tsx`. */}
+                {hito.desde === 1 && (
+                  <View
+                    pointerEvents="none"
+                    style={[StyleSheet.absoluteFill, { backgroundColor: '#FF5C00', mixBlendMode: 'hue' }]}
+                  />
+                )}
                 {/* Disuelve al personaje por abajo, para que no haya un corte
                     recto entre el vídeo y el fondo de la pieza. */}
                 <LinearGradient
-                  colors={['transparent', 'rgba(6,6,8,0.65)', '#060608']}
+                  colors={['transparent', 'rgba(5,5,5,0.65)', '#050505']}
                   locations={[0.42, 0.78, 1]}
                   style={StyleSheet.absoluteFill}
                   pointerEvents="none"
@@ -302,7 +310,7 @@ function Casilla({ letra, on, hito, progreso }: {
 
 const s = StyleSheet.create({
   raiz: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  telon: { backgroundColor: 'rgba(0,0,0,0.88)' },
+  telon: { backgroundColor: 'rgba(5,5,5,0.88)' },
 
   pieza: { width: CAJA },
 
@@ -311,7 +319,7 @@ const s = StyleSheet.create({
     borderRadius: 26,
     padding: 1.2,
     overflow: 'hidden',
-    shadowColor: '#000',
+    shadowColor: '#050505',
     shadowOpacity: 0.8,
     shadowRadius: 30,
     shadowOffset: { width: 0, height: 20 },
@@ -326,7 +334,7 @@ const s = StyleSheet.create({
     left: -CAJA * 0.3,
     top: -CAJA * 0.3,
   },
-  cuerpo: { borderRadius: 25, overflow: 'hidden', backgroundColor: '#060608' },
+  cuerpo: { borderRadius: 25, overflow: 'hidden', backgroundColor: '#050505' },
 
   aura: {
     position: 'absolute',
@@ -338,7 +346,7 @@ const s = StyleSheet.create({
     position: 'absolute', top: 11, right: 11, zIndex: 30,
     width: 27, height: 27, borderRadius: 14,
     alignItems: 'center', justifyContent: 'center',
-    backgroundColor: 'rgba(0,0,0,0.45)',
+    backgroundColor: 'rgba(5,5,5,0.45)',
     borderWidth: 1, borderColor: 'rgba(255,255,255,0.11)',
   },
   equisTxt: { color: 'rgba(255,255,255,0.62)', fontSize: 12, lineHeight: 14 },
@@ -348,7 +356,7 @@ const s = StyleSheet.create({
     position: 'absolute',
     left: 0, right: 0, top: 0,
     height: CAJA * 1.1,
-    backgroundColor: '#060608',
+    backgroundColor: '#050505',
   },
 
   datos: { alignItems: 'center', paddingHorizontal: 16, paddingBottom: 16, marginTop: -14 },

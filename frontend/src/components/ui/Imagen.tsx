@@ -40,7 +40,30 @@
  */
 
 import { forwardRef, memo, useMemo } from 'react'
+import { View, StyleSheet } from 'react-native'
 import { Image as ImagenExpo, type ImageProps, type ImageSource } from 'expo-image'
+
+/**
+ * EL TINTE DE LA BIBLIOTECA DE EJERCICIOS
+ * ───────────────────────────────────────
+ * Los pósteres y los vídeos de los 206 ejercicios llevan el músculo trabajado
+ * pintado de ROJO, y son archivos del bucket: cambiarles el color de verdad
+ * pide regenerarlos y volverlos a subir. Mientras eso no pase, aquí se les
+ * funde encima una capa naranja en modo `hue`.
+ *
+ * Ese modo toma el TONO de la capa y respeta la saturación y la luz de lo que
+ * hay debajo. El maniquí es gris —no tiene tono— así que no se entera: el único
+ * píxel que cambia es el que estaba coloreado. Un `tintColor` plano habría
+ * aplastado la foto entera.
+ *
+ * ESTO ES UN PARCHE. La cura es regenerar los medios en naranja y borrar este
+ * bloque entero; el día que pase, la app no nota la diferencia.
+ *
+ * Se aplica SOLO a `library/poster` y `library/video`. Los avatares, las fotos
+ * de la comunidad y las recetas no pasan por aquí.
+ */
+const MEDIA_EJERCICIOS = /\/library\/(poster|video)\//
+const NARANJA_MARCA = '#FF5C00'
 
 /**
  * La parte de una dirección que identifica al archivo, sin la firma.
@@ -121,7 +144,35 @@ const ImagenBase = forwardRef<
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const fuente = useMemo(() => conClave(source), [identidad])
 
-  return <ImagenExpo ref={ref} source={fuente} cachePolicy={cachePolicy} {...resto} />
+  const esEjercicio = MEDIA_EJERCICIOS.test(identidad)
+
+  const img = (
+    <ImagenExpo
+      ref={ref}
+      source={fuente}
+      cachePolicy={cachePolicy}
+      {...resto}
+      style={esEjercicio ? StyleSheet.absoluteFill : resto.style}
+    />
+  )
+
+  if (!esEjercicio) return img
+
+  // `isolation: 'isolate'` no es opcional: sin él la fusión se hace contra el
+  // fondo de la pantalla en vez de contra la propia foto, y se ve mal sin que
+  // se entienda por qué.
+  return (
+    <View style={[resto.style as object, { isolation: 'isolate', overflow: 'hidden' }]}>
+      {img}
+      <View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: NARANJA_MARCA, mixBlendMode: 'hue' },
+        ]}
+      />
+    </View>
+  )
 })
 
 /**
