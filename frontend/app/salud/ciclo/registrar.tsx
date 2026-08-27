@@ -46,7 +46,7 @@ import {
   FONDO, ACENTO, TEXTO, FUENTE, SUP, SOMBRA, HUECO, TABULAR,
 } from '@/theme/salud/cicloClaro'
 import { elegir, confirmar } from '@/utils/haptica'
-import type { NombreIcono } from '@/features/salud/ciclo/iconos'
+import { ANIMOS, animoExacto } from '@/features/salud/ciclo/animos'
 
 /* ── Vocabulario de pantalla ───────────────────────────────────────────── */
 
@@ -90,13 +90,6 @@ const PIEL = [
   { id: 'cabello_graso', etiqueta: 'Cabello graso' },
 ]
 
-const ANIMOS: { id: string; etiqueta: string; icono: NombreIcono; valence: number; arousal: number }[] = [
-  { id: 'feliz',     etiqueta: 'Feliz',     icono: 'mood_feliz',     valence: 0.8,  arousal: 0.4 },
-  { id: 'tranquila', etiqueta: 'Tranquila', icono: 'mood_tranquila', valence: 0.4,  arousal: -0.5 },
-  { id: 'sensible',  etiqueta: 'Sensible',  icono: 'mood_sensible',  valence: -0.2, arousal: 0.2 },
-  { id: 'irritable', etiqueta: 'Irritable', icono: 'mood_irritable', valence: -0.5, arousal: 0.7 },
-  { id: 'triste',    etiqueta: 'Triste',    icono: 'mood_triste',    valence: -0.8, arousal: -0.4 },
-]
 
 const ANTOJO_ET: Record<typeof ANTOJOS[number], string> = {
   dulce: 'Dulce', salado: 'Salado', carbohidratos: 'Carbohidratos',
@@ -365,9 +358,9 @@ function PasoSentir({ dia, guardar, quitar, alternar }: PropsPaso) {
   const antojos = (dia.antojos as { tags?: string[] } | undefined)?.tags ?? []
   const entreno = (dia.entrenamiento as { estado?: string } | undefined)?.estado
 
-  const animoActivo = ANIMOS.find(a =>
-    animo && Math.abs((animo.valence ?? 0) - a.valence) < 0.05
-         && Math.abs((animo.arousal ?? 0) - a.arousal) < 0.05)
+  const animoActivo = animo
+    ? animoExacto(animo.valence ?? 0, animo.arousal ?? 0)
+    : null
 
   return (
     <>

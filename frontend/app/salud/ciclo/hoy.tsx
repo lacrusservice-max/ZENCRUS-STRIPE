@@ -36,7 +36,7 @@ import {
   FONDO, FASE, ACENTO, TEXTO, FUENTE, SUP, HUECO,
 } from '@/theme/salud/cicloClaro'
 import { elegir, confirmar } from '@/utils/haptica'
-import type { NombreIcono } from '@/features/salud/ciclo/iconos'
+import { ANIMOS, animoExacto } from '@/features/salud/ciclo/animos'
 
 /** Los cinco grados del sangrado, con el 0 delante porque es la respuesta común. */
 const SANGRADO = [
@@ -48,13 +48,6 @@ const SANGRADO = [
   { nivel: 5, etiqueta: 'Muy abundante' },
 ]
 
-const ANIMOS: { id: string; etiqueta: string; icono: NombreIcono; valence: number; arousal: number }[] = [
-  { id: 'feliz', etiqueta: 'Feliz', icono: 'mood_feliz', valence: 0.8, arousal: 0.4 },
-  { id: 'tranquila', etiqueta: 'Tranquila', icono: 'mood_tranquila', valence: 0.4, arousal: -0.5 },
-  { id: 'sensible', etiqueta: 'Sensible', icono: 'mood_sensible', valence: -0.2, arousal: 0.2 },
-  { id: 'irritable', etiqueta: 'Irritable', icono: 'mood_irritable', valence: -0.5, arousal: 0.7 },
-  { id: 'triste', etiqueta: 'Triste', icono: 'mood_triste', valence: -0.8, arousal: -0.4 },
-]
 
 export default function CheckinCiclo() {
   const nombre = useAuthStore(s => (s.user?.full_name ?? '').trim().split(/\s+/)[0] ?? '')
@@ -84,9 +77,9 @@ export default function CheckinCiclo() {
   const sangrado = dia.sangrado as { level?: number } | undefined
   const energia = (dia.energia as { level?: number } | undefined)?.level ?? 0
   const animo = dia.animo as { valence?: number; arousal?: number } | undefined
-  const animoActivo = ANIMOS.find(a =>
-    animo && Math.abs((animo.valence ?? 0) - a.valence) < 0.05
-         && Math.abs((animo.arousal ?? 0) - a.arousal) < 0.05)
+  const animoActivo = animo
+    ? animoExacto(animo.valence ?? 0, animo.arousal ?? 0)
+    : null
 
   const contestadas = pendientes.filter(p =>
     p === 'sangrado' ? sangrado != null

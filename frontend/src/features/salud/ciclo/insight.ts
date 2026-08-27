@@ -25,6 +25,8 @@ import type { Periodo } from './periodos'
 import { type Prediccion, nivelConfianza, confianzaProyectada } from './prediccion'
 import type { Anomalia } from './anomalias'
 import { detectarCambioTermico, type LecturaTemperatura } from './temperatura'
+import { patronesDelCiclo } from './patrones'
+import type { MarcoFases } from '@/nucleo/ciclo/fases'
 import { diaLargo } from './formato'
 
 export interface Insight {
@@ -46,6 +48,7 @@ interface Entrada {
   prediccion: Prediccion | null
   anomalias: Anomalia[]
   hoy: string
+  marco: MarcoFases
 }
 
 /**
@@ -135,7 +138,14 @@ export function insightDelDia(e: Entrada): Insight | null {
     }
   }
 
-  // 4 · La confianza y cómo subirla. Un número bajo sin salida es ruido.
+  /* 4 · Los cuatro patrones con umbral del prompt maestro. Van después del
+        patrón por día de ciclo porque aquel es más concreto —«por estas
+        fechas»— y antes del aviso de confianza porque una observación suya
+        vale más que recordarle otra vez que registre. */
+  const [patron] = patronesDelCiclo(logs, periodos, e.marco, hoy)
+  if (patron) return { texto: patron.texto, apoyo: patron.apoyo, tipo: 'patron' }
+
+  // 5 · La confianza y cómo subirla. Un número bajo sin salida es ruido.
   if (prediccion && prediccion.confianza < 60) {
     const sube = confianzaProyectada(prediccion.ciclosUsados, null, 2)
     return {
