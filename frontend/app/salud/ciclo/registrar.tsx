@@ -34,16 +34,17 @@ import { useCicloStore, DIA_VACIO } from '@/store/cicloStore'
 import { useCiclo } from '@/features/salud/ciclo/useCiclo'
 import { rachaRegistro } from '@/features/salud/ciclo/historial'
 import { diaLargo } from '@/features/salud/ciclo/formato'
-import { hoyLocal } from '@/utils/fechas'
+import { hoyLocal, diasEntre } from '@/utils/fechas'
 import {
   ANTOJOS, ESTADOS_ENTRENO, COLORES_SANGRADO, ZONAS_DOLOR,
   type TrackerKind,
 } from '@/features/salud/trackers'
+import { Guardado, useGuardadoAlSalir } from '@/components/salud/ciclo/Guardado'
 import {
   Pantalla, Tarjeta, Seccion, Chip, Intensidad, Icono, Azulejo, BotonPrincipal,
 } from '@/components/salud/ciclo/Claro'
 import {
-  FONDO, ACENTO, TEXTO, FUENTE, SUP, SOMBRA, HUECO, TABULAR,
+  FONDO, FASE, ACENTO, TEXTO, FUENTE, SUP, SOMBRA, HUECO, TABULAR,
 } from '@/theme/salud/cicloClaro'
 import { elegir, confirmar } from '@/utils/haptica'
 import { ANIMOS, animoExacto } from '@/features/salud/ciclo/animos'
@@ -91,6 +92,12 @@ const PIEL = [
 ]
 
 
+/** Las dos que se pueden marcar aquí, con el valor exacto del esquema. */
+const ACTIVIDAD: ['protegida' | 'sin_proteccion', string][] = [
+  ['protegida', 'Con protección'],
+  ['sin_proteccion', 'Sin protección'],
+]
+
 const ANTOJO_ET: Record<typeof ANTOJOS[number], string> = {
   dulce: 'Dulce', salado: 'Salado', carbohidratos: 'Carbohidratos',
   grasas: 'Grasas', proteinas: 'Proteínas', citricos: 'Cítricos', otro: 'Otro',
@@ -118,13 +125,21 @@ export default function RegistrarCiclo() {
   const dia = useCicloStore(s => s.logs[fecha]) ?? DIA_VACIO
   const { prediccion } = useCiclo(fecha)
 
+  /* El acuse solo sale si de verdad se guardó algo, así que cada escritura
+     lo marca. Va aquí y no dentro del almacén porque lo que importa no es que
+     haya datos, es que ELLA haya tocado algo en esta visita. */
+  const salir = useCallback(() => router.back(), [])
+  const { marcar, cerrar: acusarYSalir, visible: acuse } = useGuardadoAlSalir(salir)
+
   const guardar = useCallback((kind: TrackerKind, value: unknown) => {
+    marcar()
     void registrar(kind as never, value as never, fecha)
-  }, [registrar, fecha])
+  }, [marcar, registrar, fecha])
 
   const quitar = useCallback((kind: TrackerKind) => {
+    marcar()
     void borrarKind(kind, fecha)
-  }, [borrarKind, fecha])
+  }, [marcar, borrarKind, fecha])
 
   /** Marca o desmarca dentro de una lista de etiquetas. */
   const alternar = useCallback((kind: TrackerKind, actuales: string[], id: string) => {
@@ -135,12 +150,21 @@ export default function RegistrarCiclo() {
     else quitar(kind)
   }, [guardar, quitar])
 
-  const cerrar = () => { confirmar(); router.back() }
+  const cerrar = () => { confirmar(); acusarYSalir() }
 
   const avanzar = () => {
     if (paso >= 2) { cerrar(); return }
     elegir()
     setPaso(p => p + 1)
+  }
+
+  /* ── Un día que aún no ha llegado no se edita ──────────────────────────
+     Va DESPUÉS de todos los hooks, que es donde tiene que ir una salida
+     anticipada en un componente, y antes de cualquier control: enseñar el
+     formulario y desactivarle los dieciocho campos daría una pantalla llena
+     de cosas que parecen tocables y no lo son. */
+  if (fecha > hoyLocal()) {
+    return <DiaFuturo fecha={fecha} prediccion={prediccion} />
   }
 
   return (
@@ -211,6 +235,7 @@ export default function RegistrarCiclo() {
           ) : null}
         </View>
       </KeyboardAvoidingView>
+      <Guardado visible={acuse} />
     </Pantalla>
   )
 }
@@ -352,11 +377,31 @@ function PasoSangrado({ dia, guardar, quitar, alternar }: PropsPaso) {
 
 function PasoSentir({ dia, guardar, quitar, alternar }: PropsPaso) {
   const animo = dia.animo as { valence?: number; arousal?: number } | undefined
-  const libido = dia.libido as { tags?: string[]; level?: number } | undefined
+  /* Los nombres son los del esquema compartido —`desire` y `activity`—, no
+     unos inventados aquí. Esta tarjeta escribía `tags` y `level`, que el
+     esquema no tiene: los chips no volvían a salir marcados nunca, el tracker
+     no se podía borrar desde la interfaz y `historial.ts`, que sí lee
+     `desire`, no veía ni uno solo de los registros hechos desde aquí. */
+  const libido = dia.libido as { desire?: number; activity?: string } | undefined
   const energia = (dia.energia as { level?: number } | undefined)?.level ?? 0
   const apetito = (dia.apetito as { level?: number } | undefined)?.level ?? 0
   const antojos = (dia.antojos as { tags?: string[] } | undefined)?.tags ?? []
   const entreno = (dia.entrenamiento as { estado?: string } | undefined)?.estado
+
+  /* Los dos campos se guardan juntos y se limpian juntos. Si al quitar uno el
+     otro también estaba vacío, se borra el tracker entero: dejarlo como objeto
+     sin nada dentro haría que el calendario siguiera pintando su corazón en un
+     día en el que ya no queda nada registrado. */
+  const guardarLibido = (parcial: { desire?: number; activity?: string }) => {
+    const siguiente = {
+      desire: libido?.desire, activity: libido?.activity, ...parcial,
+    }
+    if (siguiente.desire === undefined && siguiente.activity === undefined) {
+      quitar('libido')
+      return
+    }
+    guardar('libido', siguiente)
+  }
 
   const animoActivo = animo
     ? animoExacto(animo.valence ?? 0, animo.arousal ?? 0)
@@ -394,24 +439,22 @@ function PasoSentir({ dia, guardar, quitar, alternar }: PropsPaso) {
       <Tarjeta style={s.tarjeta}>
         <Seccion icono="wellness_salud_corazon" fondo={ACENTO.rosaSuave} titulo="Vida sexual" />
         <View style={s.chips}>
-          {[['protegido', 'Con protección'], ['sin_proteccion', 'Sin protección']].map(([id, et]) => (
+          {ACTIVIDAD.map(([id, et]) => (
             <Chip
               key={id}
               texto={et}
               color={ACENTO.rosa}
-              activo={(libido?.tags ?? []).includes(id)}
-              onPress={() => alternar('libido', libido?.tags ?? [], id)}
+              activo={libido?.activity === id}
+              onPress={() => guardarLibido({
+                activity: libido?.activity === id ? undefined : id,
+              })}
             />
           ))}
         </View>
         <Text style={s.subrotulo}>Deseo sexual</Text>
         <Intensidad
-          valor={libido?.level ?? 0}
-          onValor={n => {
-            const tags = libido?.tags ?? []
-            if (n === 0 && !tags.length) { quitar('libido'); return }
-            guardar('libido', { ...(libido ?? {}), level: n || undefined, tags })
-          }}
+          valor={libido?.desire ?? 0}
+          onValor={n => guardarLibido({ desire: n || undefined })}
           color={ACENTO.rosa}
           izquierda="Bajo"
           derecha="Alto"
@@ -559,7 +602,110 @@ function registrosDelMes(logs: Record<string, unknown>, fecha: string): number {
   return Object.keys(logs).filter(f => f.startsWith(prefijo)).length
 }
 
+/**
+ * UN DÍA QUE TODAVÍA NO HA LLEGADO
+ * ═══════════════════════════════════════════════════════════════════════════
+ * El calendario deja tocar cualquier casilla, también las de la semana que
+ * viene, y eso está bien: mirar el futuro es justo para lo que sirve una
+ * predicción. Lo que no puede es abrirse en modo edición.
+ *
+ * ── Por qué no se deja registrar por adelantado ────────────────────────────
+ * Porque un sangrado apuntado el martes para el viernes entra en el motor como
+ * un hecho observado, y los hechos observados mandan sobre las predicciones:
+ * bastaría para mover el inicio del ciclo, recolocar todas las fases y
+ * cambiar la fecha del próximo periodo. Un registro es lo que pasó, y el
+ * viernes todavía no ha pasado.
+ *
+ * ── Y por qué no se queda en blanco ────────────────────────────────────────
+ * Quien toca el 4 de septiembre quiere saber algo de ese día. Decirle solo
+ * «no se puede» y dejarla mirando una pantalla vacía la manda de vuelta al
+ * calendario sin nada. Así que se enseña lo que sí se sabe: qué día de ciclo
+ * será y en qué fase cae, con las palabras de una estimación.
+ */
+function DiaFuturo({ fecha, prediccion }: {
+  fecha: string
+  prediccion: { diaDeCiclo: number; fase: keyof typeof FASE } | null
+}) {
+  const faltan = diasEntre(hoyLocal(), fecha)
+  const tono = prediccion ? FASE[prediccion.fase] : null
+
+  return (
+    <Pantalla salida={false} fondo={FONDO.registro}>
+      <View style={s.cab}>
+        <Pressable
+          onPress={() => { elegir(); router.back() }}
+          style={({ pressed }) => [s.redondo, pressed && s.pulsado]}
+          accessibilityRole="button"
+          accessibilityLabel="Volver"
+        >
+          <Text style={s.flecha}>‹</Text>
+        </Pressable>
+        <View style={s.cabCentro}>
+          <Text style={s.cabTit}>Todavía no</Text>
+          <Text style={s.cabPie} numberOfLines={1}>{diaLargo(fecha)}</Text>
+        </View>
+        {/* Un hueco del ancho del botón, para que el título quede centrado de
+            verdad y no desplazado hacia la derecha. */}
+        <View style={s.hueco} />
+      </View>
+
+      <View style={s.futCuerpo}>
+        <Azulejo icono="cycle_calendario" fondo={ACENTO.moradoFondo} tam={62} />
+        <Text style={s.futTit}>
+          {faltan === 1 ? 'Es mañana' : `Faltan ${faltan} días`}
+        </Text>
+        <Text style={s.futTxt}>
+          Este día se registra cuando llegue, no antes: lo que apuntas es lo que
+          pasó, y esto todavía no ha pasado. Mientras tanto, esto es lo que
+          espero de él.
+        </Text>
+
+        {prediccion && tono ? (
+          <Tarjeta style={s.futTarjeta}>
+            <View style={[s.futPunto, { backgroundColor: tono.arco }]} />
+            <View style={s.flex}>
+              <Text style={s.futDia}>Día {prediccion.diaDeCiclo} de tu ciclo</Text>
+              <Text style={s.futFase}>Fase {tono.etiqueta.toLowerCase()}, estimada</Text>
+            </View>
+          </Tarjeta>
+        ) : (
+          <Text style={s.futTxt}>
+            Todavía no puedo estimar en qué fase caerá: para eso necesito al
+            menos un periodo registrado.
+          </Text>
+        )}
+      </View>
+
+      <View style={s.futPie}>
+        <BotonPrincipal
+          texto="Ir al registro de hoy"
+          onPress={() => { elegir(); router.replace('/salud/ciclo/registrar') }}
+        />
+      </View>
+    </Pantalla>
+  )
+}
+
 const s = StyleSheet.create({
+  hueco: { width: 46, height: 46 },
+  futCuerpo: {
+    flex: 1, alignItems: 'center', justifyContent: 'center',
+    paddingHorizontal: 32, gap: 14,
+  },
+  futTit: {
+    fontFamily: FUENTE.titulo, fontSize: 25, color: TEXTO.fuerte,
+    letterSpacing: -0.6, marginTop: 4,
+  },
+  futTxt: {
+    fontFamily: FUENTE.cuerpo, fontSize: 14.5, lineHeight: 22,
+    color: TEXTO.medio, textAlign: 'center',
+  },
+  futTarjeta: { flexDirection: 'row', alignItems: 'center', gap: 13, marginTop: 6 },
+  futPunto: { width: 13, height: 13, borderRadius: 7 },
+  futDia: { fontFamily: FUENTE.titulo, fontSize: 17, color: TEXTO.fuerte },
+  futFase: { fontFamily: FUENTE.medio, fontSize: 13, color: TEXTO.medio, marginTop: 2 },
+  futPie: { paddingHorizontal: 20, paddingBottom: 18 },
+
   flex: { flex: 1 },
   pulsado: { opacity: 0.72, transform: [{ scale: 0.96 }] },
 

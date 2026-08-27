@@ -19,7 +19,7 @@
  * una pregunta ya contestada enseña que la app no está mirando.
  */
 
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
 import { router } from 'expo-router'
 import { useAuthStore } from '@/store/authStore'
@@ -32,6 +32,7 @@ import {
 import { diaLargo } from '@/features/salud/ciclo/formato'
 import { hoyLocal } from '@/utils/fechas'
 import { Pantalla, Tarjeta, Chip, Intensidad, Icono, BotonPrincipal } from '@/components/salud/ciclo/Claro'
+import { Guardado, useGuardadoAlSalir } from '@/components/salud/ciclo/Guardado'
 import {
   FONDO, FASE, ACENTO, TEXTO, FUENTE, SUP, HUECO,
 } from '@/theme/salud/cicloClaro'
@@ -88,11 +89,15 @@ export default function CheckinCiclo() {
 
   const listo = contestadas === pendientes.length
 
+  const irAlCiclo = useCallback(() => router.replace('/salud/ciclo'), [])
+  const { marcar, cerrar: acusarYSalir, visible: acuse } = useGuardadoAlSalir(irAlCiclo)
+
   const guardar = (kind: 'sangrado' | 'energia' | 'animo', value: unknown) => {
+    marcar()
     void registrar(kind as never, value as never, hoy)
   }
 
-  const salir = () => { confirmar(); router.replace('/salud/ciclo') }
+  const salir = () => { confirmar(); acusarYSalir() }
 
   const tono = prediccion ? FASE[prediccion.fase] : null
   const explicacion = porQueImporta(estadisticas.ciclos)
@@ -197,6 +202,7 @@ export default function CheckinCiclo() {
           </Pressable>
         </View>
       </View>
+      <Guardado visible={acuse} />
     </Pantalla>
   )
 }
