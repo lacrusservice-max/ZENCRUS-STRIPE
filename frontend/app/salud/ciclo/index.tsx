@@ -19,11 +19,12 @@
  */
 
 import { useMemo, useState } from 'react'
-import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
+import { View, Text, StyleSheet, Pressable, ScrollView, ActivityIndicator } from 'react-native'
 import { router } from 'expo-router'
 import { useAuthStore } from '@/store/authStore'
 import { useCicloStore } from '@/store/cicloStore'
 import { useCiclo } from '@/features/salud/ciclo/useCiclo'
+import { useRecomendacion } from '@/features/salud/ciclo/useRecomendacion'
 import { rachaRegistro } from '@/features/salud/ciclo/historial'
 import { diaCorto, diaLargo } from '@/features/salud/ciclo/formato'
 import { hoyLocal } from '@/utils/fechas'
@@ -57,6 +58,8 @@ export default function InicioCiclo() {
   const logs = useCicloStore(s => s.logs)
   const hoy = hoyLocal()
   const { hayDatos, prediccion, marco, estadisticas, periodos, declarado } = useCiclo()
+  const hoyReco = useRecomendacion()
+  const cargado = useCicloStore(s => s.cargado)
 
   /* Un PRIMITIVO, no `getDia(hoy)`: un selector que construye un objeto
      devuelve uno nuevo en cada llamada y Zustand entra en bucle infinito. */
@@ -172,7 +175,15 @@ export default function InicioCiclo() {
 
         {/* ── El anillo ────────────────────────────────────────────────── */}
         <Tarjeta style={s.tarjetaAnillo}>
-          {hayDatos && prediccion ? (
+          {!cargado ? (
+            /* Cargando NO es lo mismo que no tener datos. Enseñar «Todavía no
+               puedo predecir» mientras se lee el disco le dice a quien tiene
+               cuatro periodos guardados que no tiene ninguno, y encima la
+               invita a volver a meterlos. */
+            <View style={s.vacio}>
+              <ActivityIndicator color={ACENTO.morado} />
+            </View>
+          ) : hayDatos && prediccion ? (
             <>
               <Text style={[s.frase, TONO_FRASE[frase.tono]]}>{frase.texto}</Text>
 
@@ -247,7 +258,29 @@ export default function InicioCiclo() {
           ))}
         </View>
 
-        {/* ── Nutrición y entrenamiento ────────────────────────────────── */}
+        {/* ── Hoy recomendamos ─────────────────────────────────────────
+            Lo registrado hoy manda sobre la fase: quien apuntó cólicos no
+            necesita leer otra vez qué favorece su fase folicular. */}
+        <View style={s.recoCab}>
+          <Text style={s.recoTit}>Hoy recomendamos</Text>
+          {hoyReco?.dentro && prediccion ? (
+            <Text style={s.recoPie}>
+              {`Día ${hoyReco.dentro.n} de ${hoyReco.dentro.de} de tu fase `}
+              {FASE[prediccion.fase].etiqueta.toLowerCase()}
+            </Text>
+          ) : null}
+        </View>
+
+        {/* La alerta va ARRIBA y sola. Es lo único de esta pantalla que puede
+            necesitar que alguien haga algo hoy mismo, y meterla debajo de un
+            consejo sobre lentejas sería enterrarla. */}
+        {hoyReco?.reco.alerta ? (
+          <View style={s.alerta}>
+            <Azulejo icono="wellness_sintomas" fondo="#FBE3E5" tam={38} />
+            <Text style={s.alertaTxt}>{hoyReco.reco.alerta}</Text>
+          </View>
+        ) : null}
+
         <View style={s.consejos}>
           <Consejo
             tono={ACENTO.verdeSuave}
@@ -256,9 +289,8 @@ export default function InicioCiclo() {
             titulo="Nutrición de hoy"
             color={ACENTO.verde}
             texto={
-              prediccion
-                ? CONSEJO_NUTRICION[prediccion.fase]
-                : 'Registra tu ciclo para recibir consejos por fase.'
+              hoyReco?.reco.nutricion.texto
+              ?? 'Registra tu ciclo para recibir consejos por fase.'
             }
             onPress={() => router.push('/salud/ciclo/correlaciones')}
           />
@@ -269,13 +301,21 @@ export default function InicioCiclo() {
             titulo="Entrena hoy"
             color={ACENTO.morado}
             texto={
-              prediccion
-                ? CONSEJO_ENTRENO[prediccion.fase]
-                : 'Registra tu ciclo para recibir consejos por fase.'
+              hoyReco?.reco.entrenamiento.texto
+              ?? 'Registra tu ciclo para recibir consejos por fase.'
             }
             onPress={() => router.push('/salud/ciclo/correlaciones')}
           />
         </View>
+
+        {/* El patrón del historial y la nota de anticoncepción. Van debajo
+            porque son contexto de lo de arriba, no una recomendación más. */}
+        {hoyReco?.reco.patron ? (
+          <Text style={s.recoNota}>{hoyReco.reco.patron}</Text>
+        ) : null}
+        {hoyReco?.reco.nota ? (
+          <Text style={s.recoNota}>{hoyReco.reco.nota}</Text>
+        ) : null}
       </ScrollView>
     </Pantalla>
   )
@@ -339,20 +379,6 @@ function Consejo({ tono, icono, iconoFondo, titulo, texto, color, onPress }: {
  * que se abre al tocar. Aquí cabe una frase, y una frase mal elegida es peor
  * que ninguna.
  */
-const CONSEJO_NUTRICION: Record<string, string> = {
-  menstrual:  'Prioriza hierro y magnesio: espinaca, lentejas y plátano.',
-  folicular:  'Proteína magra y carbohidratos complejos: quinoa, avena, huevo.',
-  ovulatoria: 'Mantén proteína y complejos; buen día para comidas variadas.',
-  lutea:      'Fibra y complejos para estabilizar el azúcar y los antojos.',
-}
-
-const CONSEJO_ENTRENO: Record<string, string> = {
-  menstrual:  'Entrena suave: yoga, caminata o estiramientos.',
-  folicular:  'Buen momento para fuerza progresiva si te sientes con energía.',
-  ovulatoria: 'Alta intensidad si el cuerpo acompaña; sin forzarlo.',
-  lutea:      'Baja la intensidad hacia el final; el cardio moderado ayuda al ánimo.',
-}
-
 /** El color de la frase de arriba según lo que esté diciendo. */
 const TONO_FRASE: Record<string, { color: string }> = {
   menstrual: { color: FASE.menstrual.texto },
@@ -432,6 +458,24 @@ const s = StyleSheet.create({
   rapidoTxt: { fontFamily: FUENTE.fuerte, fontSize: 13.5, color: TEXTO.fuerte },
 
   consejos: { flexDirection: 'row', gap: 12 },
+  recoCab: { gap: 2, marginTop: 2 },
+  recoTit: {
+    fontFamily: FUENTE.titulo, fontSize: 20, color: TEXTO.fuerte, letterSpacing: -0.4,
+  },
+  recoPie: { fontFamily: FUENTE.medio, fontSize: 12.5, color: TEXTO.medio },
+  recoNota: {
+    fontFamily: FUENTE.cuerpo, fontSize: 12.5, lineHeight: 18.5,
+    color: TEXTO.medio, paddingHorizontal: 2,
+  },
+  alerta: {
+    flexDirection: 'row', alignItems: 'center', gap: 12,
+    padding: 14, borderRadius: RADIO.tarjeta,
+    backgroundColor: '#FDF1F2', borderWidth: 1, borderColor: '#F3CDD1',
+  },
+  alertaTxt: {
+    flex: 1, fontFamily: FUENTE.medio, fontSize: 13, lineHeight: 19,
+    color: '#8C3A42',
+  },
   consejo: {
     flex: 1, borderRadius: RADIO.tarjeta, padding: 16, gap: 7,
   },

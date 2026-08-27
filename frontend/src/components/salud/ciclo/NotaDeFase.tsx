@@ -36,7 +36,7 @@ import { useCiclo } from '@/features/salud/ciclo/useCiclo'
 import { FASE } from '@/theme/salud/cicloClaro'
 import { base, space, radius, family, type as tipo } from '@/theme/salud/tokens'
 import { elegir } from '@/utils/haptica'
-import type { Phase } from '@/features/salud/ciclo/fases'
+import { FASES, type FichaFase } from '@/nucleo/ciclo/recomendaciones'
 
 type Donde = 'nutricion' | 'entrena'
 
@@ -46,20 +46,16 @@ type Donde = 'nutricion' | 'entrena'
  * Una frase, no un párrafo: esto va dentro de una pantalla que ya tiene su
  * propio trabajo que hacer, y si ocupa más se convierte en un estorbo que se
  * aprende a saltar.
+ *
+ * ── Las frases ya no viven aquí ────────────────────────────────────────────
+ * Estaban escritas en este fichero, y eran la segunda de tres copias de lo
+ * mismo: la guía larga en el servidor, esta línea, y otra pareja de frases en
+ * la portada del ciclo. Ya decían cosas distintas de la fase lútea. Ahora las
+ * tres salen de `nucleo/ciclo/recomendaciones.ts`.
  */
-const TEXTO: Record<Donde, Record<Phase, string>> = {
-  nutricion: {
-    menstrual: 'Hierro y magnesio ayudan estos días: lentejas, espinaca, semillas de calabaza.',
-    folicular: 'Buen momento para proteína y carbohidratos complejos; el gasto sube con la energía.',
-    ovulatoria: 'Mantén proteína y complejos. Buen día para comer variado, sin restricciones.',
-    lutea: 'Es normal tener más hambre: el gasto basal sube en esta fase. Fibra y complejos sostienen mejor que restringir.',
-  },
-  entrena: {
-    menstrual: 'Si el cuerpo pide bajar el ritmo, bájalo. Caminar, movilidad o yoga cuentan.',
-    folicular: 'Suele haber más energía. Si la sientes, es buen momento para progresar cargas.',
-    ovulatoria: 'Punto alto de energía en muchas personas. Alta intensidad si el cuerpo acompaña.',
-    lutea: 'Hacia el final de la fase la intensidad suele costar más. El cardio moderado ayuda al ánimo.',
-  },
+const CUAL: Record<Donde, (f: FichaFase) => string> = {
+  nutricion: f => f.notaNutricion,
+  entrena: f => f.notaEntreno,
 }
 
 export function NotaDeFase({ donde }: { donde: Donde }) {
@@ -87,7 +83,7 @@ export function NotaDeFase({ donde }: { donde: Donde }) {
           <Text style={{ color: tono.arco }}>{tono.etiqueta.toUpperCase()}</Text>
           <Text style={s.dia}>{`  ·  DÍA ${prediccion.diaDeCiclo}`}</Text>
         </Text>
-        <Text style={s.frase}>{TEXTO[donde][fase]}</Text>
+        <Text style={s.frase}>{CUAL[donde](FASES[fase])}</Text>
       </View>
       <Ionicons name="chevron-forward" size={16} color={base.textLow} />
     </Pressable>

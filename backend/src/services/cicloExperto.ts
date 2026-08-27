@@ -61,157 +61,35 @@ Reglas que sigues siempre:
   fluctuaciones hormonales naturales, así que ajustas el tono de las recomendaciones de
   "fase hormonal" hacia bienestar general en vez de ventanas hormonales específicas.
 - Respuestas breves y accionables (2-4 puntos concretos), nunca un ensayo.
+- Varías los alimentos que pones de ejemplo entre una respuesta y otra. Repetir
+  siempre los mismos tres hace que se dejen de leer a la semana.
+- Das un alimento o un hábito CONCRETO. "Come sano" y "cuida tu alimentación" no
+  son recomendaciones, son relleno.
 `.trim()
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 1 · Síntomas → qué comer y cómo moverse
 // ═══════════════════════════════════════════════════════════════════════════
 
-export interface FichaSintoma {
-  /** La clave con la que lo guarda la app. */
-  id: string
-  etiqueta: string
-  /** Qué pasa en el cuerpo, en una frase que se pueda leer sin estudiar nada. */
-  fisiologia: string
-  nutricion: string
-  /** `null` cuando no hay recomendación de movimiento con respaldo. */
-  entrenamiento: string | null
-}
+/* La tabla de síntomas y la guía por fase viven en `nucleo/ciclo/`, compartidas
+   con la app. Estaban aquí, y la app no podía leerlas: por eso `NotaDeFase.tsx`
+   acabó con su propia copia de lo que decir en cada fase, y las dos ya se
+   habían separado. Se re-exportan para no romper a quien las importa de aquí. */
+export {
+  SINTOMAS, SINTOMA_POR_ID, FASES, PRIORIDAD,
+  sintomasDelDia, alertasDelDia, recomendacionDelDia, semillaDeFecha,
+  ENERGIA_BAJA, DOLOR_ALERTA, SANGRADO_ALERTA,
+} from '../nucleo/ciclo/recomendaciones'
+export type {
+  FichaSintoma, FichaFase, Alerta, Consejo, Recomendacion, EntradaRecomendacion,
+} from '../nucleo/ciclo/recomendaciones'
 
-/**
- * Las diez fichas.
- *
- * `entrenamiento` es `null` en dos de ellas y eso es deliberado: para el acné
- * premenstrual y para la libido no hay una recomendación de movimiento con
- * respaldo, y rellenar el hueco con un consejo genérico —«¡muévete!»— es lo
- * que hace que se deje de creer también los ocho que sí valen.
- */
-export const SINTOMAS: FichaSintoma[] = [
-  {
-    id: 'colicos',
-    etiqueta: 'Cólicos / dolor menstrual',
-    fisiologia: 'El útero libera prostaglandinas para desprender el endometrio; en exceso generan inflamación y contracciones más dolorosas.',
-    nutricion: 'Omega-3 (salmón, chía, linaza) y alimentos antiinflamatorios; magnesio (semillas de calabaza, plátano, chocolate oscuro); reducir ultraprocesados y exceso de sal.',
-    entrenamiento: 'Movimiento suave: caminata, estiramientos, yoga con torsiones suaves y posturas de cadera abierta; el calor local más movimiento leve mejora el flujo sanguíneo pélvico.',
-  },
-  {
-    id: 'fatiga',
-    etiqueta: 'Fatiga',
-    fisiologia: 'Estrógeno y hierro están en su punto más bajo durante el sangrado; el cuerpo gasta energía extra reponiendo lo perdido.',
-    nutricion: 'Hierro (carnes rojas magras, legumbres, espinaca) con vitamina C para mejorar su absorción (cítricos, pimiento); carbohidratos complejos para energía sostenida.',
-    entrenamiento: 'Bajar el volumen e intensidad sin culpa; sesiones cortas o de recuperación activa; escuchar la señal de energía baja como información, no como fracaso.',
-  },
-  {
-    id: 'cabeza',
-    etiqueta: 'Dolor de cabeza / migraña',
-    fisiologia: 'Suele coincidir con la caída brusca de estrógeno, justo antes o al inicio del sangrado.',
-    nutricion: 'Buena hidratación, magnesio, evitar ayunos largos y estabilizar el azúcar en sangre con comidas regulares.',
-    entrenamiento: 'Evitar entrenamientos de muy alta intensidad ese día; priorizar descanso, luz baja y movimiento ligero si el cuerpo lo permite.',
-  },
-  {
-    id: 'hinchazon',
-    etiqueta: 'Inflamación / hinchazón abdominal',
-    fisiologia: 'La progesterona alta de la fase lútea enlentece la digestión y favorece la retención de líquidos.',
-    nutricion: 'Reducir sodio y ultraprocesados; aumentar fibra de forma progresiva para no empeorar la hinchazón de golpe; té de jengibre o hinojo como apoyo digestivo.',
-    entrenamiento: 'Ejercicio de bajo impacto que active la circulación (caminar, pilates); evitar comparar el abdomen hinchado con otros días — es fisiológico, no pérdida de progreso.',
-  },
-  {
-    id: 'antojos',
-    etiqueta: 'Antojos (dulce, salado, carbohidratos)',
-    fisiologia: 'La progesterona eleva ligeramente el metabolismo basal y el gasto energético en fase lútea, así que el apetito sube de verdad, no es solo antojo emocional.',
-    nutricion: 'Anticiparse con snacks nutritivos (fruta con mantequilla de maní, yogur con avena) en vez de restringir; el chocolate oscuro de 70 % o más cubre el antojo de dulce con menos azúcar y algo de magnesio.',
-    entrenamiento: 'No es momento de iniciar un déficit calórico agresivo; mantener constancia con entrenamientos moderados regula el apetito mejor que restringir comida.',
-  },
-  {
-    id: 'animo',
-    etiqueta: 'Cambios de ánimo / irritabilidad',
-    fisiologia: 'La caída de progesterona y estrógeno al final de la fase lútea afecta a la serotonina.',
-    nutricion: 'Triptófano y carbohidratos complejos (avena, plátano, legumbres) apoyan la producción de serotonina; la vitamina B6 (garbanzos, pollo) se asocia a menor irritabilidad premenstrual.',
-    entrenamiento: 'El ejercicio aeróbico moderado (caminar rápido, bici, baile) es de lo más efectivo para regular el ánimo — más que la intensidad, importa la constancia.',
-  },
-  {
-    id: 'acne',
-    etiqueta: 'Piel / acné premenstrual',
-    fisiologia: 'El aumento relativo de andrógenos en la fase lútea tardía estimula la producción de sebo.',
-    nutricion: 'Zinc (semillas de calabaza, legumbres) y omega-3; cuidar los picos de azúcar, que pueden agravar la inflamación de la piel.',
-    entrenamiento: null,
-  },
-  {
-    id: 'insomnio',
-    etiqueta: 'Insomnio / mal descanso',
-    fisiologia: 'La caída de progesterona —que tiene un efecto calmante leve— antes del periodo puede afectar a la calidad del sueño.',
-    nutricion: 'Evitar cafeína después del mediodía esos días; magnesio antes de dormir; cenas más ligeras y tempranas.',
-    entrenamiento: 'Evitar entrenar muy intenso cerca de la hora de dormir esos días; priorizar rutinas de bajada de revoluciones (estiramientos, respiración).',
-  },
-  {
-    id: 'retencion',
-    etiqueta: 'Retención de líquidos',
-    fisiologia: 'Progesterona y aldosterona favorecen que el cuerpo retenga más sodio y agua en fase lútea.',
-    nutricion: 'Reducir el sodio de ultraprocesados —no el sodio natural de la comida—; aumentar potasio (plátano, palta, papa); mantener buena hidratación, que aunque suene contraintuitivo ayuda a des-retener.',
-    entrenamiento: 'Movimiento suave y regular ayuda más que el reposo total a drenar la retención.',
-  },
-  {
-    id: 'libido',
-    etiqueta: 'Cambios en el deseo sexual',
-    fisiologia: 'La libido suele acompañar al pico de estrógeno y testosterona de la ovulación, y bajar en fase lútea y menstrual.',
-    nutricion: 'No hay una recomendación nutricional específica con evidencia sólida; mantener buena energía general (hierro, sueño, hidratación) ayuda de forma indirecta.',
-    entrenamiento: null,
-  },
-]
+import { FASES, SINTOMA_POR_ID } from '../nucleo/ciclo/recomendaciones'
+import type { Fase } from '../nucleo/ciclo/fases'
+import type { FichaSintoma } from '../nucleo/ciclo/recomendaciones'
 
-/** Búsqueda por clave, para no recorrer la lista en cada pantalla. */
-export const SINTOMA_POR_ID = new Map(SINTOMAS.map(s => [s.id, s]))
-
-// ═══════════════════════════════════════════════════════════════════════════
-// 2 · Las cuatro fases
-// ═══════════════════════════════════════════════════════════════════════════
-
-export type FaseCiclo = 'menstrual' | 'folicular' | 'ovulatoria' | 'lutea'
-
-export interface FichaFase {
-  etiqueta: string
-  /** Días aproximados. Orientativo: el motor calcula los reales de SU ciclo. */
-  rango: string
-  hormonas: string
-  favorece: string
-  comer: string
-  entrenar: string
-}
-
-export const FASES: Record<FaseCiclo, FichaFase> = {
-  menstrual: {
-    etiqueta: 'Menstrual',
-    rango: 'día 1 al 5 aprox.',
-    hormonas: 'Estrógeno y progesterona en su punto más bajo del ciclo.',
-    favorece: 'Bajar el ritmo sin culpa, reponer hierro y tomarse la energía baja como información válida.',
-    comer: 'Hierro con vitamina C (lentejas con pimiento, espinaca con cítricos), omega-3 antiinflamatorio, buena hidratación, comidas calientes y reconfortantes.',
-    entrenar: 'Caminatas, yoga, movilidad, pilates suave; si el cuerpo lo pide, fuerza ligera está bien — la clave es que sea elección, no exigencia.',
-  },
-  folicular: {
-    etiqueta: 'Folicular',
-    rango: 'día 6 al 13 aprox., justo después del sangrado',
-    hormonas: 'El estrógeno sube de forma sostenida; suele acompañarse de más energía, mejor ánimo y mejor tolerancia al esfuerzo percibido.',
-    favorece: 'Construir hábito, probar cosas nuevas y progresar cargas de forma gradual.',
-    comer: 'Proteína magra y carbohidratos complejos (quinoa, avena, arroz integral) para sostener el mayor gasto; vegetales crucíferos y fermentados, que apoyan el metabolismo del estrógeno.',
-    entrenar: 'Buen momento para fuerza progresiva y cardio de mayor intensidad, aprovechando que la energía percibida suele ser más alta — según cómo se sienta cada usuaria, no como regla fija.',
-  },
-  ovulatoria: {
-    etiqueta: 'Ovulatoria',
-    rango: 'alrededor del día 14, ventana corta de 2-3 días',
-    hormonas: 'Pico de estrógeno y un pequeño pico de testosterona; suele coincidir con el punto más alto de energía percibida del ciclo.',
-    favorece: 'Retos de alta intensidad si el cuerpo acompaña, aunque la ventana es corta y muy variable entre personas.',
-    comer: 'Mantener proteína y carbohidratos complejos; buen día para comidas sociales o más variadas, sin necesidad de restricciones.',
-    entrenar: 'Alta intensidad (HIIT, cargas más pesadas) si la energía acompaña — sin forzarlo si no es así, porque la variabilidad individual es alta.',
-  },
-  lutea: {
-    etiqueta: 'Lútea',
-    rango: 'día 15 hasta el inicio del siguiente sangrado, unos 14 días',
-    hormonas: 'La progesterona sube y luego cae junto al estrógeno al final de la fase; el metabolismo basal se eleva un poco (más apetito real) y pueden aparecer síntomas premenstruales.',
-    favorece: 'Constancia y manejo de síntomas por encima de la intensidad; es normal necesitar más comida y más descanso hacia el final.',
-    comer: 'Carbohidratos complejos y fibra para estabilizar el azúcar en sangre y controlar antojos; magnesio y vitamina B6 para síntomas premenstruales; anticiparse con snacks nutritivos en vez de restringir.',
-    entrenar: 'Bajar gradualmente la intensidad hacia el final; el cardio moderado (caminar rápido, bici, baile) es especialmente útil para el ánimo; fuerza con cargas moderadas está bien si el cuerpo responde.',
-  },
-}
+/** El nombre con el que este módulo siempre ha llamado a la fase. */
+export type FaseCiclo = Fase
 
 // ═══════════════════════════════════════════════════════════════════════════
 // 3 · Los prompts
@@ -347,26 +225,56 @@ mostrarse directamente en la tarjeta de recomendación del día.
 export interface DatosDiarios {
   fase: FaseCiclo
   diaDeCiclo: number
+  /** La duración del ciclo de ELLA, no 28. */
+  duracionCiclo: number
+  /**
+   * Dónde está dentro de la fase. El día 1 de la menstrual y el 5 no piden lo
+   * mismo, y sin esto el modelo trata los cinco como el mismo día.
+   */
+  diaDentroDeFase: { n: number; de: number } | null
   sintomas: string[]
   energia: number | null
   animo: string | null
   anticonceptivo: string | null
   antojos: string[]
+  /** Señales de alerta ya detectadas por la app, en palabras. */
+  alertas: string[]
+  /** El patrón del bloque 5 de estadísticas, si lo hay. */
+  patron: string | null
 }
 
+/**
+ * La recomendación diaria.
+ *
+ * ── Ni un solo día de calendario ───────────────────────────────────────────
+ * Antes decía «Fase Ovulatoria (alrededor del día 14, ventana corta)» al lado
+ * de «Día del ciclo: 8», que es lo que le toca a un ciclo de 21 días. Dos
+ * datos que se contradicen, y el modelo se queda con el que suena a norma: la
+ * respuesta salía hablando de fase folicular. Ahora solo van los números de
+ * ella, y la fase ya viene calculada — no se le pide que la deduzca.
+ */
 export function promptDiario(d: DatosDiarios): string {
   const f = FASES[d.fase]
+  const dentro = d.diaDentroDeFase
+    ? ` (día ${d.diaDentroDeFase.n} de ${d.diaDentroDeFase.de} de esta fase)`
+    : ''
   return `
 Contexto: eres el módulo de recomendación diaria de ZENCRUS.
 
 Datos de la usuaria hoy:
-- Fase actual del ciclo: ${f.etiqueta} (${f.rango})
-- Día del ciclo: ${d.diaDeCiclo}
+- Fase actual del ciclo: ${f.etiqueta}${dentro}
+- Día del ciclo: ${d.diaDeCiclo} de un ciclo de ${d.duracionCiclo} días
 - Síntomas registrados hoy: ${lista(d.sintomas)}
 - Energía registrada hoy (1 a 5): ${d.energia ?? 'sin registrar'}
 - Ánimo registrado hoy: ${d.animo ?? 'sin registrar'}
 - ¿Usa anticonceptivo hormonal?: ${d.anticonceptivo ?? 'no'}
 - Antojos registrados: ${lista(d.antojos)}
+${d.patron ? `- Patrón detectado en su historial: ${d.patron}` : ''}
+${d.alertas.length ? `- SEÑALES DE ALERTA detectadas: ${lista(d.alertas)}` : ''}
+
+La fase ya viene calculada por el motor sobre el ciclo real de ella. No la
+deduzcas del número de día ni asumas que la ovulación cae en el 14: en un ciclo
+de 21 días cae en el 8.
 
 Qué favorece esta fase, según la guía de la app:
 - Hormonas: ${f.hormonas}
@@ -375,15 +283,22 @@ Qué favorece esta fase, según la guía de la app:
 
 Tarea:
 1. Si usa anticonceptivo hormonal, ajusta el enfoque hacia bienestar general y manejo
-   de síntomas en vez de "ventana hormonal", y dilo de forma breve y natural.
+   de síntomas en vez de "ventana hormonal", y dilo de forma breve y natural — una
+   frase, no una advertencia.
 2. Da 1 recomendación de nutrición para hoy, priorizando primero los antojos y
-   síntomas registrados hoy, y en segundo lugar el patrón general de la fase.
-3. Da 1 recomendación de entrenamiento o movimiento para hoy, ajustada a la energía y
-   el ánimo que registró — nunca le exijas alta intensidad si registró energía baja.
+   síntomas registrados hoy, y en segundo lugar el patrón general de la fase. Que sea
+   un alimento o un hábito concreto.
+3. Da 1 recomendación de entrenamiento o movimiento para hoy. Si la energía registrada
+   es 2 o menos, NO sugieras alta intensidad aunque la fase la admita: la guía describe
+   una tendencia de población y la energía es un dato de ella.
 4. Sé honesta si la recomendación de entrenamiento es más sobre bienestar que sobre
    rendimiento: no prometas "quemarás más grasa" ni "rendirás al máximo" solo por la
    fase, porque la evidencia de eso es débil.
-5. Cierra con una frase breve de ánimo, sin ser cursi ni condescendiente.
+5. Si hay señales de alerta, añade una sugerencia cálida de consultarlo con un
+   profesional de salud. Sin alarmar y SIN nombrar ninguna condición.
+6. Si hay un patrón detectado en su historial, conéctalo con lo que le recomiendas en
+   vez de ignorarlo.
+7. Cierra con una frase breve de ánimo, sin ser cursi ni condescendiente.
 
 Devuelve máximo 4 líneas: 1 de nutrición, 1 de entrenamiento, 1 de cierre.
 `.trim()

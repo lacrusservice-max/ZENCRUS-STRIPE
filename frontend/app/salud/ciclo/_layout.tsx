@@ -85,6 +85,21 @@ export default function LayoutCiclo() {
   const [checkinVisto, setCheckinVisto] = useState(false)
   const logs = useCicloStore(s => s.logs)
   const cargado = useCicloStore(s => s.cargado)
+  const cargar = useCicloStore(s => s.load)
+
+  /* ── Cargar el historial, si nadie lo ha hecho ya ──────────────────────
+     Vivía SOLO en el hub de Salud, así que solo tenía historial quien entraba
+     por ahí. Quien llegaba directo —un enlace profundo, una notificación, la
+     app restaurando en esta pestaña— veía «Todavía no puedo predecir» con sus
+     cuatro periodos guardados en el teléfono, y encima con una invitación a
+     volver a meterlos.
+
+     Va en el layout y no en cada pantalla por lo mismo que el resto de
+     puertas: son once pantallas y bastaría con que a una se le olvidara. */
+  useEffect(() => {
+    if (!permitido || cargado) return
+    void cargar()
+  }, [permitido, cargado, cargar])
 
   useEffect(() => {
     if (checkinVisto || !abierto || !permitido || !cargado) return
