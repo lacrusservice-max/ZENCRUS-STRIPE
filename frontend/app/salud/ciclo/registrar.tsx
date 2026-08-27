@@ -52,7 +52,21 @@ import { ANIMOS, animoExacto } from '@/features/salud/ciclo/animos'
 /* ── Vocabulario de pantalla ───────────────────────────────────────────── */
 
 /** Los cinco grados del mockup sobre la escala 0-5 del esquema. */
+/**
+ * Los seis grados, con el 0 delante.
+ *
+ * «Hoy no» estaba solo en el check-in, y el check-in solo pregunta lo que
+ * falta: en cuanto se contestaba una vez, ninguna pantalla volvía a enseñarlo
+ * ni podía quitarlo. El día quedaba con un sangrado de nivel 0 permanente que
+ * seguía contando para la racha. Aquí sí se ve y, tocándolo otra vez, se
+ * borra.
+ *
+ * Y no es solo para poder deshacer: «hoy no sangré» es una respuesta, no la
+ * ausencia de una. Que el registro largo no pudiera expresarla mientras el
+ * corto sí era la misma casilla con dos vocabularios distintos.
+ */
 const NIVELES: { nivel: number; etiqueta: string; manchado?: boolean }[] = [
+  { nivel: 0, etiqueta: 'Hoy no' },
   { nivel: 1, etiqueta: 'Manchado', manchado: true },
   { nivel: 2, etiqueta: 'Ligero' },
   { nivel: 3, etiqueta: 'Moderado' },

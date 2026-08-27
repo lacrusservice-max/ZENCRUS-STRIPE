@@ -53,6 +53,7 @@ const SANGRADO = [
 export default function CheckinCiclo() {
   const nombre = useAuthStore(s => (s.user?.full_name ?? '').trim().split(/\s+/)[0] ?? '')
   const registrar = useCicloStore(s => s.registrar)
+  const borrarKind = useCicloStore(s => s.borrar)
   const logs = useCicloStore(s => s.logs)
   const hoy = hoyLocal()
   /* Se lee el mapa directamente en vez de `getDia`: un selector debe devolver
@@ -97,6 +98,11 @@ export default function CheckinCiclo() {
     void registrar(kind as never, value as never, hoy)
   }
 
+  const quitar = (kind: 'sangrado' | 'energia' | 'animo') => {
+    marcar()
+    void borrarKind(kind as never, hoy)
+  }
+
   const salir = () => { confirmar(); acusarYSalir() }
 
   const tono = prediccion ? FASE[prediccion.fase] : null
@@ -131,10 +137,20 @@ export default function CheckinCiclo() {
                   key={n.nivel}
                   texto={n.etiqueta}
                   activo={sangrado?.level === n.nivel}
-                  onPress={() => guardar('sangrado', {
-                    level: n.nivel,
-                    spotting: n.nivel === 1,
-                  })}
+                  /* Volver a tocar la respuesta marcada la quita, igual que en
+                     el registro largo. Sin esto, «Hoy no» —que solo existe en
+                     esta pantalla— era irreversible: una vez tocado, el día
+                     quedaba con un sangrado nivel 0 que ninguna pantalla podía
+                     borrar, y esa cuenta ya sumaba un día de racha para
+                     siempre. Un registro que no se puede deshacer no es un
+                     registro, es una trampa. */
+                  onPress={() => {
+                    if (sangrado?.level === n.nivel) { quitar('sangrado'); return }
+                    guardar('sangrado', {
+                      level: n.nivel,
+                      spotting: n.nivel === 1,
+                    })
+                  }}
                 />
               ))}
             </View>
