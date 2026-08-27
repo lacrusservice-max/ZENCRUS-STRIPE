@@ -23,7 +23,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { View, Text, StyleSheet, Pressable, ScrollView } from 'react-native'
 import { router } from 'expo-router'
 import { useAuthStore } from '@/store/authStore'
-import { useCicloStore } from '@/store/cicloStore'
+import { useCicloStore, DIA_VACIO } from '@/store/cicloStore'
 import { useCiclo } from '@/features/salud/ciclo/useCiclo'
 import { rachaRegistro } from '@/features/salud/ciclo/historial'
 import {
@@ -61,7 +61,10 @@ export default function CheckinCiclo() {
   const registrar = useCicloStore(s => s.registrar)
   const logs = useCicloStore(s => s.logs)
   const hoy = hoyLocal()
-  const dia = useCicloStore(s => s.getDia(hoy))
+  /* Se lee el mapa directamente en vez de `getDia`: un selector debe devolver
+     algo con identidad estable, y aquí `undefined` lo es. El `?? DIA_VACIO` va
+     FUERA del selector. */
+  const dia = useCicloStore(s => s.logs[hoy]) ?? DIA_VACIO
   const { prediccion, estadisticas } = useCiclo()
 
   /* Lo que faltaba AL ABRIR, congelado. Si se recalculara en cada toque, las

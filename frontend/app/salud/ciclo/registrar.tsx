@@ -30,7 +30,7 @@ import {
   KeyboardAvoidingView, Platform,
 } from 'react-native'
 import { router, useLocalSearchParams } from 'expo-router'
-import { useCicloStore } from '@/store/cicloStore'
+import { useCicloStore, DIA_VACIO } from '@/store/cicloStore'
 import { useCiclo } from '@/features/salud/ciclo/useCiclo'
 import { rachaRegistro } from '@/features/salud/ciclo/historial'
 import { diaLargo } from '@/features/salud/ciclo/formato'
@@ -119,7 +119,10 @@ export default function RegistrarCiclo() {
   const registrar = useCicloStore(s => s.registrar)
   const borrarKind = useCicloStore(s => s.borrar)
   const logs = useCicloStore(s => s.logs)
-  const dia = useCicloStore(s => s.getDia(fecha))
+  /* Se lee el mapa directamente en vez de `getDia`: un selector debe devolver
+     algo con identidad estable, y aquí `undefined` lo es. El `?? DIA_VACIO` va
+     FUERA del selector. */
+  const dia = useCicloStore(s => s.logs[fecha]) ?? DIA_VACIO
   const { prediccion } = useCiclo(fecha)
 
   const guardar = useCallback((kind: TrackerKind, value: unknown) => {

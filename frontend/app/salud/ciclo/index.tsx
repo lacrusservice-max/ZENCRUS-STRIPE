@@ -56,7 +56,7 @@ export default function InicioCiclo() {
   const nombre = useAuthStore(s => (s.user?.full_name ?? '').trim().split(/\s+/)[0] ?? '')
   const logs = useCicloStore(s => s.logs)
   const hoy = hoyLocal()
-  const { hayDatos, prediccion, marco, estadisticas, periodos } = useCiclo()
+  const { hayDatos, prediccion, marco, estadisticas, periodos, declarado } = useCiclo()
 
   /* Un PRIMITIVO, no `getDia(hoy)`: un selector que construye un objeto
      devuelve uno nuevo en cada llamada y Zustand entra en bucle infinito. */
@@ -73,6 +73,15 @@ export default function InicioCiclo() {
   }, [sangradoHoy, periodos, hoy])
 
   const racha = useMemo(() => rachaRegistro(logs, hoy), [logs, hoy])
+
+  /* La duración que se ENSEÑA es la misma que el motor usa para dibujar el
+     anillo: la medida si ya hay dos periodos, y si no, la que ella declaró al
+     entrar. Lo que no se enseña nunca es el 28 de reserva — ese es el valor
+     con el que el anillo tiene que dibujar algo, no un dato suyo, y ponerlo
+     aquí sería devolverle como medida una cifra que nadie ha medido. */
+  const duracionCiclo = estadisticas.media
+    ? Math.round(estadisticas.media)
+    : declarado.duracion
 
   /* Cuántos días quedan de la fase en curso. Se cuenta hasta el límite de la
      fase siguiente; en la última se cierra contra el final del ciclo. */
@@ -148,12 +157,15 @@ export default function InicioCiclo() {
           <Cifra icono="stats_racha" valor={racha ? String(racha) : '—'} pie="días de racha" />
           <Cifra
             icono="cycle_duracion"
-            valor={estadisticas.media ? String(Math.round(estadisticas.media)) : '—'}
+            valor={duracionCiclo ? String(duracionCiclo) : '—'}
             pie="días de ciclo"
           />
           <Cifra
             icono="cycle_calendario"
             valor={prediccion ? diaCorto(prediccion.proximoPeriodo.likely) : '—'}
+            nota={prediccion && prediccion.margenDias > 0
+              ? `± ${prediccion.margenDias} d`
+              : undefined}
             pie="próx. periodo"
           />
         </View>
@@ -271,13 +283,26 @@ export default function InicioCiclo() {
 
 /* ── Piezas de esta pantalla ───────────────────────────────────────────── */
 
-function Cifra({ icono, valor, pie }: { icono: NombreIcono; valor: string; pie: string }) {
+/**
+ * Una cifra de cabecera.
+ *
+ * `nota` es la letra pequeña que va PEGADA al número, no al pie: ahí es donde
+ * cabe el margen de una predicción. Sin ella, «18 sep» se lee como una fecha
+ * sabida, y con un solo ciclo registrado no lo es ni de lejos.
+ */
+function Cifra({ icono, valor, nota, pie }: {
+  icono: NombreIcono
+  valor: string
+  nota?: string
+  pie: string
+}) {
   return (
     <View style={s.cifra}>
       <Icono nombre={icono} tam={20} />
       <Text style={s.cifraNum} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
         {valor}
       </Text>
+      {nota ? <Text style={s.cifraNota} numberOfLines={1}>{nota}</Text> : null}
       <Text style={s.cifraPie} numberOfLines={1}>{pie}</Text>
     </View>
   )
@@ -361,6 +386,9 @@ const s = StyleSheet.create({
   },
   cifraNum: {
     fontFamily: FUENTE.titulo, fontSize: 21, color: TEXTO.fuerte, ...TABULAR,
+  },
+  cifraNota: {
+    fontFamily: FUENTE.medio, fontSize: 10.5, color: TEXTO.suave, marginTop: -1,
   },
   cifraPie: { fontFamily: FUENTE.cuerpo, fontSize: 11.5, color: TEXTO.medio },
 

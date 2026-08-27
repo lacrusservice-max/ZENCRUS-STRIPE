@@ -119,6 +119,9 @@ const guardarLogs = (logs: Record<string, RegistroDia>) =>
 const guardarCola = (cola: Pendiente[]) =>
   AsyncStorage.setItem(COLA_KEY, JSON.stringify(cola.slice(-600)))
 
+/** El día sin registrar, con identidad estable. Ver `getDia`. */
+export const DIA_VACIO: RegistroDia = Object.freeze({})
+
 export const useCicloStore = create<CicloState>((set, get) => ({
   logs: {},
   inicios: [],
@@ -343,7 +346,13 @@ export const useCicloStore = create<CicloState>((set, get) => ({
     ])
   },
 
-  getDia: (fecha) => get().logs[fecha ?? hoyLocal()] ?? {},
+  /* El `??` devuelve SIEMPRE el mismo objeto vacío, no uno nuevo.
+     Con `?? {}` cada llamada creaba uno distinto, y usada como selector de
+     Zustand —`useCicloStore(s => s.getDia(f))`— eso es un bucle infinito:
+     Zustand compara con `Object.is`, siempre le parece que cambió, vuelve a
+     renderizar y React corta con «Maximum update depth exceeded».
+     Solo pasaba en días SIN registro, que es lo que lo hizo tardar en salir. */
+  getDia: (fecha) => get().logs[fecha ?? hoyLocal()] ?? DIA_VACIO,
 
   cuantosEse: (fecha) => Object.keys(get().getDia(fecha)).length,
 

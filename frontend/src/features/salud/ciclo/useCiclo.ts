@@ -47,6 +47,14 @@ export interface EstadoCiclo {
   tema: PhaseTokens
   /** Días que faltan para el día probable. Negativo si ya pasó. */
   faltan: number | null
+  /**
+   * Lo que ella declaró al darse de alta, sin mezclar con lo medido. Se
+   * expone aparte porque una pantalla necesita poder distinguir «no lo sé»
+   * de «uso el valor de reserva»: el 28 y los 5 días con los que `marco`
+   * dibuja cuando no hay nada NO son datos suyos y no deben enseñarse como
+   * si lo fueran.
+   */
+  declarado: { duracion: number | null; sangrado: number | null }
 }
 
 export function useCiclo(fecha?: string): EstadoCiclo {
@@ -118,6 +126,7 @@ export function useCiclo(fecha?: string): EstadoCiclo {
       faltan: prediccion
         ? marco.duracion - prediccion.diaDeCiclo + 1
         : null,
+      declarado: { duracion: duracionDeclarada, sangrado: sangradoDeclarado },
     }
   }, [logs, inicios, modoId, fecha, duracionDeclarada, sangradoDeclarado])
 }
