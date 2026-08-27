@@ -78,7 +78,7 @@ Reglas que sigues siempre:
 export {
   SINTOMAS, SINTOMA_POR_ID, FASES, PRIORIDAD,
   sintomasDelDia, alertasDelDia, recomendacionDelDia, semillaDeFecha,
-  ENERGIA_BAJA, DOLOR_ALERTA, SANGRADO_ALERTA,
+  ENERGIA_BAJA, DOLOR_ALERTA, SANGRADO_ALERTA, NOTA_EVIDENCIA,
 } from '../nucleo/ciclo/recomendaciones'
 export type {
   FichaSintoma, FichaFase, Alerta, Consejo, Recomendacion, EntradaRecomendacion,
@@ -340,13 +340,3 @@ const fichasDe = (ids: string[]): string => {
  * con matices distintos — que es como una app acaba prometiendo en una
  * pantalla lo que niega en otra.
  */
-export const NOTA_EVIDENCIA = `
-El manejo de síntomas —alimentación antiinflamatoria, hidratación, movimiento suave en
-días de dolor— tiene buen respaldo práctico y fisiológico. El efecto de la fase del
-ciclo sobre el rendimiento deportivo puro (fuerza máxima, hipertrofia) tiene evidencia
-débil e inconsistente: las revisiones sistemáticas recientes concluyen que es prematuro
-afirmar que entrenar según la fase cambie los resultados de forma relevante, y que el
-sueño, el estrés y la nutrición general pesan más. Sincronizar hábitos con el ciclo
-tampoco aplica igual con anticoncepción hormonal, porque entonces el ciclo no refleja
-fluctuaciones hormonales naturales.
-`.trim()

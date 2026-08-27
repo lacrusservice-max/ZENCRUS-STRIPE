@@ -625,3 +625,18 @@ export function dentroDeFase(
   const de = Math.max(1, fin - inicio)
   return { n: Math.max(1, Math.min(de, diaDeCiclo - inicio + 1)), de }
 }
+
+/**
+ * La nota de evidencia, tal cual se le enseña.
+ *
+ * Vivía solo en el servidor, dentro de un prompt, así que la usuaria nunca la
+ * leía: se la contaba el modelo si le apetecía. Aquí es texto de la app, y va
+ * al pie de cada explicación. Es la diferencia entre una app que es honesta
+ * con su nivel de evidencia y una que dice serlo en su documentación interna.
+ */
+export const NOTA_EVIDENCIA =
+  'El manejo de síntomas —comer antiinflamatorio, hidratarte, moverte suave los días '
+  + 'de dolor— tiene buen respaldo. El efecto de la fase sobre el rendimiento puro '
+  + '(fuerza máxima, hipertrofia) NO: la evidencia es débil e inconsistente, y pesan '
+  + 'más el sueño, el estrés y lo que comes en general. Por eso aquí no vas a leer que '
+  + 'una fase te hará rendir más ni quemar más grasa.'

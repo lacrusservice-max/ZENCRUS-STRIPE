@@ -61,6 +61,15 @@ export default function InicioCiclo() {
   const hoyReco = useRecomendacion()
   const cargado = useCicloStore(s => s.cargado)
 
+  /* «Ver más» lleva a la ficha que produjo ESA recomendación, no a una
+     pantalla genérica. Antes las dos tarjetas iban a correlaciones, que trata
+     de otra cosa: un enlace que no lleva a donde promete se deja de tocar. */
+  const abrirPorQue = (fuente?: string) => {
+    if (!fuente) return
+    elegir()
+    router.push({ pathname: '/salud/ciclo/porque', params: { fuente } })
+  }
+
   /* Un PRIMITIVO, no `getDia(hoy)`: un selector que construye un objeto
      devuelve uno nuevo en cada llamada y Zustand entra en bucle infinito. */
   const sangradoHoy = useCicloStore(
@@ -292,7 +301,7 @@ export default function InicioCiclo() {
               hoyReco?.reco.nutricion.texto
               ?? 'Registra tu ciclo para recibir consejos por fase.'
             }
-            onPress={() => router.push('/salud/ciclo/correlaciones')}
+            onPress={() => abrirPorQue(hoyReco?.reco.nutricion.fuente)}
           />
           <Consejo
             tono={ACENTO.moradoFondo}
@@ -304,7 +313,7 @@ export default function InicioCiclo() {
               hoyReco?.reco.entrenamiento.texto
               ?? 'Registra tu ciclo para recibir consejos por fase.'
             }
-            onPress={() => router.push('/salud/ciclo/correlaciones')}
+            onPress={() => abrirPorQue(hoyReco?.reco.entrenamiento.fuente)}
           />
         </View>
 
