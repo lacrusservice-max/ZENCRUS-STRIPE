@@ -62,6 +62,7 @@ import { RachaFlotante } from '@/components/racha/RachaFlotante'
 import { migrarSeguimiento, vaciarCola } from '@/store/trackingSync'
 import { vigilarHabitosAutomaticos } from '@/features/salud/autoHabitos'
 import { escucharRecordatorios } from '@/features/salud/recordatorios'
+import { escucharAvisos } from '@/features/salud/ciclo/avisos'
 import { migrarHistorico, vaciarCola as vaciarColaNutricion } from '@/store/nutritionSync'
 
 const STRIPE_PK = Constants.expoConfig?.extra?.stripePublishableKey as string ?? ''
@@ -168,6 +169,7 @@ export default function RootLayout() {
      lista: avisar a las siete de que tocan cinco minutos solo sirve si al
      segundo toque ya estás respirando. */
   useEffect(() => escucharRecordatorios(), [])
+  useEffect(() => escucharAvisos(), [])
 
   useEffect(() => {
     initialize()

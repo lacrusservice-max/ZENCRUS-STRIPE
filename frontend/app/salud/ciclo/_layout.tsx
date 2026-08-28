@@ -33,6 +33,7 @@ import { base, space, radius, family, type as tipo, PHASES } from '@/theme/salud
 import { Screen } from '@/components/ui/Screen'
 import { BarraCiclo } from '@/components/salud/ciclo/BarraCiclo'
 import { useCicloStore } from '@/store/cicloStore'
+import { useAvisosDelCiclo } from '@/features/salud/ciclo/useAvisos'
 import { estadoDeHoy, apartadoHoy } from '@/features/salud/ciclo/checkin'
 import { hoyLocal } from '@/utils/fechas'
 
@@ -86,6 +87,11 @@ export default function LayoutCiclo() {
   const logs = useCicloStore(s => s.logs)
   const cargado = useCicloStore(s => s.cargado)
   const cargar = useCicloStore(s => s.load)
+
+  /* Los avisos se reprograman aquí porque los que cuelgan de la predicción
+     caducan en cuanto ella registra sangrado. Puesto en la pantalla de
+     ajustes solo se corregirían al entrar ahí, que es casi nunca. */
+  useAvisosDelCiclo(permitido)
 
   /* ── Cargar el historial, si nadie lo ha hecho ya ──────────────────────
      Vivía SOLO en el hub de Salud, así que solo tenía historial quien entraba

@@ -30,6 +30,7 @@
 import { create } from 'zustand'
 import AsyncStorage from '@react-native-async-storage/async-storage'
 import { hoyLocal } from '@/utils/fechas'
+import { AVISOS_POR_DEFECTO, type AjustesAvisos } from '@/features/salud/ciclo/avisosPlan'
 import {
   type TrackerKind, type TrackerValue, validarTracker,
 } from '@/features/salud/trackers'
@@ -43,6 +44,11 @@ const LOGS_KEY = 'ciclo_logs'
 const COLA_KEY = 'ciclo_cola'
 const INICIOS_KEY = 'ciclo_inicios'
 const PERFIL_KEY = 'ciclo_perfil'
+/* Los avisos NO se suben. Una notificación local es una propiedad del
+   teléfono, no de la persona: si se sincronizaran, encender el recordatorio en
+   el móvil lo encendería también en la tablet que dejaste en casa, y ahí no
+   hay nadie que lo lea. El precio es que se pierden al reinstalar. */
+const AVISOS_KEY = 'ciclo_avisos'
 const MAX_DIAS = 800   // algo más de dos años de historial local
 
 interface Pendiente {
@@ -93,6 +99,8 @@ interface CicloState {
   declararInicio: (fecha: string) => Promise<void>
   quitarInicio: (fecha: string) => Promise<void>
   setModo: (modo: ModoVida) => Promise<void>
+  avisos: AjustesAvisos
+  setAvisos: (a: Partial<AjustesAvisos>) => Promise<void>
   setDeclarado: (d: Partial<Pick<PerfilCiclo,
     'duracionDeclarada' | 'sangradoDeclarado' | 'anticonceptivo'>>) => Promise<void>
   borrarTodo: () => Promise<void>
@@ -126,6 +134,7 @@ export const useCicloStore = create<CicloState>((set, get) => ({
   logs: {},
   inicios: [],
   perfil: { modo: MODO_POR_DEFECTO },
+  avisos: AVISOS_POR_DEFECTO,
   cola: [],
   cargado: false,
   sincronizando: false,
@@ -133,23 +142,32 @@ export const useCicloStore = create<CicloState>((set, get) => ({
 
   load: async () => {
     try {
-      const [l, c, i, pf] = await Promise.all([
+      const [l, c, i, pf, av] = await Promise.all([
         AsyncStorage.getItem(LOGS_KEY),
         AsyncStorage.getItem(COLA_KEY),
         AsyncStorage.getItem(INICIOS_KEY),
         AsyncStorage.getItem(PERFIL_KEY),
+        AsyncStorage.getItem(AVISOS_KEY),
       ])
       set({
         logs: l ? JSON.parse(l) : {},
         cola: c ? JSON.parse(c) : [],
         inicios: i ? JSON.parse(i) : [],
         perfil: pf ? JSON.parse(pf) : { modo: MODO_POR_DEFECTO },
+        /* Se fusiona con los valores por defecto y no se sustituye: el día que
+           se añada un aviso nuevo, quien ya tenía ajustes guardados se quedaría
+           con ese campo en `undefined` y la pantalla pintaría un interruptor
+           vacío que no responde. */
+        avisos: { ...AVISOS_POR_DEFECTO, ...(av ? JSON.parse(av) : {}) },
         cargado: true,
       })
     } catch {
       /* Un historial ilegible no puede dejar la pantalla en blanco: se arranca
          vacío y el registro de hoy sigue funcionando. */
-      set({ logs: {}, cola: [], inicios: [], perfil: { modo: MODO_POR_DEFECTO }, cargado: true })
+      set({
+        logs: {}, cola: [], inicios: [],
+        perfil: { modo: MODO_POR_DEFECTO }, avisos: AVISOS_POR_DEFECTO, cargado: true,
+      })
     }
 
     // La pantalla ya puede pintar; la red va detrás y sin bloquear.
@@ -312,6 +330,12 @@ export const useCicloStore = create<CicloState>((set, get) => ({
         contraception: d.anticonceptivo ?? undefined,
       })
     } catch { /* la cola lo reintenta */ }
+  },
+
+  setAvisos: async (a) => {
+    const avisos = { ...get().avisos, ...a }
+    set({ avisos })
+    await AsyncStorage.setItem(AVISOS_KEY, JSON.stringify(avisos))
   },
 
   setModo: async (modo) => {

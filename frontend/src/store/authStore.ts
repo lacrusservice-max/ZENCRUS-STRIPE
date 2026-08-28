@@ -4,6 +4,7 @@ import api, { alCaducarLaSesion, nuevaGeneracionDeSesion } from '../services/api
 import { useSocialStore } from './socialStore'
 import { unregisterPush } from '../services/pushService'
 import { olvidarRecordatorios } from '../features/salud/recordatorios'
+import { olvidarAvisos } from '../features/salud/ciclo/avisos'
 
 export interface User {
   id: string
@@ -255,6 +256,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     // Y los recordatorios de hábitos, por lo mismo: son avisos LOCALES, así que
     // sobrevivirían al cierre de sesión sonando con los hábitos de otra persona.
     await olvidarRecordatorios()
+    /* Los del ciclo aparte: llevan otro prefijo, y son justo los que no
+       pueden seguir sonando en el teléfono de quien ya cerró sesión. */
+    await olvidarAvisos()
     try {
       await api.post('/auth/logout')
     } catch {}
