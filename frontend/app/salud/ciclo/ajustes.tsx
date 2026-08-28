@@ -324,6 +324,29 @@ export default function AjustesCiclo() {
         {/* ── Tus datos ────────────────────────────────────────────────── */}
         <Text style={s.rotulo}>Tus datos</Text>
         <Tarjeta style={s.tarjeta}>
+          {/* El informe va PRIMERO. El JSON es para llevarte tus datos a otro
+              sitio; esto es para llevártelos a una consulta, que es lo que de
+              verdad se hace con ellos. */}
+          <Pressable
+            onPress={() => { elegir(); router.push('/salud/ciclo/informe') }}
+            disabled={!dias}
+            style={({ pressed }) => [s.accion, pressed && s.pulsado, !dias && s.apagada]}
+            accessibilityRole="button"
+          >
+            <Azulejo icono="dashboard_editar" fondo={ACENTO.verdeSuave} tam={40} />
+            <View style={s.flex}>
+              <Text style={[s.accionTit, { color: ACENTO.verde }]}>
+                Informe para consulta
+              </Text>
+              <Text style={s.filaTxt}>
+                Un PDF con lo registrado, ordenado para el médico. Se arma en tu
+                teléfono.
+              </Text>
+            </View>
+          </Pressable>
+
+          <View style={s.filete} />
+
           <Pressable
             onPress={() => void exportar()}
             disabled={exportando || !dias}

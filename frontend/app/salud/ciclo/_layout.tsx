@@ -184,7 +184,13 @@ export default function LayoutCiclo() {
 }
 
 const PESTANAS = ['index', 'calendario', 'ajustes', 'estadisticas', 'comunidad']
-const SIN_BARRA = ['/salud/ciclo/alta', '/salud/ciclo/registrar', '/salud/ciclo/hoy']
+/* Las pantallas de una sola acción, con su propio botón abajo: la barra se
+   les comería el botón, y además no son sitios donde uno quiera saltar a
+   otra pestaña a media faena. */
+const SIN_BARRA = [
+  '/salud/ciclo/alta', '/salud/ciclo/registrar', '/salud/ciclo/hoy',
+  '/salud/ciclo/informe',
+]
 
 /* Dónde NO se puede interrumpir con el check-in: en el propio check-in —sería
    un bucle—, en el alta —todavía no hay nada que registrar— y en el registro

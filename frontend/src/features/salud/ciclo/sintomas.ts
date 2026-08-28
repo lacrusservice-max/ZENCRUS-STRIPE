@@ -55,3 +55,41 @@ export function marcasDelDia(dia: Record<string, unknown>): Set<string> {
 
   return marcas
 }
+
+/**
+ * Con qué frecuencia aparece cada síntoma, sobre los días CON registro.
+ *
+ * El denominador son los días que ella apuntó algo, no los días transcurridos.
+ * Dividir entre los del mes castigaría a quien registra poco inventándole una
+ * mejoría que no existe: dejas de apuntar una semana y «cólicos» baja del 60 %
+ * al 30 % sin que su cuerpo haya cambiado nada.
+ *
+ * Vivía dentro de la pantalla de estadísticas. Salió de ahí en cuanto el
+ * informe para consulta necesitó los mismos números: dos cuentas del mismo
+ * porcentaje acaban dando dos porcentajes, y de los dos sitios el que menos
+ * puede permitírselo es el papel que se lleva al médico.
+ */
+export function frecuenciaSintomas(
+  logs: Record<string, Record<string, unknown>>,
+  desde: string, hasta: string,
+  tope = 4,
+): { dias: number; top: { etiqueta: string; n: number; pct: number }[] } {
+  const cuenta = new Map<string, number>()
+  let dias = 0
+
+  for (const [fecha, dia] of Object.entries(logs)) {
+    if (fecha < desde || fecha > hasta) continue
+    const marcas = marcasDelDia(dia)
+
+    if (!marcas.size && !Object.keys(dia).length) continue
+    dias++
+    marcas.forEach(m => cuenta.set(m, (cuenta.get(m) ?? 0) + 1))
+  }
+
+  const top = [...cuenta.entries()]
+    .map(([etiqueta, n]) => ({ etiqueta, n, pct: dias ? (n / dias) * 100 : 0 }))
+    .sort((a, b) => b.n - a.n)
+    .slice(0, tope)
+
+  return { dias, top }
+}

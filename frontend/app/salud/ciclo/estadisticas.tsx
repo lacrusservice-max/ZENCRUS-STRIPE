@@ -31,7 +31,7 @@ import {
   type ResumenFase, type Tendencia, type Sentido,
 } from '@/features/salud/ciclo/resumenFases'
 import { insightDelDia } from '@/features/salud/ciclo/insight'
-import { marcasDelDia } from '@/features/salud/ciclo/sintomas'
+import { frecuenciaSintomas } from '@/features/salud/ciclo/sintomas'
 import { nombreMes } from '@/features/salud/ciclo/formato'
 import { hoyLocal, aFechaLocal } from '@/utils/fechas'
 import { ALTO_BARRA } from '@/components/salud/ciclo/BarraCiclo'
@@ -356,36 +356,6 @@ const diasODia = (n: number | null): string => {
 const nivelTexto = (v: number): string =>
   v >= 4.2 ? 'Muy alta' : v >= 3.4 ? 'Alta' : v >= 2.6 ? 'Media' : v >= 1.8 ? 'Baja' : 'Muy baja'
 
-/**
- * Con qué frecuencia aparece cada síntoma, sobre los días CON registro.
- *
- * Se apoya en `dolor` —que trae zona e intensidad— y en el resto de trackers
- * de la ventana. Un día cuenta una sola vez por síntoma aunque lo haya
- * marcado dos veces.
- */
-function frecuenciaSintomas(
-  logs: Record<string, Record<string, unknown>>,
-  desde: string, hasta: string,
-): { dias: number; top: { etiqueta: string; pct: number }[] } {
-  const cuenta = new Map<string, number>()
-  let dias = 0
-
-  for (const [fecha, dia] of Object.entries(logs)) {
-    if (fecha < desde || fecha > hasta) continue
-    const marcas = marcasDelDia(dia)
-
-    if (!marcas.size && !Object.keys(dia).length) continue
-    dias++
-    marcas.forEach(m => cuenta.set(m, (cuenta.get(m) ?? 0) + 1))
-  }
-
-  const top = [...cuenta.entries()]
-    .map(([etiqueta, n]) => ({ etiqueta, pct: dias ? (n / dias) * 100 : 0 }))
-    .sort((a, b) => b.pct - a.pct)
-    .slice(0, 4)
-
-  return { dias, top }
-}
 
 
 
