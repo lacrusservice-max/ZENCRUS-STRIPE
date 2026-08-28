@@ -20,6 +20,7 @@ import {
   detectarCambioTermico, curvaTemperatura, type LecturaTemperatura,
 } from '../temperatura'
 import { detectarAnomalias } from '../anomalias'
+import { margenSegunRegularidad } from '@/nucleo/ciclo/fases'
 import { sumarDias } from '@/utils/fechas'
 import type { RegistroDia } from '@/store/cicloStore'
 
@@ -128,6 +129,24 @@ describe('estadisticas', () => {
     expect(e.ciclos).toBe(4)
     expect(e.usados).toBe(3)          // el de 75 días no entra
     expect(e.masLargo).toBe(29)
+  })
+
+  /* El ciclo que se aparta por raro es justo el que importa, y antes su
+     desaparición se premiaba: la desviación salía de los ciclos filtrados
+     pero el mínimo de tres contaba los de antes de filtrar, así que dos
+     ciclos normales más uno de 78 días daban «muy regular» y margen cero. */
+  it('no clasifica la regularidad con menos ciclos de los que midió', () => {
+    const e = estadisticas(derivarPeriodos(historial('2026-01-01', [28, 29, 78])).periodos)
+    expect(e.ciclos).toBe(3)
+    expect(e.usados).toBe(2)               // el de 78 se aparta
+    expect(e.desviacion).not.toBeNull()    // sí hay dispersión de los dos
+    expect(e.regularidad).toBe('sin_datos')  // pero dos ciclos no clasifican
+  })
+
+  it('con un ciclo larguísimo no promete una fecha exacta', () => {
+    const e = estadisticas(derivarPeriodos(historial('2026-01-01', [28, 92, 30])).periodos)
+    expect(e.regularidad).not.toBe('muy_regular')
+    expect(margenSegunRegularidad(e.regularidad, e.desviacion)).toBeGreaterThan(0)
   })
 
   /* Cuatro niveles desde el prompt maestro: ≤2 muy regular · 3-4 regular ·

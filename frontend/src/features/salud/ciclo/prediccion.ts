@@ -144,7 +144,15 @@ export function estadisticas(periodos: Periodo[]): Estadisticas {
      núcleo: la misma que usan las estadísticas. Dos clasificaciones distintas
      del mismo dato es como acaba una app diciendo «regular» en una pantalla y
      «algo irregular» en la de al lado. */
-  const regularidad = clasificarRegularidad(desviacion, todas.length)
+  /* `recientes.length` y NO `todas.length`. El guardián de los tres ciclos
+     tiene que contar los ciclos de los que salió la desviación, no los que
+     había antes de filtrar: con [28, 29, 78] se aparta el de 78, la desviación
+     se calcula sobre dos ciclos, y pasarle un 3 hacía que dos ciclos se
+     clasificaran como «muy regular» —margen cero, fecha exacta— justo a quien
+     acaba de tener un ciclo de 78 días. El ciclo que se aparta por raro es el
+     que más importa, y su desaparición se estaba premiando con la etiqueta más
+     tranquilizadora del sistema. */
+  const regularidad = clasificarRegularidad(desviacion, recientes.length)
 
   return {
     ciclos: todas.length,
