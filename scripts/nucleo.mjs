@@ -35,11 +35,21 @@ import { join, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const RAIZ = join(dirname(fileURLToPath(import.meta.url)), '..')
-const ORIGEN = join(RAIZ, 'nucleo', 'ciclo')
+const NUCLEO = join(RAIZ, 'nucleo')
 
-const DESTINOS = [
-  join(RAIZ, 'frontend', 'src', 'nucleo', 'ciclo'),
-  join(RAIZ, 'backend', 'src', 'nucleo', 'ciclo'),
+/* Cada carpeta de `nucleo/` es un módulo compartido, y se descubren solas: al
+   añadir `nucleo/telemetria/` no hubo que tocar este script. Antes estaba
+   fijado a `ciclo`, y con lo fijado el segundo módulo compartido se habría
+   quedado sin la verificación —que es justo lo que impide que las copias
+   diverjan sin que nadie se entere. */
+const MODULOS = readdirSync(NUCLEO, { withFileTypes: true })
+  .filter(d => d.isDirectory())
+  .map(d => d.name)
+  .sort()
+
+const destinosDe = (modulo) => [
+  join(RAIZ, 'frontend', 'src', 'nucleo', modulo),
+  join(RAIZ, 'backend', 'src', 'nucleo', modulo),
 ]
 
 /**
@@ -48,10 +58,10 @@ const DESTINOS = [
  * Va con la ruta de la fuente y el comando exacto, porque quien abra el
  * archivo por un salto del editor no tiene por qué saber que esto existe.
  */
-const marca = (archivo) => `/* ─────────────────────────────────────────────────────────────────────────
+const marca = (modulo, archivo) => `/* ─────────────────────────────────────────────────────────────────────────
  * ARCHIVO GENERADO — NO LO EDITES AQUÍ
  *
- * La fuente es  nucleo/ciclo/${archivo}
+ * La fuente es  nucleo/${modulo}/${archivo}
  * Para cambiarlo: edita ahí y corre  npm run nucleo
  *
  * Existe copiado porque la app y el servidor los compilan cadenas distintas
@@ -63,20 +73,27 @@ const marca = (archivo) => `/* ────────────────�
 
 const verificar = process.argv.includes('--verificar')
 
-const archivos = readdirSync(ORIGEN).filter(f => f.endsWith('.ts'))
-if (!archivos.length) {
-  console.error('nucleo: no hay nada en nucleo/ciclo')
+if (!MODULOS.length) {
+  console.error('nucleo: no hay ningún módulo en nucleo/')
   process.exit(1)
 }
 
 const problemas = []
 let copiados = 0
 
-for (const destino of DESTINOS) {
+for (const modulo of MODULOS) {
+ const origen = join(NUCLEO, modulo)
+ const archivos = readdirSync(origen).filter(f => f.endsWith('.ts'))
+ if (!archivos.length) {
+   console.error(`nucleo: no hay nada en nucleo/${modulo}`)
+   process.exit(1)
+ }
+
+ for (const destino of destinosDe(modulo)) {
   if (!verificar) mkdirSync(destino, { recursive: true })
 
   for (const archivo of archivos) {
-    const esperado = marca(archivo) + readFileSync(join(ORIGEN, archivo), 'utf8')
+    const esperado = marca(modulo, archivo) + readFileSync(join(origen, archivo), 'utf8')
     const ruta = join(destino, archivo)
 
     if (verificar) {
@@ -95,6 +112,7 @@ for (const destino of DESTINOS) {
       }
     }
   }
+ }
 }
 
 function rel(p) {

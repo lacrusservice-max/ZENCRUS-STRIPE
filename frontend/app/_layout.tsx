@@ -40,6 +40,8 @@ import {
 
 SplashScreen.preventAutoHideAsync().catch(() => {})
 import { useAuthStore } from '@/store/authStore'
+import { useTelemetriaNavegacion } from '@/features/telemetria/navegacion'
+import { arrancar as arrancarTelemetria } from '@/features/telemetria/cola'
 import { useChallengeStore } from '@/store/challengeStore'
 import { usePremiumStore } from '@/store/premiumStore'
 import { useSocialStore } from '@/store/socialStore'
@@ -68,6 +70,12 @@ import { migrarHistorico, vaciarCola as vaciarColaNutricion } from '@/store/nutr
 const STRIPE_PK = Constants.expoConfig?.extra?.stripePublishableKey as string ?? ''
 
 export default function RootLayout() {
+  /* Telemetría: una línea y queda registrada toda la navegación de la app.
+     Va aquí y no en cada pantalla a propósito — las pantallas que nadie
+     instrumenta son invisibles, y suelen ser justo las que no le importan a
+     nadie, que es lo que queríamos descubrir. */
+  useTelemetriaNavegacion()
+
   const initialize = useAuthStore(s => s.initialize)
   const isAuthenticated = useAuthStore(s => s.isAuthenticated)
   const loadChallenges = useChallengeStore(s => s.load)
@@ -170,6 +178,8 @@ export default function RootLayout() {
      segundo toque ya estás respirando. */
   useEffect(() => escucharRecordatorios(), [])
   useEffect(() => escucharAvisos(), [])
+
+  useEffect(() => arrancarTelemetria(), [])
 
   useEffect(() => {
     initialize()

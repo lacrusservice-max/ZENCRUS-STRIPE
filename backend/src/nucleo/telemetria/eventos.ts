@@ -1,3 +1,14 @@
+/* ─────────────────────────────────────────────────────────────────────────
+ * ARCHIVO GENERADO — NO LO EDITES AQUÍ
+ *
+ * La fuente es  nucleo/telemetria/eventos.ts
+ * Para cambiarlo: edita ahí y corre  npm run nucleo
+ *
+ * Existe copiado porque la app y el servidor los compilan cadenas distintas
+ * que no pueden leer una carpeta común. El motivo largo está en
+ * scripts/nucleo.mjs.
+ * ───────────────────────────────────────────────────────────────────────── */
+
 /**
  * TELEMETRÍA · QUÉ ES UN EVENTO Y QUÉ NO PUEDE LLEVAR DENTRO
  * ═══════════════════════════════════════════════════════════════════════════
@@ -128,4 +139,24 @@ export function rutaSinParametros(ruta: string): string {
     .split('/')
     .map(seg => (/^\d{4}-\d{2}-\d{2}$/.test(seg) || /^[0-9a-f-]{16,}$/i.test(seg) ? ':id' : seg))
     .join('/')
+}
+
+/**
+ * De qué sección es una ruta.
+ *
+ * El orden importa: `/salud/...` se comprueba antes que nada para que ninguna
+ * ruta de salud caiga por error en otra sección y se le aplique el filtro
+ * flojo. Ante una ruta desconocida se devuelve 'perfil' y no se inventa una
+ * sección nueva, para que el eje de análisis no se llene de valores sueltos.
+ */
+export function seccionDeRuta(ruta: string): Seccion {
+  const r = ruta.toLowerCase()
+  if (r.startsWith('/salud')) return 'salud'
+  if (r.startsWith('/workout') || r.includes('/entrena')) return 'entrena'
+  if (r.includes('/nutrition') || r.includes('/nutricion') || r.startsWith('/recipe')) return 'nutricion'
+  if (r.startsWith('/social')) return 'social'
+  if (r.startsWith('/aire-libre')) return 'aire_libre'
+  if (r.includes('/chat') || r.includes('/zena')) return 'zena'
+  if (r.includes('(auth)') || r.includes('(onboarding)') || r.startsWith('/login') || r.startsWith('/register')) return 'acceso'
+  return 'perfil'
 }

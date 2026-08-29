@@ -5,8 +5,8 @@
  * un dato de salud puede salir del teléfono.
  */
 
-import { sanear, rutaSinParametros, CLAVES_PERMITIDAS_SENSIBLES } from '../eventos'
-import type { Evento } from '../eventos'
+import { sanear, rutaSinParametros, CLAVES_PERMITIDAS_SENSIBLES } from '@/nucleo/telemetria/eventos'
+import type { Evento } from '@/nucleo/telemetria/eventos'
 
 const base = (e: Partial<Evento>): Evento => ({
   nombre: 'control_usado', seccion: 'salud', props: {},
@@ -98,5 +98,45 @@ describe('las dos fechas', () => {
   it('el evento lleva cuándo PASÓ, no cuándo se envió', () => {
     const r = sanear(base({ ocurrioEn: '2026-08-28T06:12:00.000Z' }))
     expect(r.ocurrioEn).toBe('2026-08-28T06:12:00.000Z')
+  })
+})
+
+// ── La derivación de sección ────────────────────────────────────────────────
+
+import { seccionDeRuta } from '@/nucleo/telemetria/eventos'
+
+describe('de qué sección es cada ruta', () => {
+  /* Esta es la prueba con más peso del fichero. Si una ruta de salud se
+     derivara a otra sección, se le aplicaría el filtro flojo y sus props
+     dejarían de pasar por la lista blanca. */
+  it.each([
+    '/salud', '/salud/ciclo', '/salud/ciclo/registrar', '/salud/ciclo/estadisticas',
+    '/salud/ciclo/informe', '/salud/ciclo/hoy', '/SALUD/Ciclo',
+  ])('%s es salud', ruta => {
+    expect(seccionDeRuta(ruta)).toBe('salud')
+  })
+
+  it.each([
+    ['/workout', 'entrena'],
+    ['/workout/sesion', 'entrena'],
+    ['/(tabs)/nutrition', 'nutricion'],
+    ['/recipe/123', 'nutricion'],
+    ['/social', 'social'],
+    ['/aire-libre/running', 'aire_libre'],
+    ['/(tabs)/chat', 'zena'],
+    ['/(auth)/login', 'acceso'],
+    ['/(onboarding)/paso1', 'acceso'],
+  ] as const)('%s es %s', (ruta, esperada) => {
+    expect(seccionDeRuta(ruta)).toBe(esperada)
+  })
+
+  it('una ruta desconocida no inventa una sección nueva', () => {
+    expect(seccionDeRuta('/algo/que/no/existe')).toBe('perfil')
+  })
+
+  /* El caso que de verdad importa: una ruta de salud que además contiene una
+     palabra de otra sección sigue siendo salud, porque se comprueba primero. */
+  it('salud gana aunque la ruta mencione otra sección', () => {
+    expect(seccionDeRuta('/salud/ciclo/correlaciones?con=workout')).toBe('salud')
   })
 })

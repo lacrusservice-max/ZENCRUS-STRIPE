@@ -16,6 +16,7 @@ import trackingRoutes from './tracking.routes'
 import socialRoutes from './social.routes'
 import exerciseRoutes from './exercises.routes'
 import cycleRoutes from './cycle.routes'
+import eventsRoutes from './events.routes'
 import { getPublicFlags } from '../controllers/adminController'
 import { ApiResponse } from '../models/types'
 import { supabase } from '../config/supabase'
@@ -77,5 +78,6 @@ router.use('/exercises', exerciseRoutes)
    Colgarlo de `/tracking` obligaría a poner ese cerrojo dentro de un router
    cuyas otras veinte rutas no lo necesitan. Ver cycle.routes.ts. */
 router.use('/cycle', cycleRoutes)
+router.use('/events', eventsRoutes)
 
 export default router
