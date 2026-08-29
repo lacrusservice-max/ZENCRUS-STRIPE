@@ -38,7 +38,7 @@
 /** Las secciones de la app, que son también el primer eje de análisis. */
 export type Seccion =
   | 'salud' | 'entrena' | 'nutricion' | 'social' | 'aire_libre'
-  | 'perfil' | 'zena' | 'acceso'
+  | 'perfil' | 'zena' | 'acceso' | 'inicio' | 'otra'
 
 /**
  * Secciones cuyo contenido no puede salir del teléfono.
@@ -146,8 +146,14 @@ export function rutaSinParametros(ruta: string): string {
  *
  * El orden importa: `/salud/...` se comprueba antes que nada para que ninguna
  * ruta de salud caiga por error en otra sección y se le aplique el filtro
- * flojo. Ante una ruta desconocida se devuelve 'perfil' y no se inventa una
- * sección nueva, para que el eje de análisis no se llene de valores sueltos.
+ * flojo.
+ *
+ * ── Lo desconocido va a 'otra', no a una sección de verdad ─────────────────
+ * Antes el caso por defecto era 'perfil', y en los primeros datos reales se
+ * vio el fallo enseguida: la pantalla de Inicio —la ruta `/`— caía ahí y
+ * mezclaba el tráfico de la portada con el del perfil, sin forma de
+ * separarlos después. Una sección real como cajón de sastre corrompe
+ * justamente el eje por el que más se va a agrupar.
  */
 export function seccionDeRuta(ruta: string): Seccion {
   const r = ruta.toLowerCase()
@@ -158,5 +164,8 @@ export function seccionDeRuta(ruta: string): Seccion {
   if (r.startsWith('/aire-libre')) return 'aire_libre'
   if (r.includes('/chat') || r.includes('/zena')) return 'zena'
   if (r.includes('(auth)') || r.includes('(onboarding)') || r.startsWith('/login') || r.startsWith('/register')) return 'acceso'
-  return 'perfil'
+  if (r.includes('/profile') || r.includes('/perfil')) return 'perfil'
+  /* La portada. Va después de todo lo demás porque `/` es prefijo de todo. */
+  if (r === '/' || r === '' || r.endsWith('(tabs)') || r.endsWith('(tabs)/index')) return 'inicio'
+  return 'otra'
 }

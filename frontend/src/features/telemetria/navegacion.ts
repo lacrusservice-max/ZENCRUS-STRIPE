@@ -19,9 +19,20 @@
  * Cuando se cambia de pantalla se sabe cuánto duró la que se deja, y ese es el
  * dato que dice si algo se usa o solo se cruza. La que está abierta ahora
  * mismo no tiene duración todavía, y se apunta al salir.
+ *
+ * ── El reloj se para en segundo plano ──────────────────────────────────────
+ * Esto no estaba, y el primer evento real que llegó lo delató: 34.563.655 ms
+ * en la pantalla de login, o sea nueve horas y media. Nadie mira un login
+ * nueve horas: la app se quedó abierta ahí toda la noche.
+ *
+ * Sin parar el reloj, cada «tiempo en pantalla» lleva dentro lo que el
+ * teléfono estuvo en un bolsillo, y la métrica deja de medir lo único que se
+ * le pedía —qué pantallas retienen y cuáles se cruzan de paso—. Al irse a
+ * segundo plano se apunta lo acumulado y se para; al volver, se reanuda.
  */
 
 import { useEffect, useRef } from 'react'
+import { AppState } from 'react-native'
 import { usePathname } from 'expo-router'
 import { registrar } from './cola'
 import { rutaSinParametros, seccionDeRuta } from '@/nucleo/telemetria/eventos'
@@ -33,6 +44,26 @@ export function useTelemetriaNavegacion(): void {
   const ruta = usePathname()
   const anterior = useRef<{ ruta: string; desde: number } | null>(null)
 
+  /* Al fondo: se apunta lo que llevaba y se para el reloj. Al volver: se
+     reanuda desde ahora, de modo que el rato en el bolsillo no cuenta. */
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', estado => {
+      const previa = anterior.current
+      if (!previa) return
+
+      if (estado !== 'active') {
+        registrar('pantalla_dejada', seccionDeRuta(previa.ruta), {
+          pantalla: previa.ruta,
+          props: { ms: Date.now() - previa.desde, resultado: 'al_fondo' },
+        })
+        anterior.current = { ...previa, desde: 0 }
+      } else if (previa.desde === 0) {
+        anterior.current = { ...previa, desde: Date.now() }
+      }
+    })
+    return () => sub.remove()
+  }, [])
+
   useEffect(() => {
     if (!ruta) return
 
@@ -42,10 +73,15 @@ export function useTelemetriaNavegacion(): void {
     /* La pantalla que se deja: aquí es donde se sabe cuánto duró. */
     const previa = anterior.current
     if (previa && previa.ruta !== limpia) {
-      registrar('pantalla_dejada', seccionDeRuta(previa.ruta), {
-        pantalla: previa.ruta,
-        props: { ms: ahora - previa.desde },
-      })
+      /* `desde === 0` significa que ya se apuntó al irse al fondo y el reloj
+         está parado: volver directamente a otra pantalla no debe generar un
+         segundo evento con una duración inventada desde el epoch. */
+      if (previa.desde !== 0) {
+        registrar('pantalla_dejada', seccionDeRuta(previa.ruta), {
+          pantalla: previa.ruta,
+          props: { ms: ahora - previa.desde },
+        })
+      }
     }
 
     if (!previa || previa.ruta !== limpia) {

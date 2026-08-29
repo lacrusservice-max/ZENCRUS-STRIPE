@@ -130,8 +130,21 @@ describe('de qué sección es cada ruta', () => {
     expect(seccionDeRuta(ruta)).toBe(esperada)
   })
 
-  it('una ruta desconocida no inventa una sección nueva', () => {
-    expect(seccionDeRuta('/algo/que/no/existe')).toBe('perfil')
+  /* Esto lo destapó el primer dato real: `/` caía en el caso por defecto,
+     que era 'perfil', y mezclaba el tráfico de la portada con el del perfil
+     sin forma de separarlos. Una sección real como cajón de sastre corrompe
+     el eje por el que más se va a agrupar. */
+  it('la portada es su propia sección, no perfil', () => {
+    expect(seccionDeRuta('/')).toBe('inicio')
+    expect(seccionDeRuta('/(tabs)')).toBe('inicio')
+  })
+
+  it('el perfil de verdad sigue siendo perfil', () => {
+    expect(seccionDeRuta('/(tabs)/profile')).toBe('perfil')
+  })
+
+  it('una ruta desconocida va al cajón, no a una sección real', () => {
+    expect(seccionDeRuta('/algo/que/no/existe')).toBe('otra')
   })
 
   /* El caso que de verdad importa: una ruta de salud que además contiene una
