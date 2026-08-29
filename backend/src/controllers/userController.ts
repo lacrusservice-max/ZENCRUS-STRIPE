@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { supabase } from '../config/supabase'
 import { ApiResponse } from '../models/types'
 import { logger } from '../config/logger'
+import { cicloActivo } from '../services/accesoCiclo'
 import { calcularNutricion, PerfilUsuario } from '../services/nutritionCalculator'
 import { listByPrefix, readUrls } from '../services/media'
 import { purgeUserContent } from './socialContentController'
@@ -91,7 +92,20 @@ export async function getProfile(req: Request, res: Response): Promise<void> {
     return
   }
 
-  res.status(200).json({ success: true, data } satisfies ApiResponse)
+  /* La llave del ciclo viaja con el perfil, y es la EFECTIVA: la que sale de
+     la regla completa, no la columna cruda.
+
+     Sin esto el cliente no tenía forma de saberlo. `cycleEnabled` solo lo
+     devolvía `/api/cycle`, que está detrás del propio cerrojo: no se podía
+     enterar de que tienes acceso por un endpoint que exige acceso. Ese
+     círculo es la razón de que la pantalla no apareciera aunque la cuenta
+     tuviera derecho a ella. */
+  const cycleEnabled = await cicloActivo(userId, req.user?.email)
+
+  res.status(200).json({
+    success: true,
+    data: { ...(data as unknown as Record<string, unknown>), cycleEnabled },
+  } satisfies ApiResponse)
 }
 
 export async function updateProfile(req: Request, res: Response): Promise<void> {

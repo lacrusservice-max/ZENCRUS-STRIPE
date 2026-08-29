@@ -26,8 +26,7 @@ import { Router, Request, Response, NextFunction } from 'express'
 import { authenticate } from '../middleware/auth'
 import { validate } from '../middleware/validate'
 import { notFound } from '../middleware/errorHandler'
-import { supabase } from '../config/supabase'
-import { logger } from '../config/logger'
+import { cicloActivo } from '../services/accesoCiclo'
 
 import {
   obtenerCiclo, guardarPerfil, registrarLog, borrarLog, registrarLote,
@@ -39,45 +38,15 @@ import {
 const router = Router()
 
 /**
- * Mientras dure la fase de pruebas, manda la lista y solo la lista.
+ * El cerrojo. La regla vive en `services/accesoCiclo.ts`, no aquí.
  *
- * Es el espejo exacto de `frontend/src/features/salud/acceso.ts`. Vaciarla
- * activa el régimen definitivo —`health_profile.cycle_enabled`— y hay que
- * vaciarla en los DOS lados a la vez: si el cliente cree que alguien tiene el
- * módulo y el servidor no, esa persona ve una pantalla que no carga nunca.
+ * Antes había una lista de correos de pruebas duplicada a mano en el cliente,
+ * con un comentario pidiendo vaciar las dos a la vez. Se quedó puesta, y con
+ * ella el módulo solo existía para una cuenta: la primera mujer que se dio de
+ * alta no lo vio nunca.
  */
-const CORREOS_DE_PRUEBA = ['caleblacrus@gmail.com'] as const
-const EN_PRUEBAS = CORREOS_DE_PRUEBA.length > 0
-
-const normalizar = (c: string | undefined | null) => (c ?? '').trim().toLowerCase()
-
 async function exigirCiclo(req: Request, res: Response, next: NextFunction): Promise<void> {
-  const email = normalizar(req.user?.email)
-
-  if (EN_PRUEBAS) {
-    if (CORREOS_DE_PRUEBA.includes(email as typeof CORREOS_DE_PRUEBA[number])) {
-      next()
-      return
-    }
-    notFound(req, res)
-    return
-  }
-
-  const { data, error } = await supabase
-    .from('health_profile')
-    .select('cycle_enabled')
-    .eq('user_id', req.user!.userId)
-    .maybeSingle()
-
-  if (error) {
-    logger.error('exigirCiclo:', error.message)
-    /* Ante un fallo de lectura se cierra. Abrir «por si acaso» sería exponer
-       el módulo entero por un error de red de la base. */
-    notFound(req, res)
-    return
-  }
-
-  if (data?.cycle_enabled === true) {
+  if (await cicloActivo(req.user!.userId, req.user?.email)) {
     next()
     return
   }

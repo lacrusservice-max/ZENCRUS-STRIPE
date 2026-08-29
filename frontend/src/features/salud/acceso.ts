@@ -30,29 +30,6 @@
 
 import type { User } from '@/store/authStore'
 
-/**
- * PRUEBAS · lista de correos con el ciclo activo.
- *
- * Mientras el módulo se construye, el acceso está restringido a estas cuentas
- * para poder verificar la función fantasma de verdad: entrando con una cuenta
- * de dentro y otra de fuera, y comprobando que la segunda no encuentra el
- * módulo por ningún camino.
- *
- * ── Cómo se quita ────────────────────────────────────────────────────────
- * Al terminar el módulo se vacía esta lista y `cycleEnabled` del perfil pasa
- * a ser la única llave. No hay que tocar nada más: `tieneCiclo()` ya consulta
- * las dos y la lista, vacía, deja de influir.
- *
- * La comparación normaliza a minúsculas y recorta espacios porque un correo
- * escrito con mayúsculas en el registro no debería dejar a nadie fuera.
- */
-const CORREOS_DE_PRUEBA = [
-  'caleblacrus@gmail.com',
-] as const
-
-/** true mientras la lista mande sobre la preferencia del perfil. */
-export const EN_PRUEBAS = CORREOS_DE_PRUEBA.length > 0
-
 const normalizar = (correo: string | undefined | null): string =>
   (correo ?? '').trim().toLowerCase()
 
@@ -66,13 +43,18 @@ const normalizar = (correo: string | undefined | null): string =>
 export function tieneCiclo(user: User | null | undefined): boolean {
   if (!user) return false
 
-  // En pruebas manda la lista, y solo la lista.
-  if (EN_PRUEBAS) {
-    return CORREOS_DE_PRUEBA.includes(normalizar(user.email) as typeof CORREOS_DE_PRUEBA[number])
-  }
+  /* La llave la calcula el SERVIDOR y viaja en `/users/profile`. Aquí no se
+     vuelve a decidir: antes esta regla estaba escrita dos veces, la copia del
+     servidor tenía una lista de correos de pruebas que nadie vació, y el
+     módulo acabó existiendo para una sola cuenta. Una regla de permisos
+     escrita en dos sitios diverge; la única pregunta que se puede hacer desde
+     el cliente es qué contestó el servidor. */
+  if (typeof user.cycleEnabled === 'boolean') return user.cycleEnabled
 
-  // Régimen definitivo: la preferencia explícita del perfil.
-  return user.cycleEnabled === true
+  /* Sesión guardada de antes de que el perfil trajera la llave. Se deriva lo
+     mismo que deriva el servidor para no dejar a nadie fuera hasta la próxima
+     recarga del perfil. Es un puente, y se puede quitar más adelante. */
+  return normalizar(user.gender) !== 'male'
 }
 
 /**
